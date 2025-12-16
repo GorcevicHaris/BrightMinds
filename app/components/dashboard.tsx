@@ -1,4 +1,5 @@
 'use client'
+import { Section } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface Child {
@@ -97,15 +98,13 @@ export default function Dashboard() {
             })
         })
         if (response.ok) {
-            const updatedChildren = children.map(child =>
-                child.id === editingChildId ? { ...child, ...formData } : child
-            )
+            const updatedChildren = children.map(child => child.id == editingChildId ? { ...child, ...formData } : child)
             setChildren(updatedChildren)
-            setShowEditModal(false);
+            setShowEditModal(false)
             setEditingChildId(null);
             setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '' });
         } else {
-            alert("greska")
+            console.log("Greska")
         }
     }
 

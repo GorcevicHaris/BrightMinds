@@ -91,10 +91,11 @@ export async function DELETE(req: Request) {
     }
 }
 
-export async function UPDATE(req: Request) {
+export async function PUT(req: Request) {
     try {
         const url = new URL(req.url)
         const childId = url.searchParams.get("child_id")
+        console.log(childId, "childid")
         const body = await req.json()
         const { first_name, last_name, date_of_birth, gender, notes } = body;
         await pool.query(
@@ -103,6 +104,7 @@ export async function UPDATE(req: Request) {
         )
         return NextResponse.json({
             message: "Child updated successfully"
+
         })
     } catch (error) {
         console.error('Error updating child:', error);
