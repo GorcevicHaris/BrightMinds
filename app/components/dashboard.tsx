@@ -1,5 +1,5 @@
 'use client'
-import { Section } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 interface Child {
@@ -26,6 +26,7 @@ export default function Dashboard() {
     });
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const userId = user?.id;
+    const router = useRouter();
     console.log(userId, "id usera")
 
     async function addChild() {
@@ -149,7 +150,7 @@ export default function Dashboard() {
                             </div>
                             <div className="mt-4 flex flex-wrap gap-2">
                                 <button
-                                    onClick={() => setActiveChildId(child.id)}
+                                    onClick={() => router.push(`/dashboard/child/${child.id}`)}
                                     className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition"
                                 >
                                     Uđi
