@@ -30,6 +30,7 @@ export async function POST(request: Request) {
             'SELECT id, password_hash, full_name, role FROM users WHERE email = ?',
             [email]
         );
+
         console.log("EMAIL IZ REQUESTA:", email);
         console.log("ROW IZ BAZE:", rows);
 
@@ -59,15 +60,28 @@ export async function POST(request: Request) {
             { expiresIn: '7d' }
         );
 
-
-        return NextResponse.json({
-            token,
+        // Kreiraj response
+        const response = NextResponse.json({
+            success: true,
             user: {
                 id: user.id,
                 full_name: user.full_name,
-                email
+                email,
+                role: user.role
             }
         });
+
+        // Postavi httpOnly cookie
+        response.cookies.set('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production', // true samo u produkciji
+            sameSite: 'strict',
+            maxAge: 60 * 60 * 24 * 7, // 7 dana
+            path: '/'
+        });
+
+        return response;
+
     } catch (error) {
         console.error('Login error:', error);
         return NextResponse.json(
