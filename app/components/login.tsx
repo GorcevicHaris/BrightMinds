@@ -30,7 +30,6 @@ export default function LoginPage() {
             if (res.ok) {
                 // Sačuvaj token u localStorage
                 localStorage.setItem('auth_token', data.token);
-                cookieStore.get()
                 // Opciono: sačuvaj i user podatke
                 localStorage.setItem('user', JSON.stringify(data.user));
 
