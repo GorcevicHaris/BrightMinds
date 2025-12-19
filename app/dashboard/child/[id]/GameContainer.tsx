@@ -77,7 +77,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             setTimeout(() => setIsSaving(false), 2000);
         }
     };
-
+    // 
     return (
         <div>
             {/* Level selector */}
@@ -93,8 +93,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                                 onClick={() => setCurrentLevel(level)}
                                 disabled={isLoading}
                                 className={`px-6 py-3 rounded-full font-bold transition-all ${currentLevel === level
-                                        ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white scale-110 shadow-lg"
-                                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                    ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white scale-110 shadow-lg"
+                                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                                     } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
                             >
                                 Nivo {level}
@@ -119,8 +119,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             {/* Success message */}
             {message && (
                 <div className={`border-2 px-6 py-4 rounded-2xl mb-6 text-center text-xl font-semibold animate-bounce ${message.includes("Greška")
-                        ? "bg-red-100 border-red-400 text-red-800"
-                        : "bg-green-100 border-green-400 text-green-800"
+                    ? "bg-red-100 border-red-400 text-red-800"
+                    : "bg-green-100 border-green-400 text-green-800"
                     }`}>
                     {message}
                 </div>
