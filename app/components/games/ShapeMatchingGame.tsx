@@ -12,7 +12,7 @@ interface Shape {
 interface GameProps {
     childId: number;
     level: number;
-    onComplete: (score: number, duration: number) => void;
+    onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
 }
 
 const COLORS = {
@@ -37,6 +37,9 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
     const [isPlaying, setIsPlaying] = useState(false);
     const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
     const [startTime, setStartTime] = useState<number | null>(null);
+    const [moodBefore, setMoodBefore] = useState<string | null>(null);
+    const [showMoodBefore, setShowMoodBefore] = useState(false);
+    const [showMoodAfter, setShowMoodAfter] = useState(false);
 
     const generateShapes = useCallback(() => {
         const shapeTypes: Array<"circle" | "square" | "triangle" | "star"> =
@@ -63,6 +66,12 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
     }, [level]);
 
     const startGame = () => {
+        setShowMoodBefore(true); // Prvo prikaži mood selection
+    };
+
+    const handleMoodBeforeSelect = (mood: string) => {
+        setMoodBefore(mood);
+        setShowMoodBefore(false);
         setIsPlaying(true);
         setScore(0);
         setTimeLeft(60);
@@ -93,8 +102,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
             setTimeLeft(prev => {
                 if (prev <= 1) {
                     setIsPlaying(false);
-                    const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 60;
-                    onComplete(score, duration);
+                    setShowMoodAfter(true); // Prikaži mood after selection
                     return 0;
                 }
                 return prev - 1;
@@ -102,7 +110,14 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [isPlaying, timeLeft, score, startTime, onComplete]);
+    }, [isPlaying, timeLeft]);
+
+    const handleMoodAfterSelect = (mood: string) => {
+        setShowMoodAfter(false);
+        const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 60;
+        // Prosledi mood podatke u onComplete
+        onComplete(score, duration, moodBefore, mood);
+    };
 
     const renderShape = (shape: Shape) => {
         const commonProps = {
@@ -149,6 +164,67 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
                 return <polygon points={points.join(" ")} {...commonProps} />;
         }
     };
+
+    // Mood Before Screen
+    if (showMoodBefore) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 rounded-3xl p-8 shadow-xl">
+                <h2 className="text-3xl font-bold text-purple-700 mb-8">
+                    Kako se osećaš PRE igre?
+                </h2>
+                <div className="grid grid-cols-5 gap-6">
+                    {[
+                        { emoji: "😢", label: "Loše", value: "very_upset" },
+                        { emoji: "😕", label: "Nisu sjajno", value: "upset" },
+                        { emoji: "😐", label: "Okej", value: "neutral" },
+                        { emoji: "😊", label: "Dobro", value: "happy" },
+                        { emoji: "😄", label: "Super", value: "very_happy" },
+                    ].map(mood => (
+                        <button
+                            key={mood.value}
+                            onClick={() => handleMoodBeforeSelect(mood.value)}
+                            className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl"
+                        >
+                            <span className="text-6xl mb-2">{mood.emoji}</span>
+                            <span className="text-lg font-semibold text-gray-700">{mood.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    // Mood After Screen
+    if (showMoodAfter) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-green-100 via-yellow-100 to-orange-100 rounded-3xl p-8 shadow-xl">
+                <h2 className="text-3xl font-bold text-green-700 mb-4">
+                    Kako se osećaš POSLE igre?
+                </h2>
+                <p className="text-xl text-gray-600 mb-8">
+                    Osvojio/la si <span className="font-bold text-purple-600">{score} poena</span>! 🎉
+                </p>
+                <div className="grid grid-cols-5 gap-6">
+                    {[
+                        { emoji: "😢", label: "Loše", value: "very_upset" },
+                        { emoji: "😕", label: "Nisu sjajno", value: "upset" },
+                        { emoji: "😐", label: "Okej", value: "neutral" },
+                        { emoji: "😊", label: "Dobro", value: "happy" },
+                        { emoji: "😄", label: "Super", value: "very_happy" },
+                    ].map(mood => (
+                        <button
+                            key={mood.value}
+                            onClick={() => handleMoodAfterSelect(mood.value)}
+                            className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl"
+                        >
+                            <span className="text-6xl mb-2">{mood.emoji}</span>
+                            <span className="text-lg font-semibold text-gray-700">{mood.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     if (!isPlaying && score === 0) {
         return (

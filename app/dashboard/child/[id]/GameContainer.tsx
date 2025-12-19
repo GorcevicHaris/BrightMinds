@@ -13,8 +13,21 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     const [currentLevel, setCurrentLevel] = useState(1);
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState("");
+    const [isSaving, setIsSaving] = useState(false); // NOVO: Guard za dupli upis
 
-    const handleGameComplete = async (score: number, duration: number) => {
+    const handleGameComplete = async (
+        score: number,
+        duration: number,
+        moodBefore?: string | null,
+        moodAfter?: string | null
+    ) => {
+        // GUARD: Spreči dupli upis
+        if (isSaving || isLoading) {
+            console.log("⚠️ Već se čuva rezultat, preskajem...");
+            return;
+        }
+
+        setIsSaving(true);
         setIsLoading(true);
 
         try {
@@ -30,10 +43,12 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     childId,
-                    activityId: 1, // ID aktivnosti "Složi oblik" iz baze
+                    activityId: 1,
                     successLevel,
                     durationMinutes: Math.ceil(duration / 60),
                     notes: `Nivo ${currentLevel}, Rezultat: ${score} poena`,
+                    moodBefore: moodBefore || null,
+                    moodAfter: moodAfter || null,
                 }),
             });
 
@@ -58,6 +73,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             setMessage("⚠️ Greška pri čuvanju rezultata");
         } finally {
             setIsLoading(false);
+            // Resetuj guard nakon 2 sekunde da omogućiš novu igru
+            setTimeout(() => setIsSaving(false), 2000);
         }
     };
 
@@ -92,6 +109,11 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                     {currentLevel === 4 && "⭐⭐⭐⭐ Teško - 6 oblika"}
                     {currentLevel === 5 && "⭐⭐⭐⭐⭐ Izazov - 7 oblika"}
                 </div>
+                {isLoading && (
+                    <div className="mt-4 text-orange-600 font-semibold text-center animate-pulse">
+                        ⏳ Čuvam rezultat, sačekaj malo...
+                    </div>
+                )}
             </div>
 
             {/* Success message */}
