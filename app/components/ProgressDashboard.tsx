@@ -115,7 +115,6 @@ export default function ProgressDashboard({ childId, childName }: Props) {
 
     return (
         <div className="space-y-6">
-            {/* Tabs */}
             <div className="bg-white rounded-3xl shadow-xl p-2 flex gap-2">
                 {[
                     { id: "overview", label: "📊 Pregled", icon: "📊" },
@@ -134,11 +133,8 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                     </button>
                 ))}
             </div>
-
-            {/* Overview Tab */}
             {activeTab === "overview" && (
                 <div className="space-y-6">
-                    {/* Stats Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl p-6 text-white shadow-xl">
                             <div className="text-5xl mb-3">🎮</div>
@@ -164,10 +160,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                             <div className="text-purple-100 text-lg">Minuta vežbanja</div>
                         </div>
                     </div>
-
-                    {/* Charts Row */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Success Distribution */}
                         <div className="bg-white rounded-3xl p-6 shadow-xl">
                             <h3 className="text-2xl font-bold text-gray-800 mb-6">📈 Distribucija uspeha</h3>
                             <ResponsiveContainer width="100%" height={300}>
@@ -190,8 +183,6 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
-
-                        {/* Progress Over Time */}
                         <div className="bg-white rounded-3xl p-6 shadow-xl">
                             <h3 className="text-2xl font-bold text-gray-800 mb-6">📅 Napredak kroz vreme</h3>
                             <ResponsiveContainer width="100%" height={300}>
@@ -214,8 +205,6 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                     </div>
                 </div>
             )}
-
-            {/* History Tab */}
             {activeTab === "history" && (
                 <div className="bg-white rounded-3xl p-6 shadow-xl">
                     <h3 className="text-2xl font-bold text-gray-800 mb-6">📜 Istorija igara</h3>
@@ -269,8 +258,6 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                     </div>
                 </div>
             )}
-
-            {/* Levels Tab */}
             {activeTab === "levels" && (
                 <div className="bg-white rounded-3xl p-6 shadow-xl">
                     <h3 className="text-2xl font-bold text-gray-800 mb-6">🎯 Statistike po nivoima</h3>

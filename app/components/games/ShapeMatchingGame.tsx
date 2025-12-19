@@ -164,8 +164,6 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
                 return <polygon points={points.join(" ")} {...commonProps} />;
         }
     };
-
-    // Mood Before Screen
     if (showMoodBefore) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 rounded-3xl p-8 shadow-xl">
@@ -194,7 +192,6 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
         );
     }
 
-    // Mood After Screen
     if (showMoodAfter) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-green-100 via-yellow-100 to-orange-100 rounded-3xl p-8 shadow-xl">
@@ -268,7 +265,6 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
 
     return (
         <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-3xl p-8 shadow-2xl">
-            {/* Header */}
             <div className="flex justify-between items-center mb-8 bg-white/80 backdrop-blur rounded-2xl p-6 shadow-lg">
                 <div className="flex items-center gap-4">
                     <span className="text-3xl font-bold text-purple-700">Poeni: {score}</span>
@@ -280,8 +276,6 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
                     </span>
                 </div>
             </div>
-
-            {/* Target Shape */}
             {targetShape && (
                 <div className="mb-8 text-center">
                     <p className="text-2xl font-bold text-gray-700 mb-4">
@@ -301,16 +295,12 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
                     </div>
                 </div>
             )}
-
-            {/* Feedback */}
             {feedback && (
                 <div className={`text-center mb-4 text-4xl font-bold animate-bounce ${feedback === "correct" ? "text-green-600" : "text-red-600"
                     }`}>
                     {feedback === "correct" ? "✅ Tačno!" : "❌ Pokušaj ponovo"}
                 </div>
             )}
-
-            {/* Game Grid */}
             <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
                 {shapes.map(shape => (
                     <button
