@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import pool from '../../../../lib/db';
-import { RowDataPacket } from 'mysql2';
+import { FieldPacket, RowDataPacket } from 'mysql2';
 
 // Definiši interfejs za korisnika
-interface User extends RowDataPacket {
+interface User extends FieldPacket {
     id: number;
     password_hash: string;
     full_name: string;
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
         }
 
         // Get user from database
-        const [rows] = await pool.query<User[]>(
+        const [rows]:User[] = await pool.query<User[]>(
             'SELECT id, password_hash, full_name, role FROM users WHERE email = ?',
             [email]
         );

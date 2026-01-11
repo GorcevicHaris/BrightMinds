@@ -72,6 +72,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
             const res = await fetch(`/api/children/${childId}/progress`);
             if (res.ok) {
                 const json = await res.json();
+                console.log(json,"pregled podataka iz analiza")
                 setData(json);
             }
         } catch (error) {
@@ -80,7 +81,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
             setLoading(false);
         }
     };
-
+console.log(data,"dadadadada")
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-[400px]">

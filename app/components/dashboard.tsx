@@ -62,6 +62,16 @@ export default function Dashboard() {
         fetchChildren(userId);
     }, [userId]);
 
+    async function handleLogout(){
+       try{
+        const response = await fetch("/api/auth/logout",{method:"POST"});
+        router.push("/login")
+        return response
+       }catch(err){
+        console.log("logout error",err)
+       }
+    }
+
     async function deleteChild(child_id: number) {
         const response = await fetch(`/api/children?child_id=${child_id}`, {
             method: 'DELETE',
@@ -115,21 +125,27 @@ export default function Dashboard() {
         setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '' });
     }
 
+
+
     return (
         <div className="min-h-screen bg-gray-100 p-6">
             <div className="max-w-5xl mx-auto">
                 <h1 className="text-3xl font-bold mb-6 text-center text-gray-800">Dashboard roditelja</h1>
 
                 {/* Dugme Dodaj dete */}
-                <div className="flex justify-end mb-6">
+                <div className="flex justify-end mb-6 gap-3.5" >
                     <button
                         onClick={() => setShowModal(true)}
                         className="bg-blue-600 text-white px-5 py-2 rounded-lg shadow hover:bg-blue-700 transition"
                     >
                         Dodaj dete
                     </button>
+                       <button  onClick={handleLogout}
+                            className="mt-4 bg-red-600 px-4 py-2 rounded"
+                        >
+                            Izloguj se
+                        </button>
                 </div>
-
                 {/* Lista dece */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {children.map((child) => (
@@ -288,7 +304,6 @@ export default function Dashboard() {
                     </div>
                 )}
 
-                {/* Ekran aktivnog deteta */}
                 {activeChildId && (
                     <div className="mt-8 p-4 bg-white rounded shadow-md">
                         <h2 className="text-2xl font-bold mb-2">
@@ -304,6 +319,7 @@ export default function Dashboard() {
                     </div>
                 )}
             </div>
+            
         </div>
     );
 }
