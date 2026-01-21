@@ -5,7 +5,7 @@ import pool from '../../../../lib/db';
 import { FieldPacket, RowDataPacket } from 'mysql2';
 
 // Definiši interfejs za korisnika
-interface User extends FieldPacket {
+interface User extends RowDataPacket {
     id: number;
     password_hash: string;
     full_name: string;
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
         }
 
         // Get user from database
-        const [rows]:User[] = await pool.query<User[]>(
+        const [rows] = await pool.query<User[]>(
             'SELECT id, password_hash, full_name, role FROM users WHERE email = ?',
             [email]
         );

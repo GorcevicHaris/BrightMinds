@@ -44,6 +44,6 @@ export default async function ChildPage({ params }: { params: { id: string } }) 
             </div>
         );
     }
-
+    
     return <ChildPageClient child={child} childId={Number(id)} />;
 }

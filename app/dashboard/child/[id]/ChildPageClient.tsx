@@ -14,7 +14,7 @@ interface Props {
 
 export default function ChildPageClient({ child, childId }: Props) {
     const [activeView,  setActiveView] = useState<"game" | "stats">("game");
-
+    console.log(childId,"provera childa i njegovog i-da")
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-8 px-4">
             <div className="max-w-7xl mx-auto pb-12">
