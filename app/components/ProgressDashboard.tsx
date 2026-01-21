@@ -408,7 +408,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
-
+{/*  */}
                         <div className="bg-white rounded-3xl p-6 shadow-xl">
                             <h3 className="text-2xl font-bold text-gray-800 mb-6">📅 Napredak kroz vreme</h3>
                             <ResponsiveContainer width="100%" height={300}>
