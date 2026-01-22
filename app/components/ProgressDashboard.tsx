@@ -170,7 +170,6 @@ export default function ProgressDashboard({ childId, childName }: Props) {
 
     // Pripremi podatke za prikaz na osnovu aktivnog tab-a
     const currentData = activeTab === "shapes" ? data.shapes : activeTab === "memory" ? data.memory : null;
-
     const pieData = currentData ? [
         { name: "Odlično", value: currentData.stats.excellent_count, color: SUCCESS_COLORS.excellent },
         { name: "Uspešno", value: currentData.stats.successful_count, color: SUCCESS_COLORS.successful },
@@ -437,8 +436,8 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                             <BarChart data={currentData.levelStats}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="level" />
-                                <YAxis />
-                                <Tooltip />
+                                <YAxis  />
+                                <Tooltip formatter={(value?: number) => value !== undefined ? Math.round(value) : 0} />
                                 <Legend />
                                 <Bar dataKey="avg_score" fill={activeTab === "shapes" ? "#10B981" : "#8B5CF6"} name="Prosečan rezultat" />
                                 <Bar dataKey="best_score" fill={activeTab === "shapes" ? "#059669" : "#7C3AED"} name="Najbolji rezultat" />
