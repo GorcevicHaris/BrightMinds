@@ -6,7 +6,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 interface GameStats {
     total_games: number;
     avg_score: number;
-    best_score: number;
+        best_score: number;
     total_minutes: number;
     excellent_count: number;
     successful_count: number;
