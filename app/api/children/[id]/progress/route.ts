@@ -17,8 +17,7 @@ export async function GET(
             "SELECT id FROM user_children WHERE user_id = ? AND child_id = ?",
             [user.id, childId]
         );
-
-        if (accessRows.length === 0) {
+            if (accessRows.length === 0) {
             return NextResponse.json(
                 { error: "Nemate pristup ovom detetu" },
                 { status: 403 }
@@ -186,36 +185,36 @@ export async function GET(
         );
 
         // Osiguraj da svi podaci imaju default vrednosti
-        const safeTotal = totalStats[0] || {
-            total_games: 0,
-            total_minutes: 0,
-            excellent_count: 0,
-            successful_count: 0,
-            partial_count: 0,
-            struggled_count: 0,
-        };
+      const safeTotal = {
+    total_games: Number(totalStats[0]?.total_games) || 0,
+    total_minutes: Number(totalStats[0]?.total_minutes) || 0,
+    excellent_count: Number(totalStats[0]?.excellent_count) || 0,
+    successful_count: Number(totalStats[0]?.successful_count) || 0,
+    partial_count: Number(totalStats[0]?.partial_count) || 0,
+    struggled_count: Number(totalStats[0]?.struggled_count) || 0,
+};
 
-        const safeShapesStats = shapesStats[0] || {
-            total_games: 0,
-            avg_score: 0,
-            best_score: 0,
-            total_minutes: 0,
-            excellent_count: 0,
-            successful_count: 0,
-            partial_count: 0,
-            struggled_count: 0,
-        };
+const safeShapesStats = {
+    total_games: Number(shapesStats[0]?.total_games) || 0,
+    avg_score: Number(shapesStats[0]?.avg_score) || 0,
+    best_score: Number(shapesStats[0]?.best_score) || 0,
+    total_minutes: Number(shapesStats[0]?.total_minutes) || 0,
+    excellent_count: Number(shapesStats[0]?.excellent_count) || 0,
+    successful_count: Number(shapesStats[0]?.successful_count) || 0,
+    partial_count: Number(shapesStats[0]?.partial_count) || 0,
+    struggled_count: Number(shapesStats[0]?.struggled_count) || 0,
+};
 
-        const safeMemoryStats = memoryStats[0] || {
-            total_games: 0,
-            avg_score: 0,
-            best_score: 0,
-            total_minutes: 0,
-            excellent_count: 0,
-            successful_count: 0,
-            partial_count: 0,
-            struggled_count: 0,
-        };
+const safeMemoryStats = {
+    total_games: Number(memoryStats[0]?.total_games) || 0,
+    avg_score: Number(memoryStats[0]?.avg_score) || 0,
+    best_score: Number(memoryStats[0]?.best_score) || 0,
+    total_minutes: Number(memoryStats[0]?.total_minutes) || 0,
+    excellent_count: Number(memoryStats[0]?.excellent_count) || 0,
+    successful_count: Number(memoryStats[0]?.successful_count) || 0,
+    partial_count: Number(memoryStats[0]?.partial_count) || 0,
+    struggled_count: Number(memoryStats[0]?.struggled_count) || 0,
+};
 
         return NextResponse.json({
             // Ukupno

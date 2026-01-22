@@ -86,6 +86,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                 
                 // Proveri da li total postoji i ima total_games
                 if (json && json.total && typeof json.total.total_games !== 'undefined') {
+                    console.log(json,"json podaci")
                     setData(json);
                 } else {
                     console.error("❌ Nevalidni podaci:", json);
@@ -182,6 +183,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
         { name: "Teškoće", value: data.total.struggled_count, color: SUCCESS_COLORS.struggled },
     ].filter(item => item.value > 0);
 
+    console.log(pieData,"niz")
     return (
         <div className="space-y-6">
             {/* Tab selector */}
@@ -255,7 +257,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                         data={pieData}
                                         cx="50%"
                                         cy="50%"
-                                        labelLine={false}
+                                        labelLine={true}
                                         label={(entry: any) => `${entry.name}: ${entry.value}`}
                                         outerRadius={100}
                                         fill="#8884d8"
