@@ -147,6 +147,66 @@ export async function GET(
             ORDER BY level`,
             [childId]
         );
+        // ==================================================================
+        // coloring activity id = 4
+         const [coloringStats] = await pool.query<RowDataPacket[]>(
+            `SELECT 
+                COUNT(*) as total_games,
+                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
+                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score,
+                SUM(duration_minutes) as total_minutes,
+                SUM(CASE WHEN success_level = 'excellent' THEN 1 ELSE 0 END) as excellent_count,
+                SUM(CASE WHEN success_level = 'successful' THEN 1 ELSE 0 END) as successful_count,
+                SUM(CASE WHEN success_level = 'partial' THEN 1 ELSE 0 END) as partial_count,
+                SUM(CASE WHEN success_level = 'struggled' THEN 1 ELSE 0 END) as struggled_count
+            FROM progress_logs 
+            WHERE child_id = ? AND activity_id = 4`,
+            [childId]
+        );
+
+        const [coloringRecent] = await pool.query<RowDataPacket[]>(
+            `SELECT 
+                id,
+                completed_at,
+                success_level,
+                mood_before,
+                mood_after,
+                duration_minutes,
+                notes,
+                CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED) as score
+            FROM progress_logs 
+            WHERE child_id = ? AND activity_id = 4
+            ORDER BY completed_at DESC 
+            LIMIT 10`,
+            [childId]
+        );
+
+        const [coloringProgress] = await pool.query<RowDataPacket[]>(
+            `SELECT 
+                DATE(completed_at) as date,
+                COUNT(*) as games_count,
+                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
+                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as max_score
+            FROM progress_logs 
+            WHERE child_id = ? AND activity_id = 4
+            GROUP BY DATE(completed_at)
+            ORDER BY date DESC
+            LIMIT 30`,
+            [childId]
+        );
+
+        const [coloringLevels] = await pool.query<RowDataPacket[]>(
+            `SELECT 
+                SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) as level,
+                COUNT(*) as games_count,
+                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
+                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score
+            FROM progress_logs 
+            WHERE child_id = ? AND activity_id = 4 AND notes LIKE '%Nivo%'
+            GROUP BY level
+            ORDER BY level`,
+            [childId]
+        );
 
         // ============================================
         // UKUPNE STATISTIKE (obe igrice zajedno)
@@ -216,6 +276,18 @@ const safeMemoryStats = {
     struggled_count: Number(memoryStats[0]?.struggled_count) || 0,
 };
 
+  const safeColoringStats = {
+            total_games: Number(coloringStats[0]?.total_games) || 0,
+            avg_score: Number(coloringStats[0]?.avg_score) || 0,
+            best_score: Number(coloringStats[0]?.best_score) || 0,
+            total_minutes: Number(coloringStats[0]?.total_minutes) || 0,
+            excellent_count: Number(coloringStats[0]?.excellent_count) || 0,
+            successful_count: Number(coloringStats[0]?.successful_count) || 0,
+            partial_count: Number(coloringStats[0]?.partial_count) || 0,
+            struggled_count: Number(coloringStats[0]?.struggled_count) || 0,
+        };
+
+
         return NextResponse.json({
             // Ukupno
             total: safeTotal,
@@ -235,6 +307,12 @@ const safeMemoryStats = {
                 recentGames: memoryRecent || [],
                 progress: memoryProgress || [],
                 levelStats: memoryLevels || [],
+            },
+            coloring:{
+                  stats: safeColoringStats,
+                recentGames: coloringRecent || [],
+                progress: coloringProgress || [],
+                levelStats: coloringLevels || [],
             }
         });
 

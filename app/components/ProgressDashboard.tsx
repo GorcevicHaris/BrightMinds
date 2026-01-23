@@ -71,8 +71,7 @@ const SUCCESS_COLORS = {
 export default function ProgressDashboard({ childId, childName }: Props) {
     const [data, setData] = useState<ProgressData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<"all" | "shapes" | "memory">("all");
-
+    const [activeTab, setActiveTab] = useState<"all" | "shapes" | "memory" | "coloring">("all");
     useEffect(() => {
         fetchProgress();
     }, [childId]);
@@ -216,6 +215,16 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                     }`}
                 >
                     🧠 Spoji parove
+                </button>
+                <button
+                    onClick={() => setActiveTab("coloring")}
+                    className={`flex-1 px-4 py-3 rounded-2xl font-bold text-base md:text-lg transition-all ${
+                        activeTab === "coloring"
+                        ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg scale-105"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                    >
+                    🎨 Bojenje
                 </button>
             </div>
 
@@ -413,7 +422,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                         <div className="bg-white rounded-3xl p-6 shadow-xl">
                             <h3 className="text-2xl font-bold text-gray-800 mb-6">📅 Napredak kroz vreme</h3>
                             <ResponsiveContainer width="100%" height={300}>
-                                <LineChart data={currentData.progress.slice().reverse()}>
+                                <LineChart data={currentData.progress.slice().reverse   ()}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis
                                         dataKey="date"

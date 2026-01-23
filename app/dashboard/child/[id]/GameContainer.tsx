@@ -4,7 +4,7 @@
 import { useState, useRef } from "react";
 import ShapeMatchingGame from "@/app/components/games/ShapeMatchingGame";
 import MemoryGame from "@/app/components/games/MemoryGame";
-
+import ColoringGame from "@/app/components/games/ColoringGame";
 interface GameContainerProps {
   childId: number;
   childName: string;
@@ -14,7 +14,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   const [currentLevel, setCurrentLevel] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [selectedGame, setSelectedGame] = useState<"shapes" | "memory">("shapes");
+  const [selectedGame, setSelectedGame] = useState<"shapes" | "memory" | "coloring">("shapes");
   
   // Guard mehanizam za sprečavanje duplih upisa
   const isSavingRef = useRef(false);
@@ -46,7 +46,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
       else successLevel = "struggled";
 
       // ID aktivnosti: 1 = Složi oblik, 3 = Spoji parove
-      const activityId = selectedGame === "shapes" ? 1 : 3;
+      const activityId = selectedGame === "shapes" ? 1 : selectedGame === "memory" ? 3 : 4
 
       console.log("💾 Čuvam rezultat:", { childId, activityId, score, duration });
 
@@ -99,7 +99,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     }
   };
 
-  const handleGameChange = (game: "shapes" | "memory") => {
+  const handleGameChange = (game: "shapes" | "memory" | "coloring") => {
     if (!isLoading) {
       setSelectedGame(game);
       setCurrentLevel(1); // Reset level when changing games
@@ -149,6 +149,20 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             <div>Spoji parove</div>
             <div className="text-sm opacity-80">Trening memorije</div>
           </button>
+            <button
+              onClick={() => handleGameChange("coloring")}
+              disabled={isLoading}
+              className={`p-6 rounded-2xl font-bold text-lg transition-all ${
+          selectedGame === "coloring"
+            ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg scale-105"
+            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+        } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+            <div className="text-4xl mb-2">🧠</div>
+            <div>Oboji</div>
+            <div className="text-sm opacity-80">Bojenje</div>
+    </button>
+            
         </div>
       </div>
 
@@ -198,6 +212,15 @@ export default function GameContainer({ childId, childName }: GameContainerProps
               {currentLevel === 5 && "⭐⭐⭐⭐⭐ Izazov - 8 parova (16 karti)"}
             </>
           )}
+          {selectedGame === "coloring" && (
+            <>
+              {currentLevel === 1 && "⭐ Početni nivo - Drvo"}
+              {currentLevel === 2 && "⭐⭐ Lako - Kuća"}
+              {currentLevel === 3 && "⭐⭐⭐ Srednje - Cvijet"}
+              {currentLevel === 4 && "⭐⭐⭐⭐ Teško - Životinja"}
+              {currentLevel === 5 && "⭐⭐⭐⭐⭐ Izazov - Pejzaž"}
+            </>
+          )}
         </div>
         
         {isLoading && (
@@ -231,20 +254,26 @@ export default function GameContainer({ childId, childName }: GameContainerProps
 
       {/* Game component - KEY PROP JE KLJUČAN ZA RESET! */}
       <div key={`${selectedGame}-level-${currentLevel}`}>
-        {selectedGame === "shapes" ? (
-          <ShapeMatchingGame
-            childId={childId}
-            level={currentLevel}
-            onComplete={handleGameComplete}
-          />
-        ) : (
-          <MemoryGame
-            childId={childId}
-            level={currentLevel}
-            onComplete={handleGameComplete}
-          />
-        )}
-      </div>
+  {selectedGame === "shapes" ? (
+    <ShapeMatchingGame
+      childId={childId}
+      level={currentLevel}
+      onComplete={handleGameComplete}
+    />
+  ) : selectedGame === "memory" ? (
+    <MemoryGame
+      childId={childId}
+      level={currentLevel}
+      onComplete={handleGameComplete}
+    />
+  ) : (
+    <ColoringGame
+      childId={childId}
+      level={currentLevel}
+      onComplete={handleGameComplete}
+    />
+  )}
+</div>
     </div>
   );
 }
