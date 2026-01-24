@@ -173,7 +173,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             🎯 Izaberi nivo težine:
           </h2>
           <div className="flex gap-3 flex-wrap">
-            {[1, 2, 3, 4, 5].map(level => (
+            {[1, 2, 3, 4, 5,6,7,8].map(level => (
               <button
                 key={level}
                 onClick={() => handleLevelChange(level)}
@@ -219,6 +219,9 @@ export default function GameContainer({ childId, childName }: GameContainerProps
               {currentLevel === 3 && "⭐⭐⭐ Srednje - Cvijet"}
               {currentLevel === 4 && "⭐⭐⭐⭐ Teško - Životinja"}
               {currentLevel === 5 && "⭐⭐⭐⭐⭐ Izazov - Pejzaž"}
+              {currentLevel === 6 && "⭐⭐⭐⭐⭐⭐ Bas Tesko- Riba"}
+              {currentLevel === 7 && "⭐⭐⭐⭐⭐⭐ Pretesko - Automobil"}
+              {currentLevel === 8 && "⭐⭐⭐⭐⭐⭐⭐ Nemoguce - Macka"}
             </>
           )}
         </div>

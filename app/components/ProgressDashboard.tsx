@@ -6,7 +6,7 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 interface GameStats {
     total_games: number;
     avg_score: number;
-        best_score: number;
+    best_score: number;
     total_minutes: number;
     excellent_count: number;
     successful_count: number;
@@ -46,6 +46,12 @@ interface ProgressData {
         progress: any[];
         levelStats: any[];
     };
+    coloring: {
+        stats: GameStats;
+        recentGames: any[];
+        progress: any[];
+        levelStats: any[];
+    };
 }
 
 interface Props {
@@ -72,6 +78,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
     const [data, setData] = useState<ProgressData | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"all" | "shapes" | "memory" | "coloring">("all");
+
     useEffect(() => {
         fetchProgress();
     }, [childId]);
@@ -83,13 +90,11 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                 const json = await res.json();
                 console.log("📊 Podaci iz API-ja:", json);
                 
-                // Proveri da li total postoji i ima total_games
                 if (json && json.total && typeof json.total.total_games !== 'undefined') {
-                    console.log(json,"json podaci")
+                    console.log(json, "json podaci");
                     setData(json);
                 } else {
                     console.error("❌ Nevalidni podaci:", json);
-                    // Postavi default prazne podatke
                     setData({
                         total: {
                             total_games: 0,
@@ -116,6 +121,21 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                             levelStats: [],
                         },
                         memory: {
+                            stats: {
+                                total_games: 0,
+                                avg_score: 0,
+                                best_score: 0,
+                                total_minutes: 0,
+                                excellent_count: 0,
+                                successful_count: 0,
+                                partial_count: 0,
+                                struggled_count: 0,
+                            },
+                            recentGames: [],
+                            progress: [],
+                            levelStats: [],
+                        },
+                        coloring: {
                             stats: {
                                 total_games: 0,
                                 avg_score: 0,
@@ -167,8 +187,8 @@ export default function ProgressDashboard({ childId, childName }: Props) {
         );
     }
 
-    // Pripremi podatke za prikaz na osnovu aktivnog tab-a
-    const currentData = activeTab === "shapes" ? data.shapes : activeTab === "memory" ? data.memory : null;
+    const currentData = activeTab === "shapes" ? data.shapes : activeTab === "memory" ? data.memory : activeTab === "coloring" ? data.coloring : null;
+    
     const pieData = currentData ? [
         { name: "Odlično", value: currentData.stats.excellent_count, color: SUCCESS_COLORS.excellent },
         { name: "Uspešno", value: currentData.stats.successful_count, color: SUCCESS_COLORS.successful },
@@ -181,7 +201,8 @@ export default function ProgressDashboard({ childId, childName }: Props) {
         { name: "Teškoće", value: data.total.struggled_count, color: SUCCESS_COLORS.struggled },
     ].filter(item => item.value > 0);
 
-    console.log(pieData,"niz")
+    console.log(pieData, "niz");
+
     return (
         <div className="space-y-6">
             {/* Tab selector */}
@@ -220,10 +241,10 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                     onClick={() => setActiveTab("coloring")}
                     className={`flex-1 px-4 py-3 rounded-2xl font-bold text-base md:text-lg transition-all ${
                         activeTab === "coloring"
-                        ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg scale-105"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-lg scale-105"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
-                    >
+                >
                     🎨 Bojenje
                 </button>
             </div>
@@ -249,10 +270,16 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                             <div className="text-purple-100 text-lg">Spoji parove</div>
                         </div>
                         <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-3xl p-6 text-white shadow-xl">
-                            <div className="text-5xl mb-3">⏱️</div>
-                            <div className="text-4xl font-bold mb-2">{data.total.total_minutes}</div>
-                            <div className="text-orange-100 text-lg">Minuta vežbanja</div>
+                            <div className="text-5xl mb-3">🎨</div>
+                            <div className="text-4xl font-bold mb-2">{data.coloring.stats.total_games}</div>
+                            <div className="text-orange-100 text-lg">Bojenje</div>
                         </div>
+                    </div>
+
+                    <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-3xl p-6 text-white shadow-xl">
+                        <div className="text-5xl mb-3">⏱️</div>
+                        <div className="text-4xl font-bold mb-2">{data.total.total_minutes}</div>
+                        <div className="text-indigo-100 text-lg">Ukupno minuta vežbanja</div>
                     </div>
 
                     {/* Charts */}
@@ -305,6 +332,17 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                         Najbolji: {data.memory.stats.best_score || 0} | {data.memory.stats.total_games} igara
                                     </div>
                                 </div>
+                                <div className="bg-orange-50 rounded-2xl p-4">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="font-bold text-gray-700">🎨 Bojenje</span>
+                                        <span className="text-2xl font-bold text-orange-600">
+                                            {Math.round(data.coloring.stats.avg_score || 0)}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                        Najbolji: {data.coloring.stats.best_score || 0} | {data.coloring.stats.total_games} igara
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -321,7 +359,8 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                     <div className="flex items-center justify-between flex-wrap gap-4">
                                         <div className="flex items-center gap-4">
                                             <div className="text-4xl">
-                                                {game.activity_title === "Složi oblik" ? "🔷" : "🧠"}
+                                                {game.activity_title === "Složi oblik" ? "🔷" : 
+                                                 game.activity_title === "Spoji parove" ? "🧠" : "🎨"}
                                             </div>
                                             <div>
                                                 <div className="text-lg md:text-xl font-bold text-gray-800">
@@ -368,7 +407,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
             )}
 
             {/* Individualne igrice - detaljnije statistike */}
-            {(activeTab === "shapes" || activeTab === "memory") && currentData && (
+            {(activeTab === "shapes" || activeTab === "memory" || activeTab === "coloring") && currentData && (
                 <div className="space-y-6">
                     {/* Stats cards */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
@@ -418,11 +457,11 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
-{/*  */}
+
                         <div className="bg-white rounded-3xl p-6 shadow-xl">
                             <h3 className="text-2xl font-bold text-gray-800 mb-6">📅 Napredak kroz vreme</h3>
                             <ResponsiveContainer width="100%" height={300}>
-                                <LineChart data={currentData.progress.slice().reverse   ()}>
+                                <LineChart data={currentData.progress.slice().reverse()}>
                                     <CartesianGrid strokeDasharray="3 3" />
                                     <XAxis
                                         dataKey="date"
@@ -431,8 +470,20 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                     <YAxis />
                                     <Tooltip labelFormatter={(value: any) => new Date(value).toLocaleDateString('sr-RS')} />
                                     <Legend />
-                                    <Line type="monotone" dataKey="avg_score" stroke="#8B5CF6" strokeWidth={3} name="Prosek" />
-                                    <Line type="monotone" dataKey="max_score" stroke="#10B981" strokeWidth={3} name="Najbolji" />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="avg_score" 
+                                        stroke={activeTab === "shapes" ? "#10B981" : activeTab === "memory" ? "#8B5CF6" : "#F97316"} 
+                                        strokeWidth={3} 
+                                        name="Prosek" 
+                                    />
+                                    <Line 
+                                        type="monotone" 
+                                        dataKey="max_score" 
+                                        stroke={activeTab === "shapes" ? "#059669" : activeTab === "memory" ? "#7C3AED" : "#EA580C"} 
+                                        strokeWidth={3} 
+                                        name="Najbolji" 
+                                    />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -445,11 +496,19 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                             <BarChart data={currentData.levelStats}>
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis dataKey="level" />
-                                <YAxis  />
+                                <YAxis />
                                 <Tooltip formatter={(value?: number) => value !== undefined ? Math.round(value) : 0} />
                                 <Legend />
-                                <Bar dataKey="avg_score" fill={activeTab === "shapes" ? "#10B981" : "#8B5CF6"} name="Prosečan rezultat" />
-                                <Bar dataKey="best_score" fill={activeTab === "shapes" ? "#059669" : "#7C3AED"} name="Najbolji rezultat" />
+                                <Bar 
+                                    dataKey="avg_score" 
+                                    fill={activeTab === "shapes" ? "#10B981" : activeTab === "memory" ? "#8B5CF6" : "#F97316"} 
+                                    name="Prosečan rezultat" 
+                                />
+                                <Bar 
+                                    dataKey="best_score" 
+                                    fill={activeTab === "shapes" ? "#059669" : activeTab === "memory" ? "#7C3AED" : "#EA580C"} 
+                                    name="Najbolji rezultat" 
+                                />
                             </BarChart>
                         </ResponsiveContainer>
 
@@ -458,10 +517,12 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                 <div key={level.level} className={`${
                                     activeTab === "shapes" 
                                         ? "bg-gradient-to-br from-green-100 to-emerald-100" 
-                                        : "bg-gradient-to-br from-purple-100 to-pink-100"
+                                        : activeTab === "memory"
+                                        ? "bg-gradient-to-br from-purple-100 to-pink-100"
+                                        : "bg-gradient-to-br from-orange-100 to-red-100"
                                 } rounded-2xl p-4 text-center`}>
                                     <div className={`text-2xl md:text-3xl font-bold mb-2 ${
-                                        activeTab === "shapes" ? "text-green-700" : "text-purple-700"
+                                        activeTab === "shapes" ? "text-green-700" : activeTab === "memory" ? "text-purple-700" : "text-orange-700"
                                     }`}>
                                         Nivo {level.level}
                                     </div>
