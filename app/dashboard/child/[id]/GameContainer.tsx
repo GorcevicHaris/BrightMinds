@@ -192,7 +192,6 @@ export default function GameContainer({ childId, childName }: GameContainerProps
           </div>
         </div>
         
-        {/* Level descriptions */}
         <div className="mt-4 text-gray-600">
           {selectedGame === "shapes" && (
             <>
