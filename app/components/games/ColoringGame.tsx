@@ -307,6 +307,8 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
             onClick={startGame}
             className="px-12 py-4 text-2xl font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-full hover:scale-110 transition-transform shadow-xl"
           >
+
+            {/*  */}
             ▶️ Počni igru
           </button>
         </div>
