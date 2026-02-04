@@ -81,17 +81,26 @@ export const ChildCard: React.FC<ChildCardProps> = ({ child, onDelete }) => {
                     )}
 
                     {/* Actions */}
-                    <div className="mt-4 flex gap-2">
+                    <div className="mt-4 flex gap-2 flex-wrap">
                         <Link href={`/children/${child.id}`}>
                             <Button variant="primary" size="sm">
                                 Pogledaj profil
                             </Button>
                         </Link>
+                        
+                        {/* 🔴 NOVO: Live Monitor dugme - koristi standardni secondary stil */}
+                        <Link href={`/dashboard/monitor/${child.id}`}>
+                            <Button variant="secondary" size="sm">
+                                👁️ Live Monitor
+                            </Button>
+                        </Link>
+
                         <Link href={`/children/${child.id}/edit`}>
                             <Button variant="secondary" size="sm">
                                 Izmeni
                             </Button>
                         </Link>
+                        
                         {onDelete && (
                             <Button
                                 variant="danger"

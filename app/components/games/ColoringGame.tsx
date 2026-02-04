@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
+import { useGameEmitter } from '@/lib/useSocket';
 interface GameProps {
   childId: number;
   level: number;
   onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+  isMonitor?: boolean;
+  monitorState?: any;
 }
 
 interface ColorZone {
@@ -94,7 +96,7 @@ const TEMPLATES = {
     { id: 15, path: "M185,335 L190,350 L195,350 L192,340 Z", targetColor: "#F3F4F6" },
   ],
 
-6: [
+  6: [
     { id: 1, path: "M100,200 Q120,160 180,160 Q240,160 260,200 Q240,240 180,240 Q120,240 100,200 Z", targetColor: "#F97316" }, // Telo
     { id: 2, path: "M260,180 L320,160 L300,200 L320,240 L260,220 Z", targetColor: "#FBBF24" }, // Rep
     { id: 3, path: "M180,140 L200,120 L220,140 L200,160 Z", targetColor: "#EF4444" }, // Peraja gornja
@@ -160,16 +162,30 @@ const TEMPLATES = {
   ],
 };
 
-export default function ColoringGame({ childId, level, onComplete }: GameProps) {
-  const [zones, setZones] = useState<ColorZone[]>([]);
-  const [selectedColor, setSelectedColor] = useState<string>(COLORS[0].value);
-  const [isPlaying, setIsPlaying] = useState(false);
+export default function ColoringGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
+  const [zones, setZones] = useState<ColorZone[]>(monitorState?.zones || []);
+  const [selectedColor, setSelectedColor] = useState<string>(monitorState?.selectedColor || COLORS[0].value);
+  const [isPlaying, setIsPlaying] = useState(isMonitor ? true : false);
   const [startTime, setStartTime] = useState<number | null>(null);
   const [moodBefore, setMoodBefore] = useState<string | null>(null);
   const [showMoodBefore, setShowMoodBefore] = useState(false);
   const [showMoodAfter, setShowMoodAfter] = useState(false);
-  const [completedZones, setCompletedZones] = useState(0);
+  const [completedZones, setCompletedZones] = useState(monitorState?.completedZones || 0);
+  const [timeLeft, setTimeLeft] = useState(monitorState?.timeLeft || 300);
+  const [score, setScore] = useState(monitorState?.score || 0);
 
+  // Sync with monitor state if in monitor mode
+  useEffect(() => {
+    if (isMonitor && monitorState) {
+      if (monitorState.zones) setZones(monitorState.zones);
+      if (monitorState.selectedColor) setSelectedColor(monitorState.selectedColor);
+      if (monitorState.score !== undefined) setScore(monitorState.score);
+      if (monitorState.timeLeft !== undefined) setTimeLeft(monitorState.timeLeft);
+      if (monitorState.completedZones !== undefined) setCompletedZones(monitorState.completedZones);
+    }
+  }, [isMonitor, monitorState]);
+
+  const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
   const template = TEMPLATES[level as keyof typeof TEMPLATES] || TEMPLATES[1];
 
   const initializeGame = () => {
@@ -190,27 +206,118 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
     setShowMoodBefore(false);
     setIsPlaying(true);
     setStartTime(Date.now());
+    setTimeLeft(300);
     initializeGame();
+
+    emitGameStart(childId, 4, 'coloring', {
+      level,
+      zones: zones,
+      selectedColor: selectedColor,
+      timeLeft: 300
+    });
+  };
+
+  useEffect(() => {
+    if (!isPlaying || timeLeft <= 0 || isMonitor) return;
+
+    const timer = setInterval(() => {
+      setTimeLeft((prev: number) => {
+        const newTime = prev - 1;
+
+        // Svakih 10 sekundi pošalji "heartbeat" za vreme
+        if (newTime > 0 && newTime % 10 === 0) {
+          emitGameProgress({
+            childId,
+            activityId: 4,
+            gameType: 'coloring',
+            event: 'progress',
+            data: {
+              timeLeft: newTime,
+              score,
+              level,
+              completedZones,
+            },
+            timestamp: new Date().toISOString(),
+          });
+        }
+
+        if (newTime <= 0) {
+          setIsPlaying(false);
+          handleGameEnded(false);
+          return 0;
+        }
+        return newTime;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isPlaying, timeLeft, isMonitor, childId, score, level, completedZones, emitGameProgress]);
+
+  const handleGameEnded = (completed: boolean) => {
+    setIsPlaying(false);
+    const timeSpent = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+    const baseScore = completed ? 300 : Math.floor((completedZones / template.length) * 300);
+    const timeBonus = completed ? Math.max(0, timeLeft * 2) : 0;
+    const finalScore = baseScore + timeBonus;
+    setScore(finalScore);
+
+    emitGameComplete({
+      childId,
+      activityId: 4,
+      gameType: 'coloring',
+      event: 'completed',
+      data: {
+        finalScore,
+        segmentsColored: completedZones,
+        completed,
+        timeSpent,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
+    setTimeout(() => setShowMoodAfter(true), 1000);
   };
 
   const handleZoneClick = (zoneId: number) => {
-    if (!isPlaying) return;
+    if (!isPlaying || isMonitor) return;
 
     setZones(prev => prev.map(zone => {
       if (zone.id === zoneId) {
         const wasColored = zone.color !== null;
         const newColor = selectedColor;
-        
+
         if (!wasColored) {
           const newCompletedZones = completedZones + 1;
           setCompletedZones(newCompletedZones);
-          
+
+          const currentScore = Math.floor((newCompletedZones / template.length) * 300);
+          setScore(currentScore);
+
+          emitGameProgress({
+            childId,
+            activityId: 4,
+            gameType: 'coloring',
+            event: 'color_applied',
+            data: {
+              zoneId,
+              color: selectedColor,
+              totalColored: newCompletedZones,
+              score: currentScore,
+              correct: true,
+              correctCount: newCompletedZones,
+              incorrectCount: 0,
+              zones: zones.map(z => z.id === zoneId ? { ...z, color: newColor } : z),
+              selectedColor,
+              timeLeft,
+              completedZones: newCompletedZones,
+            },
+            timestamp: new Date().toISOString(),
+          });
           if (newCompletedZones === template.length) {
-            setIsPlaying(false);
-            setTimeout(() => setShowMoodAfter(true), 1000);
+            handleGameEnded(true);
           }
         }
-        
+
         return { ...zone, color: newColor };
       }
       return zone;
@@ -219,21 +326,16 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
 
   const handleMoodAfterSelect = (mood: string) => {
     setShowMoodAfter(false);
-    const duration = startTime ? Math.floor((Date.now() - startTime) / 1000 / 60) : 0;
-    
-    const baseScore = 300 + (template.length * 50);
-    const timeBonus = Math.max(0, 500 - (duration * 10));
-    const score = baseScore + timeBonus;
-    
+    const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+
     onComplete(score, duration, moodBefore, mood);
   };
-
   const getLevelName = (lvl: number) => {
     const names = ["", "Sunce", "Kuća", "Cvijet", "Leptir", "Slon"];
     return names[lvl] || "Slika";
   };
 
-  if (showMoodBefore) {
+  if (!isMonitor && showMoodBefore) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 rounded-3xl p-8 shadow-xl">
         <h2 className="text-3xl font-bold text-purple-700 mb-8">
@@ -261,7 +363,7 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
     );
   }
 
-  if (showMoodAfter) {
+  if (!isMonitor && showMoodAfter) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-green-100 via-yellow-100 to-orange-100 rounded-3xl p-8 shadow-xl">
         <h2 className="text-3xl font-bold text-green-700 mb-4">
@@ -270,6 +372,7 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
         <p className="text-xl text-gray-600 mb-8">
           Uspešno si obojio/la {getLevelName(level)}! 🎨
         </p>
+
         <div className="grid grid-cols-5 gap-6">
           {[
             { emoji: "😢", label: "Loše", value: "very_upset" },
@@ -307,7 +410,6 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
             onClick={startGame}
             className="px-12 py-4 text-2xl font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-full hover:scale-110 transition-transform shadow-xl"
           >
-
             {/*  */}
             ▶️ Počni igru
           </button>
@@ -324,7 +426,10 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
             {getLevelName(level)}
           </div>
           <div className="text-lg text-gray-600">
-            Obojeno: {completedZones}/{template.length}
+            Obojeno: {completedZones}/{template.length} {/* X/Y */}
+          </div>
+          <div className="text-lg text-gray-600">
+            Preostalo vreme: {timeLeft}s {/* ← dodaješ timeLeft */}
           </div>
         </div>
         {completedZones === template.length && !showMoodAfter && (
@@ -341,11 +446,10 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
             <button
               key={color.value}
               onClick={() => setSelectedColor(color.value)}
-              className={`aspect-square rounded-xl transition-all ${
-                selectedColor === color.value
-                  ? "scale-125 ring-4 ring-purple-500 shadow-xl"
-                  : "hover:scale-110 shadow-md"
-              }`}
+              className={`aspect-square rounded-xl transition-all ${selectedColor === color.value
+                ? "scale-125 ring-4 ring-purple-500 shadow-xl"
+                : "hover:scale-110 shadow-md"
+                }`}
               style={{ backgroundColor: color.value }}
               title={color.name}
             />
@@ -363,7 +467,7 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
           style={{ maxHeight: "600px" }}
         >
           <rect width="400" height="400" fill="#F9FAFB" />
-          
+
           {zones.map((zone) => (
             <path
               key={zone.id}
@@ -377,6 +481,12 @@ export default function ColoringGame({ childId, level, onComplete }: GameProps) 
           ))}
         </svg>
       </div>
+      {isConnected && (
+        <div className="mt-6 text-green-600 font-semibold flex items-center gap-2">
+          <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+          Live praćenje aktivno
+        </div>
+      )}
     </div>
   );
 }

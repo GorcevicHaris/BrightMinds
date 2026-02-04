@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useGameEmitter } from '@/lib/useSocket';
 
 interface Shape {
     id: number;
@@ -13,6 +14,8 @@ interface GameProps {
     childId: number;
     level: number;
     onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+    isMonitor?: boolean;
+    monitorState?: any;
 }
 
 const COLORS = {
@@ -29,17 +32,33 @@ const SHAPE_NAMES = {
     star: "Zvezda",
 };
 
-export default function ShapeMatchingGame({ childId, level, onComplete }: GameProps) {
-    const [shapes, setShapes] = useState<Shape[]>([]);
-    const [targetShape, setTargetShape] = useState<Shape | null>(null);
-    const [score, setScore] = useState(0);
-    const [timeLeft, setTimeLeft] = useState(60);
-    const [isPlaying, setIsPlaying] = useState(false);
+export default function ShapeMatchingGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
+    const [shapes, setShapes] = useState<Shape[]>(monitorState?.shapes || []);
+    const [targetShape, setTargetShape] = useState<Shape | null>(monitorState?.targetShape || null);
+    const [score, setScore] = useState(monitorState?.score || 0);
+    const [timeLeft, setTimeLeft] = useState(monitorState?.timeLeft || 60);
+    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : false);
     const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
     const [startTime, setStartTime] = useState<number | null>(null);
     const [moodBefore, setMoodBefore] = useState<string | null>(null);
     const [showMoodBefore, setShowMoodBefore] = useState(false);
     const [showMoodAfter, setShowMoodAfter] = useState(false);
+    const [correctCount, setCorrectCount] = useState(0);
+    const [incorrectCount, setIncorrectCount] = useState(0);
+
+    // Sync with monitor state if in monitor mode
+    useEffect(() => {
+        if (isMonitor && monitorState) {
+            if (monitorState.shapes) setShapes(monitorState.shapes);
+            if (monitorState.targetShape) setTargetShape(monitorState.targetShape);
+            if (monitorState.score !== undefined) setScore(monitorState.score);
+            if (monitorState.timeLeft !== undefined) setTimeLeft(monitorState.timeLeft);
+            if (monitorState.feedback !== undefined) setFeedback(monitorState.feedback);
+        }
+    }, [isMonitor, monitorState]);
+
+    // 🔴 WebSocket Hook
+    const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
 
     const generateShapes = useCallback(() => {
         const shapeTypes: Array<"circle" | "square" | "triangle" | "star"> =
@@ -58,15 +77,33 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
             };
         });
 
-        // Shuffle shapes
         const shuffled = newShapes.sort(() => Math.random() - 0.5);
 
         setShapes(shuffled);
-        setTargetShape({ id: -1, type: targetType, color: COLORS[targetType], size: 80 });
-    }, [level]);
+        const newTarget = { id: -1, type: targetType, color: COLORS[targetType], size: 80 };
+        setTargetShape(newTarget);
+
+        if (!isMonitor) {
+            emitGameProgress({
+                childId,
+                activityId: 1,
+                gameType: 'shape_matching',
+                event: 'progress',
+                data: {
+                    shapes: shuffled,
+                    targetShape: newTarget,
+                    score,
+                    level,
+                    correctCount,
+                    incorrectCount,
+                },
+                timestamp: new Date().toISOString(),
+            });
+        }
+    }, [level, isMonitor, childId, score, correctCount, incorrectCount, emitGameProgress]);
 
     const startGame = () => {
-        setShowMoodBefore(true); // Prvo prikaži mood selection
+        setShowMoodBefore(true);
     };
 
     const handleMoodBeforeSelect = (mood: string) => {
@@ -76,33 +113,129 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
         setScore(0);
         setTimeLeft(60);
         setStartTime(Date.now());
+        setCorrectCount(0);
+        setIncorrectCount(0);
         generateShapes();
+
+        // 🔴 EMIT: Igra počela
+        emitGameStart(childId, 1, 'shape_matching', {
+            level,
+            shapes: shapes,
+            targetShape: targetShape
+        });
     };
 
     const handleShapeClick = (shape: Shape) => {
-        if (!isPlaying || !targetShape) return;
+        if (!isPlaying || !targetShape || isMonitor) return;
 
-        if (shape.type === targetShape.type) {
-            setScore(prev => prev + 10);
+        const isCorrect = shape.type === targetShape.type;
+
+        if (isCorrect) {
+            const newScore = score + 10;
+            setScore(newScore);
             setFeedback("correct");
+
+            const newCorrect = correctCount + 1;
+            setCorrectCount(newCorrect);
+
+            emitGameProgress({
+                childId,
+                activityId: 1,
+                gameType: 'shape_matching',
+                event: 'shape_placed',
+                data: {
+                    shape: shape.type,
+                    correct: true,
+                    score: newScore,
+                    level,
+                    correctCount: newCorrect,
+                    incorrectCount,
+                    feedback: 'correct',
+                    // Pošalji i trenutno stanje oblika (biće generisano novo u sledećem koraku)
+                    shapes,
+                    targetShape,
+                    timeLeft,
+                },
+                timestamp: new Date().toISOString(),
+            });
+
             setTimeout(() => {
                 setFeedback(null);
                 generateShapes();
             }, 500);
         } else {
             setFeedback("wrong");
+
+            const newIncorrect = incorrectCount + 1;
+            setIncorrectCount(newIncorrect);
+
+            // 🔴 EMIT: Pogrešan odgovor
+            emitGameProgress({
+                childId,
+                activityId: 1,
+                gameType: 'shape_matching',
+                event: 'shape_placed',
+                data: {
+                    shape: shape.type,
+                    correct: false,
+                    score,
+                    level,
+                    correctCount,
+                    incorrectCount: newIncorrect,
+                    feedback: 'wrong',
+                    shapes,
+                    targetShape,
+                    timeLeft,
+                },
+                timestamp: new Date().toISOString(),
+            });
+
             setTimeout(() => setFeedback(null), 500);
         }
     };
 
     useEffect(() => {
-        if (!isPlaying || timeLeft <= 0) return;
+        if (!isPlaying || timeLeft <= 0 || isMonitor) return;
 
         const timer = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
+            setTimeLeft((prev: number) => {
+                const newTime = prev - 1;
+                // Svakih 10 sekundi pošalji "heartbeat" za vreme ako niko ne klikne
+                if (newTime > 0 && newTime % 10 === 0) {
+                    emitGameProgress({
+                        childId,
+                        activityId: 1,
+                        gameType: 'shape_matching',
+                        event: 'progress',
+                        data: {
+                            timeLeft: newTime,
+                            score,
+                            level,
+                            correctCount,
+                            incorrectCount,
+                        },
+                        timestamp: new Date().toISOString(),
+                    });
+                }
+
+                if (newTime <= 0) {
                     setIsPlaying(false);
-                    setShowMoodAfter(true); // Prikaži mood after selection
+
+                    // 🔴 EMIT: Igra završena
+                    emitGameComplete({
+                        childId,
+                        activityId: 1,
+                        gameType: 'shape_matching',
+                        event: 'completed',
+                        data: {
+                            finalScore: score,
+                            finalLevel: level,
+                            timeSpent: 60,
+                        },
+                        timestamp: new Date().toISOString(),
+                    });
+
+                    setShowMoodAfter(true);
                     return 0;
                 }
                 return prev - 1;
@@ -110,12 +243,11 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [isPlaying, timeLeft]);
+    }, [isPlaying, timeLeft, score, level, childId, emitGameComplete]);
 
     const handleMoodAfterSelect = (mood: string) => {
         setShowMoodAfter(false);
         const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 60;
-        // Prosledi mood podatke u onComplete
         onComplete(score, duration, moodBefore, mood);
     };
 
@@ -164,7 +296,8 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
                 return <polygon points={points.join(" ")} {...commonProps} />;
         }
     };
-    if (showMoodBefore) {
+
+    if (!isMonitor && showMoodBefore) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 rounded-3xl p-8 shadow-xl">
                 <h2 className="text-3xl font-bold text-purple-700 mb-8">
@@ -173,7 +306,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
                 <div className="grid grid-cols-5 gap-6">
                     {[
                         { emoji: "😢", label: "Loše", value: "very_upset" },
-                        { emoji: "😕", label: "Nisu sjajno", value: "upset" },
+                        { emoji: "😕", label: "Nije sjajno", value: "upset" },
                         { emoji: "😐", label: "Okej", value: "neutral" },
                         { emoji: "😊", label: "Dobro", value: "happy" },
                         { emoji: "😄", label: "Super", value: "very_happy" },
@@ -188,11 +321,17 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
                         </button>
                     ))}
                 </div>
+                {isConnected && (
+                    <div className="mt-6 text-green-600 font-semibold flex items-center gap-2">
+                        <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+                        Live praćenje aktivno
+                    </div>
+                )}
             </div>
         );
     }
 
-    if (showMoodAfter) {
+    if (!isMonitor && showMoodAfter) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-green-100 via-yellow-100 to-orange-100 rounded-3xl p-8 shadow-xl">
                 <h2 className="text-3xl font-bold text-green-700 mb-4">
@@ -204,7 +343,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
                 <div className="grid grid-cols-5 gap-6">
                     {[
                         { emoji: "😢", label: "Loše", value: "very_upset" },
-                        { emoji: "😕", label: "Nisu sjajno", value: "upset" },
+                        { emoji: "😕", label: "Nije sjajno", value: "upset" },
                         { emoji: "😐", label: "Okej", value: "neutral" },
                         { emoji: "😊", label: "Dobro", value: "happy" },
                         { emoji: "😄", label: "Super", value: "very_happy" },
@@ -274,6 +413,12 @@ export default function ShapeMatchingGame({ childId, level, onComplete }: GamePr
                     <span className="text-3xl font-bold text-blue-700">
                         ⏱️ {timeLeft}s
                     </span>
+                    {isConnected && (
+                        <span className="text-sm text-green-600 flex items-center gap-1">
+                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                            Live
+                        </span>
+                    )}
                 </div>
             </div>
             {targetShape && (

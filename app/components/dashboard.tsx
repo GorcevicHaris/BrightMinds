@@ -62,14 +62,14 @@ export default function Dashboard() {
         fetchChildren(userId);
     }, [userId]);
 
-    async function handleLogout(){
-       try{
-        const response = await fetch("/api/auth/logout",{method:"POST"});
-        router.push("/login")
-        return response
-       }catch(err){
-        console.log("logout error",err)
-       }
+    async function handleLogout() {
+        try {
+            const response = await fetch("/api/auth/logout", { method: "POST" });
+            router.push("/login")
+            return response
+        } catch (err) {
+            console.log("logout error", err)
+        }
     }
 
     async function deleteChild(child_id: number) {
@@ -140,11 +140,11 @@ export default function Dashboard() {
                     >
                         Dodaj dete
                     </button>
-                       <button  onClick={handleLogout}
-                            className="mt-4 bg-red-600 px-4 py-2 rounded"
-                        >
-                            Izloguj se
-                        </button>
+                    <button onClick={handleLogout}
+                        className="mt-4 bg-red-600 px-4 py-2 rounded"
+                    >
+                        Izloguj se
+                    </button>
                 </div>
                 {/* Lista dece */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -170,6 +170,12 @@ export default function Dashboard() {
                                     className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 transition"
                                 >
                                     Uđi
+                                </button>
+                                <button
+                                    onClick={() => router.push(`/dashboard/monitor/${child.id}`)}
+                                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 transition"
+                                >
+                                    👁️ Monitor
                                 </button>
                                 <button
                                     onClick={() => openEditModal(child)}
@@ -319,7 +325,7 @@ export default function Dashboard() {
                     </div>
                 )}
             </div>
-            
+
         </div>
     );
 }
