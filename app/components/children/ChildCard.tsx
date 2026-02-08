@@ -87,7 +87,6 @@ export const ChildCard: React.FC<ChildCardProps> = ({ child, onDelete }) => {
                                 Pogledaj profil
                             </Button>
                         </Link>
-                        
                         {/* 🔴 NOVO: Live Monitor dugme - koristi standardni secondary stil */}
                         <Link href={`/dashboard/monitor/${child.id}`}>
                             <Button variant="secondary" size="sm">
@@ -100,7 +99,7 @@ export const ChildCard: React.FC<ChildCardProps> = ({ child, onDelete }) => {
                                 Izmeni
                             </Button>
                         </Link>
-                        
+
                         {onDelete && (
                             <Button
                                 variant="danger"

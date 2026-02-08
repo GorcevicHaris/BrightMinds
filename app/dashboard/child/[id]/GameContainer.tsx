@@ -5,34 +5,56 @@ import { useState, useRef } from "react";
 import ShapeMatchingGame from "@/app/components/games/ShapeMatchingGame";
 import MemoryGame from "@/app/components/games/MemoryGame";
 import ColoringGame from "@/app/components/games/ColoringGame";
+
 interface GameContainerProps {
   childId: number;
   childName: string;
 }
+
+const GAMES = [
+  {
+    id: "shapes",
+    title: "Složi oblik",
+    description: "Prepoznavanje oblika i boja",
+    icon: "🔷",
+    color: "from-emerald-400 to-teal-500",
+    shadow: "shadow-emerald-200",
+  },
+  {
+    id: "memory",
+    title: "Spoji parove",
+    description: "Vežbanje memorije i pažnje",
+    icon: "🧠",
+    color: "from-purple-400 to-indigo-500",
+    shadow: "shadow-purple-200",
+  },
+  {
+    id: "coloring",
+    title: "Bojanka",
+    description: "Kreativnost i fina motorika",
+    icon: "🎨",
+    color: "from-orange-400 to-pink-500",
+    shadow: "shadow-orange-200",
+  },
+];
 
 export default function GameContainer({ childId, childName }: GameContainerProps) {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedGame, setSelectedGame] = useState<"shapes" | "memory" | "coloring">("shapes");
-  
-  // Guard mehanizam za sprečavanje duplih upisa
+
   const isSavingRef = useRef(false);
   const lastSaveTimeRef = useRef(0);
 
   const handleGameComplete = async (
-    score: number, 
-    duration: number, 
-    moodBefore?: string | null, 
+    score: number,
+    duration: number,
+    moodBefore?: string | null,
     moodAfter?: string | null
   ) => {
     const now = Date.now();
-    
-    // Guard: spreči čuvanje ako je već u toku ili je prošlo manje od 3 sekunde
-    if (isSavingRef.current || (now - lastSaveTimeRef.current < 3000)) {
-      console.log("⚠️ Već se čuva rezultat, preskajem...");
-      return;
-    }
+    if (isSavingRef.current || (now - lastSaveTimeRef.current < 3000)) return;
 
     isSavingRef.current = true;
     lastSaveTimeRef.current = now;
@@ -45,10 +67,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
       else if (score >= 50) successLevel = "partial";
       else successLevel = "struggled";
 
-      // ID aktivnosti: 1 = Složi oblik, 3 = Spoji parove
-      const activityId = selectedGame === "shapes" ? 1 : selectedGame === "memory" ? 3 : 4
-
-      console.log("💾 Čuvam rezultat:", { childId, activityId, score, duration });
+      const activityId = selectedGame === "shapes" ? 1 : selectedGame === "memory" ? 3 : 4;
 
       const response = await fetch("/api/activities/complete", {
         method: "POST",
@@ -64,218 +83,153 @@ export default function GameContainer({ childId, childName }: GameContainerProps
         }),
       });
 
-      const data = await response.json();
-
       if (response.ok) {
-        console.log("✅ Rezultat uspešno sačuvan");
-        setMessage(`🎉 Sačuvano! ${childName} je osvojio/la ${score} poena!`);
-        
-        // Automatski pređi na sledeći nivo ako je rezultat odličan
-        if (score >= 200 && currentLevel < 5) {
+        setMessage(`🎉 Bravo! Osvojio/la si ${score} poena!`);
+        if (score >= 200 && currentLevel < 8) {
           setTimeout(() => {
             setCurrentLevel(prev => prev + 1);
-            setMessage("🚀 Prelazimo na teži nivo!");
-            setTimeout(() => setMessage(""), 1500);
+            setMessage("🚀 Wow! Prelazimo na teži nivo!");
+            setTimeout(() => setMessage(""), 2000);
           }, 2000);
         } else {
-          setTimeout(() => setMessage(""), 3000);
+          setTimeout(() => setMessage(""), 4000);
         }
-      } else {
-        console.error("❌ Greška:", data);
-        setMessage(`⚠️ Greška: ${data.error || "Nepoznata greška"}`);
-        setTimeout(() => setMessage(""), 5000);
       }
     } catch (error) {
-      console.error("💥 Greška pri čuvanju:", error);
+      console.error("Error saving score:", error);
       setMessage("⚠️ Greška pri čuvanju rezultata");
-      setTimeout(() => setMessage(""), 5000);
     } finally {
       setIsLoading(false);
-      // Resetuj guard nakon 5 sekundi
-      setTimeout(() => {
-        isSavingRef.current = false;
-        console.log("🔓 Guard resetovan");
-      }, 5000);
+      setTimeout(() => { isSavingRef.current = false; }, 5000);
     }
   };
 
-  const handleGameChange = (game: "shapes" | "memory" | "coloring") => {
-    if (!isLoading) {
-      setSelectedGame(game);
-      setCurrentLevel(1); // Reset level when changing games
-      setMessage("");
-    }
-  };
-
-  const handleLevelChange = (level: number) => {
-    if (!isLoading) {
-      setCurrentLevel(level);
-      setMessage("");
-    }
-  };
+  const activeGameInfo = GAMES.find(g => g.id === selectedGame);
 
   return (
-    <div>
-      {/* Game selector */}
-      <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">
-          🎮 Izaberi igricu:
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <button
-            onClick={() => handleGameChange("shapes")}
-            disabled={isLoading}
-            className={`p-6 rounded-2xl font-bold text-lg transition-all ${
-              selectedGame === "shapes"
-                ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg scale-105"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            <div className="text-4xl mb-2">🔷</div>
-            <div>Složi oblik</div>
-            <div className="text-sm opacity-80">Prepoznavanje oblika</div>
-          </button>
-
-          <button
-            onClick={() => handleGameChange("memory")}
-            disabled={isLoading}
-            className={`p-6 rounded-2xl font-bold text-lg transition-all ${
-              selectedGame === "memory"
-                ? "bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg scale-105"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            <div className="text-4xl mb-2">🧠</div>
-            <div>Spoji parove</div>
-            <div className="text-sm opacity-80">Trening memorije</div>
-          </button>
-            <button
-              onClick={() => handleGameChange("coloring")}
-              disabled={isLoading}
-              className={`p-6 rounded-2xl font-bold text-lg transition-all ${
-          selectedGame === "coloring"
-            ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg scale-105"
-            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-        } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-    >
-            <div className="text-4xl mb-2">🧠</div>
-            <div>Oboji</div>
-            <div className="text-sm opacity-80">Bojenje</div>
-    </button>
-            
+    <div className="space-y-12">
+      {/* Premium Game Selector */}
+      <section>
+        <div className="flex items-center justify-between mb-8 px-2">
+          <div>
+            <h3 className="text-2xl font-black text-gray-900">Izaberi svoju avanturu 🎮</h3>
+            <p className="text-gray-500 font-medium">Svaka igra te uči nečemu novom!</p>
+          </div>
         </div>
-      </div>
 
-      {/* Level selector */}
-      <div className="bg-white rounded-3xl shadow-xl p-6 mb-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <h2 className="text-2xl font-bold text-gray-800">
-            🎯 Izaberi nivo težine:
-          </h2>
-          <div className="flex gap-3 flex-wrap">
-            {[1, 2, 3, 4, 5,6,7,8].map(level => (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {GAMES.map((game) => (
+            <button
+              key={game.id}
+              onClick={() => {
+                setSelectedGame(game.id as any);
+                setCurrentLevel(1);
+                setMessage("");
+              }}
+              disabled={isLoading}
+              className={`group relative p-8 rounded-[2.5rem] text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] ${selectedGame === game.id
+                  ? `bg-gradient-to-br ${game.color} text-white shadow-2xl ${game.shadow}`
+                  : "bg-white border border-gray-100 text-gray-900 hover:border-purple-200 hover:shadow-xl hover:shadow-purple-50"
+                }`}
+            >
+              <div className={`text-5xl mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6 ${selectedGame === game.id ? "drop-shadow-lg" : ""
+                }`}>
+                {game.icon}
+              </div>
+              <h4 className="text-2xl font-black mb-2">{game.title}</h4>
+              <p className={`text-sm font-medium leading-relaxed ${selectedGame === game.id ? "text-white/80" : "text-gray-500"
+                }`}>
+                {game.description}
+              </p>
+
+              {selectedGame === game.id && (
+                <div className="absolute top-6 right-6 h-3 w-3 bg-white rounded-full animate-ping"></div>
+              )}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Level Dashboard */}
+      <section className="bg-white rounded-[2.5rem] p-8 md:p-12 border border-gray-100 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-12">
+          <div>
+            <span className="inline-block px-4 py-1.5 rounded-full bg-purple-50 text-purple-600 text-xs font-black uppercase tracking-widest mb-4">
+              Podešavanje igre
+            </span>
+            <h3 className="text-3xl font-black text-gray-900">
+              Izaberi nivo težine 🎯
+            </h3>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(level => (
               <button
                 key={level}
-                onClick={() => handleLevelChange(level)}
+                onClick={() => { setCurrentLevel(level); setMessage(""); }}
                 disabled={isLoading}
-                className={`px-6 py-3 rounded-full font-bold transition-all ${
-                  currentLevel === level
-                    ? selectedGame === "shapes"
-                      ? "bg-gradient-to-r from-green-500 to-emerald-500 text-white scale-110 shadow-lg"
-                      : "bg-gradient-to-r from-purple-500 to-pink-500 text-white scale-110 shadow-lg"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                className={`w-14 h-14 rounded-2xl font-black text-lg transition-all duration-300 flex items-center justify-center ${currentLevel === level
+                    ? `bg-gradient-to-br ${activeGameInfo?.color} text-white shadow-lg ${activeGameInfo?.shadow} scale-110`
+                    : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  }`}
               >
-                Nivo {level}
+                {level}
               </button>
             ))}
           </div>
         </div>
-        
-        <div className="mt-4 text-gray-600">
-          {selectedGame === "shapes" && (
-            <>
-              {currentLevel === 1 && "⭐ Početni nivo - 3 oblika"}
-              {currentLevel === 2 && "⭐⭐ Lako - 4 oblika"}
-              {currentLevel === 3 && "⭐⭐⭐ Srednje - 5 oblika"}
-              {currentLevel === 4 && "⭐⭐⭐⭐ Teško - 6 oblika"}
-              {currentLevel === 5 && "⭐⭐⭐⭐⭐ Izazov - 7 oblika"}
-            </>
-          )}
-          {selectedGame === "memory" && (
-            <>
-              {currentLevel === 1 && "⭐ Početni nivo - 4 para (8 karti)"}
-              {currentLevel === 2 && "⭐⭐ Lako - 5 parova (10 karti)"}
-              {currentLevel === 3 && "⭐⭐⭐ Srednje - 6 parova (12 karti)"}
-              {currentLevel === 4 && "⭐⭐⭐⭐ Teško - 7 parova (14 karti)"}
-              {currentLevel === 5 && "⭐⭐⭐⭐⭐ Izazov - 8 parova (16 karti)"}
-            </>
-          )}
-          {selectedGame === "coloring" && (
-            <>
-              {currentLevel === 1 && "⭐ Početni nivo - Drvo"}
-              {currentLevel === 2 && "⭐⭐ Lako - Kuća"}
-              {currentLevel === 3 && "⭐⭐⭐ Srednje - Cvijet"}
-              {currentLevel === 4 && "⭐⭐⭐⭐ Teško - Životinja"}
-              {currentLevel === 5 && "⭐⭐⭐⭐⭐ Izazov - Pejzaž"}
-              {currentLevel === 6 && "⭐⭐⭐⭐⭐⭐ Bas Tesko- Riba"}
-              {currentLevel === 7 && "⭐⭐⭐⭐⭐⭐ Pretesko - Automobil"}
-              {currentLevel === 8 && "⭐⭐⭐⭐⭐⭐⭐ Nemoguce - Macka"}
-            </>
-          )}
+
+        {/* Game Tips/Description */}
+        <div className="bg-gray-50/50 rounded-2xl p-6 border border-gray-100 flex items-start gap-4">
+          <div className="text-2xl">💡</div>
+          <p className="text-gray-600 font-medium leading-relaxed">
+            {selectedGame === "shapes" && (
+              <><b>Nivo {currentLevel}:</b> {currentLevel <= 2 ? "Fokus na osnovne oblike." : "Više oblika za bolje prepoznavanje."}</>
+            )}
+            {selectedGame === "memory" && (
+              <><b>Nivo {currentLevel}:</b> {currentLevel * 2} kartica za pamćenje. Pronađi sve parove!</>
+            )}
+            {selectedGame === "coloring" && (
+              <><b>Nivo {currentLevel}:</b> Sjajna prilika da pokažeš svoje veštine bojenja.</>
+            )}
+          </p>
         </div>
-        
+      </section>
+
+      {/* Status Messages */}
+      {message && (
+        <div className="animate-in zoom-in duration-500">
+          <div className={`p-6 rounded-[2rem] text-center text-xl font-black shadow-xl border-4 ${message.includes("Greška")
+              ? "bg-red-50 border-red-200 text-red-600"
+              : "bg-green-50 border-green-200 text-green-600 animate-bounce"
+            }`}>
+            {message}
+          </div>
+        </div>
+      )}
+
+      {/* Main Game Interface */}
+      <div className="relative group min-h-[600px] bg-white rounded-[3rem] p-4 md:p-8 shadow-2xl shadow-purple-100/50 border border-purple-50 overflow-hidden">
+        {/* Soft background glow */}
+        <div className={`absolute inset-0 bg-gradient-to-br ${activeGameInfo?.color} opacity-0 group-hover:opacity-[0.02] transition-opacity duration-1000`}></div>
+
         {isLoading && (
-          <div className="mt-4 text-orange-600 font-semibold text-center animate-pulse">
-            ⏳ Čuvam rezultat, molim te sačekaj...
+          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center space-y-4 animate-in fade-in duration-300">
+            <div className="h-16 w-16 border-4 border-purple-100 border-t-purple-600 rounded-full animate-spin"></div>
+            <p className="text-xl font-black text-gray-800 tracking-tight">Čuvam tvoj uspeh...</p>
           </div>
         )}
+
+        <div className="relative z-10" key={`${selectedGame}-level-${currentLevel}`}>
+          {selectedGame === "shapes" ? (
+            <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+          ) : selectedGame === "memory" ? (
+            <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+          ) : (
+            <ColoringGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+          )}
+        </div>
       </div>
-
-      {/* Success/Error message */}
-      {message && (
-        <div className={`border-2 px-6 py-4 rounded-2xl mb-6 text-center text-xl font-semibold ${
-          message.includes("Greška") 
-            ? "bg-red-100 border-red-400 text-red-800"
-            : "bg-green-100 border-green-400 text-green-800 animate-bounce"
-        }`}>
-          {message}
-        </div>
-      )}
-
-      {/* Loading overlay */}
-      {isLoading && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl p-8 text-center shadow-2xl">
-            <div className="text-6xl mb-4 animate-spin">⏳</div>
-            <p className="text-2xl font-bold text-gray-700">Čuvam rezultat...</p>
-            <p className="text-gray-500 mt-2">Molim te ne zatvaraj stranicu</p>
-          </div>
-        </div>
-      )}
-
-      {/* Game component - KEY PROP JE KLJUČAN ZA RESET! */}
-      <div key={`${selectedGame}-level-${currentLevel}`}>
-  {selectedGame === "shapes" ? (
-    <ShapeMatchingGame
-      childId={childId}
-      level={currentLevel}
-      onComplete={handleGameComplete}
-    />
-  ) : selectedGame === "memory" ? (
-    <MemoryGame
-      childId={childId}
-      level={currentLevel}
-      onComplete={handleGameComplete}
-    />
-  ) : (
-    <ColoringGame
-      childId={childId}
-      level={currentLevel}
-      onComplete={handleGameComplete}
-    />
-  )}
-</div>
     </div>
   );
 }

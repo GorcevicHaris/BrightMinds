@@ -5,7 +5,7 @@ const next = require("next");
 const { Server } = require("socket.io");
 
 const dev = process.env.NODE_ENV !== "production";
-const hostname = "localhost";
+const hostname = "0.0.0.0"; // Listen on all network interfaces
 const port = parseInt(process.env.PORT || "3000", 10);
 
 const app = next({ dev, hostname, port });
@@ -26,13 +26,12 @@ app.prepare().then(() => {
   // Initialize Socket.io
   const io = new Server(server, {
     cors: {
-      origin: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+      origin: "*", // Allow all origins for local development/mobile testing
       methods: ["GET", "POST"],
       credentials: true,
     },
     path: "/api/socket",
   });
-
   // Mapa za praćenje aktivnih sesija: childId -> sessionData
   const activeSessions = new Map();
 
