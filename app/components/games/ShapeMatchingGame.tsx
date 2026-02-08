@@ -364,19 +364,58 @@ export default function ShapeMatchingGame({ childId, level, onComplete, isMonito
 
     if (!isPlaying && score === 0) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 rounded-3xl p-8 shadow-xl">
-                <div className="text-center space-y-6">
-                    <h2 className="text-4xl font-bold text-purple-700">🎮 Složi Oblik</h2>
-                    <p className="text-xl text-gray-700">Nivo {level}</p>
-                    <p className="text-lg text-gray-600 max-w-md">
-                        Pronađi i klikni na oblik koji se podudara sa prikazanim!
+            <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 shadow-lg">
+
+                {/* Background Decorations */}
+                <div className="absolute top-10 left-10 text-6xl opacity-10 animate-pulse rotate-12">🔺</div>
+                <div className="absolute bottom-10 right-10 text-8xl opacity-10 animate-bounce -rotate-12">🟦</div>
+                <div className="absolute top-20 right-20 text-5xl opacity-10 animate-pulse rotate-45">🟢</div>
+                <div className="absolute bottom-20 left-20 text-7xl opacity-10 animate-bounce -rotate-6">🔶</div>
+
+                {/* Background Blobs (Softer) */}
+                <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-200/30 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-200/30 rounded-full blur-3xl -ml-32 -mb-32"></div>
+
+                {/* Main Card Content */}
+                <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
+
+                    {/* Floating Badge */}
+                    <div className="mb-8 animate-in slide-in-from-top-4 duration-700">
+                        <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-emerald-100 text-emerald-600 text-sm font-black uppercase tracking-widest shadow-sm">
+                            Nivo {level}
+                        </span>
+                    </div>
+
+                    {/* Hero Icon */}
+                    <div className="mb-10 relative group cursor-default">
+                        <div className="absolute inset-0 bg-emerald-400 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
+                        <div className="relative w-40 h-40 bg-gradient-to-b from-white to-emerald-50 rounded-[2.5rem] shadow-xl border-4 border-white flex items-center justify-center transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300">
+                            <span className="text-8xl drop-shadow-md">🔷</span>
+                        </div>
+                        {/* Decorative mini icons */}
+                        <div className="absolute -top-4 -right-4 text-3xl animate-bounce delay-100">✨</div>
+                        <div className="absolute -bottom-4 -left-4 text-3xl animate-bounce delay-300">🎮</div>
+                    </div>
+
+                    {/* Title & Description */}
+                    <h2 className="text-5xl font-black text-slate-800 mb-4 tracking-tight drop-shadow-sm">Složi Oblik</h2>
+                    <p className="text-slate-600 text-xl font-medium leading-relaxed mb-12 max-w-sm mx-auto">
+                        Pronađi oblik koji nedostaje i pokaži koliko si brz!
                     </p>
+
+                    {/* Big Action Button */}
                     <button
                         onClick={startGame}
-                        className="px-12 py-4 text-2xl font-bold text-white bg-gradient-to-r from-green-400 to-blue-500 rounded-full hover:scale-110 transition-transform shadow-xl"
+                        className="w-full max-w-sm group bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl p-1.5 transition-all duration-300 shadow-xl shadow-emerald-200 hover:shadow-emerald-300 hover:-translate-y-1"
                     >
-                        ▶️ Počni igru
+                        <div className="bg-white/10 border border-white/20 rounded-xl px-8 py-5 flex items-center justify-center gap-4 h-full">
+                            <span className="text-2xl font-bold tracking-wide">ZAPOČNI IGRU</span>
+                            <div className="w-12 h-12 bg-white text-emerald-600 rounded-xl flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform shadow-inner">
+                                ▶
+                            </div>
+                        </div>
                     </button>
+
                 </div>
             </div>
         );

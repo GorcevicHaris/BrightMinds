@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useGameEmitter } from '@/lib/useSocket';
+
 interface GameProps {
   childId: number;
   level: number;
@@ -397,22 +398,58 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
 
   if (!isPlaying && completedZones === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-purple-100 via-pink-100 to-blue-100 rounded-3xl p-8 shadow-xl">
-        <div className="text-center space-y-6">
-          <h2 className="text-4xl font-bold text-purple-700">🎨 Bojenje</h2>
-          <p className="text-3xl font-bold text-gray-800">{getLevelName(level)}</p>
-          <p className="text-xl text-gray-700">Nivo {level} - {template.length} delova</p>
-          <p className="text-lg text-gray-600 max-w-md">
-            Izaberi boju i klikni na deo slike da ga obojiš! Možeš promeniti boju i posle ako želiš!
+      <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-rose-50 via-orange-50 to-rose-100 shadow-lg">
+
+        {/* Background Decorations */}
+        <div className="absolute top-12 left-12 text-6xl opacity-10 animate-pulse rotate-12">🎨</div>
+        <div className="absolute bottom-16 right-12 text-7xl opacity-10 animate-bounce -rotate-12">🖌️</div>
+        <div className="absolute top-24 right-20 text-5xl opacity-10 animate-pulse rotate-45">✏️</div>
+        <div className="absolute bottom-24 left-24 text-6xl opacity-10 animate-bounce -rotate-6">🌈</div>
+
+        {/* Background Blobs (Softer) */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-rose-200/30 rounded-full blur-3xl -mr-32 -mt-32"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl -ml-32 -mb-32"></div>
+
+        {/* Main Card Content */}
+        <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
+
+          {/* Floating Badge */}
+          <div className="mb-8 animate-in slide-in-from-top-4 duration-700">
+            <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-rose-100 text-rose-600 text-sm font-black uppercase tracking-widest shadow-sm">
+              Nivo {level} • {getLevelName(level)}
+            </span>
+          </div>
+
+          {/* Hero Icon */}
+          <div className="mb-10 relative group cursor-default">
+            <div className="absolute inset-0 bg-rose-400 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
+            <div className="relative w-40 h-40 bg-gradient-to-b from-white to-rose-50 rounded-[2.5rem] shadow-xl border-4 border-white flex items-center justify-center transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300">
+              <span className="text-8xl drop-shadow-md">🎨</span>
+            </div>
+            {/* Decorative mini icons */}
+            <div className="absolute -top-4 -right-4 text-3xl animate-bounce delay-100">🖌️</div>
+            <div className="absolute -bottom-4 -left-4 text-3xl animate-bounce delay-300">✨</div>
+          </div>
+
+          {/* Title & Description */}
+          <h2 className="text-5xl font-black text-slate-800 mb-4 tracking-tight drop-shadow-sm">Bojenje</h2>
+          <p className="text-slate-600 text-xl font-medium leading-relaxed mb-12 max-w-sm mx-auto">
+            <span className="text-rose-500 font-bold">Oboji sliku</span> bojama koje želiš! Pusti mašti na volju!
           </p>
-          <div className="text-8xl mb-4">🖌️</div>
+
+          {/* Big Action Button */}
           <button
             onClick={startGame}
-            className="px-12 py-4 text-2xl font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded-full hover:scale-110 transition-transform shadow-xl"
+            className="w-full max-w-sm group bg-rose-500 hover:bg-rose-600 text-white rounded-2xl p-1.5 transition-all duration-300 shadow-xl shadow-rose-200 hover:shadow-rose-300 hover:-translate-y-1"
           >
-            {/*  */}
-            ▶️ Počni igru
+            <div className="bg-white/10 border border-white/20 rounded-xl px-8 py-5 flex items-center justify-center gap-4 h-full">
+              <span className="text-2xl font-bold tracking-wide">ZAPOČNI IGRU</span>
+              <div className="w-12 h-12 bg-white text-rose-600 rounded-xl flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform shadow-inner">
+                ▶
+              </div>
+            </div>
           </button>
+
         </div>
       </div>
     );

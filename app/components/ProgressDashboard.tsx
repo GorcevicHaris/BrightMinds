@@ -148,8 +148,8 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
                         className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === tab.id
-                                ? `shadow-md shadow-purple-100 scale-[1.02] ${tab.id === 'all' ? 'bg-blue-600 text-white' : tab.id === 'shapes' ? 'bg-emerald-600 text-white' : tab.id === 'memory' ? 'bg-purple-600 text-white' : 'bg-orange-600 text-white'}`
-                                : "text-gray-500 hover:bg-gray-50"
+                            ? `shadow-md shadow-purple-100 scale-[1.02] ${tab.id === 'all' ? 'bg-blue-600 text-white' : tab.id === 'shapes' ? 'bg-emerald-600 text-white' : tab.id === 'memory' ? 'bg-purple-600 text-white' : 'bg-orange-600 text-white'}`
+                            : "text-gray-500 hover:bg-gray-50"
                             }`}
                     >
                         <span>{tab.icon}</span>
@@ -268,9 +268,9 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                                     <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{game.duration_minutes} min treninga</div>
                                                 </div>
                                                 <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${game.success_level === 'excellent' ? 'bg-emerald-100 text-emerald-700' :
-                                                        game.success_level === 'successful' ? 'bg-blue-100 text-blue-700' :
-                                                            game.success_level === 'partial' ? 'bg-orange-100 text-orange-700' :
-                                                                'bg-red-100 text-red-700'
+                                                    game.success_level === 'successful' ? 'bg-blue-100 text-blue-700' :
+                                                        game.success_level === 'partial' ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-red-100 text-red-700'
                                                     }`}>
                                                     {game.success_level === 'excellent' ? 'Sjajno' :
                                                         game.success_level === 'successful' ? 'Uspešno' :

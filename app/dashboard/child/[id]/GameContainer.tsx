@@ -128,8 +128,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
               }}
               disabled={isLoading}
               className={`group relative p-8 rounded-[2.5rem] text-left transition-all duration-500 hover:scale-[1.02] active:scale-[0.98] ${selectedGame === game.id
-                  ? `bg-gradient-to-br ${game.color} text-white shadow-2xl ${game.shadow}`
-                  : "bg-white border border-gray-100 text-gray-900 hover:border-purple-200 hover:shadow-xl hover:shadow-purple-50"
+                ? `bg-gradient-to-br ${game.color} text-white shadow-2xl ${game.shadow}`
+                : "bg-white border border-gray-100 text-gray-900 hover:border-purple-200 hover:shadow-xl hover:shadow-purple-50"
                 }`}
             >
               <div className={`text-5xl mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6 ${selectedGame === game.id ? "drop-shadow-lg" : ""
@@ -169,8 +169,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                 onClick={() => { setCurrentLevel(level); setMessage(""); }}
                 disabled={isLoading}
                 className={`w-14 h-14 rounded-2xl font-black text-lg transition-all duration-300 flex items-center justify-center ${currentLevel === level
-                    ? `bg-gradient-to-br ${activeGameInfo?.color} text-white shadow-lg ${activeGameInfo?.shadow} scale-110`
-                    : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                  ? `bg-gradient-to-br ${activeGameInfo?.color} text-white shadow-lg ${activeGameInfo?.shadow} scale-110`
+                  : "bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
                   }`}
               >
                 {level}
@@ -200,8 +200,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
       {message && (
         <div className="animate-in zoom-in duration-500">
           <div className={`p-6 rounded-[2rem] text-center text-xl font-black shadow-xl border-4 ${message.includes("Greška")
-              ? "bg-red-50 border-red-200 text-red-600"
-              : "bg-green-50 border-green-200 text-green-600 animate-bounce"
+            ? "bg-red-50 border-red-200 text-red-600"
+            : "bg-green-50 border-green-200 text-green-600 animate-bounce"
             }`}>
             {message}
           </div>
