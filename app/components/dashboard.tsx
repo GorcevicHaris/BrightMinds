@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { createFingerprintCredential } from '@/lib/webauthn';
 
 interface Child {
     id: number;
@@ -9,6 +10,7 @@ interface Child {
     date_of_birth: string;
     gender: string;
     notes: string;
+    fingerprint_id?: string;
 }
 
 export default function Dashboard() {
@@ -22,7 +24,11 @@ export default function Dashboard() {
         date_of_birth: '',
         gender: 'male',
         notes: '',
+        fingerprint_id: '',
     });
+    const [fingerprintStatus, setFingerprintStatus] = useState<'idle' | 'scanning' | 'success' | 'error'>('idle');
+    const [fingerprintError, setFingerprintError] = useState<string>('');
+
 
     const [isLoaded, setIsLoaded] = useState(false);
     const router = useRouter();
@@ -58,6 +64,14 @@ export default function Dashboard() {
 
     async function addChild() {
         if (!userId) return;
+
+        // Validacija fingerprinta
+        if (!formData.fingerprint_id) {
+            setFingerprintError('Molimo skenirajte prst deteta pre nego što nastavite');
+            setFingerprintStatus('error');
+            return;
+        }
+
         const response = await fetch('/api/children', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -70,7 +84,9 @@ export default function Dashboard() {
         if (response.ok) {
             const data = await response.json();
             setChildren([...children, data]);
-            setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '' });
+            setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '', fingerprint_id: '' });
+            setFingerprintStatus('idle');
+            setFingerprintError('');
             setShowModal(false);
         }
     }
@@ -117,6 +133,7 @@ export default function Dashboard() {
             date_of_birth: child.date_of_birth.split('T')[0], // Extract date only
             gender: child.gender,
             notes: child.notes || '',
+            fingerprint_id: child.fingerprint_id || '',
         });
         setShowEditModal(true);
     }
@@ -124,7 +141,31 @@ export default function Dashboard() {
     function closeEditModal() {
         setShowEditModal(false);
         setEditingChildId(null);
-        setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '' });
+        setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '', fingerprint_id: '' });
+        setFingerprintStatus('idle');
+        setFingerprintError('');
+    }
+
+    async function handleFingerprintScan() {
+        if (!formData.first_name || !formData.last_name) {
+            setFingerprintError('Molimo unesite ime i prezime pre skeniranja fingerprinta');
+            return;
+        }
+
+        setFingerprintStatus('scanning');
+        setFingerprintError('');
+
+        try {
+            const childFullName = `${formData.first_name} ${formData.last_name}`;
+            const fingerprintId = await createFingerprintCredential(childFullName);
+
+            setFormData({ ...formData, fingerprint_id: fingerprintId });
+            setFingerprintStatus('success');
+        } catch (error: any) {
+            console.error('Fingerprint scan error:', error);
+            setFingerprintStatus('error');
+            setFingerprintError(error.message || 'Greška pri skeniranju fingerprinta');
+        }
     }
 
     async function handleLogout() {
@@ -147,8 +188,8 @@ export default function Dashboard() {
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-20">
                         <div className="flex items-center gap-2">
-                            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
-                                <span className="text-white font-bold text-xl">BM</span>
+                            <div className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden">
+                                <img src="/logo.ico" alt="Bright Minds Logo" className="w-full h-full object-cover" />
                             </div>
                             <h1 className="text-xl font-bold text-slate-900 hidden sm:block">Bright <span className="text-indigo-600">Minds</span></h1>
                         </div>
@@ -344,7 +385,72 @@ export default function Dashboard() {
                                 />
                             </div>
 
+                            {/* Fingerprint Skeniranje - Samo za novo dete */}
+                            {!showEditModal && (
+                                <div className="space-y-3 pt-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
+                                        Fingerprint ID (obavezno)
+                                    </label>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleFingerprintScan}
+                                        disabled={fingerprintStatus === 'scanning' || fingerprintStatus === 'success'}
+                                        className={`w-full px-6 py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-3 ${fingerprintStatus === 'success'
+                                            ? 'bg-green-50 text-green-700 border-2 border-green-200'
+                                            : fingerprintStatus === 'scanning'
+                                                ? 'bg-indigo-50 text-indigo-700 border-2 border-indigo-200 animate-pulse'
+                                                : 'bg-slate-50 text-slate-700 border-2 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
+                                            }`}
+                                    >
+                                        {fingerprintStatus === 'scanning' && (
+                                            <>
+                                                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Skenirajte prst...
+                                            </>
+                                        )}
+                                        {fingerprintStatus === 'success' && (
+                                            <>
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                                                </svg>
+                                                Fingerprint uspešno skeniran
+                                            </>
+                                        )}
+                                        {fingerprintStatus === 'idle' && (
+                                            <>
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                                                </svg>
+                                                Skeniraj prst deteta
+                                            </>
+                                        )}
+                                        {fingerprintStatus === 'error' && (
+                                            <>
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                                                </svg>
+                                                Pokušaj ponovo
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {fingerprintError && (
+                                        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-start gap-2">
+                                            <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            <span>{fingerprintError}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="flex gap-3 pt-4">
+
                                 <button
                                     onClick={() => { setShowModal(false); closeEditModal(); }}
                                     className="flex-1 px-6 py-4 border border-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-50 transition-all active:scale-95"

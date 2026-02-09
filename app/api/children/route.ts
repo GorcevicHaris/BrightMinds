@@ -4,7 +4,7 @@ import pool from '../../../lib/db';
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { first_name, last_name, date_of_birth, gender, notes, user_id } = body;
+        const { first_name, last_name, date_of_birth, gender, notes, user_id, fingerprint_id } = body;
 
         if (!first_name || !last_name || !date_of_birth || !gender || !notes || !user_id) {
             return NextResponse.json(
@@ -13,10 +13,17 @@ export async function POST(req: Request) {
             );
         }
 
-        // Prvo dodaj dete u children tabelu (bez user_id jer ta kolona ne postoji)
+        if (!fingerprint_id) {
+            return NextResponse.json(
+                { error: 'Fingerprint ID je obavezan' },
+                { status: 400 }
+            );
+        }
+
+        // Prvo dodaj dete u children tabelu sa fingerprint_id
         const [result] = await pool.query(
-            'INSERT INTO children (first_name, last_name, date_of_birth, gender,notes) VALUES (?, ?, ?, ?, ?)',
-            [first_name, last_name, date_of_birth, gender, notes]
+            'INSERT INTO children (first_name, last_name, date_of_birth, gender, notes, fingerprint_id) VALUES (?, ?, ?, ?, ?, ?)',
+            [first_name, last_name, date_of_birth, gender, notes, fingerprint_id]
         );
 
         // @ts-ignore
@@ -35,6 +42,7 @@ export async function POST(req: Request) {
             date_of_birth,
             gender,
             notes,
+            fingerprint_id,
         });
     } catch (error) {
         console.error('Error adding child:', error);

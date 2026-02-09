@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node server.js",
     "build": "next build",
-    "start": "next start",
+    "start": "node server.js",
     "lint": "eslint"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^13.2.2",
     "bcryptjs": "^3.0.3",
     "internal-ip": "^9.0.0",
     "jsonwebtoken": "^9.0.3",

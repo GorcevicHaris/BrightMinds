@@ -18,7 +18,7 @@ export default function ChildPageClient({ child, childId }: Props) {
     return (
         <div className="min-h-screen bg-[#F8FAFC] selection:bg-purple-100 font-sans">
             {/* Minimalist Top Bar */}
-            <div className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-100">
+            <div className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gdodaj deteray-100">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-purple-200">
