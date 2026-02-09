@@ -6,12 +6,14 @@ import { Eye, EyeOff, Mail, Lock, UserCircle } from 'lucide-react';
 export default function LoginPage() {
     const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
         password: ''
     });
 
     const handleSubmit = async () => {
+        setIsLoading(true);
         try {
             const res = await fetch("/api/auth/login", {
                 method: "POST",
@@ -33,7 +35,6 @@ export default function LoginPage() {
                 // Opciono: sačuvaj i user podatke
                 localStorage.setItem('user', JSON.stringify(data.user));
 
-                alert("Prijava uspešna!");
                 console.log("Token:", data.token);
                 console.log("User:", data.user);
 
@@ -41,10 +42,12 @@ export default function LoginPage() {
                 router.push('/dashboard');
             } else {
                 alert(data.error || "Greška pri prijavljivanju");
+                setIsLoading(false);
             }
         } catch (error) {
             console.error("Login error:", error);
             alert("Greška pri prijavljivanju");
+            setIsLoading(false);
         }
     };
 
@@ -56,8 +59,30 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Loading Overlay */}
+            {isLoading && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm transition-all duration-300">
+                    <div className="relative">
+                        <div className="w-24 h-24 bg-white rounded-3xl shadow-2xl flex items-center justify-center p-4 animate-bounce">
+                            <img
+                                src="/logo.ico"
+                                alt="Logo"
+                                className="w-full h-full object-contain animate-pulse"
+                            />
+                        </div>
+                        {/* Decorative circles */}
+                        <div className="absolute -top-4 -left-4 w-8 h-8 bg-blue-400 rounded-full animate-ping opacity-20"></div>
+                        <div className="absolute -bottom-4 -right-4 w-12 h-12 bg-indigo-400 rounded-full animate-ping opacity-20" style={{ animationDelay: '0.5s' }}></div>
+                    </div>
+                    <div className="mt-8 flex flex-col items-center">
+                        <h3 className="text-xl font-bold text-gray-800 animate-pulse">Prijavljivanje...</h3>
+                        <p className="text-gray-500 text-sm mt-2">Molimo sačekajte trenutak</p>
+                    </div>
+                </div>
+            )}
+
+            <div className={`w-full max-w-md transition-all duration-500 ${isLoading ? 'opacity-50 scale-95 blur-sm' : 'opacity-100 scale-100 blur-0'}`}>
                 {/* Logo/Header */}
                 <div className="text-center mb-8">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
@@ -85,7 +110,8 @@ export default function LoginPage() {
                                     name="email"
                                     value={formData.email}
                                     onChange={handleInputChange}
-                                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-black"
+                                    disabled={isLoading}
+                                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-black disabled:bg-gray-50 disabled:text-gray-400"
                                     placeholder="vas@email.com"
                                 />
                             </div>
@@ -103,7 +129,8 @@ export default function LoginPage() {
                                     name="password"
                                     value={formData.password}
                                     onChange={handleInputChange}
-                                    className="w-full pl-11 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-black"
+                                    disabled={isLoading}
+                                    className="w-full pl-11 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-black disabled:bg-gray-50 disabled:text-gray-400"
                                     placeholder="••••••••"
                                 />
                                 <button
@@ -133,9 +160,10 @@ export default function LoginPage() {
                         {/* Submit Button */}
                         <button
                             onClick={handleSubmit}
-                            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-indigo-700 transform hover:scale-[1.02] transition-all"
+                            disabled={isLoading}
+                            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-indigo-700 transform hover:scale-[1.02] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                         >
-                            Prijavite se
+                            {isLoading ? 'Prijavljivanje...' : 'Prijavite se'}
                         </button>
                     </div>
 
@@ -153,7 +181,8 @@ export default function LoginPage() {
                     <div className="space-y-3">
                         <button
                             type="button"
-                            className="w-full flex items-center justify-center gap-3 py-3 border-2 border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all"
+                            disabled={isLoading}
+                            className="w-full flex items-center justify-center gap-3 py-3 border-2 border-gray-200 rounded-xl font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <svg className="w-5 h-5" viewBox="0 0 24 24">
                                 <path
