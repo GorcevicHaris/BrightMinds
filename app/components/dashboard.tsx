@@ -1,7 +1,8 @@
 'use client'
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { createFingerprintCredential } from '@/lib/webauthn';
+import PinModal from './PinModal';
+
 
 interface Child {
     id: number;
@@ -10,7 +11,7 @@ interface Child {
     date_of_birth: string;
     gender: string;
     notes: string;
-    fingerprint_id?: string;
+    pin_code?: string;
 }
 
 export default function Dashboard() {
@@ -24,10 +25,12 @@ export default function Dashboard() {
         date_of_birth: '',
         gender: 'male',
         notes: '',
-        fingerprint_id: '',
+        pin_code: '',
     });
-    const [fingerprintStatus, setFingerprintStatus] = useState<'idle' | 'scanning' | 'success' | 'error'>('idle');
-    const [fingerprintError, setFingerprintError] = useState<string>('');
+
+    const [showPinModal, setShowPinModal] = useState(false);
+    const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+
 
 
     const [isLoaded, setIsLoaded] = useState(false);
@@ -65,13 +68,6 @@ export default function Dashboard() {
     async function addChild() {
         if (!userId) return;
 
-        // Validacija fingerprinta
-        if (!formData.fingerprint_id) {
-            setFingerprintError('Molimo skenirajte prst deteta pre nego što nastavite');
-            setFingerprintStatus('error');
-            return;
-        }
-
         const response = await fetch('/api/children', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -84,9 +80,7 @@ export default function Dashboard() {
         if (response.ok) {
             const data = await response.json();
             setChildren([...children, data]);
-            setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '', fingerprint_id: '' });
-            setFingerprintStatus('idle');
-            setFingerprintError('');
+            setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '', pin_code: '' });
             setShowModal(false);
         }
     }
@@ -133,7 +127,7 @@ export default function Dashboard() {
             date_of_birth: child.date_of_birth.split('T')[0], // Extract date only
             gender: child.gender,
             notes: child.notes || '',
-            fingerprint_id: child.fingerprint_id || '',
+            pin_code: child.pin_code || '',
         });
         setShowEditModal(true);
     }
@@ -141,32 +135,10 @@ export default function Dashboard() {
     function closeEditModal() {
         setShowEditModal(false);
         setEditingChildId(null);
-        setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '', fingerprint_id: '' });
-        setFingerprintStatus('idle');
-        setFingerprintError('');
+        setFormData({ first_name: '', last_name: '', date_of_birth: '', gender: 'male', notes: '', pin_code: '' });
     }
 
-    async function handleFingerprintScan() {
-        if (!formData.first_name || !formData.last_name) {
-            setFingerprintError('Molimo unesite ime i prezime pre skeniranja fingerprinta');
-            return;
-        }
 
-        setFingerprintStatus('scanning');
-        setFingerprintError('');
-
-        try {
-            const childFullName = `${formData.first_name} ${formData.last_name}`;
-            const fingerprintId = await createFingerprintCredential(childFullName);
-
-            setFormData({ ...formData, fingerprint_id: fingerprintId });
-            setFingerprintStatus('success');
-        } catch (error: any) {
-            console.error('Fingerprint scan error:', error);
-            setFingerprintStatus('error');
-            setFingerprintError(error.message || 'Greška pri skeniranju fingerprinta');
-        }
-    }
 
     async function handleLogout() {
         try {
@@ -286,12 +258,20 @@ export default function Dashboard() {
 
                                     <div className="grid grid-cols-2 gap-3 w-full mt-8">
                                         <button
-                                            onClick={() => router.push(`/dashboard/child/${child.id}`)}
+                                            onClick={() => {
+                                                if (child.pin_code) {
+                                                    setSelectedChild(child);
+                                                    setShowPinModal(true);
+                                                } else {
+                                                    router.push(`/dashboard/child/${child.id}`);
+                                                }
+                                            }}
                                             className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                                             Uđi
                                         </button>
+
                                         <button
                                             onClick={() => router.push(`/dashboard/monitor/${child.id}`)}
                                             className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all"
@@ -385,69 +365,22 @@ export default function Dashboard() {
                                 />
                             </div>
 
-                            {/* Fingerprint Skeniranje - Samo za novo dete */}
-                            {!showEditModal && (
-                                <div className="space-y-3 pt-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">
-                                        Fingerprint ID (obavezno)
-                                    </label>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">PIN kod (4 cifre - opciono)</label>
+                                <input
+                                    type="text"
+                                    placeholder="npr. 1234"
+                                    value={formData.pin_code}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                        setFormData({ ...formData, pin_code: value });
+                                    }}
+                                    maxLength={4}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none text-slate-900 font-medium placeholder:text-slate-400 text-center text-2xl tracking-widest"
+                                />
+                                <p className="text-xs text-slate-400 ml-1">PIN kod omogućava detetu da samostalno uđe u svoj profil</p>
+                            </div>
 
-                                    <button
-                                        type="button"
-                                        onClick={handleFingerprintScan}
-                                        disabled={fingerprintStatus === 'scanning' || fingerprintStatus === 'success'}
-                                        className={`w-full px-6 py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-3 ${fingerprintStatus === 'success'
-                                            ? 'bg-green-50 text-green-700 border-2 border-green-200'
-                                            : fingerprintStatus === 'scanning'
-                                                ? 'bg-indigo-50 text-indigo-700 border-2 border-indigo-200 animate-pulse'
-                                                : 'bg-slate-50 text-slate-700 border-2 border-slate-200 hover:bg-slate-100 hover:border-slate-300'
-                                            }`}
-                                    >
-                                        {fingerprintStatus === 'scanning' && (
-                                            <>
-                                                <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                                </svg>
-                                                Skenirajte prst...
-                                            </>
-                                        )}
-                                        {fingerprintStatus === 'success' && (
-                                            <>
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
-                                                </svg>
-                                                Fingerprint uspešno skeniran
-                                            </>
-                                        )}
-                                        {fingerprintStatus === 'idle' && (
-                                            <>
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
-                                                </svg>
-                                                Skeniraj prst deteta
-                                            </>
-                                        )}
-                                        {fingerprintStatus === 'error' && (
-                                            <>
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
-                                                </svg>
-                                                Pokušaj ponovo
-                                            </>
-                                        )}
-                                    </button>
-
-                                    {fingerprintError && (
-                                        <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-start gap-2">
-                                            <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span>{fingerprintError}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
 
                             <div className="flex gap-3 pt-4">
 
@@ -468,6 +401,18 @@ export default function Dashboard() {
                     </div>
                 </div>
             )}
+
+            {selectedChild && (
+                <PinModal
+                    isOpen={showPinModal}
+                    onClose={() => setShowPinModal(false)}
+                    child={selectedChild}
+                    onSuccess={(child) => {
+                        router.push(`/dashboard/child/${child.id}`);
+                    }}
+                />
+            )}
         </div>
+
     );
 }

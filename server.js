@@ -23,10 +23,10 @@ app.prepare().then(() => {
     }
   });
 
-  // Initialize Socket.io
+
   const io = new Server(server, {
     cors: {
-      origin: "*", // Allow all origins for local development/mobile testing
+      origin: "*",
       methods: ["GET", "POST"],
       credentials: true,
     },

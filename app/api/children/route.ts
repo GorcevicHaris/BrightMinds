@@ -4,7 +4,7 @@ import pool from '../../../lib/db';
 export async function POST(req: Request) {
     try {
         const body = await req.json();
-        const { first_name, last_name, date_of_birth, gender, notes, user_id, fingerprint_id } = body;
+        const { first_name, last_name, date_of_birth, gender, notes, user_id, pin_code } = body;
 
         if (!first_name || !last_name || !date_of_birth || !gender || !notes || !user_id) {
             return NextResponse.json(
@@ -13,17 +13,10 @@ export async function POST(req: Request) {
             );
         }
 
-        if (!fingerprint_id) {
-            return NextResponse.json(
-                { error: 'Fingerprint ID je obavezan' },
-                { status: 400 }
-            );
-        }
-
-        // Prvo dodaj dete u children tabelu sa fingerprint_id
+        // Prvo dodaj dete u children tabelu
         const [result] = await pool.query(
-            'INSERT INTO children (first_name, last_name, date_of_birth, gender, notes, fingerprint_id) VALUES (?, ?, ?, ?, ?, ?)',
-            [first_name, last_name, date_of_birth, gender, notes, fingerprint_id]
+            'INSERT INTO children (first_name, last_name, date_of_birth, gender, notes, pin_code) VALUES (?, ?, ?, ?, ?, ?)',
+            [first_name, last_name, date_of_birth, gender, notes, pin_code || null]
         );
 
         // @ts-ignore
@@ -42,7 +35,7 @@ export async function POST(req: Request) {
             date_of_birth,
             gender,
             notes,
-            fingerprint_id,
+            pin_code,
         });
     } catch (error) {
         console.error('Error adding child:', error);
@@ -105,10 +98,10 @@ export async function PUT(req: Request) {
         const childId = url.searchParams.get("child_id")
         console.log(childId, "childid")
         const body = await req.json()
-        const { first_name, last_name, date_of_birth, gender, notes } = body;
+        const { first_name, last_name, date_of_birth, gender, notes, pin_code } = body;
         await pool.query(
-            "UPDATE children SET first_name = ?, last_name = ?, date_of_birth = ?, gender = ?, notes = ? WHERE id = ?",
-            [first_name, last_name, date_of_birth, gender, notes, childId]
+            "UPDATE children SET first_name = ?, last_name = ?, date_of_birth = ?, gender = ?, notes = ?, pin_code = ? WHERE id = ?",
+            [first_name, last_name, date_of_birth, gender, notes, pin_code || null, childId]
         )
         return NextResponse.json({
             message: "Child updated successfully"
