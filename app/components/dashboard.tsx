@@ -31,10 +31,54 @@ export default function Dashboard() {
     const [showPinModal, setShowPinModal] = useState(false);
     const [selectedChild, setSelectedChild] = useState<Child | null>(null);
 
-
+    const [isParentMode, setIsParentMode] = useState(false);
+    const [showParentalGate, setShowParentalGate] = useState(false);
+    const [userAnswer, setUserAnswer] = useState('');
+    const [gateError, setGateError] = useState(false);
+    const [globalPin, setGlobalPin] = useState('');
+    const [childPinError, setChildPinError] = useState(false);
 
     const [isLoaded, setIsLoaded] = useState(false);
     const router = useRouter();
+
+    const handleToggleParentMode = () => {
+        if (isParentMode) {
+            setIsParentMode(false);
+        } else {
+            setUserAnswer('');
+            setGateError(false);
+            setShowParentalGate(true);
+        }
+    };
+
+    const verifyParentalGate = () => {
+        const PARENT_PIN = "0000";
+
+        if (userAnswer === PARENT_PIN) {
+            setIsParentMode(true);
+            setShowParentalGate(false);
+            setGateError(false);
+        } else {
+            setGateError(true);
+            setUserAnswer('');
+        }
+    };
+
+    // Auto-check child PIN when it reaches 4 digits
+    useEffect(() => {
+        if (globalPin.length === 4 && !isParentMode) {
+            const matchedChild = children.find(c => c.pin_code === globalPin);
+            if (matchedChild) {
+                router.push(`/dashboard/child/${matchedChild.id}`);
+            } else {
+                setChildPinError(true);
+                setTimeout(() => {
+                    setGlobalPin('');
+                    setChildPinError(false);
+                }, 1000);
+            }
+        }
+    }, [globalPin, children, isParentMode, router]);
 
     // Safely get user data
     const getUserData = () => {
@@ -171,6 +215,25 @@ export default function Dashboard() {
                                 Dobrodošli, <span className="text-slate-900">{user?.first_name || 'Roditelj'}</span>
                             </span>
                             <button
+                                onClick={handleToggleParentMode}
+                                className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${isParentMode
+                                    ? 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                                    }`}
+                            >
+                                {isParentMode ? (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" /></svg>
+                                        Roditeljski režim
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                                        Dečiji režim
+                                    </>
+                                )}
+                            </button>
+                            <button
                                 onClick={handleLogout}
                                 className="inline-flex items-center px-4 py-2 border border-slate-200 text-sm font-semibold rounded-xl text-slate-700 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all duration-200"
                             >
@@ -185,105 +248,168 @@ export default function Dashboard() {
                 {/* Hero / Action Section */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
                     <div>
-                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">Upravljanje decom</h2>
-                        <p className="mt-1 text-slate-500 text-lg">Pratite napredak i aktivnosti vaših mališana na jednom mestu.</p>
+                        <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                            {isParentMode ? 'Upravljanje decom' : 'Dobrodošli! 🌟'}
+                        </h2>
+                        <p className="mt-1 text-slate-500 text-lg">
+                            {isParentMode
+                                ? 'Pratite napredak i aktivnosti vaših mališana na jednom mestu.'
+                                : 'Unesi svoj tajni kod da započneš avanturu!'}
+                        </p>
                     </div>
-                    <button
-                        onClick={() => setShowModal(true)}
-                        className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-bold rounded-2xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
-                    >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                        Dodaj dete
-                    </button>
-                </div>
-
-                {/* Grid of Children */}
-                {children.length === 0 ? (
-                    <div className="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-16 text-center">
-                        <div className="mx-auto w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                            <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-2">Nema dodate dece</h3>
-                        <p className="text-slate-500 mb-8 max-w-sm mx-auto">Započnite dodavanjem prvog deteta kako biste mogli da pratite njihove aktivnosti.</p>
+                    {isParentMode && (
                         <button
                             onClick={() => setShowModal(true)}
-                            className="text-indigo-600 font-bold hover:text-indigo-700 inline-flex items-center"
+                            className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-bold rounded-2xl text-white bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0"
                         >
-                            Dodaj prvo dete <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                            Dodaj dete
                         </button>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {children.map((child) => (
-                            <div
-                                key={child.id}
-                                className="group relative bg-white border border-slate-200 rounded-[2rem] p-6 pt-8 hover:shadow-2xl hover:shadow-indigo-50 hover:border-indigo-200 transition-all duration-300"
-                            >
-                                <div className="absolute top-6 right-6 flex gap-2">
-                                    <button
-                                        onClick={() => openEditModal(child)}
-                                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
-                                        title="Izmeni"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                                    </button>
-                                    <button
-                                        onClick={() => deleteChild(child.id)}
-                                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                                        title="Obriši"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                </div>
+                    )}
+                </div>
 
-                                <div className="flex flex-col items-center text-center">
-                                    <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-3xl mb-4 ${child.gender === 'female' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'
-                                        }`}>
-                                        {child.gender === 'female' ? '👧' : '👦'}
+                {/* Child Mode: Global PIN Pad */}
+                {!isParentMode && (
+                    <div className="flex flex-col items-center justify-center py-10">
+                        <div className="w-full max-w-md bg-white rounded-[3rem] shadow-xl p-10 border border-slate-100">
+                            <div className="flex justify-center gap-4 mb-10">
+                                {[0, 1, 2, 3].map((idx) => (
+                                    <div
+                                        key={idx}
+                                        className={`w-14 h-14 rounded-2xl border-4 transition-all duration-200 flex items-center justify-center text-3xl
+                                            ${globalPin[idx]
+                                                ? 'bg-indigo-600 border-indigo-200 scale-110 shadow-lg'
+                                                : childPinError ? 'border-red-200 bg-red-50 animate-shake' : 'border-slate-100 bg-slate-50'}`}
+                                    >
+                                        {globalPin[idx] && <div className="w-3 h-3 rounded-full bg-white animate-pulse"></div>}
                                     </div>
-                                    <h3 className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-                                        {child.first_name} {child.last_name}
-                                    </h3>
-                                    <p className="text-slate-500 text-sm font-medium mt-1">
-                                        {new Date(child.date_of_birth).toLocaleDateString('sr-RS', {
-                                            day: 'numeric', month: 'long', year: 'numeric'
-                                        })}
-                                    </p>
+                                ))}
+                            </div>
 
-                                    {child.notes && (
-                                        <div className="mt-4 px-4 py-2 bg-slate-50 rounded-2xl text-xs text-slate-600 italic line-clamp-2">
-                                            "{child.notes}"
-                                        </div>
-                                    )}
+                            <div className="grid grid-cols-3 gap-4">
+                                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((num, idx) => {
+                                    if (num === '') return <div key={idx}></div>;
+                                    const isDelete = num === '⌫';
+                                    const colors = ['bg-red-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-purple-400', 'bg-pink-400', 'bg-orange-400', 'bg-teal-400', 'bg-indigo-400', '', 'bg-cyan-400', 'bg-slate-300'];
 
-                                    <div className="grid grid-cols-2 gap-3 w-full mt-8">
+                                    return (
                                         <button
+                                            key={idx}
                                             onClick={() => {
-                                                if (child.pin_code) {
-                                                    setSelectedChild(child);
-                                                    setShowPinModal(true);
-                                                } else {
-                                                    router.push(`/dashboard/child/${child.id}`);
+                                                if (isDelete) {
+                                                    setGlobalPin(globalPin.slice(0, -1));
+                                                } else if (globalPin.length < 4) {
+                                                    setGlobalPin(globalPin + num);
                                                 }
                                             }}
-                                            className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                                            className={`h-20 rounded-3xl text-3xl font-black text-white shadow-md active:scale-90 transition-all duration-100 flex items-center justify-center ${colors[idx]} hover:brightness-110`}
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                            Uđi
+                                            {num}
                                         </button>
+                                    );
+                                })}
+                            </div>
 
+                            {childPinError && (
+                                <p className="text-red-500 font-bold text-center mt-6 animate-bounce">
+                                    Netačan kod, probaj ponovo! ❌
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Grid of Children - Only shown in Parent Mode */}
+                {isParentMode && (
+                    children.length === 0 ? (
+                        <div className="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-16 text-center">
+                            <div className="mx-auto w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                                <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                            </div>
+                            <h3 className="text-xl font-bold text-slate-900 mb-2">Nema dodate dece</h3>
+                            <p className="text-slate-500 mb-8 max-w-sm mx-auto">
+                                Započnite dodavanjem prvog deteta kako biste mogli da pratite njihove aktivnosti.
+                            </p>
+                            <button
+                                onClick={() => setShowModal(true)}
+                                className="text-indigo-600 font-bold hover:text-indigo-700 inline-flex items-center"
+                            >
+                                Dodaj prvo dete <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {children.map((child) => (
+                                <div
+                                    key={child.id}
+                                    className="group relative bg-white border border-slate-200 rounded-[2rem] p-6 pt-8 hover:shadow-2xl hover:shadow-indigo-50 hover:border-indigo-200 transition-all duration-300"
+                                >
+                                    <div className="absolute top-6 right-6 flex gap-2">
                                         <button
-                                            onClick={() => router.push(`/dashboard/monitor/${child.id}`)}
-                                            className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all"
+                                            onClick={() => openEditModal(child)}
+                                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors"
+                                            title="Izmeni"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                            Monitor
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        </button>
+                                        <button
+                                            onClick={() => deleteChild(child.id)}
+                                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                                            title="Obriši"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>
+
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className={`w-20 h-20 rounded-3xl flex items-center justify-center text-3xl mb-4 ${child.gender === 'female' ? 'bg-pink-100 text-pink-600' : 'bg-blue-100 text-blue-600'
+                                            }`}>
+                                            {child.gender === 'female' ? '👧' : '👦'}
+                                        </div>
+                                        <h3 className="text-xl font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                            {child.first_name} {child.last_name}
+                                        </h3>
+                                        <p className="text-slate-500 text-sm font-medium mt-1">
+                                            {new Date(child.date_of_birth).toLocaleDateString('sr-RS', {
+                                                day: 'numeric', month: 'long', year: 'numeric'
+                                            })}
+                                        </p>
+
+                                        {child.notes && (
+                                            <div className="mt-4 px-4 py-2 bg-slate-50 rounded-2xl text-xs text-slate-600 italic line-clamp-2">
+                                                "{child.notes}"
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-2 gap-3 w-full mt-8">
+                                            <button
+                                                onClick={() => {
+                                                    if (child.pin_code) {
+                                                        setSelectedChild(child);
+                                                        setShowPinModal(true);
+                                                    } else {
+                                                        router.push(`/dashboard/child/${child.id}`);
+                                                    }
+                                                }}
+                                                className="flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-sm hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                Uđi
+                                            </button>
+
+                                            <button
+                                                onClick={() => router.push(`/dashboard/monitor/${child.id}`)}
+                                                className="flex items-center justify-center gap-2 px-4 py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 transition-all"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                                Monitor
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )
                 )}
             </main>
 
@@ -398,6 +524,52 @@ export default function Dashboard() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {showParentalGate && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md" onClick={() => setShowParentalGate(false)}></div>
+                    <div className="relative bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in-95 duration-200 border-4 border-indigo-100">
+                        <div className="text-center mb-6">
+                            <div className="w-16 h-16 bg-indigo-100 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">🔐</div>
+                            <h3 className="text-xl font-bold text-slate-900">Roditeljska zaštita</h3>
+                            <p className="text-slate-500 text-sm mt-1">Unesite roditeljsku lozinku za pristup.</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Lozinka / PIN</label>
+                                <input
+                                    type="password"
+                                    value={userAnswer}
+                                    onChange={(e) => setUserAnswer(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && verifyParentalGate()}
+                                    placeholder="••••"
+                                    autoFocus
+                                    className={`w-full px-6 py-4 bg-slate-100 border-2 rounded-2xl text-center text-2xl font-bold focus:outline-none transition-all text-slate-900 placeholder:text-slate-300 ${gateError ? 'border-red-400 animate-shake' : 'border-transparent focus:border-indigo-500'}`}
+                                />
+                            </div>
+                        </div>
+
+                        {gateError && <p className="text-red-500 text-sm font-bold text-center mt-2">Netačna lozinka! ❌</p>}
+
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => setShowParentalGate(false)}
+                                className="flex-1 py-4 text-slate-500 font-bold hover:text-slate-700"
+                            >
+                                Odustani
+                            </button>
+                            <button
+                                onClick={verifyParentalGate}
+                                className="flex-1 py-4 bg-indigo-600 text-white font-bold rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                            >
+                                Potvrdi
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-center text-slate-400 mt-4 leading-tight">Savet: Default lozinka je 0000. Možete je promeniti u podešavanjima profila.</p>
                     </div>
                 </div>
             )}
