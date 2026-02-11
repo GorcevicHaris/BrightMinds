@@ -1,5 +1,7 @@
-'use client'
+'use client';
+
 import { useState, useEffect } from 'react';
+import { VISUAL_PIN_CATEGORIES } from '@/lib/visualPinData';
 
 interface PinModalProps {
     isOpen: boolean;
@@ -19,9 +21,9 @@ export default function PinModal({ isOpen, onClose, onSuccess, child }: PinModal
         }
     }, [pin]);
 
-    const handleNumberClick = (num: string) => {
+    const handleItemClick = (itemId: string) => {
         if (pin.length < 4) {
-            setPin([...pin, num]);
+            setPin([...pin, itemId]);
             setError(null);
         }
     };
@@ -39,7 +41,7 @@ export default function PinModal({ isOpen, onClose, onSuccess, child }: PinModal
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     child_id: child.id,
-                    pin_code: pin.join('')
+                    pin_code: pin.join(',')
                 }),
             });
 
@@ -86,46 +88,45 @@ export default function PinModal({ isOpen, onClose, onSuccess, child }: PinModal
                     <p className="text-slate-500 font-bold mt-2 text-lg">Unesi svoj tajni kod</p>
                 </div>
 
-                {/* PIN Dots */}
-                <div className="flex justify-center gap-4 mb-8">
-                    {[0, 1, 2, 3].map((idx) => (
-                        <div
-                            key={idx}
-                            className={`w-12 h-12 rounded-2xl border-4 transition-all duration-200 flex items-center justify-center text-3xl
-                                ${pin[idx]
-                                    ? 'bg-indigo-600 border-indigo-200 scale-110 shadow-lg'
-                                    : error ? 'border-red-200 bg-red-50' : 'border-slate-100 bg-slate-50'}`}
-                        >
-                            {pin[idx] && <div className="w-4 h-4 rounded-full bg-white animate-pulse"></div>}
-                        </div>
-                    ))}
-                </div>
+                {/* Visual PIN Selection */}
+                <div className="flex flex-col items-center">
+                    {pin.length < 4 ? (
+                        <>
+                            <div className="text-center mb-6">
+                                <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-black uppercase tracking-widest">
+                                    Korak {pin.length + 1} od 4
+                                </span>
+                                <h4 className="text-xl font-black text-slate-800 mt-2">
+                                    {VISUAL_PIN_CATEGORIES[pin.length].name}
+                                </h4>
+                            </div>
 
-                {error && (
-                    <div className="text-red-500 font-black text-center mb-6 animate-bounce">
-                        {error} ❌
-                    </div>
-                )}
+                            <div className="grid grid-cols-5 gap-3 h-[300px] overflow-y-auto p-2 w-full">
+                                {VISUAL_PIN_CATEGORIES[pin.length].items.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => handleItemClick(item.id)}
+                                        className="aspect-square rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-3xl hover:bg-white hover:border-indigo-400 hover:scale-110 active:scale-95 transition-all shadow-sm"
+                                    >
+                                        {item.emoji}
+                                    </button>
+                                ))}
+                            </div>
 
-                {/* Number Pad */}
-                <div className="grid grid-cols-3 gap-4">
-                    {numbers.map((num, idx) => {
-                        if (num === '') return <div key={idx}></div>;
-
-                        const isDelete = num === '⌫';
-                        return (
                             <button
-                                key={idx}
-                                onClick={isDelete ? handleDelete : () => handleNumberClick(num)}
-                                disabled={isVerifying}
-                                className={`h-20 rounded-3xl text-3xl font-black text-white shadow-lg active:scale-90 transition-all duration-100 flex items-center justify-center
-                                    ${colors[idx]} hover:brightness-110 active:brightness-90
-                                    ${isDelete ? 'bg-slate-400' : ''}`}
+                                onClick={handleDelete}
+                                disabled={pin.length === 0}
+                                className="mt-6 w-full py-4 bg-slate-100 text-slate-500 font-bold rounded-2xl hover:bg-slate-200 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                             >
-                                {num}
+                                Obriši poslednje
                             </button>
-                        );
-                    })}
+                        </>
+                    ) : (
+                        <div className="flex flex-col items-center py-10 animate-pulse text-indigo-600">
+                            <div className="text-6xl mb-4">🔄</div>
+                            <p className="text-xl font-black italic">Proveravam...</p>
+                        </div>
+                    )}
                 </div>
 
                 <button

@@ -1,7 +1,9 @@
 'use client'
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import PinModal from './PinModal';
+import VisualPinPicker from './VisualPinPicker';
+import { VISUAL_PIN_CATEGORIES } from '@/lib/visualPinData';
 
 
 interface Child {
@@ -30,13 +32,13 @@ export default function Dashboard() {
 
     const [showPinModal, setShowPinModal] = useState(false);
     const [selectedChild, setSelectedChild] = useState<Child | null>(null);
-
     const [isParentMode, setIsParentMode] = useState(false);
     const [showParentalGate, setShowParentalGate] = useState(false);
     const [userAnswer, setUserAnswer] = useState('');
     const [gateError, setGateError] = useState(false);
-    const [globalPin, setGlobalPin] = useState('');
+    const [globalPin, setGlobalPin] = useState<string[]>([]);
     const [childPinError, setChildPinError] = useState(false);
+    const [showVisualPinPicker, setShowVisualPinPicker] = useState(false);
 
     const [isLoaded, setIsLoaded] = useState(false);
     const router = useRouter();
@@ -64,23 +66,22 @@ export default function Dashboard() {
         }
     };
 
-    // Auto-check child PIN when it reaches 4 digits
     useEffect(() => {
         if (globalPin.length === 4 && !isParentMode) {
-            const matchedChild = children.find(c => c.pin_code === globalPin);
+            const pinString = globalPin.join(',');
+            const matchedChild = children.find(c => c.pin_code === pinString);
             if (matchedChild) {
                 router.push(`/dashboard/child/${matchedChild.id}`);
             } else {
                 setChildPinError(true);
                 setTimeout(() => {
-                    setGlobalPin('');
+                    setGlobalPin([]);
                     setChildPinError(false);
-                }, 1000);
+                }, 1500);
             }
         }
     }, [globalPin, children, isParentMode, router]);
 
-    // Safely get user data
     const getUserData = () => {
         if (typeof window !== 'undefined') {
             return JSON.parse(localStorage.getItem('user') || '{}');
@@ -268,52 +269,72 @@ export default function Dashboard() {
                     )}
                 </div>
 
-                {/* Child Mode: Global PIN Pad */}
+                {/* Child Mode: Visual PIN Selection */}
                 {!isParentMode && (
                     <div className="flex flex-col items-center justify-center py-10">
-                        <div className="w-full max-w-md bg-white rounded-[3rem] shadow-xl p-10 border border-slate-100">
-                            <div className="flex justify-center gap-4 mb-10">
-                                {[0, 1, 2, 3].map((idx) => (
-                                    <div
-                                        key={idx}
-                                        className={`w-14 h-14 rounded-2xl border-4 transition-all duration-200 flex items-center justify-center text-3xl
-                                            ${globalPin[idx]
-                                                ? 'bg-indigo-600 border-indigo-200 scale-110 shadow-lg'
-                                                : childPinError ? 'border-red-200 bg-red-50 animate-shake' : 'border-slate-100 bg-slate-50'}`}
-                                    >
-                                        {globalPin[idx] && <div className="w-3 h-3 rounded-full bg-white animate-pulse"></div>}
-                                    </div>
-                                ))}
+                        <div className="w-full max-w-2xl bg-white rounded-[3rem] shadow-xl p-10 border border-slate-100">
+                            <div className="text-center mb-8">
+                                <h3 className="text-2xl font-black text-slate-800">Izaberi svoj tajni kod</h3>
+                                <p className="text-slate-500 font-bold">Pritisni sličice koje si izabrao sa roditeljem</p>
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
-                                {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].map((num, idx) => {
-                                    if (num === '') return <div key={idx}></div>;
-                                    const isDelete = num === '⌫';
-                                    const colors = ['bg-red-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-purple-400', 'bg-pink-400', 'bg-orange-400', 'bg-teal-400', 'bg-indigo-400', '', 'bg-cyan-400', 'bg-slate-300'];
+                            {childPinError && (
+                                <div className="mb-8 p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-red-500 font-black text-center animate-shake">
+                                    Netačne sličice! Probaj ponovo ❌
+                                </div>
+                            )}
+
+                            <div className="flex justify-center gap-4 mb-10">
+                                {[0, 1, 2, 3].map((idx) => {
+                                    const category = VISUAL_PIN_CATEGORIES[idx];
+                                    const selectedId = globalPin[idx];
+                                    const selectedItem = selectedId ? category.items.find(i => i.id === selectedId) : null;
 
                                     return (
-                                        <button
+                                        <div
                                             key={idx}
-                                            onClick={() => {
-                                                if (isDelete) {
-                                                    setGlobalPin(globalPin.slice(0, -1));
-                                                } else if (globalPin.length < 4) {
-                                                    setGlobalPin(globalPin + num);
-                                                }
-                                            }}
-                                            className={`h-20 rounded-3xl text-3xl font-black text-white shadow-md active:scale-90 transition-all duration-100 flex items-center justify-center ${colors[idx]} hover:brightness-110`}
+                                            className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-4 transition-all duration-200 flex items-center justify-center text-4xl
+                                                ${globalPin[idx]
+                                                    ? 'bg-indigo-600 border-indigo-200 scale-110 shadow-lg'
+                                                    : childPinError ? 'border-red-200 bg-red-50 animate-shake' : 'border-slate-100 bg-slate-50'}`}
                                         >
-                                            {num}
-                                        </button>
+                                            {selectedItem ? selectedItem.emoji : ''}
+                                        </div>
                                     );
                                 })}
                             </div>
 
-                            {childPinError && (
-                                <p className="text-red-500 font-bold text-center mt-6 animate-bounce">
-                                    Netačan kod, probaj ponovo! ❌
-                                </p>
+                            {globalPin.length < 4 ? (
+                                <>
+                                    <div className="text-center mb-6">
+                                        <h4 className="text-xl font-black text-indigo-600">{VISUAL_PIN_CATEGORIES[globalPin.length].name}</h4>
+                                    </div>
+                                    <div className="grid grid-cols-5 sm:grid-cols-6 gap-3 h-[350px] overflow-y-auto p-2">
+                                        {VISUAL_PIN_CATEGORIES[globalPin.length].items.map((item) => (
+                                            <button
+                                                key={item.id}
+                                                onClick={() => setGlobalPin([...globalPin, item.id])}
+                                                className="aspect-square rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-3xl sm:text-4xl hover:bg-white hover:border-indigo-400 hover:scale-110 active:scale-95 transition-all shadow-sm"
+                                            >
+                                                {item.emoji}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div className="mt-6 flex justify-center">
+                                        <button
+                                            onClick={() => setGlobalPin(globalPin.slice(0, -1))}
+                                            disabled={globalPin.length === 0}
+                                            className="px-8 py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 disabled:opacity-30"
+                                        >
+                                            Nazad
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center py-10 animate-pulse text-indigo-600">
+                                    <div className="text-6xl mb-4">🔄</div>
+                                    <p className="text-xl font-black italic">Proveravam tvoj kod...</p>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -491,20 +512,37 @@ export default function Dashboard() {
                                 />
                             </div>
 
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">PIN kod (4 cifre - opciono)</label>
-                                <input
-                                    type="text"
-                                    placeholder="npr. 1234"
-                                    value={formData.pin_code}
-                                    onChange={(e) => {
-                                        const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                                        setFormData({ ...formData, pin_code: value });
-                                    }}
-                                    maxLength={4}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-50 focus:border-indigo-500 transition-all outline-none text-slate-900 font-medium placeholder:text-slate-400 text-center text-2xl tracking-widest"
-                                />
-                                <p className="text-xs text-slate-400 ml-1">PIN kod omogućava detetu da samostalno uđe u svoj profil</p>
+                            <div className="space-y-4 p-4 bg-indigo-50 rounded-3xl border-2 border-indigo-100">
+                                <label className="text-xs font-bold text-indigo-600 uppercase tracking-wider ml-1">Vizuelni PIN kod (Tajni simboli)</label>
+
+                                {formData.pin_code ? (
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="flex gap-2">
+                                            {formData.pin_code.split(',').map((id, idx) => {
+                                                const item = VISUAL_PIN_CATEGORIES[idx].items.find(i => i.id === id);
+                                                return (
+                                                    <div key={idx} className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-3xl border-2 border-indigo-200">
+                                                        {item?.emoji}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <button
+                                            onClick={() => setShowVisualPinPicker(true)}
+                                            className="text-sm font-bold text-indigo-600 hover:underline"
+                                        >
+                                            Promeni simbole
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => setShowVisualPinPicker(true)}
+                                        className="w-full py-4 bg-white border-2 border-dashed border-indigo-300 text-indigo-500 font-bold rounded-2xl hover:bg-indigo-100 hover:border-indigo-400 transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <span>✨</span> Postavi vizuelni PIN kod
+                                    </button>
+                                )}
+                                <p className="text-[10px] text-indigo-400 text-center uppercase font-black tracking-widest">Dete će koristiti ove simbole za prijavu</p>
                             </div>
 
 
@@ -583,6 +621,24 @@ export default function Dashboard() {
                         router.push(`/dashboard/child/${child.id}`);
                     }}
                 />
+            )}
+            {showVisualPinPicker && (
+                <div
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-200"
+                    onClick={() => setShowVisualPinPicker(false)}
+                >
+                    <div className="w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+                        <VisualPinPicker
+                            onComplete={(pin) => {
+                                setFormData({ ...formData, pin_code: pin });
+                                setShowVisualPinPicker(false);
+                            }}
+                            onClose={() => setShowVisualPinPicker(false)}
+                            title="Izaberi 4 tajna simbola"
+                            confirmButtonText="Ovo su moji simboli ✨"
+                        />
+                    </div>
+                </div>
             )}
         </div>
 
