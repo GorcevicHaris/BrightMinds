@@ -206,7 +206,7 @@ export default function Dashboard() {
                     <div className="flex justify-between items-center h-20">
                         <div className="flex items-center gap-2">
                             <div className="w-16 h-16 rounded-xl flex items-center justify-center overflow-hidden">
-                                <img src="/logo.ico" alt="Bright Minds Logo" className="w-full h-full object-cover" />
+                                <img src="/favicon.ico" alt="Bright Minds Logo" className="w-full h-full object-cover" />
                             </div>
                             <h1 className="text-xl font-bold text-slate-900 hidden sm:block">Bright <span className="text-indigo-600">Minds</span></h1>
                         </div>
@@ -284,7 +284,7 @@ export default function Dashboard() {
                                 </div>
                             )}
 
-                            <div className="flex justify-center gap-4 mb-10">
+                            <div className="flex justify-center gap-3 mb-10 overflow-hidden">
                                 {[0, 1, 2, 3].map((idx) => {
                                     const category = VISUAL_PIN_CATEGORIES[idx];
                                     const selectedId = globalPin[idx];
@@ -293,12 +293,18 @@ export default function Dashboard() {
                                     return (
                                         <div
                                             key={idx}
-                                            className={`w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-4 transition-all duration-200 flex items-center justify-center text-4xl
+                                            className={`w-14 h-14 sm:w-20 sm:h-20 rounded-2xl border-4 transition-all duration-300 flex items-center justify-center overflow-hidden
                                                 ${globalPin[idx]
-                                                    ? 'bg-indigo-600 border-indigo-200 scale-110 shadow-lg'
-                                                    : childPinError ? 'border-red-200 bg-red-50 animate-shake' : 'border-slate-100 bg-slate-50'}`}
+                                                    ? 'bg-white border-indigo-500 scale-110 shadow-lg'
+                                                    : childPinError ? 'border-red-200 bg-red-50 animate-shake' : (idx === globalPin.length ? 'border-indigo-300 ring-4 ring-indigo-50 animate-pulse' : 'border-slate-100 bg-slate-50')}`}
                                         >
-                                            {selectedItem ? selectedItem.emoji : ''}
+                                            {selectedItem ? (
+                                                <img src={selectedItem.image} alt={selectedItem.name} className="w-4/5 h-4/5 object-contain" />
+                                            ) : (
+                                                <div className="flex flex-col items-center opacity-30">
+                                                    <span className="text-xs font-black uppercase text-slate-400">{VISUAL_PIN_CATEGORIES[idx].name[0]}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -307,26 +313,38 @@ export default function Dashboard() {
                             {globalPin.length < 4 ? (
                                 <>
                                     <div className="text-center mb-6">
-                                        <h4 className="text-xl font-black text-indigo-600">{VISUAL_PIN_CATEGORIES[globalPin.length].name}</h4>
+                                        <div className="inline-block px-6 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-md">
+                                            {VISUAL_PIN_CATEGORIES[globalPin.length].name}
+                                        </div>
+                                        <p className="text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-tight">
+                                            Izaberi {VISUAL_PIN_CATEGORIES[globalPin.length].name.toLowerCase()}
+                                        </p>
                                     </div>
-                                    <div className="grid grid-cols-5 sm:grid-cols-6 gap-3 h-[350px] overflow-y-auto p-2">
+                                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-3 h-[300px] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-slate-200">
                                         {VISUAL_PIN_CATEGORIES[globalPin.length].items.map((item) => (
                                             <button
                                                 key={item.id}
                                                 onClick={() => setGlobalPin([...globalPin, item.id])}
-                                                className="aspect-square rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-3xl sm:text-4xl hover:bg-white hover:border-indigo-400 hover:scale-110 active:scale-95 transition-all shadow-sm"
+                                                className="aspect-square rounded-2xl bg-slate-50 border-2 border-slate-100 overflow-hidden flex items-center justify-center hover:border-indigo-400 hover:scale-110 active:scale-95 transition-all shadow-sm group"
                                             >
-                                                {item.emoji}
+                                                <img src={item.image} alt={item.name} className="w-4/5 h-4/5 object-contain transition-transform group-hover:scale-110" />
                                             </button>
                                         ))}
                                     </div>
-                                    <div className="mt-6 flex justify-center">
+                                    <div className="mt-8 flex justify-center gap-4">
                                         <button
                                             onClick={() => setGlobalPin(globalPin.slice(0, -1))}
                                             disabled={globalPin.length === 0}
-                                            className="px-8 py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 disabled:opacity-30"
+                                            className="px-6 py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 disabled:opacity-30 text-sm"
                                         >
                                             Nazad
+                                        </button>
+                                        <button
+                                            onClick={() => setGlobalPin([])}
+                                            disabled={globalPin.length === 0}
+                                            className="px-6 py-3 bg-slate-100 text-slate-500 font-bold rounded-xl hover:bg-slate-200 disabled:opacity-30 text-sm"
+                                        >
+                                            Resetuj
                                         </button>
                                     </div>
                                 </>
@@ -517,12 +535,13 @@ export default function Dashboard() {
 
                                 {formData.pin_code ? (
                                     <div className="flex flex-col items-center gap-4">
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-2 mb-2">
                                             {formData.pin_code.split(',').map((id, idx) => {
-                                                const item = VISUAL_PIN_CATEGORIES[idx].items.find(i => i.id === id);
+                                                const category = VISUAL_PIN_CATEGORIES[idx];
+                                                const item = category.items.find(i => i.id === id);
                                                 return (
-                                                    <div key={idx} className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-3xl border-2 border-indigo-200">
-                                                        {item?.emoji}
+                                                    <div key={idx} className="w-12 h-12 bg-white rounded-xl overflow-hidden flex items-center justify-center border-2 border-indigo-200 shadow-sm p-1">
+                                                        <img src={item?.image} alt={item?.name} className="w-full h-full object-contain" />
                                                     </div>
                                                 );
                                             })}

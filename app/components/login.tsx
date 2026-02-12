@@ -66,7 +66,7 @@ export default function LoginPage() {
                     <div className="relative">
                         <div className="w-24 h-24 bg-white rounded-3xl shadow-2xl flex items-center justify-center p-4 animate-bounce">
                             <img
-                                src="/logo.ico"
+                                src="/favicon.ico"
                                 alt="Logo"
                                 className="w-full h-full object-contain animate-pulse"
                             />

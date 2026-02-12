@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { VISUAL_PIN_CATEGORIES } from '@/lib/visualPinData';
+import { VISUAL_PIN_CATEGORIES } from '../../lib/visualPinData';
 
 interface PinModalProps {
     isOpen: boolean;
@@ -50,9 +50,8 @@ export default function PinModal({ isOpen, onClose, onSuccess, child }: PinModal
             if (response.ok) {
                 onSuccess(data.child);
             } else {
-                setError(data.error || 'Netačan PIN kod');
+                setError(data.error || 'Netačan kod');
                 setPin([]);
-                // Vibrate if supported
                 if (window.navigator && window.navigator.vibrate) {
                     window.navigator.vibrate(200);
                 }
@@ -67,48 +66,73 @@ export default function PinModal({ isOpen, onClose, onSuccess, child }: PinModal
 
     if (!isOpen) return null;
 
-    const numbers = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
-    const colors = [
-        'bg-red-400', 'bg-blue-400', 'bg-green-400',
-        'bg-yellow-400', 'bg-purple-400', 'bg-pink-400',
-        'bg-orange-400', 'bg-teal-400', 'bg-indigo-400',
-        '', 'bg-cyan-400', 'bg-rose-400'
-    ];
-
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
             <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md" onClick={onClose}></div>
 
-            <div className="relative bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200">
-                <div className="text-center mb-8">
-                    <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center text-5xl mx-auto mb-4 border-4 border-slate-50 shadow-inner">
-                        {child.gender === 'female' ? '👧' : '👦'}
+            <div className="relative bg-white w-full max-w-md rounded-[3rem] shadow-2xl overflow-hidden p-8 animate-in zoom-in-95 duration-200 border-4 border-indigo-50">
+                <div className="text-center mb-6">
+                    <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center text-4xl mx-auto mb-4 border-4 border-slate-50 shadow-inner">
+                        {child?.gender === 'female' ? '👧' : '👦'}
                     </div>
-                    <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tight">Zdravo, {child.first_name}!</h2>
-                    <p className="text-slate-500 font-bold mt-2 text-lg">Unesi svoj tajni kod</p>
+                    <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Zdravo, {child?.first_name || 'drugaru'}!</h2>
+                    <p className="text-slate-500 font-bold mt-1">Izaberi svoje tajne slike</p>
                 </div>
+
+                {/* Progress Indicators */}
+                <div className="flex justify-center gap-3 mb-8">
+                    {[0, 1, 2, 3].map((idx) => {
+                        const itemId = pin[idx];
+                        // Find item in its corresponding category
+                        const item = itemId ? VISUAL_PIN_CATEGORIES[idx].items.find(i => i.id === itemId) : null;
+
+                        return (
+                            <div
+                                key={idx}
+                                className={`w-14 h-14 rounded-2xl border-4 transition-all duration-300 flex items-center justify-center overflow-hidden
+                                    ${pin[idx]
+                                        ? 'border-indigo-500 shadow-lg scale-110 item-bg'
+                                        : error ? 'border-red-200 bg-red-50' : (idx === pin.length ? 'border-indigo-300 ring-4 ring-indigo-50 animate-pulse' : 'border-slate-100 bg-slate-50')}`}
+                            >
+                                {item ? (
+                                    <img src={item.image} alt={item.name} className="w-4/5 h-4/5 object-contain" />
+                                ) : (
+                                    <div className="flex flex-col items-center opacity-30">
+                                        <span className="text-[10px] font-black uppercase text-slate-400">{VISUAL_PIN_CATEGORIES[idx].name[0]}</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {error && (
+                    <div className="text-red-500 font-black text-center mb-6 animate-bounce flex items-center justify-center gap-2">
+                        <span className="text-xl">❌</span> {error}
+                    </div>
+                )}
 
                 {/* Visual PIN Selection */}
                 <div className="flex flex-col items-center">
                     {pin.length < 4 ? (
                         <>
-                            <div className="text-center mb-6">
-                                <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-black uppercase tracking-widest">
-                                    Korak {pin.length + 1} od 4
-                                </span>
-                                <h4 className="text-xl font-black text-slate-800 mt-2">
+                            <div className="text-center mb-4">
+                                <div className="inline-block px-6 py-1.5 bg-indigo-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-md">
                                     {VISUAL_PIN_CATEGORIES[pin.length].name}
-                                </h4>
+                                </div>
+                                <p className="text-slate-400 text-[10px] font-bold mt-2 uppercase tracking-tight">
+                                    Izaberi {VISUAL_PIN_CATEGORIES[pin.length].name.toLowerCase()}
+                                </p>
                             </div>
 
-                            <div className="grid grid-cols-5 gap-3 h-[300px] overflow-y-auto p-2 w-full">
+                            <div className="grid grid-cols-4 gap-3 h-[280px] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-slate-200 w-full">
                                 {VISUAL_PIN_CATEGORIES[pin.length].items.map((item) => (
                                     <button
                                         key={item.id}
                                         onClick={() => handleItemClick(item.id)}
-                                        className="aspect-square rounded-2xl bg-slate-50 border-2 border-slate-100 flex items-center justify-center text-3xl hover:bg-white hover:border-indigo-400 hover:scale-110 active:scale-95 transition-all shadow-sm"
+                                        className="aspect-square rounded-2xl bg-slate-50 border-2 border-slate-100 overflow-hidden flex items-center justify-center hover:border-indigo-400 hover:scale-110 active:scale-95 transition-all shadow-sm group"
                                     >
-                                        {item.emoji}
+                                        <img src={item.image} alt={item.name} className="w-4/5 h-4/5 object-contain transition-transform group-hover:scale-110" />
                                     </button>
                                 ))}
                             </div>
@@ -116,9 +140,9 @@ export default function PinModal({ isOpen, onClose, onSuccess, child }: PinModal
                             <button
                                 onClick={handleDelete}
                                 disabled={pin.length === 0}
-                                className="mt-6 w-full py-4 bg-slate-100 text-slate-500 font-bold rounded-2xl hover:bg-slate-200 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                                className="mt-6 w-full py-4 bg-slate-100 text-slate-500 font-black rounded-2xl hover:bg-slate-200 transition-all disabled:opacity-30 disabled:cursor-not-allowed text-xs uppercase tracking-widest border-b-4 border-slate-200 active:border-b-0 active:translate-y-1"
                             >
-                                Obriši poslednje
+                                Obriši poslednju
                             </button>
                         </>
                     ) : (
@@ -131,7 +155,7 @@ export default function PinModal({ isOpen, onClose, onSuccess, child }: PinModal
 
                 <button
                     onClick={onClose}
-                    className="w-full mt-8 py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors"
+                    className="w-full mt-6 py-2 text-slate-400 font-bold hover:text-slate-600 transition-colors text-sm"
                 >
                     Zatvori
                 </button>
