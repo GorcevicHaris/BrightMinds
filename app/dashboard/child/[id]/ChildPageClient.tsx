@@ -6,6 +6,7 @@ import ExitButton from "@/app/components/ExitButton";
 import GameContainer from "./GameContainer";
 import ProgressDashboard from "@/app/components/ProgressDashboard";
 import { Child } from "./page";
+import { CloudCog } from "lucide-react";
 
 interface Props {
     child: Child;
@@ -14,7 +15,7 @@ interface Props {
 
 export default function ChildPageClient({ child, childId }: Props) {
     const [activeView, setActiveView] = useState<"game" | "stats">("game");
-
+    console.log(typeof (child.first_name), "First letter of name")
     return (
         <div className="min-h-screen bg-[#F8FAFC] selection:bg-purple-100 font-sans">
             {/* Minimalist Top Bar */}
@@ -22,7 +23,7 @@ export default function ChildPageClient({ child, childId }: Props) {
                 <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-purple-200">
-                            {child.first_name[0]}
+                            {child.first_name?.charAt(0) || undefined}
                         </div>
                         <div>
                             <h1 className="text-xl font-bold text-gray-900 leading-tight">
