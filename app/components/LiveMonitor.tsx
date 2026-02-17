@@ -8,6 +8,7 @@ import { Eye, Activity, Clock, Award, TrendingUp, Monitor } from 'lucide-react';
 import ShapeMatchingGame from './games/ShapeMatchingGame';
 import MemoryGame from './games/MemoryGame';
 import ColoringGame from './games/ColoringGame';
+import SoundToImageGame from './games/SoundToImageGame';
 
 interface LiveMonitorProps {
   childId: number;
@@ -106,6 +107,7 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
             {currentGame === 'shape_matching' && <ShapeMatchingGame {...gameProps} />}
             {currentGame === 'memory' && <MemoryGame {...gameProps} />}
             {currentGame === 'coloring' && <ColoringGame {...gameProps} />}
+            {currentGame === 'sound-to-image' && <SoundToImageGame {...gameProps} />}
           </div>
         </div>
         <p className="text-center text-xs text-gray-400 mt-2">
@@ -123,6 +125,8 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
         return 'Spoji Parove';
       case 'coloring':
         return 'Bojenje';
+      case 'sound-to-image':
+        return 'Zvuk → Slika';
       default:
         return gameType;
     }
@@ -140,6 +144,10 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
         return `🎴 Okrenuo karticu - ${update.data.emoji}`;
       case 'color_applied':
         return `🎨 Obojio segment - ${update.data.color}`;
+      case 'answer':
+        return update.data.correct
+          ? `🔊 Tačno prepoznao zvuk - ${update.data.label || update.data.currentSound?.label} (+${update.data.score - liveStats.score} poena)`
+          : `👂 Pogrešan pokušaj - Sluša ${update.data.currentSound?.label}`;
       case 'progress':
         return update.data.matched
           ? `✨ Par pronađen - ${update.data.emoji} (+${update.data.score} poena)`
