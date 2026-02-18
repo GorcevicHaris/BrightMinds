@@ -52,6 +52,12 @@ interface ProgressData {
         progress: any[];
         levelStats: any[];
     };
+    soundToImage: {
+        stats: GameStats;
+        recentGames: any[];
+        progress: any[];
+        levelStats: any[];
+    };
 }
 
 interface Props {
@@ -77,7 +83,7 @@ const SUCCESS_COLORS = {
 export default function ProgressDashboard({ childId, childName }: Props) {
     const [data, setData] = useState<ProgressData | null>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<"all" | "shapes" | "memory" | "coloring">("all");
+    const [activeTab, setActiveTab] = useState<"all" | "shapes" | "memory" | "coloring" | "sound-to-image">("all");
 
     useEffect(() => {
         fetchProgress();
@@ -120,7 +126,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
         );
     }
 
-    const currentData = activeTab === "shapes" ? data.shapes : activeTab === "memory" ? data.memory : activeTab === "coloring" ? data.coloring : null;
+    const currentData = activeTab === "shapes" ? data.shapes : activeTab === "memory" ? data.memory : activeTab === "coloring" ? data.coloring : activeTab === "sound-to-image" ? data.soundToImage : null;
 
     const pieData = currentData ? [
         { name: "Odlično", value: currentData.stats.excellent_count, color: SUCCESS_COLORS.excellent },
@@ -143,12 +149,13 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                     { id: "shapes", label: "Oblici", icon: "🔷", color: "text-emerald-600 bg-emerald-50" },
                     { id: "memory", label: "Memorija", icon: "🧠", color: "text-purple-600 bg-purple-50" },
                     { id: "coloring", label: "Bojanka", icon: "🎨", color: "text-orange-600 bg-orange-50" },
+                    { id: "sound-to-image", label: "Zvuk", icon: "🔊", color: "text-cyan-600 bg-cyan-50" },
                 ].map((tab) => (
                     <button
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
                         className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${activeTab === tab.id
-                            ? `shadow-md shadow-purple-100 scale-[1.02] ${tab.id === 'all' ? 'bg-blue-600 text-white' : tab.id === 'shapes' ? 'bg-emerald-600 text-white' : tab.id === 'memory' ? 'bg-purple-600 text-white' : 'bg-orange-600 text-white'}`
+                            ? `shadow-md shadow-purple-100 scale-[1.02] ${tab.id === 'all' ? 'bg-blue-600 text-white' : tab.id === 'shapes' ? 'bg-emerald-600 text-white' : tab.id === 'memory' ? 'bg-purple-600 text-white' : tab.id === 'coloring' ? 'bg-orange-600 text-white' : 'bg-cyan-600 text-white'}`
                             : "text-gray-500 hover:bg-gray-50"
                             }`}
                     >
@@ -167,7 +174,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                             {[
                                 { title: "Ukupno igara", value: data.total.total_games, icon: "🎯", color: "from-blue-500 to-indigo-600" },
                                 { title: "Minuta vežbe", value: data.total.total_minutes, icon: "⏱️", color: "from-purple-500 to-pink-600" },
-                                { title: "Najbolji skor", value: Math.max(data.shapes.stats.best_score, data.memory.stats.best_score, data.coloring.stats.best_score), icon: "🏆", color: "from-orange-400 to-amber-600" },
+                                { title: "Najbolji skor", value: Math.max(data.shapes.stats.best_score, data.memory.stats.best_score, data.coloring.stats.best_score, data.soundToImage.stats.best_score), icon: "🏆", color: "from-orange-400 to-amber-600" },
                                 { title: "Bravo poeni", value: data.total.excellent_count + data.total.successful_count, icon: "⭐", color: "from-emerald-400 to-teal-600" },
                             ].map((card, i) => (
                                 <div key={i} className={`bg-gradient-to-br ${card.color} rounded-[2rem] p-8 text-white shadow-xl hover:scale-[1.02] transition-transform duration-300`}>
@@ -225,6 +232,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                         { title: "Složi oblik", stats: data.shapes.stats, icon: "🔷", color: "emerald" },
                                         { title: "Spoji parove", stats: data.memory.stats, icon: "🧠", color: "purple" },
                                         { title: "Bojanka", stats: data.coloring.stats, icon: "🎨", color: "orange" },
+                                        { title: "Zvuk → Slika", stats: data.soundToImage.stats, icon: "🔊", color: "cyan" },
                                     ].map((game, i) => (
                                         <div key={i} className={`p-5 rounded-2xl bg-${game.color}-50/50 border border-${game.color}-100 flex items-center justify-between`}>
                                             <div className="flex items-center gap-4">
@@ -253,7 +261,7 @@ export default function ProgressDashboard({ childId, childName }: Props) {
                                         <div className="flex items-center justify-between flex-wrap gap-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="h-12 w-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-2xl shadow-sm group-hover:scale-110 transition-transform">
-                                                    {game.activity_title === "Složi oblik" ? "🔷" : game.activity_title === "Spoji parove" ? "🧠" : "🎨"}
+                                                    {game.activity_title === "Složi oblik" ? "🔷" : game.activity_title === "Spoji parove" ? "🧠" : game.activity_title === "Zvuk → Slika" ? "🔊" : "🎨"}
                                                 </div>
                                                 <div>
                                                     <div className="text-base font-black text-gray-900">{game.activity_title}</div>

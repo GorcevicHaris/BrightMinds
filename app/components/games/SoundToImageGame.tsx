@@ -19,16 +19,22 @@ interface SoundItem {
 }
 
 const SOUND_ITEMS: SoundItem[] = [
-    { id: "dog", emoji: "🐕", label: "Pas", soundUrl: "/sounds/dog.mp3" },
-    { id: "cat", emoji: "🐈", label: "Mačka", soundUrl: "/sounds/cat.mp3" },
-    { id: "car", emoji: "🚗", label: "Auto", soundUrl: "/sounds/car.mp3" },
-    { id: "rain", emoji: "🌧️", label: "Kiša", soundUrl: "/sounds/rain.mp3" },
-    { id: "bell", emoji: "🔔", label: "Zvono", soundUrl: "/sounds/bell.mp3" },
-    { id: "baby", emoji: "👶", label: "Beba", soundUrl: "/sounds/baby.mp3" },
-    { id: "bird", emoji: "🐦", label: "Ptica", soundUrl: "/sounds/bird.mp3" },
-    { id: "cow", emoji: "🐄", label: "Krava", soundUrl: "/sounds/cow.mp3" },
-    { id: "train", emoji: "🚂", label: "Voz", soundUrl: "/sounds/train.mp3" },
-    { id: "water", emoji: "💧", label: "Voda", soundUrl: "/sounds/water.mp3" },
+    { id: "dog", emoji: "🐕", label: "Pas", soundUrl: "/sounds/pas.mp3" },
+    { id: "cat", emoji: "🐈", label: "Mačka", soundUrl: "/sounds/macka.mp3" },
+    { id: "police", emoji: "🚓", label: "Policija", soundUrl: "/sounds/policija.mp3" },
+    { id: "rain", emoji: "🌧️", label: "Kiša", soundUrl: "/sounds/kisa.mp3" },
+    { id: "bell", emoji: "🔔", label: "Zvono", soundUrl: "/sounds/zvonoKucno.mp3" },
+    { id: "bird", emoji: "🐦", label: "Ptica", soundUrl: "/sounds/ptica.mp3" },
+    { id: "cow", emoji: "🐄", label: "Krava", soundUrl: "/sounds/krava.wav" },
+    { id: "car_siren", emoji: "🚗", label: "Sirena auta", soundUrl: "/sounds/sirenaAuta.mp3" },
+    { id: "thunder", emoji: "🌩️", label: "Grmljavina", soundUrl: "/sounds/grmljavina.mp3" },
+    { id: "horse", emoji: "🐎", label: "Konj", soundUrl: "/sounds/konj.mp3" },
+    { id: "monkey", emoji: "🐒", label: "Majmun", soundUrl: "/sounds/majmun.mp3" },
+    { id: "bear", emoji: "🐻", label: "Medved", soundUrl: "/sounds/medved.mp3" },
+    { id: "rooster", emoji: "🐓", label: "Petao", soundUrl: "/sounds/petao.wav" },
+    { id: "owl", emoji: "🦉", label: "Sova", soundUrl: "/sounds/sova.mp3" },
+    { id: "pig", emoji: "🐖", label: "Svinja", soundUrl: "/sounds/svinja.mp3" },
+    { id: "wind", emoji: "💨", label: "Vetar", soundUrl: "/sounds/vetar.mp3" },
 ];
 
 export default function SoundToImageGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
@@ -65,15 +71,23 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
     const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
 
     const generateRound = useCallback(() => {
-        // Odaberi nasumičan zvuk
-        const availableSounds = SOUND_ITEMS.slice(0, Math.min(6 + level, SOUND_ITEMS.length));
+        // Broj dostupnih zvukova raste sa nivoom
+        const availableCount = Math.min(4 + (level * 2), SOUND_ITEMS.length);
+        const availableSounds = SOUND_ITEMS.slice(0, availableCount);
+
+        // Odaberi nasumičan zvuk iz dostupnih
         const correctAnswer = availableSounds[Math.floor(Math.random() * availableSounds.length)];
 
-        // Kreiraj opcije (3 opcije)
-        const wrongOptions = availableSounds
-            .filter(item => item.id !== correctAnswer.id)
+        // Broj opcija raste sa nivoom: 1-2 (3 opcije), 3-5 (4 opcije), 6+ (6 opcija)
+        let optionsCount = 3;
+        if (level >= 3 && level <= 5) optionsCount = 4;
+        else if (level >= 6) optionsCount = 6;
+
+        // Kreiraj pogrešne opcije
+        const allOtherSounds = SOUND_ITEMS.filter(item => item.id !== correctAnswer.id);
+        const wrongOptions = allOtherSounds
             .sort(() => Math.random() - 0.5)
-            .slice(0, 2);
+            .slice(0, optionsCount - 1);
 
         const allOptions = [correctAnswer, ...wrongOptions].sort(() => Math.random() - 0.5);
 
@@ -424,7 +438,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
             </div>
 
             {/* Options */}
-            <div className="grid grid-cols-3 gap-4 md:gap-6 max-w-3xl mx-auto">
+            <div className={`grid ${options.length === 4 ? "grid-cols-2" : "grid-cols-3"} gap-4 md:gap-6 max-w-4xl mx-auto`}>
                 {options.map((item) => (
                     <button
                         key={item.id}
