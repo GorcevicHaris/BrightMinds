@@ -50,7 +50,6 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
       setCurrentGame(null);
     }
 
-    // Update visual state if present
     if (update.data) {
       setVisualState((prev: any) => ({
         ...prev,

@@ -84,7 +84,6 @@ export default function ProgressDashboard({ childId, childName }: Props) {
     const [data, setData] = useState<ProgressData | null>(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"all" | "shapes" | "memory" | "coloring" | "sound-to-image">("all");
-
     useEffect(() => {
         fetchProgress();
     }, [childId]);
