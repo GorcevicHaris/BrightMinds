@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo } from 'react';
 import PinModal from './PinModal';
 import VisualPinPicker from './VisualPinPicker';
 import { VISUAL_PIN_CATEGORIES } from '@/lib/visualPinData';
+import { log } from 'console';
+import { CloudCog } from 'lucide-react';
 
 
 interface Child {
@@ -29,7 +31,6 @@ export default function Dashboard() {
         notes: '',
         pin_code: '',
     });
-
     const [showPinModal, setShowPinModal] = useState(false);
     const [selectedChild, setSelectedChild] = useState<Child | null>(null);
     const [isParentMode, setIsParentMode] = useState(false);
@@ -81,6 +82,14 @@ export default function Dashboard() {
             }
         }
     }, [globalPin, children, isParentMode, router]);
+    console.log(children.map((child) => {
+        const category = (child.pin_code?.split(",").map((el, idx) => {
+            console.log("el", el);
+
+        }), "children")
+
+    }
+    ));
 
     const getUserData = () => {
         if (typeof window !== 'undefined') {
@@ -357,8 +366,6 @@ export default function Dashboard() {
                         </div>
                     </div>
                 )}
-
-                {/* Grid of Children - Only shown in Parent Mode */}
                 {isParentMode && (
                     children.length === 0 ? (
                         <div className="bg-white rounded-3xl border-2 border-dashed border-slate-200 p-16 text-center">
@@ -420,7 +427,22 @@ export default function Dashboard() {
                                             </div>
                                         )}
 
-                                        <div className="grid grid-cols-2 gap-3 w-full mt-8">
+                                        {child.pin_code && (
+                                            <div className="mt-4 flex gap-1.5 items-center justify-center p-2.5 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+                                                <span className="text-[10px] font-black uppercase text-indigo-400 mr-1">Pin:</span>
+                                                {child.pin_code.split(',').map((id, idx) => {
+                                                    const category = VISUAL_PIN_CATEGORIES[idx];
+                                                    const item = category?.items.find(i => i.id === id);
+                                                    return (
+                                                        <div key={idx} className="w-8 h-8 bg-white rounded-lg overflow-hidden flex items-center justify-center border border-indigo-200 shadow-sm p-1">
+                                                            <img src={item?.image} alt={item?.name} className="w-full h-full object-contain" />
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-2 gap-3 w-full mt-6">
                                             <button
                                                 onClick={() => {
                                                     if (child.pin_code) {

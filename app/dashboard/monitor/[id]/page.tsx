@@ -58,7 +58,6 @@ export default async function MonitorPage({ params }: { params: { id: string } }
         </Link>
       </div>
 
-      {/* Monitor Component */}
       <LiveMonitor
         childId={child.id}
         childName={`${child.first_name} ${child.last_name}`}
