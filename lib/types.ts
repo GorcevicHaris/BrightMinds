@@ -9,7 +9,7 @@ export interface GameUpdate {
     childId: number;
     activityId: number;
     gameType: 'shape_matching' | 'memory' | 'coloring' | 'sound-to-image';
-    event: 'started' | 'progress' | 'completed' | 'shape_placed' | 'card_flipped' | 'color_applied' | 'answer';
+    event: 'started' | 'progress' | 'completed' | 'shape_placed' | 'card_flipped' | 'color_applied' | 'answer' | 'new_round';
     data: any;
     timestamp: string;
 }

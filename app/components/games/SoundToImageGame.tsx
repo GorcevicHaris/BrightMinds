@@ -54,6 +54,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
     const [isPlayingSound, setIsPlayingSound] = useState(false);
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
+    const initialRoundRef = useRef(false);
     const maxRounds = 5 + level; // Više rundi sa višim nivoima
 
     // Sync with monitor state
@@ -70,7 +71,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
 
     const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
 
-    const generateRound = useCallback(() => {
+    const generateRound = useCallback((stats?: { score: number, round: number, correctCount: number, incorrectCount: number }) => {
         // Broj dostupnih zvukova raste sa nivoom
         const availableCount = Math.min(4 + (level * 2), SOUND_ITEMS.length);
         const availableSounds = SOUND_ITEMS.slice(0, availableCount);
@@ -94,13 +95,46 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
         setCurrentSound(correctAnswer);
         setOptions(allOptions);
         setFeedback(null);
-    }, [level]);
+
+        // Emituj novi krug monitoru
+        if (!isMonitor) {
+            emitGameProgress({
+                childId,
+                activityId: 5,
+                gameType: 'sound-to-image',
+                event: 'new_round',
+                data: {
+                    currentSound: correctAnswer,
+                    options: allOptions,
+                    score: stats ? stats.score : 0,
+                    round: stats ? stats.round : 0,
+                    correctCount: stats ? stats.correctCount : 0,
+                    incorrectCount: stats ? stats.incorrectCount : 0,
+                },
+                timestamp: new Date().toISOString(),
+            });
+        }
+    }, [level, childId, emitGameProgress, isMonitor]);
 
     useEffect(() => {
-        if (isPlaying && !isMonitor) {
+        if (isPlaying && !isMonitor && !initialRoundRef.current) {
+            initialRoundRef.current = true;
             generateRound();
         }
     }, [isPlaying, generateRound, isMonitor]);
+
+    // Cleanup results on unmount
+    useEffect(() => {
+        return () => {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, []);
 
     const startGame = () => {
         setShowMoodBefore(true);
@@ -125,6 +159,17 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
             incorrectCount: 0,
         });
     };
+
+    const stopSound = useCallback(() => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current = null;
+        }
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+        setIsPlayingSound(false);
+    }, []);
 
     const playSound = () => {
         if (!currentSound || isPlayingSound) return;
@@ -196,6 +241,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
     const handleAnswer = (selectedItem: SoundItem) => {
         if (!isPlaying || isMonitor || feedback) return;
 
+        stopSound();
         const isCorrect = selectedItem.id === currentSound?.id;
         setFeedback(isCorrect ? "correct" : "incorrect");
 
@@ -253,7 +299,12 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
                     setShowMoodAfter(true);
                 }, 500);
             } else {
-                generateRound();
+                generateRound({
+                    score: newScore,
+                    round: newRound,
+                    correctCount: newCorrectCount,
+                    incorrectCount: newIncorrectCount
+                });
             }
         }, 1500);
     };

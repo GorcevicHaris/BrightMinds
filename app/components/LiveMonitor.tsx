@@ -153,6 +153,8 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
           : '🔄 Progres';
       case 'completed':
         return `🏆 Završio igru! Konačan rezultat: ${update.data.finalScore} poena`;
+      case 'new_round':
+        return `🎯 Nova runda - Pronađi ${update.data.currentSound?.label}`;
       default:
         return update.event;
     }
