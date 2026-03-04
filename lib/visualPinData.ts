@@ -27,15 +27,15 @@ export const VISUAL_PIN_CATEGORIES = [
         name: 'Hrana',
         items: [
             { id: 'cevapi', emoji: '🍢', name: 'Ćevapi', image: '/pins/food/cevapi.png' },
-            { id: 'sausages', emoji: '🌭', name: 'Kobasice', image: '/pins/food/sausages.png' },
-            { id: 'pancakes', emoji: '🥞', name: 'Palačinke', image: '/pins/food/pancakes.png' },
-            { id: 'meatballs', emoji: '🧆', name: 'Ćufte', image: '/pins/food/meatballs.png' },
-            { id: 'pizza', emoji: '🍕', name: 'Pica', image: '/pins/food/pizza.png' },
+            { id: 'sausages', emoji: '🌭', name: 'Kobasice', image: '/pins/food/cufte.png' },
+            { id: 'pancakes', emoji: '🥞', name: 'Palačinke', image: '/pins/food/palacinke.png' },
+            { id: 'meatballs', emoji: '🧆', name: 'Ćufte', image: '/pins/food/pica.png' },
+            { id: 'pizza', emoji: '🍕', name: 'Pica', image: '/pins/food/krofne.png' },
             { id: 'burger', emoji: '🍔', name: 'Burger', image: '/pins/food/burger.png' },
-            { id: 'eggs', emoji: '🍳', name: 'Jaja', image: '/pins/food/eggs.png' },
-            { id: 'gyros', emoji: '🌯', name: 'Giros', image: '/pins/food/gyros.png' },
-            { id: 'fish', emoji: '🐟', name: 'Riba', image: '/pins/food/fish.png' },
-            { id: 'fries', emoji: '🍟', name: 'Pomfrit', image: '/pins/food/fries.png' },
+            { id: 'eggs', emoji: '🍳', name: 'Jaja', image: '/pins/food/jaja.png' },
+            { id: 'gyros', emoji: '🌯', name: 'Giros', image: '/pins/food/riba.png' },
+            { id: 'fish', emoji: '🐟', name: 'Riba', image: '/pins/food/kebab.png' },
+            { id: 'fries', emoji: '🍟', name: 'Pomfrit', image: '/pins/food/sendvic.png' },
         ]
     },
     {

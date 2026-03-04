@@ -48,13 +48,15 @@ export async function POST(req: NextRequest) {
         }
 
         // Unesi progress log (bez provere aktivnosti)
-        console.log("💾 Upisujem u progress_logs...");
+        console.log("💾 Upisujem u progress_logs: childId=" + childId + ", activityId=" + activityId);
+
         const [result] = await pool.query<ResultSetHeader>(
             `INSERT INTO progress_logs 
        (child_id, activity_id, success_level, duration_minutes, notes, mood_before, mood_after, recorded_by) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [childId, activityId, successLevel, durationMinutes, notes, moodBefore, moodAfter, user.id]
         );
+
         console.log("✅ USPEŠNO UPISANO! Insert ID:", result.insertId);
 
         return NextResponse.json({

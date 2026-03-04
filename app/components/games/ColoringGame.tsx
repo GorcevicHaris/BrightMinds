@@ -35,131 +35,155 @@ const COLORS = [
 ];
 
 const TEMPLATES = {
+  // ─── NIVO 1: SUNCE ───────────────────────────────────────────────────────────
   1: [
-    { id: 1, path: "M200,150 m-40,0 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0", targetColor: "#FBBF24" },
-    { id: 2, path: "M200,90 L200,110 L210,110 L210,90 Z", targetColor: "#F97316" },
-    { id: 3, path: "M260,150 L280,150 L280,160 L260,160 Z", targetColor: "#F97316" },
-    { id: 4, path: "M200,190 L200,210 L210,210 L210,190 Z", targetColor: "#F97316" },
-    { id: 5, path: "M120,150 L140,150 L140,160 L120,160 Z", targetColor: "#F97316" },
-    { id: 6, path: "M235,115 L255,95 L260,105 L240,125 Z", targetColor: "#F97316" },
+    { id: 1, path: "M200,200 m-70,0 a70,70 0 1,0 140,0 a70,70 0 1,0 -140,0", targetColor: "#FBBF24" },
+    { id: 2, path: "M193,108 L200,58 L207,108 Z", targetColor: "#F59E0B" },
+    { id: 3, path: "M248,125 L285,78 L274,125 Z", targetColor: "#F59E0B" },
+    { id: 4, path: "M278,193 L335,200 L278,207 Z", targetColor: "#F59E0B" },
+    { id: 5, path: "M248,275 L285,322 L248,310 Z", targetColor: "#F59E0B" },
+    { id: 6, path: "M193,292 L200,342 L207,292 Z", targetColor: "#F59E0B" },
+    { id: 7, path: "M152,275 L115,322 L152,310 Z", targetColor: "#F59E0B" },
+    { id: 8, path: "M122,193 L65,200 L122,207 Z", targetColor: "#F59E0B" },
+    { id: 9, path: "M152,125 L115,78 L152,112 Z", targetColor: "#F59E0B" },
   ],
+
+  // ─── NIVO 2: KUĆICA ──────────────────────────────────────────────────────────
   2: [
-    { id: 1, path: "M100,200 L100,320 L300,320 L300,200 Z", targetColor: "#EF4444" },
-    { id: 2, path: "M80,200 L200,120 L320,200 Z", targetColor: "#92400E" },
-    { id: 3, path: "M160,240 L160,320 L200,320 L200,240 Z", targetColor: "#3B82F6" },
-    { id: 4, path: "M120,220 L120,260 L160,260 L160,220 Z", targetColor: "#60A5FA" },
-    { id: 5, path: "M240,220 L240,260 L280,260 L280,220 Z", targetColor: "#60A5FA" },
-    { id: 6, path: "M175,280 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0", targetColor: "#FBBF24" },
-    { id: 7, path: "M140,240 L140,220 L180,220 L180,240 Z", targetColor: "#60A5FA" },
-    { id: 8, path: "M190,140 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0", targetColor: "#6B7280" },
+    { id: 1, path: "M75,224 L75,365 L325,365 L325,224 Z", targetColor: "#EF4444" },
+    { id: 2, path: "M50,235 L200,95 L350,235 Z", targetColor: "#92400E" },
+    { id: 3, path: "M168,284 L168,365 L232,365 L232,284 Q200,265 168,284 Z", targetColor: "#8B4513" },
+    { id: 4, path: "M95,242 L95,306 L155,306 L155,242 Z", targetColor: "#60A5FA" },
+    { id: 5, path: "M245,242 L245,306 L305,306 L305,242 Z", targetColor: "#60A5FA" },
+    { id: 6, path: "M95,271 L155,271 L155,276 L95,276 Z", targetColor: "#FFFFFF" },
+    { id: 7, path: "M122,242 L128,242 L128,306 L122,306 Z", targetColor: "#FFFFFF" },
+    { id: 8, path: "M245,271 L305,271 L305,276 L245,276 Z", targetColor: "#FFFFFF" },
+    { id: 9, path: "M272,242 L278,242 L278,306 L272,306 Z", targetColor: "#FFFFFF" },
+    { id: 10, path: "M248,97 L248,170 L278,170 L278,118 Z", targetColor: "#6B7280" },
+    { id: 11, path: "M252,80 m-13,0 a13,20 0 1,0 26,0 a13,20 0 1,0 -26,0", targetColor: "#9CA3AF" },
+    { id: 12, path: "M270,62 m-10,0 a10,16 0 1,0 20,0 a10,16 0 1,0 -20,0", targetColor: "#D1D5DB" },
+    { id: 13, path: "M220,322 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0", targetColor: "#FBBF24" },
+    { id: 14, path: "M55,358 Q130,342 200,358 Q270,342 345,358 L345,378 L55,378 Z", targetColor: "#10B981" },
   ],
+
+  // ─── NIVO 3: CVIJET ──────────────────────────────────────────────────────────
   3: [
-    { id: 1, path: "M200,200 m-25,0 a25,25 0 1,0 50,0 a25,25 0 1,0 -50,0", targetColor: "#FBBF24" },
-    { id: 2, path: "M200,145 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0", targetColor: "#EC4899" },
-    { id: 3, path: "M238,167 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0", targetColor: "#EC4899" },
-    { id: 4, path: "M238,233 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0", targetColor: "#EC4899" },
-    { id: 5, path: "M200,255 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0", targetColor: "#EC4899" },
-    { id: 6, path: "M162,233 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0", targetColor: "#EC4899" },
-    { id: 7, path: "M162,167 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0", targetColor: "#EC4899" },
-    { id: 8, path: "M195,260 L205,260 L205,350 L195,350 Z", targetColor: "#10B981" },
-    { id: 9, path: "M195,280 Q160,290 140,310 L145,315 Q165,295 195,285 Z", targetColor: "#10B981" },
-    { id: 10, path: "M205,300 Q240,310 260,330 L255,335 Q235,315 205,305 Z", targetColor: "#10B981" },
+    { id: 1, path: "M194,300 L206,300 L210,405 L190,405 Z", targetColor: "#10B981" },
+    { id: 2, path: "M195,340 Q148,318 125,348 Q162,366 195,352 Z", targetColor: "#34D399" },
+    { id: 3, path: "M205,340 Q252,318 275,348 Q238,366 205,352 Z", targetColor: "#34D399" },
+    { id: 4, path: "M200,180 m-30,0 a30,45 0 1,0 60,0 a30,45 0 1,0 -60,0", targetColor: "#EC4899" },
+    { id: 5, path: "M240,196 m-30,0 a30,45 30 1,0 60,0 a30,45 30 1,0 -60,0", targetColor: "#F9A8D4" },
+    { id: 6, path: "M258,232 m-30,0 a30,45 60 1,0 60,0 a30,45 60 1,0 -60,0", targetColor: "#EC4899" },
+    { id: 7, path: "M240,268 m-30,0 a30,45 120 1,0 60,0 a30,45 120 1,0 -60,0", targetColor: "#F9A8D4" },
+    { id: 8, path: "M160,268 m-30,0 a30,45 240 1,0 60,0 a30,45 240 1,0 -60,0", targetColor: "#EC4899" },
+    { id: 9, path: "M142,232 m-30,0 a30,45 300 1,0 60,0 a30,45 300 1,0 -60,0", targetColor: "#F9A8D4" },
+    { id: 10, path: "M160,196 m-30,0 a30,45 330 1,0 60,0 a30,45 330 1,0 -60,0", targetColor: "#EC4899" },
+    { id: 11, path: "M200,232 m-40,0 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0", targetColor: "#FBBF24" },
+    { id: 12, path: "M200,232 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0", targetColor: "#F97316" },
   ],
+
+  // ─── NIVO 4: LEPTIR ──────────────────────────────────────────────────────────
   4: [
-    { id: 1, path: "M195,180 L205,180 L205,250 L195,250 Z", targetColor: "#1F2937" },
-    { id: 2, path: "M198,170 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0", targetColor: "#1F2937" },
-    { id: 3, path: "M150,150 Q120,180 140,220 Q160,200 170,180 Z", targetColor: "#A855F7" },
-    { id: 4, path: "M155,160 Q135,180 145,210 Q160,195 165,185 Z", targetColor: "#EC4899" },
-    { id: 5, path: "M250,150 Q280,180 260,220 Q240,200 230,180 Z", targetColor: "#A855F7" },
-    { id: 6, path: "M245,160 Q265,180 255,210 Q240,195 235,185 Z", targetColor: "#EC4899" },
-    { id: 7, path: "M150,240 Q130,270 155,300 Q175,280 180,260 Z", targetColor: "#3B82F6" },
-    { id: 8, path: "M158,250 Q145,270 160,290 Q172,275 175,265 Z", targetColor: "#60A5FA" },
-    { id: 9, path: "M250,240 Q270,270 245,300 Q225,280 220,260 Z", targetColor: "#3B82F6" },
-    { id: 10, path: "M242,250 Q255,270 240,290 Q228,275 225,265 Z", targetColor: "#60A5FA" },
-    { id: 11, path: "M190,165 L180,150 L185,148 L195,163 Z", targetColor: "#1F2937" },
-    { id: 12, path: "M210,165 L220,150 L215,148 L205,163 Z", targetColor: "#1F2937" },
+    { id: 1, path: "M196,155 L204,155 L208,320 L192,320 Z", targetColor: "#1F2937" },
+    { id: 2, path: "M200,142 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0", targetColor: "#1F2937" },
+    { id: 3, path: "M193,128 Q168,90 150,70 L154,67 Q173,88 196,126 Z", targetColor: "#4B5563" },
+    { id: 4, path: "M207,128 Q232,90 250,70 L246,67 Q227,88 204,126 Z", targetColor: "#4B5563" },
+    { id: 5, path: "M150,67 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0", targetColor: "#A855F7" },
+    { id: 6, path: "M250,67 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0", targetColor: "#A855F7" },
+    { id: 7, path: "M192,185 Q138,138 70,148 Q44,190 80,242 Q118,275 192,245 Z", targetColor: "#7C3AED" },
+    { id: 8, path: "M208,185 Q262,138 330,148 Q356,190 320,242 Q282,275 208,245 Z", targetColor: "#7C3AED" },
+    { id: 9, path: "M192,255 Q138,260 95,285 Q100,338 155,318 Q182,298 192,272 Z", targetColor: "#A855F7" },
+    { id: 10, path: "M208,255 Q262,260 305,285 Q300,338 245,318 Q218,298 208,272 Z", targetColor: "#A855F7" },
+    { id: 11, path: "M128,198 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0", targetColor: "#FBBF24" },
+    { id: 12, path: "M272,198 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0", targetColor: "#FBBF24" },
+    { id: 13, path: "M148,275 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0", targetColor: "#FDE68A" },
+    { id: 14, path: "M252,275 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0", targetColor: "#FDE68A" },
   ],
+
+  // ─── NIVO 5: SLON ────────────────────────────────────────────────────────────
   5: [
-    { id: 1, path: "M120,180 Q100,200 110,240 L150,240 Q140,200 120,180 Z", targetColor: "#6B7280" },
-    { id: 2, path: "M280,180 Q300,200 290,240 L250,240 Q260,200 280,180 Z", targetColor: "#6B7280" },
-    { id: 3, path: "M140,200 Q200,180 260,200 Q270,260 200,270 Q130,260 140,200 Z", targetColor: "#9CA3AF" },
-    { id: 4, path: "M190,250 L195,250 Q195,320 190,340 L185,340 Q185,320 190,250 Z", targetColor: "#6B7280" },
-    { id: 5, path: "M175,215 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0", targetColor: "#1F2937" },
-    { id: 6, path: "M225,215 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0", targetColor: "#1F2937" },
-    { id: 7, path: "M165,215 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0", targetColor: "#F3F4F6" },
-    { id: 8, path: "M215,215 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0", targetColor: "#F3F4F6" },
-    { id: 9, path: "M150,265 Q120,280 140,340 L160,340 Q150,300 150,265 Z", targetColor: "#9CA3AF" },
-    { id: 10, path: "M250,265 Q280,280 260,340 L240,340 Q250,300 250,265 Z", targetColor: "#9CA3AF" },
-    { id: 11, path: "M145,330 L145,370 L165,370 L165,330 Z", targetColor: "#6B7280" },
-    { id: 12, path: "M175,330 L175,370 L195,370 L195,330 Z", targetColor: "#6B7280" },
-    { id: 13, path: "M205,330 L205,370 L225,370 L225,330 Z", targetColor: "#6B7280" },
-    { id: 14, path: "M235,330 L235,370 L255,370 L255,330 Z", targetColor: "#6B7280" },
-    { id: 15, path: "M185,335 L190,350 L195,350 L192,340 Z", targetColor: "#F3F4F6" },
+    { id: 1, path: "M100,205 Q78,258 90,315 L310,315 Q322,258 300,205 Q200,165 100,205 Z", targetColor: "#9CA3AF" },
+    { id: 2, path: "M78,155 Q55,195 75,238 Q108,260 158,248 Q178,215 168,172 Q142,130 78,155 Z", targetColor: "#D1D5DB" },
+    { id: 3, path: "M68,236 Q38,266 48,318 Q60,348 82,348 Q98,348 102,316 L90,314 Q88,340 82,330 Q66,314 70,284 Q82,264 92,240 Z", targetColor: "#9CA3AF" },
+    { id: 4, path: "M55,160 Q22,180 27,232 Q44,262 78,256 Q98,226 88,178 Z", targetColor: "#F9A8D4" },
+    { id: 5, path: "M112,178 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#1F2937" },
+    { id: 6, path: "M108,175 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0", targetColor: "#FFFFFF" },
+    { id: 7, path: "M115,308 L110,390 L140,390 L142,308 Z", targetColor: "#6B7280" },
+    { id: 8, path: "M170,308 L168,390 L198,390 L196,308 Z", targetColor: "#6B7280" },
+    { id: 9, path: "M215,308 L213,390 L243,390 L240,308 Z", targetColor: "#6B7280" },
+    { id: 10, path: "M262,308 L260,390 L290,390 L288,308 Z", targetColor: "#6B7280" },
+    { id: 11, path: "M305,224 Q342,236 347,265 Q342,285 327,280 L326,274 Q337,278 340,265 Q337,240 305,230 Z", targetColor: "#6B7280" },
+    { id: 12, path: "M324,276 Q322,296 312,308 Q318,314 332,306 Q340,290 328,276 Z", targetColor: "#4B5563" },
+    { id: 13, path: "M58,196 Q46,216 52,238 Q58,248 66,242 Q60,226 62,204 Z", targetColor: "#EC4899" },
+    { id: 14, path: "M78,238 Q57,258 62,284 Q73,290 84,274 Q87,258 90,240 Z", targetColor: "#F9FAFB" },
   ],
 
+  // ─── NIVO 6: RIBA ────────────────────────────────────────────────────────────
   6: [
-    { id: 1, path: "M100,200 Q120,160 180,160 Q240,160 260,200 Q240,240 180,240 Q120,240 100,200 Z", targetColor: "#F97316" }, // Telo
-    { id: 2, path: "M260,180 L320,160 L300,200 L320,240 L260,220 Z", targetColor: "#FBBF24" }, // Rep
-    { id: 3, path: "M180,140 L200,120 L220,140 L200,160 Z", targetColor: "#EF4444" }, // Peraja gornja
-    { id: 4, path: "M180,260 L200,280 L220,260 L200,240 Z", targetColor: "#EF4444" }, // Peraja donja
-    { id: 5, path: "M125,185 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#F3F4F6" }, // Oko belo
-    { id: 6, path: "M125,185 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0", targetColor: "#1F2937" }, // Oko crno
-    { id: 7, path: "M150,175 Q170,170 190,175", targetColor: "#FBBF24", stroke: true }, // Šara 1
-    { id: 8, path: "M150,190 Q170,185 190,190", targetColor: "#FBBF24", stroke: true }, // Šara 2
-    { id: 9, path: "M150,205 Q170,200 190,205", targetColor: "#FBBF24", stroke: true }, // Šara 3
-    { id: 10, path: "M150,220 Q170,215 190,220", targetColor: "#FBBF24", stroke: true }, // Šara 4
-    { id: 11, path: "M200,175 Q220,170 240,175", targetColor: "#FBBF24", stroke: true }, // Šara 5
-    { id: 12, path: "M200,190 Q220,185 240,190", targetColor: "#FBBF24", stroke: true }, // Šara 6
-    { id: 13, path: "M200,205 Q220,200 240,205", targetColor: "#FBBF24", stroke: true }, // Šara 7
-    { id: 14, path: "M200,220 Q220,215 240,220", targetColor: "#FBBF24", stroke: true }, // Šara 8
-    { id: 15, path: "M265,190 Q285,180 305,190", targetColor: "#F97316", stroke: true }, // Rep šara 1
-    { id: 16, path: "M265,210 Q285,220 305,210", targetColor: "#F97316", stroke: true }, // Rep šara 2
+    { id: 1, path: "M98,200 Q160,148 272,200 Q160,252 98,200 Z", targetColor: "#F97316" },
+    { id: 2, path: "M270,178 L342,142 L342,258 L270,222 Z", targetColor: "#FBBF24" },
+    { id: 3, path: "M158,153 Q200,112 242,150 L200,173 Z", targetColor: "#EF4444" },
+    { id: 4, path: "M158,247 Q200,288 242,250 L200,227 Z", targetColor: "#EF4444" },
+    { id: 5, path: "M190,200 Q196,222 222,228 Q216,200 190,200 Z", targetColor: "#FDE68A" },
+    { id: 6, path: "M118,192 m-17,0 a17,17 0 1,0 34,0 a17,17 0 1,0 -34,0", targetColor: "#FFFFFF" },
+    { id: 7, path: "M118,192 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0", targetColor: "#1F2937" },
+    { id: 8, path: "M112,186 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0", targetColor: "#FFFFFF" },
+    { id: 9, path: "M100,208 Q108,220 120,214 Q110,205 100,208 Z", targetColor: "#EF4444" },
+    { id: 10, path: "M148,170 Q145,200 148,230", targetColor: "#C2410C", stroke: true },
+    { id: 11, path: "M175,175 Q186,170 197,175 Q186,185 175,175 Z", targetColor: "#FB923C" },
+    { id: 12, path: "M207,170 Q218,165 229,170 Q218,180 207,170 Z", targetColor: "#FB923C" },
+    { id: 13, path: "M192,196 Q202,191 212,196 Q202,206 192,196 Z", targetColor: "#FB923C" },
+    { id: 14, path: "M175,218 Q186,213 197,218 Q186,228 175,218 Z", targetColor: "#FB923C" },
+    { id: 15, path: "M87,168 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0", targetColor: "#BAE6FD" },
+    { id: 16, path: "M68,148 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0", targetColor: "#BAE6FD" },
   ],
 
-  // NIVO 7 - Automobil (18 delova)
+  // ─── NIVO 7: AUTOMOBIL ───────────────────────────────────────────────────────
   7: [
-    { id: 1, path: "M80,250 L80,280 L320,280 L320,250 L280,250 L280,220 L220,220 L200,200 L150,200 L130,220 L100,220 L100,250 Z", targetColor: "#EF4444" }, // Karoserija
-    { id: 2, path: "M130,220 L150,200 L200,200 L220,220 Z", targetColor: "#60A5FA" }, // Vetrobran
-    { id: 3, path: "M105,225 L105,250 L145,250 L145,225 Z", targetColor: "#60A5FA" }, // Prozor levi
-    { id: 4, path: "M235,225 L235,250 L275,250 L275,225 Z", targetColor: "#60A5FA" }, // Prozor desni
-    { id: 5, path: "M120,280 m-25,0 a25,25 0 1,0 50,0 a25,25 0 1,0 -50,0", targetColor: "#1F2937" }, // Točak levi spoljna
-    { id: 6, path: "M120,280 m-15,0 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0", targetColor: "#6B7280" }, // Točak levi felna
-    { id: 7, path: "M280,280 m-25,0 a25,25 0 1,0 50,0 a25,25 0 1,0 -50,0", targetColor: "#1F2937" }, // Točak desni spoljna
-    { id: 8, path: "M280,280 m-15,0 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0", targetColor: "#6B7280" }, // Točak desni felna
-    { id: 9, path: "M85,255 L95,255 L95,265 L85,265 Z", targetColor: "#FBBF24" }, // Far levi
-    { id: 10, path: "M305,255 L315,255 L315,265 L305,265 Z", targetColor: "#FBBF24" }, // Far desni
-    { id: 11, path: "M100,285 L110,285 L110,275 L100,275 Z", targetColor: "#EF4444" }, // Stop levi
-    { id: 12, path: "M290,285 L300,285 L300,275 L290,275 Z", targetColor: "#EF4444" }, // Stop desni
-    { id: 13, path: "M150,230 L160,230 L160,240 L150,240 Z", targetColor: "#1F2937" }, // Vrata kvaka leva
-    { id: 14, path: "M240,230 L250,230 L250,240 L240,240 Z", targetColor: "#1F2937" }, // Vrata kvaka desna
-    { id: 15, path: "M180,190 L200,170 L220,190 Z", targetColor: "#3B82F6" }, // Krov svetlo
-    { id: 16, path: "M130,255 L140,255 L140,265 L130,265 Z", targetColor: "#6B7280" }, // Detalj 1
-    { id: 17, path: "M260,255 L270,255 L270,265 L260,265 Z", targetColor: "#6B7280" }, // Detalj 2
-    { id: 18, path: "M195,275 L205,275 L205,280 L195,280 Z", targetColor: "#1F2937" }, // Detalj 3
+    { id: 1, path: "M58,252 L58,312 L342,312 L342,252 Z", targetColor: "#EF4444" },
+    { id: 2, path: "M108,252 L128,178 L272,178 L292,252 Z", targetColor: "#DC2626" },
+    { id: 3, path: "M116,250 L133,186 L196,186 L196,250 Z", targetColor: "#BAE6FD" },
+    { id: 4, path: "M204,250 L204,186 L267,186 L284,250 Z", targetColor: "#BAE6FD" },
+    { id: 5, path: "M196,186 L204,186 L204,250 L196,250 Z", targetColor: "#DC2626" },
+    { id: 6, path: "M52,298 L52,318 L114,318 L114,298 Z", targetColor: "#6B7280" },
+    { id: 7, path: "M286,298 L286,318 L348,318 L348,298 Z", targetColor: "#6B7280" },
+    { id: 8, path: "M100,312 m-40,0 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0", targetColor: "#1F2937" },
+    { id: 9, path: "M100,312 m-26,0 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0", targetColor: "#9CA3AF" },
+    { id: 10, path: "M100,312 m-11,0 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0", targetColor: "#374151" },
+    { id: 11, path: "M300,312 m-40,0 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0", targetColor: "#1F2937" },
+    { id: 12, path: "M300,312 m-26,0 a26,26 0 1,0 52,0 a26,26 0 1,0 -52,0", targetColor: "#9CA3AF" },
+    { id: 13, path: "M300,312 m-11,0 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0", targetColor: "#374151" },
+    { id: 14, path: "M62,256 L62,280 L88,280 L88,256 Z", targetColor: "#FDE68A" },
+    { id: 15, path: "M312,256 L312,280 L338,280 L338,256 Z", targetColor: "#FCA5A5" },
+    { id: 16, path: "M200,210 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0", targetColor: "#374151" },
+    { id: 17, path: "M152,268 L152,280 L174,280 L174,268 Z", targetColor: "#9CA3AF" },
+    { id: 18, path: "M226,268 L226,280 L248,280 L248,268 Z", targetColor: "#9CA3AF" },
   ],
 
-  // NIVO 8 - Mačka (20 delova)
+  // ─── NIVO 8: MAČKA ───────────────────────────────────────────────────────────
   8: [
-    { id: 1, path: "M150,120 L140,90 L165,100 Z", targetColor: "#F97316" }, // Uvo levo spoljna
-    { id: 2, path: "M152,115 L148,95 L160,102 Z", targetColor: "#EC4899" }, // Uvo levo unutrašnja
-    { id: 3, path: "M250,120 L260,90 L235,100 Z", targetColor: "#F97316" }, // Uvo desno spoljna
-    { id: 4, path: "M248,115 L252,95 L240,102 Z", targetColor: "#EC4899" }, // Uvo desno unutrašnja
-    { id: 5, path: "M140,140 Q200,120 260,140 Q270,190 200,200 Q130,190 140,140 Z", targetColor: "#F97316" }, // Glava
-    { id: 6, path: "M170,160 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0", targetColor: "#10B981" }, // Oko levo
-    { id: 7, path: "M230,160 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0", targetColor: "#10B981" }, // Oko desno
-    { id: 8, path: "M165,160 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0", targetColor: "#1F2937" }, // Zenica leva
-    { id: 9, path: "M225,160 m-3,0 a3,3 0 1,0 6,0 a3,3 0 1,0 -6,0", targetColor: "#1F2937" }, // Zenica desna
-    { id: 10, path: "M190,175 L200,180 L210,175 Q205,185 200,187 Q195,185 190,175 Z", targetColor: "#EC4899" }, // Nos
-    { id: 11, path: "M150,210 Q120,240 140,320 L170,320 Q160,270 150,210 Z", targetColor: "#F97316" }, // Telo levo
-    { id: 12, path: "M250,210 Q280,240 260,320 L230,320 Q240,270 250,210 Z", targetColor: "#F97316" }, // Telo desno
-    { id: 13, path: "M200,180 Q200,200 190,210", targetColor: "#1F2937", stroke: true }, // Brkovi levo 1
-    { id: 14, path: "M200,185 Q185,195 175,200", targetColor: "#1F2937", stroke: true }, // Brkovi levo 2
-    { id: 15, path: "M200,180 Q200,200 210,210", targetColor: "#1F2937", stroke: true }, // Brkovi desno 1
-    { id: 16, path: "M200,185 Q215,195 225,200", targetColor: "#1F2937", stroke: true }, // Brkovi desno 2
-    { id: 17, path: "M145,310 L150,360 L165,360 L165,315 Z", targetColor: "#F97316" }, // Noga leva prednja
-    { id: 18, path: "M175,315 L175,360 L190,360 L185,320 Z", targetColor: "#F97316" }, // Noga leva zadnja
-    { id: 19, path: "M210,320 L215,360 L230,360 L225,315 Z", targetColor: "#F97316" }, // Noga desna zadnja
-    { id: 20, path: "M235,315 L235,360 L250,360 L255,310 Z", targetColor: "#F97316" }, // Noga desna prednja
+    { id: 1, path: "M128,244 Q118,314 133,374 L267,374 Q282,314 272,244 Q200,224 128,244 Z", targetColor: "#F97316" },
+    { id: 2, path: "M108,178 Q103,234 138,252 Q200,270 262,252 Q297,234 292,178 Q252,132 200,130 Q148,132 108,178 Z", targetColor: "#FB923C" },
+    { id: 3, path: "M113,188 L98,120 L155,162 Z", targetColor: "#F97316" },
+    { id: 4, path: "M116,184 L106,134 L148,164 Z", targetColor: "#FCA5A5" },
+    { id: 5, path: "M287,188 L302,120 L245,162 Z", targetColor: "#F97316" },
+    { id: 6, path: "M284,184 L294,134 L252,164 Z", targetColor: "#FCA5A5" },
+    { id: 7, path: "M163,188 m-20,0 a20,16 0 1,0 40,0 a20,16 0 1,0 -40,0", targetColor: "#FFFFFF" },
+    { id: 8, path: "M163,188 m-10,0 a10,14 0 1,0 20,0 a10,14 0 1,0 -20,0", targetColor: "#10B981" },
+    { id: 9, path: "M163,188 m-5,0 a5,10 0 1,0 10,0 a5,10 0 1,0 -10,0", targetColor: "#1F2937" },
+    { id: 10, path: "M237,188 m-20,0 a20,16 0 1,0 40,0 a20,16 0 1,0 -40,0", targetColor: "#FFFFFF" },
+    { id: 11, path: "M237,188 m-10,0 a10,14 0 1,0 20,0 a10,14 0 1,0 -20,0", targetColor: "#10B981" },
+    { id: 12, path: "M237,188 m-5,0 a5,10 0 1,0 10,0 a5,10 0 1,0 -10,0", targetColor: "#1F2937" },
+    { id: 13, path: "M200,222 L188,210 L212,210 Z", targetColor: "#EC4899" },
+    { id: 14, path: "M200,224 Q185,237 174,232", targetColor: "#1F2937", stroke: true },
+    { id: 15, path: "M200,224 Q215,237 226,232", targetColor: "#1F2937", stroke: true },
+    { id: 16, path: "M185,213 L132,202", targetColor: "#1F2937", stroke: true },
+    { id: 17, path: "M185,220 L132,226", targetColor: "#1F2937", stroke: true },
+    { id: 18, path: "M215,213 L268,202", targetColor: "#1F2937", stroke: true },
+    { id: 19, path: "M215,220 L268,226", targetColor: "#1F2937", stroke: true },
+    { id: 20, path: "M264,345 Q322,334 338,302 Q348,276 332,262 Q322,260 320,270 Q330,280 324,300 Q312,325 260,358 Z", targetColor: "#F97316" },
+    { id: 21, path: "M143,366 L138,404 L163,404 L160,366 Z", targetColor: "#F97316" },
+    { id: 22, path: "M238,366 L235,404 L260,404 L257,366 Z", targetColor: "#F97316" },
   ],
 };
 
@@ -225,19 +249,13 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
       setTimeLeft((prev: number) => {
         const newTime = prev - 1;
 
-        // Svakih 10 sekundi pošalji "heartbeat" za vreme
         if (newTime > 0 && newTime % 10 === 0) {
           emitGameProgress({
             childId,
             activityId: 4,
             gameType: 'coloring',
             event: 'progress',
-            data: {
-              timeLeft: newTime,
-              score,
-              level,
-              completedZones,
-            },
+            data: { timeLeft: newTime, score, level, completedZones },
             timestamp: new Date().toISOString(),
           });
         }
@@ -267,12 +285,7 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
       activityId: 4,
       gameType: 'coloring',
       event: 'completed',
-      data: {
-        finalScore,
-        segmentsColored: completedZones,
-        completed,
-        timeSpent,
-      },
+      data: { finalScore, segmentsColored: completedZones, completed, timeSpent },
       timestamp: new Date().toISOString(),
     });
 
@@ -328,33 +341,29 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
   const handleMoodAfterSelect = (mood: string) => {
     setShowMoodAfter(false);
     const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-
     onComplete(score, duration, moodBefore, mood);
   };
+
   const getLevelName = (lvl: number) => {
-    const names = ["", "Sunce", "Kuća", "Cvijet", "Leptir", "Slon"];
+    const names = ["", "Sunce ☀️", "Kućica 🏠", "Cvijet 🌸", "Leptir 🦋", "Slon 🐘", "Riba 🐟", "Automobil 🚗", "Mačka 🐱"];
     return names[lvl] || "Slika";
   };
 
+  // ─── Mood Before ──────────────────────────────────────────────────────────────
   if (!isMonitor && showMoodBefore) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 rounded-3xl p-8 shadow-xl">
-        <h2 className="text-3xl font-bold text-purple-700 mb-8">
-          Kako se osećaš PRE igre?
-        </h2>
+        <h2 className="text-3xl font-bold text-purple-700 mb-8">Kako se osećaš PRE igre?</h2>
         <div className="grid grid-cols-5 gap-6">
           {[
             { emoji: "😢", label: "Loše", value: "very_upset" },
-            { emoji: "😕", label: "Nisu sjajno", value: "upset" },
+            { emoji: "😕", label: "Nije sjajno", value: "upset" },
             { emoji: "😐", label: "Okej", value: "neutral" },
             { emoji: "😊", label: "Dobro", value: "happy" },
             { emoji: "😄", label: "Super", value: "very_happy" },
           ].map((mood) => (
-            <button
-              key={mood.value}
-              onClick={() => handleMoodBeforeSelect(mood.value)}
-              className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl"
-            >
+            <button key={mood.value} onClick={() => handleMoodBeforeSelect(mood.value)}
+              className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl">
               <span className="text-6xl mb-2">{mood.emoji}</span>
               <span className="text-lg font-semibold text-gray-700">{mood.label}</span>
             </button>
@@ -364,29 +373,22 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
     );
   }
 
+  // ─── Mood After ───────────────────────────────────────────────────────────────
   if (!isMonitor && showMoodAfter) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-green-100 via-yellow-100 to-orange-100 rounded-3xl p-8 shadow-xl">
-        <h2 className="text-3xl font-bold text-green-700 mb-4">
-          Kako se osećaš POSLE igre?
-        </h2>
-        <p className="text-xl text-gray-600 mb-8">
-          Uspešno si obojio/la {getLevelName(level)}! 🎨
-        </p>
-
+        <h2 className="text-3xl font-bold text-green-700 mb-4">Kako se osećaš POSLE igre?</h2>
+        <p className="text-xl text-gray-600 mb-8">Uspešno si obojio/la {getLevelName(level)}! 🎨</p>
         <div className="grid grid-cols-5 gap-6">
           {[
             { emoji: "😢", label: "Loše", value: "very_upset" },
-            { emoji: "😕", label: "Nisu sjajno", value: "upset" },
+            { emoji: "😕", label: "Nije sjajno", value: "upset" },
             { emoji: "😐", label: "Okej", value: "neutral" },
             { emoji: "😊", label: "Dobro", value: "happy" },
             { emoji: "😄", label: "Super", value: "very_happy" },
           ].map((mood) => (
-            <button
-              key={mood.value}
-              onClick={() => handleMoodAfterSelect(mood.value)}
-              className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl"
-            >
+            <button key={mood.value} onClick={() => handleMoodAfterSelect(mood.value)}
+              className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl">
               <span className="text-6xl mb-2">{mood.emoji}</span>
               <span className="text-lg font-semibold text-gray-700">{mood.label}</span>
             </button>
@@ -396,95 +398,94 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
     );
   }
 
+  // ─── Start Screen ─────────────────────────────────────────────────────────────
   if (!isPlaying && completedZones === 0) {
     return (
       <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-rose-50 via-orange-50 to-rose-100 shadow-lg">
-
-        {/* Background Decorations */}
         <div className="absolute top-12 left-12 text-6xl opacity-10 animate-pulse rotate-12">🎨</div>
         <div className="absolute bottom-16 right-12 text-7xl opacity-10 animate-bounce -rotate-12">🖌️</div>
         <div className="absolute top-24 right-20 text-5xl opacity-10 animate-pulse rotate-45">✏️</div>
         <div className="absolute bottom-24 left-24 text-6xl opacity-10 animate-bounce -rotate-6">🌈</div>
-
-        {/* Background Blobs (Softer) */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-rose-200/30 rounded-full blur-3xl -mr-32 -mt-32"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-orange-200/30 rounded-full blur-3xl -ml-32 -mb-32"></div>
 
-        {/* Main Card Content */}
         <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
-
-          {/* Floating Badge */}
           <div className="mb-8 animate-in slide-in-from-top-4 duration-700">
             <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-rose-100 text-rose-600 text-sm font-black uppercase tracking-widest shadow-sm">
               Nivo {level} • {getLevelName(level)}
             </span>
           </div>
-
-          {/* Hero Icon */}
           <div className="mb-10 relative group cursor-default">
             <div className="absolute inset-0 bg-rose-400 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
             <div className="relative w-40 h-40 bg-gradient-to-b from-white to-rose-50 rounded-[2.5rem] shadow-xl border-4 border-white flex items-center justify-center transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300">
               <span className="text-8xl drop-shadow-md">🎨</span>
             </div>
-            {/* Decorative mini icons */}
             <div className="absolute -top-4 -right-4 text-3xl animate-bounce delay-100">🖌️</div>
             <div className="absolute -bottom-4 -left-4 text-3xl animate-bounce delay-300">✨</div>
           </div>
-
-          {/* Title & Description */}
           <h2 className="text-5xl font-black text-slate-800 mb-4 tracking-tight drop-shadow-sm">Bojenje</h2>
           <p className="text-slate-600 text-xl font-medium leading-relaxed mb-12 max-w-sm mx-auto">
             <span className="text-rose-500 font-bold">Oboji sliku</span> bojama koje želiš! Pusti mašti na volju!
           </p>
-
-          {/* Big Action Button */}
-          <button
-            onClick={startGame}
-            className="w-full max-w-sm group bg-rose-500 hover:bg-rose-600 text-white rounded-2xl p-1.5 transition-all duration-300 shadow-xl shadow-rose-200 hover:shadow-rose-300 hover:-translate-y-1"
-          >
+          <button onClick={startGame}
+            className="w-full max-w-sm group bg-rose-500 hover:bg-rose-600 text-white rounded-2xl p-1.5 transition-all duration-300 shadow-xl shadow-rose-200 hover:shadow-rose-300 hover:-translate-y-1">
             <div className="bg-white/10 border border-white/20 rounded-xl px-8 py-5 flex items-center justify-center gap-4 h-full">
               <span className="text-2xl font-bold tracking-wide">ZAPOČNI IGRU</span>
-              <div className="w-12 h-12 bg-white text-rose-600 rounded-xl flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform shadow-inner">
-                ▶
-              </div>
+              <div className="w-12 h-12 bg-white text-rose-600 rounded-xl flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform shadow-inner">▶</div>
             </div>
           </button>
-
         </div>
       </div>
     );
   }
 
+  // ─── Game Screen ──────────────────────────────────────────────────────────────
   return (
-    <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-3xl p-8 shadow-2xl">
-      <div className="flex justify-between items-center mb-8 bg-white/80 backdrop-blur rounded-2xl p-6 shadow-lg">
+    <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-3xl p-6 md:p-8 shadow-2xl">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6 bg-white/80 backdrop-blur rounded-2xl p-4 md:p-6 shadow-lg flex-wrap gap-3">
         <div className="flex items-center gap-4">
-          <div className="text-2xl font-bold text-purple-700">
-            {getLevelName(level)}
-          </div>
-          <div className="text-lg text-gray-600">
-            Obojeno: {completedZones}/{template.length} {/* X/Y */}
-          </div>
-          <div className="text-lg text-gray-600">
-            Preostalo vreme: {timeLeft}s {/* ← dodaješ timeLeft */}
+          <div className="text-xl md:text-2xl font-bold text-purple-700">{getLevelName(level)}</div>
+          <div className="text-base md:text-lg text-gray-600 font-medium">
+            🎨 {completedZones}/{template.length} obojeno
           </div>
         </div>
+        <div className="flex items-center gap-3">
+          <span className={`text-xl md:text-2xl font-bold ${timeLeft <= 30 ? 'text-red-600 animate-pulse' : 'text-blue-700'}`}>
+            ⏱️ {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+          </span>
+          {isConnected && (
+            <span className="text-sm text-green-600 flex items-center gap-1">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              Live
+            </span>
+          )}
+        </div>
         {completedZones === template.length && !showMoodAfter && (
-          <div className="text-2xl font-bold text-green-600 animate-bounce">
-            🎉 Završeno!
-          </div>
+          <div className="text-xl font-bold text-green-600 animate-bounce w-full text-center">🎉 Završeno! Sjajan rad!</div>
         )}
       </div>
 
-      <div className="mb-8 bg-white rounded-2xl p-6 shadow-lg">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">🎨 Izaberi boju:</h3>
-        <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3">
+      {/* Progress bar */}
+      <div className="mb-6 bg-white rounded-2xl p-3 shadow-sm">
+        <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-rose-400 to-orange-400 rounded-full transition-all duration-500"
+            style={{ width: `${(completedZones / template.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Color palette */}
+      <div className="mb-6 bg-white rounded-2xl p-4 md:p-6 shadow-lg">
+        <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">🎨 Izaberi boju:</h3>
+        <div className="grid grid-cols-6 md:grid-cols-12 gap-2 md:gap-3">
           {COLORS.map((color) => (
             <button
               key={color.value}
               onClick={() => setSelectedColor(color.value)}
               className={`aspect-square rounded-xl transition-all ${selectedColor === color.value
-                ? "scale-125 ring-4 ring-purple-500 shadow-xl"
+                ? "scale-125 ring-4 ring-purple-500 shadow-xl z-10 relative"
                 : "hover:scale-110 shadow-md"
                 }`}
               style={{ backgroundColor: color.value }}
@@ -492,38 +493,41 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
             />
           ))}
         </div>
-        <p className="text-sm text-gray-500 mt-4 text-center">
-          💡 Možeš kliknuti ponovo na već obojenu oblast da promeniš boju!
-        </p>
+        <div className="mt-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg shadow-md border-2 border-purple-300" style={{ backgroundColor: selectedColor }} />
+          <span className="text-sm font-medium text-gray-600">
+            Izabrana boja: <strong>{COLORS.find(c => c.value === selectedColor)?.name}</strong>
+          </span>
+        </div>
       </div>
 
-      <div className="bg-white rounded-3xl p-8 shadow-xl">
+      <div className="bg-white rounded-3xl p-4 md:p-8 shadow-xl border-4 border-gray-50">
         <svg
-          viewBox="0 0 400 400"
+          viewBox="0 0 400 420"
           className="w-full h-auto max-w-2xl mx-auto"
           style={{ maxHeight: "600px" }}
         >
-          <rect width="400" height="400" fill="#F9FAFB" />
+          <rect width="400" height="420" fill="#FAFAFA" rx="12" />
 
           {zones.map((zone) => (
             <path
               key={zone.id}
               d={zone.path}
-              fill={zone.color || "#E5E7EB"}
-              stroke="#1F2937"
-              strokeWidth={zone.stroke ? 4 : 2}
+              fill={zone.color || "#E9EBF0"}
+              stroke="#374151"
+              strokeWidth={zone.stroke ? 3.5 : 1.8}
+              strokeLinejoin="round"
+              strokeLinecap="round"
               onClick={() => handleZoneClick(zone.id)}
-              className="transition-all cursor-pointer hover:opacity-80 hover:stroke-purple-500"
+              className="transition-all duration-200 cursor-pointer hover:opacity-75"
+              style={{ filter: zone.color ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' : 'none' }}
             />
           ))}
         </svg>
+        <p className="text-center text-sm text-gray-400 mt-4 font-medium">
+          💡 Klikni na deo slike da ga obojiš! Možeš promijeniti boju klikom opet.
+        </p>
       </div>
-      {isConnected && (
-        <div className="mt-6 text-green-600 font-semibold flex items-center gap-2">
-          <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-          Live praćenje aktivno
-        </div>
-      )}
     </div>
   );
 }

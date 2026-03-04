@@ -18,7 +18,6 @@ export default function ChildPageClient({ child, childId }: Props) {
     console.log(typeof (child.first_name), "First letter of name")
     return (
         <div className="min-h-screen bg-[#F8FAFC] selection:bg-purple-100 font-sans">
-            {/* Minimalist Top Bar */}
             <div className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gdodaj deteray-100">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <div className="flex items-center gap-4">

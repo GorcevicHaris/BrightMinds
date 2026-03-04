@@ -93,6 +93,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
       });
 
       if (response.ok) {
+        console.log("✅ Rezultat uspešno sačuvan!");
         setMessage(`🎉 Bravo! Osvojio/la si ${score} poena!`);
         if (score >= 200 && currentLevel < 8) {
           setTimeout(() => {
@@ -103,13 +104,19 @@ export default function GameContainer({ childId, childName }: GameContainerProps
         } else {
           setTimeout(() => setMessage(""), 4000);
         }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("❌ Greška pri čuvanju:", response.status, errorData);
+        setMessage(`⚠️ Greška: ${errorData.error || "Server nije prihvatio rezultat"}`);
+        setTimeout(() => setMessage(""), 5000);
       }
     } catch (error) {
-      console.error("Error saving score:", error);
-      setMessage("⚠️ Greška pri čuvanju rezultata");
+      console.error("💥 Mrežna greška:", error);
+      setMessage("⚠️ Mrežna greška pri čuvanju");
+      setTimeout(() => setMessage(""), 5000);
     } finally {
       setIsLoading(false);
-      setTimeout(() => { isSavingRef.current = false; }, 5000);
+      setTimeout(() => { isSavingRef.current = false; }, 3000);
     }
   };
 
@@ -117,7 +124,6 @@ export default function GameContainer({ childId, childName }: GameContainerProps
 
   return (
     <div className="space-y-12">
-      {/* Premium Game Selector */}
       <section>
         <div className="flex items-center justify-between mb-8 px-2">
           <div>

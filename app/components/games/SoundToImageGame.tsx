@@ -13,28 +13,26 @@ interface GameProps {
 
 interface SoundItem {
     id: string;
-    emoji: string;
+    icon: string; // Promenjeno sa image na icon
     label: string;
     soundUrl: string;
 }
 
 const SOUND_ITEMS: SoundItem[] = [
-    { id: "dog", emoji: "🐕", label: "Pas", soundUrl: "/sounds/pas.mp3" },
-    { id: "cat", emoji: "🐈", label: "Mačka", soundUrl: "/sounds/macka.mp3" },
-    { id: "police", emoji: "🚓", label: "Policija", soundUrl: "/sounds/policija.mp3" },
-    { id: "rain", emoji: "🌧️", label: "Kiša", soundUrl: "/sounds/kisa.mp3" },
-    { id: "bell", emoji: "🔔", label: "Zvono", soundUrl: "/sounds/zvonoKucno.mp3" },
-    { id: "bird", emoji: "🐦", label: "Ptica", soundUrl: "/sounds/ptica.mp3" },
-    { id: "cow", emoji: "🐄", label: "Krava", soundUrl: "/sounds/krava.wav" },
-    { id: "car_siren", emoji: "🚗", label: "Sirena auta", soundUrl: "/sounds/sirenaAuta.mp3" },
-    { id: "thunder", emoji: "🌩️", label: "Grmljavina", soundUrl: "/sounds/grmljavina.mp3" },
-    { id: "horse", emoji: "🐎", label: "Konj", soundUrl: "/sounds/konj.mp3" },
-    { id: "monkey", emoji: "🐒", label: "Majmun", soundUrl: "/sounds/majmun.mp3" },
-    { id: "bear", emoji: "🐻", label: "Medved", soundUrl: "/sounds/medved.mp3" },
-    { id: "rooster", emoji: "🐓", label: "Petao", soundUrl: "/sounds/petao.wav" },
-    { id: "owl", emoji: "🦉", label: "Sova", soundUrl: "/sounds/sova.mp3" },
-    { id: "pig", emoji: "🐖", label: "Svinja", soundUrl: "/sounds/svinja.mp3" },
-    { id: "wind", emoji: "💨", label: "Vetar", soundUrl: "/sounds/vetar.mp3" },
+    { id: "dog", icon: "🐶", label: "Pas", soundUrl: "/sounds/pas.mp3" },
+    { id: "cat", icon: "🐱", label: "Mačka", soundUrl: "/sounds/macka.mp3" },
+    { id: "cow", icon: "🐮", label: "Krava", soundUrl: "/sounds/krava.wav" },
+    { id: "horse", icon: "🐴", label: "Konj", soundUrl: "/sounds/konj.mp3" },
+    { id: "bear", icon: "🐻", label: "Medved", soundUrl: "/sounds/medved.mp3" },
+    { id: "police", icon: "🚓", label: "Policija", soundUrl: "/sounds/policija.mp3" },
+    { id: "car_horn", icon: "🚗", label: "Sirena auta", soundUrl: "/sounds/sirenaAuta.mp3" },
+    { id: "rain", icon: "🌧️", label: "Kiša", soundUrl: "/sounds/kisa.mp3" },
+    { id: "thunder", icon: "⚡", label: "Grmljavina", soundUrl: "/sounds/grmljavina.mp3" },
+    { id: "doorbell", icon: "🔔", label: "Zvono", soundUrl: "/sounds/zvonoKucno.mp3" },
+    { id: "bird", icon: "🐦", label: "Ptica", soundUrl: "/sounds/ptica.mp3" },
+    { id: "monkey", icon: "🐵", label: "Majmun", soundUrl: "/sounds/majmun.mp3" },
+    { id: "rooster", icon: "🐓", label: "Petao", soundUrl: "/sounds/petao.wav" },
+    { id: "pig", icon: "🐷", label: "Svinja", soundUrl: "/sounds/svinja.mp3" },
 ];
 
 export default function SoundToImageGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
@@ -55,7 +53,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const initialRoundRef = useRef(false);
-    const maxRounds = 5 + level; // Više rundi sa višim nivoima
+    const maxRounds = 5 + level;
 
     // Sync with monitor state
     useEffect(() => {
@@ -73,22 +71,27 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
 
     const generateRound = useCallback((stats?: { score: number, round: number, correctCount: number, incorrectCount: number }) => {
         // Broj dostupnih zvukova raste sa nivoom
-        const availableCount = Math.min(4 + (level * 2), SOUND_ITEMS.length);
+        const availableCount = Math.min(SOUND_ITEMS.length, 6 + level);
         const availableSounds = SOUND_ITEMS.slice(0, availableCount);
 
-        // Odaberi nasumičan zvuk iz dostupnih
+        // Odaberi nasumičan zvuk
         const correctAnswer = availableSounds[Math.floor(Math.random() * availableSounds.length)];
 
-        // Broj opcija raste sa nivoom: 1-2 (3 opcije), 3-5 (4 opcije), 6+ (6 opcija)
+        // Broj opcija:
+        // Nivo 1-2: 3 opcije
+        // Nivo 3-4: 4 opcije
+        // Nivo 5-6: 6 opcija
+        // Nivo 7+: 8 opcija (ako imamo dovoljno zvukova)
         let optionsCount = 3;
-        if (level >= 3 && level <= 5) optionsCount = 4;
-        else if (level >= 6) optionsCount = 6;
+        if (level >= 3 && level <= 4) optionsCount = 4;
+        else if (level >= 5 && level <= 6) optionsCount = 6;
+        else if (level >= 7) optionsCount = 8;
 
         // Kreiraj pogrešne opcije
         const allOtherSounds = SOUND_ITEMS.filter(item => item.id !== correctAnswer.id);
         const wrongOptions = allOtherSounds
             .sort(() => Math.random() - 0.5)
-            .slice(0, optionsCount - 1);
+            .slice(0, Math.min(optionsCount - 1, allOtherSounds.length));
 
         const allOptions = [correctAnswer, ...wrongOptions].sort(() => Math.random() - 0.5);
 
@@ -505,8 +508,12 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
                             } ${feedback ? "cursor-not-allowed" : "cursor-pointer"}`}
                     >
                         <div className="flex flex-col items-center justify-center h-full">
-                            <span className="text-5xl md:text-7xl mb-2">{item.emoji}</span>
-                            <span className={`text-sm md:text-base font-bold ${feedback && item.id === currentSound?.id ? "text-white" : "text-gray-700"
+                            <div className="relative w-24 h-24 md:w-32 md:h-32 mb-4 flex items-center justify-center">
+                                <span className="text-6xl md:text-8xl drop-shadow-md group-hover:scale-110 transition-transform duration-300">
+                                    {item.icon}
+                                </span>
+                            </div>
+                            <span className={`text-base md:text-xl font-bold ${feedback && item.id === currentSound?.id ? "text-white" : "text-gray-700"
                                 }`}>
                                 {item.label}
                             </span>
