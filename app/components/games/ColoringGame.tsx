@@ -207,6 +207,7 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
       if (monitorState.score !== undefined) setScore(monitorState.score);
       if (monitorState.timeLeft !== undefined) setTimeLeft(monitorState.timeLeft);
       if (monitorState.completedZones !== undefined) setCompletedZones(monitorState.completedZones);
+      if (monitorState.correctCount !== undefined) setCompletedZones(monitorState.correctCount);
     }
   }, [isMonitor, monitorState]);
 
@@ -476,7 +477,6 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
         </div>
       </div>
 
-      {/* Color palette */}
       <div className="mb-6 bg-white rounded-2xl p-4 md:p-6 shadow-lg">
         <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">🎨 Izaberi boju:</h3>
         <div className="grid grid-cols-6 md:grid-cols-12 gap-2 md:gap-3">

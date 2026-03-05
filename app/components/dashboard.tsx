@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react';
 import PinModal from './PinModal';
 import VisualPinPicker from './VisualPinPicker';
 import { VISUAL_PIN_CATEGORIES } from '@/lib/visualPinData';
-import { log } from 'console';
 import { CloudCog } from 'lucide-react';
 
 
@@ -82,14 +81,6 @@ export default function Dashboard() {
             }
         }
     }, [globalPin, children, isParentMode, router]);
-    console.log(children.map((child) => {
-        const category = (child.pin_code?.split(",").map((el, idx) => {
-            console.log("el", el);
-
-        }), "children")
-
-    }
-    ));
 
     const getUserData = () => {
         if (typeof window !== 'undefined') {

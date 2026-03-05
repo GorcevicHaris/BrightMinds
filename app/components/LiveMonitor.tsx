@@ -9,6 +9,7 @@ import ShapeMatchingGame from './games/ShapeMatchingGame';
 import MemoryGame from './games/MemoryGame';
 import ColoringGame from './games/ColoringGame';
 import SoundToImageGame from './games/SoundToImageGame';
+import SocialCommunicationGame from './games/SocialCommunicationGame';
 
 interface LiveMonitorProps {
   childId: number;
@@ -74,8 +75,13 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
 
       if (update.data.incorrectCount !== undefined) {
         newStats.incorrect = update.data.incorrectCount;
-      } else if (update.event === 'shape_placed' || (update.event === 'progress' && !update.data.matched)) {
-        if (update.data.correct === false || (update.event === 'progress' && update.data.matched === false)) newStats.incorrect += 1;
+      } else if (update.data.totalIncorrect !== undefined) {
+        newStats.incorrect = update.data.totalIncorrect;
+      } else if (update.event === 'shape_placed' || (update.event === 'progress' && !update.data.matched) || (update.event === 'answer' && (update.gameType as string) === 'social')) {
+        // Increment incorrect answers for social game when update.data.correct is false
+        if (update.data.correct === false || (update.event === 'progress' && update.data.matched === false)) {
+          newStats.incorrect += 1;
+        }
       }
 
       return newStats;
@@ -89,10 +95,16 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
 
     const gameProps = {
       childId,
-      level: visualState.level || 1,
+      level: visualState.level || liveStats.level || 1,
       onComplete: () => { }, // No-op for monitor
       isMonitor: true,
-      monitorState: visualState,
+      monitorState: {
+        ...visualState,
+        currentIndex: visualState.index ?? 0,
+        score: liveStats.score,
+        correctCount: liveStats.correct,
+        totalIncorrect: liveStats.incorrect,
+      },
     };
 
     return (
@@ -107,6 +119,7 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
             {currentGame === 'memory' && <MemoryGame {...gameProps} />}
             {currentGame === 'coloring' && <ColoringGame {...gameProps} />}
             {currentGame === 'sound-to-image' && <SoundToImageGame {...gameProps} />}
+            {currentGame === 'social' && <SocialCommunicationGame {...gameProps} />}
           </div>
         </div>
         <p className="text-center text-xs text-gray-400 mt-2">
@@ -126,6 +139,8 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
         return 'Bojenje';
       case 'sound-to-image':
         return 'Zvuk → Slika';
+      case 'social':
+        return 'Šta treba da kažeš?';
       default:
         return gameType;
     }
@@ -144,6 +159,11 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
       case 'color_applied':
         return `🎨 Obojio segment - ${update.data.color}`;
       case 'answer':
+        if ((update.gameType as string) === 'social') {
+          return update.data.correct
+            ? `✅ Tačan odgovor (pitanje ${(update.data.index ?? 0) + 1}/${update.data.totalSituations ?? '?'}) — ${update.data.score} poena ukupno`
+            : `❌ Pogrešan odgovor na pitanju ${(update.data.index ?? 0) + 1}`;
+        }
         return update.data.correct
           ? `🔊 Tačno prepoznao zvuk - ${update.data.label || update.data.currentSound?.label} (+${update.data.score - liveStats.score} poena)`
           : `👂 Pogrešan pokušaj - Sluša ${update.data.currentSound?.label}`;

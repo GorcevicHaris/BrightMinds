@@ -6,6 +6,7 @@ import ShapeMatchingGame from "@/app/components/games/ShapeMatchingGame";
 import MemoryGame from "@/app/components/games/MemoryGame";
 import ColoringGame from "@/app/components/games/ColoringGame";
 import SoundToImageGame from "@/app/components/games/SoundToImageGame";
+import SocialCommunicationGame from "@/app/components/games/SocialCommunicationGame";
 
 interface GameContainerProps {
   childId: number;
@@ -45,13 +46,21 @@ const GAMES = [
     color: "from-cyan-400 to-blue-500",
     shadow: "shadow-cyan-200",
   },
+  {
+    id: "social",
+    title: "Šta treba da kažeš?",
+    description: "Socijalna komunikacija i govor",
+    icon: "💬",
+    color: "from-violet-400 to-purple-600",
+    shadow: "shadow-violet-200",
+  },
 ];
 
 export default function GameContainer({ childId, childName }: GameContainerProps) {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [selectedGame, setSelectedGame] = useState<"shapes" | "memory" | "coloring" | "sound-to-image">("shapes");
+  const [selectedGame, setSelectedGame] = useState<"shapes" | "memory" | "coloring" | "sound-to-image" | "social">("shapes");
 
   const isSavingRef = useRef(false);
   const lastSaveTimeRef = useRef(0);
@@ -76,7 +85,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
       else if (score >= 50) successLevel = "partial";
       else successLevel = "struggled";
 
-      const activityId = selectedGame === "shapes" ? 1 : selectedGame === "memory" ? 3 : selectedGame === "sound-to-image" ? 5 : 4;
+      const activityId = selectedGame === "shapes" ? 1 : selectedGame === "memory" ? 3 : selectedGame === "sound-to-image" ? 5 : selectedGame === "social" ? 6 : 4;
 
       const response = await fetch("/api/activities/complete", {
         method: "POST",
@@ -132,7 +141,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
           {GAMES.map((game) => (
             <button
               key={game.id}
@@ -210,6 +219,9 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             {selectedGame === "sound-to-image" && (
               <><b>Nivo {currentLevel}:</b> Slušaj pažljivo zvuk i izaberi tačnu sliku. {5 + currentLevel} rundi!</>
             )}
+            {selectedGame === "social" && (
+              <><b>Nivo {currentLevel}:</b> Gledaj situaciju i reci šta treba. Roditelj/nastavnik potvrđuje tvoj odgovor. 🗣️</>
+            )}
           </p>
         </div>
       </section>
@@ -245,6 +257,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
           ) : selectedGame === "sound-to-image" ? (
             <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+          ) : selectedGame === "social" ? (
+            <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
           ) : (
             <ColoringGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
           )}

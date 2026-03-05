@@ -15,14 +15,13 @@ interface Props {
 // 
 export default function ChildPageClient({ child, childId }: Props) {
     const [activeView, setActiveView] = useState<"game" | "stats">("game");
-    console.log(typeof (child.first_name), "First letter of name")
     return (
         <div className="min-h-screen bg-[#F8FAFC] selection:bg-purple-100 font-sans">
-            <div className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gdodaj deteray-100">
+            <div className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-purple-200">
-                            {child.first_name?.charAt(0) || undefined}
+                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-purple-200 uppercase">
+                            {child.first_name?.trim()?.charAt(0)}{child.last_name?.trim()?.charAt(0)}
                         </div>
                         <div>
                             <h1 className="text-xl font-bold text-gray-900 leading-tight">

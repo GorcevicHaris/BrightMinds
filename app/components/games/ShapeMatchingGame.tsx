@@ -229,6 +229,10 @@ export default function ShapeMatchingGame({ childId, level, onComplete, isMonito
             if (monitorState.score !== undefined) setScore(monitorState.score);
             if (monitorState.timeLeft !== undefined) setTimeLeft(monitorState.timeLeft);
             if (monitorState.feedback !== undefined) setFeedback(monitorState.feedback);
+            if (monitorState.correctCount !== undefined) setCorrectCount(monitorState.correctCount);
+            if (monitorState.incorrectCount !== undefined) setIncorrectCount(monitorState.incorrectCount);
+            // Handle name mismatch from LiveMonitor
+            if (monitorState.totalIncorrect !== undefined) setIncorrectCount(monitorState.totalIncorrect);
         }
     }, [isMonitor, monitorState]);
 
@@ -302,7 +306,16 @@ export default function ShapeMatchingGame({ childId, level, onComplete, isMonito
                 timestamp: new Date().toISOString(),
             });
 
-            setTimeout(() => { setFeedback(null); generateShapes(); }, 600);
+            setTimeout(() => {
+                setFeedback(null);
+                generateShapes();
+                // Očisti feedback i na monitoru
+                emitGameProgress({
+                    childId, activityId: 1, gameType: 'shape_matching', event: 'progress',
+                    data: { feedback: null, score: newScore, level, correctCount: newCorrect, incorrectCount },
+                    timestamp: new Date().toISOString(),
+                });
+            }, 600);
         } else {
             const newIncorrect = incorrectCount + 1;
             setIncorrectCount(newIncorrect);
@@ -314,7 +327,15 @@ export default function ShapeMatchingGame({ childId, level, onComplete, isMonito
                 timestamp: new Date().toISOString(),
             });
 
-            setTimeout(() => setFeedback(null), 600);
+            setTimeout(() => {
+                setFeedback(null);
+                // Očisti feedback i na monitoru
+                emitGameProgress({
+                    childId, activityId: 1, gameType: 'shape_matching', event: 'progress',
+                    data: { feedback: null, score, level, correctCount, incorrectCount: newIncorrect },
+                    timestamp: new Date().toISOString(),
+                });
+            }, 600);
         }
     };
 
@@ -523,10 +544,10 @@ export default function ShapeMatchingGame({ childId, level, onComplete, isMonito
                         key={shape.id}
                         onClick={() => handleShapeClick(shape)}
                         className={`group bg-white rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 active:scale-95 border-2 ${feedback === "correct" && targetShape?.type === shape.type
-                                ? "border-green-400 bg-green-50 scale-110"
-                                : feedback === "wrong"
-                                    ? "border-transparent"
-                                    : "border-transparent hover:border-purple-200"
+                            ? "border-green-400 bg-green-50 scale-110"
+                            : feedback === "wrong"
+                                ? "border-transparent"
+                                : "border-transparent hover:border-purple-200"
                             }`}
                     >
                         <ShapeSVG type={shape.type} color={shape.color} size={70} />

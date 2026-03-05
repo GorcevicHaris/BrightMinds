@@ -44,6 +44,8 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
       if (monitorState.moves !== undefined) setMoves(monitorState.moves);
       if (monitorState.matchedPairs !== undefined) setMatchedPairs(monitorState.matchedPairs);
       if (monitorState.flippedCards) setFlippedCards(monitorState.flippedCards);
+      if (monitorState.incorrectCount !== undefined) setIncorrectCount(monitorState.incorrectCount);
+      if (monitorState.totalIncorrect !== undefined) setIncorrectCount(monitorState.totalIncorrect);
     }
   }, [isMonitor, monitorState]);
 
