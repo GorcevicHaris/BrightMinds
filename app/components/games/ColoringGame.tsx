@@ -353,45 +353,72 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
   // ─── Mood Before ──────────────────────────────────────────────────────────────
   if (!isMonitor && showMoodBefore) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 rounded-3xl p-8 shadow-xl">
-        <h2 className="text-3xl font-bold text-purple-700 mb-8">Kako se osećaš PRE igre?</h2>
-        <div className="grid grid-cols-5 gap-6">
+      <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
+        <div className="text-center mb-10 md:mb-16">
+          <span className="px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Moja Bojanka</span>
+          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
           {[
-            { emoji: "😢", label: "Loše", value: "very_upset" },
-            { emoji: "😕", label: "Nije sjajno", value: "upset" },
-            { emoji: "😐", label: "Okej", value: "neutral" },
-            { emoji: "😊", label: "Dobro", value: "happy" },
-            { emoji: "😄", label: "Super", value: "very_happy" },
+            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
           ].map((mood) => (
-            <button key={mood.value} onClick={() => handleMoodBeforeSelect(mood.value)}
-              className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl">
-              <span className="text-6xl mb-2">{mood.emoji}</span>
-              <span className="text-lg font-semibold text-gray-700">{mood.label}</span>
+            <button
+              key={mood.value}
+              onClick={() => handleMoodBeforeSelect(mood.value)}
+              className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+            >
+              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
+              <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+              <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
             </button>
           ))}
         </div>
+
+        {isConnected && (
+          <div className="mt-10 md:mt-16 flex items-center gap-3 px-4 py-2 md:px-6 md:py-3 bg-white/50 backdrop-blur-sm rounded-2xl border border-green-100 shadow-sm">
+            <span className="relative flex h-2 w-2 md:h-3 md:w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-full w-full bg-green-500"></span>
+            </span>
+            <span className="text-[10px] md:text-sm font-bold text-green-700 tracking-wide uppercase">Spremni za praćenje</span>
+          </div>
+        )}
       </div>
     );
   }
 
-  // ─── Mood After ───────────────────────────────────────────────────────────────
   if (!isMonitor && showMoodAfter) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-green-100 via-yellow-100 to-orange-100 rounded-3xl p-8 shadow-xl">
-        <h2 className="text-3xl font-bold text-green-700 mb-4">Kako se osećaš POSLE igre?</h2>
-        <p className="text-xl text-gray-600 mb-8">Uspešno si obojio/la {getLevelName(level)}! 🎨</p>
-        <div className="grid grid-cols-5 gap-6">
+      <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
+        <div className="text-center mb-10 md:mb-16">
+          <span className="px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
+          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
+          <p className="text-lg md:text-xl text-slate-500 font-medium tracking-wide">
+            Tvoja slika izgleda prelepo! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
           {[
-            { emoji: "😢", label: "Loše", value: "very_upset" },
-            { emoji: "😕", label: "Nije sjajno", value: "upset" },
-            { emoji: "😐", label: "Okej", value: "neutral" },
-            { emoji: "😊", label: "Dobro", value: "happy" },
-            { emoji: "😄", label: "Super", value: "very_happy" },
+            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
           ].map((mood) => (
-            <button key={mood.value} onClick={() => handleMoodAfterSelect(mood.value)}
-              className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl">
-              <span className="text-6xl mb-2">{mood.emoji}</span>
-              <span className="text-lg font-semibold text-gray-700">{mood.label}</span>
+            <button
+              key={mood.value}
+              onClick={() => handleMoodAfterSelect(mood.value)}
+              className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+            >
+              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
+              <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+              <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
             </button>
           ))}
         </div>
@@ -442,91 +469,80 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
 
   // ─── Game Screen ──────────────────────────────────────────────────────────────
   return (
-    <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-3xl p-6 md:p-8 shadow-2xl">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6 bg-white/80 backdrop-blur rounded-2xl p-4 md:p-6 shadow-lg flex-wrap gap-3">
-        <div className="flex items-center gap-4">
-          <div className="text-xl md:text-2xl font-bold text-purple-700">{getLevelName(level)}</div>
-          <div className="text-base md:text-lg text-gray-600 font-medium">
-            🎨 {completedZones}/{template.length} obojeno
+    <div className="bg-white/90 backdrop-blur-xl rounded-2xl md:rounded-[3.5rem] p-4 pt-6 md:p-10 shadow-2xl border border-white/50 w-full max-w-7xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative">
+      {/* Background glow */}
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-rose-500/5 pointer-events-none"></div>
+
+      {/* Compact Header Area */}
+      <div className="flex justify-between items-center mb-6 md:mb-10 bg-gradient-to-r from-indigo-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-4 py-3 md:px-10 md:py-6 shadow-xl relative overflow-hidden ring-1 ring-indigo-100/50">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+
+        <div className="flex items-center gap-3 md:gap-8 relative z-10">
+          <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl bg-white shadow-md flex items-center justify-center text-xl md:text-3xl ring-4 ring-indigo-50 border border-indigo-100 transform -rotate-3 transition-transform">
+            🎨
+          </div>
+          <div>
+            <h3 className="text-lg md:text-2xl font-black text-slate-800 tracking-wide uppercase leading-tight">Studio</h3>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className={`text-xl md:text-2xl font-bold ${timeLeft <= 30 ? 'text-red-600 animate-pulse' : 'text-blue-700'}`}>
-            ⏱️ {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
-          </span>
-          {isConnected && (
-            <span className="text-sm text-green-600 flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              Live
-            </span>
-          )}
-        </div>
-        {completedZones === template.length && !showMoodAfter && (
-          <div className="text-xl font-bold text-green-600 animate-bounce w-full text-center">🎉 Završeno! Sjajan rad!</div>
-        )}
-      </div>
 
-      {/* Progress bar */}
-      <div className="mb-6 bg-white rounded-2xl p-3 shadow-sm">
-        <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-rose-400 to-orange-400 rounded-full transition-all duration-500"
-            style={{ width: `${(completedZones / template.length) * 100}%` }}
-          />
+        <div className="flex items-center gap-3 md:gap-6 relative z-10">
+          <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-indigo-100/50 text-center min-w-[70px] md:min-w-[120px]">
+            <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Napredak</span>
+            <span className="text-xl md:text-3xl font-black text-emerald-500">{Math.round((completedZones / zones.length) * 100)}%</span>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-indigo-100/50 text-center min-w-[70px] md:min-w-[100px]">
+            <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Vreme</span>
+            <span className={`text-xl md:text-3xl font-black ${timeLeft <= 30 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`}>{timeLeft}s</span>
+          </div>
         </div>
       </div>
 
-      <div className="mb-6 bg-white rounded-2xl p-4 md:p-6 shadow-lg">
-        <h3 className="text-lg md:text-xl font-bold text-gray-800 mb-4">🎨 Izaberi boju:</h3>
-        <div className="grid grid-cols-6 md:grid-cols-12 gap-2 md:gap-3">
-          {COLORS.map((color) => (
-            <button
-              key={color.value}
-              onClick={() => setSelectedColor(color.value)}
-              className={`aspect-square rounded-xl transition-all ${selectedColor === color.value
-                ? "scale-125 ring-4 ring-purple-500 shadow-xl z-10 relative"
-                : "hover:scale-110 shadow-md"
-                }`}
-              style={{ backgroundColor: color.value }}
-              title={color.name}
-            />
-          ))}
+      <div className="flex-1 flex flex-col md:flex-row gap-4 md:gap-8 min-h-0 relative z-10">
+        {/* Color Palette */}
+        <div className="md:w-32 bg-slate-900 rounded-2xl md:rounded-[2.5rem] p-3 md:p-6 shadow-2xl flex md:flex-col items-center justify-start gap-3 md:gap-4 overflow-x-auto md:overflow-y-auto scrollbar-hide py-4 md:py-10 ring-1 ring-white/10 flex-shrink-0">
+          <div className="hidden md:block w-full text-center pb-6 border-b border-white/10 mb-4 font-black text-[10px] text-slate-500 uppercase tracking-[0.2em]">
+            Boje
+          </div>
+          <div className="flex md:flex-col gap-3 md:gap-4 flex-nowrap">
+            {COLORS.map((color) => (
+              <button
+                key={color.value}
+                onClick={() => setSelectedColor(color.value)}
+                className={`w-10 h-10 md:w-16 md:h-16 rounded-xl md:rounded-2xl flex-shrink-0 transition-all duration-300 transform border-2 md:border-4 ${selectedColor === color.value
+                  ? "border-white scale-110 shadow-xl shadow-white/20 ring-4 ring-white/10"
+                  : "border-transparent hover:scale-110 hover:border-white/30"
+                  }`}
+                style={{ backgroundColor: color.value }}
+                title={color.name}
+              />
+            ))}
+          </div>
         </div>
-        <div className="mt-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg shadow-md border-2 border-purple-300" style={{ backgroundColor: selectedColor }} />
-          <span className="text-sm font-medium text-gray-600">
-            Izabrana boja: <strong>{COLORS.find(c => c.value === selectedColor)?.name}</strong>
-          </span>
+
+        {/* Drawing Area */}
+        <div className="flex-1 bg-white rounded-2xl md:rounded-[3.5rem] shadow-2xl border border-slate-100 relative group overflow-hidden flex items-center justify-center p-4 md:p-8">
+          <div className="absolute inset-0 bg-[radial-gradient(#f1f5f9_1px,transparent_1px)] [background-size:24px_24px] opacity-50"></div>
+
+          <svg className="w-full h-full max-h-[400px] md:max-h-[600px] drop-shadow-2xl relative z-10" viewBox="0 0 400 450">
+            {zones.map((zone) => (
+              <path
+                key={zone.id}
+                d={zone.path}
+                fill={zone.color || "#F8FAFC"}
+                stroke={zone.stroke ? zone.targetColor : "#CBD5E1"}
+                strokeWidth={zone.stroke ? "3" : "1.5"}
+                className={`transition-all duration-500 cursor-pointer hover:opacity-80 ${isMonitor ? "pointer-events-none" : ""}`}
+                onClick={() => handleZoneClick(zone.id)}
+              />
+            ))}
+          </svg>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl p-4 md:p-8 shadow-xl border-4 border-gray-50">
-        <svg
-          viewBox="0 0 400 420"
-          className="w-full h-auto max-w-2xl mx-auto"
-          style={{ maxHeight: "600px" }}
-        >
-          <rect width="400" height="420" fill="#FAFAFA" rx="12" />
-
-          {zones.map((zone) => (
-            <path
-              key={zone.id}
-              d={zone.path}
-              fill={zone.color || "#E9EBF0"}
-              stroke="#374151"
-              strokeWidth={zone.stroke ? 3.5 : 1.8}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              onClick={() => handleZoneClick(zone.id)}
-              className="transition-all duration-200 cursor-pointer hover:opacity-75"
-              style={{ filter: zone.color ? 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))' : 'none' }}
-            />
-          ))}
-        </svg>
-        <p className="text-center text-sm text-gray-400 mt-4 font-medium">
-          💡 Klikni na deo slike da ga obojiš! Možeš promijeniti boju klikom opet.
-        </p>
+      <div className="mt-6 text-center text-[10px] md:text-sm font-black text-slate-400 uppercase tracking-widest opacity-60 px-4 pb-4">
+        💡 Izaberi boju i klikni na deo crteža.
       </div>
     </div>
   );

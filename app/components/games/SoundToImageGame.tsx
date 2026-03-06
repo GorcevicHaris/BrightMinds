@@ -321,64 +321,72 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
     // Mood Before Screen
     if (!isMonitor && showMoodBefore) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 rounded-3xl p-8 shadow-xl">
-                <h2 className="text-2xl md:text-3xl font-bold text-purple-700 mb-8 text-center">
-                    Kako se osećaš PRE igre?
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+            <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
+                <div className="text-center mb-10 md:mb-16">
+                    <span className="px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Slušaj i prepoznaj</span>
+                    <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
                     {[
-                        { emoji: "😢", label: "Loše", value: "very_upset" },
-                        { emoji: "😕", label: "Nije sjajno", value: "upset" },
-                        { emoji: "😐", label: "Okej", value: "neutral" },
-                        { emoji: "😊", label: "Dobro", value: "happy" },
-                        { emoji: "😄", label: "Super", value: "very_happy" },
-                    ].map((mood) => (
+                        { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+                        { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+                        { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+                        { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+                        { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
+                    ].map(mood => (
                         <button
                             key={mood.value}
                             onClick={() => handleMoodBeforeSelect(mood.value)}
-                            className="flex flex-col items-center bg-white rounded-3xl p-4 md:p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl"
+                            className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
                         >
-                            <span className="text-4xl md:text-6xl mb-2">{mood.emoji}</span>
-                            <span className="text-sm md:text-lg font-semibold text-gray-700">{mood.label}</span>
+                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
+                            <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+                            <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
                         </button>
                     ))}
                 </div>
+
                 {isConnected && (
-                    <div className="mt-6 text-green-600 font-semibold flex items-center gap-2">
-                        <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                        Live praćenje aktivno
+                    <div className="mt-10 md:mt-16 flex items-center gap-3 px-4 py-2 md:px-6 md:py-3 bg-white/50 backdrop-blur-sm rounded-2xl border border-green-100 shadow-sm">
+                        <span className="relative flex h-2 w-2 md:h-3 md:w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-full w-full bg-green-500"></span>
+                        </span>
+                        <span className="text-[10px] md:text-sm font-bold text-green-700 tracking-wide uppercase">Spremni za praćenje</span>
                     </div>
                 )}
             </div>
         );
     }
 
-    // Mood After Screen
     if (!isMonitor && showMoodAfter) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-green-100 via-yellow-100 to-orange-100 rounded-3xl p-8 shadow-xl">
-                <h2 className="text-2xl md:text-3xl font-bold text-green-700 mb-4 text-center">
-                    Kako se osećaš POSLE igre?
-                </h2>
-                <p className="text-lg md:text-xl text-gray-600 mb-8 text-center">
-                    Tačno si odgovorio/la na <span className="font-bold text-purple-600">{correctCount}/{maxRounds}</span> pitanja!<br />
-                    Rezultat: <span className="font-bold text-green-600">{score} poena</span> 🎉
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+            <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
+                <div className="text-center mb-10 md:mb-16">
+                    <span className="px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
+                    <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
+                    <p className="text-lg md:text-xl text-slate-500 font-medium tracking-wide">
+                        Sjajno si prepoznao/la zvukove! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
                     {[
-                        { emoji: "😢", label: "Loše", value: "very_upset" },
-                        { emoji: "😕", label: "Nije sjajno", value: "upset" },
-                        { emoji: "😐", label: "Okej", value: "neutral" },
-                        { emoji: "😊", label: "Dobro", value: "happy" },
-                        { emoji: "😄", label: "Super", value: "very_happy" },
-                    ].map((mood) => (
+                        { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+                        { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+                        { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+                        { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+                        { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
+                    ].map(mood => (
                         <button
                             key={mood.value}
                             onClick={() => handleMoodAfterSelect(mood.value)}
-                            className="flex flex-col items-center bg-white rounded-3xl p-4 md:p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl"
+                            className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
                         >
-                            <span className="text-4xl md:text-6xl mb-2">{mood.emoji}</span>
-                            <span className="text-sm md:text-lg font-semibold text-gray-700">{mood.label}</span>
+                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
+                            <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+                            <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
                         </button>
                     ))}
                 </div>
@@ -447,102 +455,111 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
 
     // Game Screen
     return (
-        <div className="bg-gradient-to-br from-cyan-50 via-blue-50 to-purple-50 rounded-3xl p-4 md:p-8 shadow-2xl">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6 md:mb-8 bg-white/80 backdrop-blur rounded-2xl p-4 md:p-6 shadow-lg flex-wrap gap-4">
-                <div className="flex items-center gap-2 md:gap-4">
-                    <span className="text-2xl md:text-3xl font-bold text-cyan-700">
-                        Runda: {round}/{maxRounds}
-                    </span>
-                </div>
-                <div className="flex items-center gap-2 md:gap-4">
-                    <span className="text-2xl md:text-3xl font-bold text-green-700">
-                        Poeni: {score}
-                    </span>
-                    {isConnected && (
-                        <span className="text-sm text-green-600 flex items-center gap-1">
-                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                            Live
-                        </span>
-                    )}
-                </div>
-            </div>
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl md:rounded-[3rem] p-4 pt-6 md:p-10 shadow-2xl border border-white/50 w-full max-w-6xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative">
+            {/* Background glow */}
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-amber-500/5 pointer-events-none"></div>
 
-            {/* Sound Player */}
-            <div className="mb-8 flex flex-col items-center">
-                <button
-                    onClick={playSound}
-                    disabled={isPlayingSound || !currentSound}
-                    className={`group relative w-32 h-32 md:w-40 md:h-40 rounded-full transition-all duration-300 ${isPlayingSound
-                        ? "bg-gradient-to-br from-cyan-400 to-blue-500 scale-110 animate-pulse"
-                        : "bg-gradient-to-br from-cyan-500 to-blue-600 hover:scale-110 shadow-xl hover:shadow-2xl"
-                        }`}
-                >
-                    <div className="absolute inset-0 bg-white/20 rounded-full blur-xl"></div>
-                    <div className="relative flex flex-col items-center justify-center h-full">
-                        <span className="text-6xl md:text-7xl mb-2">{isPlayingSound ? "🔊" : "🔉"}</span>
-                        <span className="text-white text-sm md:text-base font-bold">
-                            {isPlayingSound ? "Slušaj..." : "Pusti zvuk"}
-                        </span>
+            {/* Compact Header Area */}
+            <div className="flex justify-between items-center mb-6 md:mb-10 bg-gradient-to-r from-orange-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-4 py-3 md:px-10 md:py-6 shadow-xl relative overflow-hidden ring-1 ring-orange-100/50">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+
+                <div className="flex items-center gap-3 md:gap-8 relative z-10">
+                    <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl bg-white shadow-md flex items-center justify-center text-xl md:text-3xl ring-4 ring-orange-50 border border-orange-100 transform -rotate-3 transition-transform">
+                        🔊
                     </div>
-                </button>
-                <p className="mt-4 text-gray-600 font-medium text-center">
-                    Klikni na zvučnik da čuješ zvuk
-                </p>
+                    <div>
+                        <h3 className="text-lg md:text-2xl font-black text-slate-800 tracking-wide uppercase leading-tight">Nivo {level}</h3>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3 md:gap-6 relative z-10">
+                    <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-orange-100/50 text-center min-w-[80px] md:min-w-[120px]">
+                        <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Runda</span>
+                        <span className="text-xl md:text-3xl font-black text-orange-500">{round}<span className="text-slate-400 text-sm md:text-xl mx-1">/</span>{maxRounds}</span>
+                    </div>
+
+                    <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-orange-100/50 text-center min-w-[80px] md:min-w-[120px]">
+                        <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Rezultat</span>
+                        <span className="text-xl md:text-3xl font-black text-emerald-500">{score}</span>
+                    </div>
+                </div>
             </div>
 
-            {/* Options */}
-            <div className={`grid ${options.length === 4 ? "grid-cols-2" : "grid-cols-3"} gap-4 md:gap-6 max-w-4xl mx-auto`}>
-                {options.map((item) => (
+            {/* Game Canvas */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 md:gap-12 pt-2 md:pt-4 relative z-10">
+
+                {/* Sound Control */}
+                <div className="text-center">
+                    <span className="inline-block px-4 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] md:text-xs font-black uppercase tracking-widest mb-4 md:mb-10 border border-slate-200">
+                        Zadatak: Šta čuješ?
+                    </span>
+
                     <button
-                        key={item.id}
-                        onClick={() => handleAnswer(item)}
-                        disabled={feedback !== null || !currentSound}
-                        className={`relative group aspect-square rounded-2xl md:rounded-3xl p-4 md:p-6 transition-all duration-300 transform ${feedback === "correct" && item.id === currentSound?.id
-                            ? "bg-gradient-to-br from-green-400 to-green-500 scale-110 shadow-2xl"
-                            : feedback === "incorrect" && item.id === currentSound?.id
-                                ? "bg-gradient-to-br from-green-400 to-green-500 shadow-xl"
-                                : feedback === "incorrect" && options.find(o => o.id === item.id)
-                                    ? "bg-gradient-to-br from-red-400 to-red-500 scale-95"
-                                    : "bg-white hover:scale-105 hover:shadow-xl shadow-lg"
-                            } ${feedback ? "cursor-not-allowed" : "cursor-pointer"}`}
+                        onClick={playSound}
+                        disabled={isPlayingSound || !currentSound}
+                        className={`group relative w-32 h-32 md:w-48 md:h-48 rounded-full transition-all duration-500 ${isPlayingSound
+                            ? "bg-slate-100 scale-95"
+                            : "bg-white shadow-2xl hover:shadow-orange-200/50 hover:scale-110 active:scale-95"
+                            }`}
                     >
-                        <div className="flex flex-col items-center justify-center h-full">
-                            <div className="relative w-24 h-24 md:w-32 md:h-32 mb-4 flex items-center justify-center">
-                                <span className="text-6xl md:text-8xl drop-shadow-md group-hover:scale-110 transition-transform duration-300">
-                                    {item.icon}
-                                </span>
-                            </div>
-                            <span className={`text-base md:text-xl font-bold ${feedback && item.id === currentSound?.id ? "text-white" : "text-gray-700"
-                                }`}>
-                                {item.label}
+                        <div className={`absolute inset-0 rounded-full bg-orange-500/10 transition-all duration-1000 ${isPlayingSound ? "animate-ping scale-150 opacity-0" : "scale-0 opacity-0"}`}></div>
+
+                        <div className="relative z-10 flex flex-col items-center justify-center h-full border-4 border-slate-50 rounded-full">
+                            <span className={`text-5xl md:text-7xl transition-all duration-500 ${isPlayingSound ? "scale-125 rotate-12" : "group-hover:scale-110"}`}>
+                                {isPlayingSound ? "🔊" : "🔈"}
+                            </span>
+                            <span className="mt-2 md:mt-4 text-[8px] md:text-[10px] font-black text-orange-500 uppercase tracking-widest bg-orange-50 px-3 md:px-4 py-1 md:py-1.5 rounded-full">
+                                {isPlayingSound ? "Slušaj..." : "Pusti zvuk"}
                             </span>
                         </div>
-
-                        {/* Feedback Icons */}
-                        {feedback === "correct" && item.id === currentSound?.id && (
-                            <div className="absolute -top-2 -right-2 w-10 h-10 bg-white rounded-full flex items-center justify-center text-2xl shadow-lg animate-bounce">
-                                ✓
-                            </div>
-                        )}
-                        {feedback === "incorrect" && item.id !== currentSound?.id && (
-                            <div className="absolute -top-2 -right-2 w-10 h-10 bg-white rounded-full flex items-center justify-center text-2xl shadow-lg">
-                                ✗
-                            </div>
-                        )}
                     </button>
-                ))}
+
+                    {feedback && (
+                        <div className={`mt-4 md:mt-8 text-xl md:text-2xl font-black uppercase tracking-widest animate-bounce ${feedback === 'correct' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {feedback === 'correct' ? '✅ Tačno!' : '❌ Pokušaj ponovo'}
+                        </div>
+                    )}
+                </div>
+
+                {/* Options Grid */}
+                <div className="w-full max-w-5xl px-2">
+                    <div className={`grid gap-3 md:gap-8 mx-auto ${options.length <= 3 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'
+                        }`}>
+                        {options.map((option, idx) => (
+                            <button
+                                key={`${option.id}-${idx}`}
+                                onClick={() => handleAnswer(option)}
+                                disabled={isMonitor || feedback === 'correct'}
+                                className={`group relative bg-white rounded-2xl md:rounded-[2.5rem] p-4 md:p-10 flex flex-col items-center justify-center transition-all duration-300 transform border shadow-sm ${feedback === 'correct' && option.id === currentSound?.id
+                                    ? "border-emerald-400 bg-emerald-50 shadow-2xl scale-110 z-20 ring-4 ring-emerald-100"
+                                    : feedback === 'incorrect' && option.id !== currentSound?.id
+                                        ? "border-rose-100 opacity-40"
+                                        : "border-slate-50 hover:border-orange-100 hover:shadow-xl hover:-translate-y-1 active:scale-95"
+                                    }`}
+                            >
+                                <span className="text-5xl md:text-8xl mb-2 md:mb-6 transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6 select-none">
+                                    {option.icon}
+                                </span>
+                                <span className="text-xs md:text-lg font-black text-slate-700 tracking-tight group-hover:text-orange-600 transition-colors uppercase text-center">
+                                    {option.label}
+                                </span>
+
+                                {feedback === 'correct' && option.id === currentSound?.id && (
+                                    <div className="absolute -top-2 -right-2 bg-emerald-500 text-white p-2 md:p-3 rounded-xl md:rounded-2xl shadow-lg animate-bounce border-2 md:border-4 border-white">
+                                        <svg className="w-4 h-4 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
-            {/* Feedback Message */}
-            {feedback && (
-                <div className={`mt-8 p-4 rounded-2xl text-center text-xl font-bold animate-in zoom-in duration-300 ${feedback === "correct"
-                    ? "bg-green-100 text-green-700"
-                    : "bg-red-100 text-red-700"
-                    }`}>
-                    {feedback === "correct" ? "🎉 Bravo! Tačan odgovor!" : "😊 Pokušaj ponovo sledeći put!"}
-                </div>
-            )}
+            <div className="mt-8 text-center text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-widest opacity-60 px-4 pb-4">
+                💡 Svaki tačan odgovor te približava cilju!
+            </div>
         </div>
     );
 }

@@ -6,7 +6,6 @@ import ExitButton from "@/app/components/ExitButton";
 import GameContainer from "./GameContainer";
 import ProgressDashboard from "@/app/components/ProgressDashboard";
 import { Child } from "./page";
-import { CloudCog } from "lucide-react";
 
 interface Props {
     child: Child;
@@ -83,42 +82,6 @@ export default function ChildPageClient({ child, childId }: Props) {
                 <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
                     {activeView === "game" ? (
                         <div className="space-y-8">
-                            {/* Hero Section - Professional & Welcoming */}
-                            <div className="relative bg-white rounded-[2.5rem] p-8 md:p-12 border border-slate-100 shadow-xl shadow-indigo-50/50 overflow-hidden">
-                                {/* Decorative muted background */}
-                                <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-gradient-to-br from-indigo-50 to-purple-50 rounded-full blur-3xl opacity-60 -mr-20 -mt-20"></div>
-                                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-gradient-to-tr from-rose-50 to-orange-50 rounded-full blur-3xl opacity-60 -ml-20 -mb-20"></div>
-
-                                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-10">
-                                    <div className="max-w-2xl text-center md:text-left space-y-6">
-                                        <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full text-xs font-bold uppercase tracking-widest">
-                                            <span className="relative flex h-2 w-2">
-                                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                                                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-                                            </span>
-                                            Spremna avantura
-                                        </div>
-
-                                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
-                                            Zdravo <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">{child.first_name}</span>,<br />
-                                            vreme je za učenje! ✨
-                                        </h2>
-
-                                        <p className="text-lg text-slate-500 font-medium leading-relaxed max-w-lg mx-auto md:mx-0">
-                                            Izaberi igru koja ti se najviše sviđa danas i pokaži svoje veštine. Tvoj napredak se čuva!
-                                        </p>
-                                    </div>
-
-                                    {/* Visual Element / Illustration Placeholder */}
-                                    <div className="hidden md:flex relative w-48 h-48 lg:w-64 lg:h-64 flex-shrink-0">
-                                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-[2rem] rotate-6"></div>
-                                        <div className="absolute inset-0 bg-white rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-center -rotate-3 transition-transform hover:rotate-0 duration-500">
-                                            <span className="text-8xl filter drop-shadow-sm transform hover:scale-110 transition-transform duration-300">🚀</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
                             <GameContainer childId={childId} childName={child.first_name} />
                         </div>
                     ) : (

@@ -4,7 +4,6 @@ import { useEffect, useState, useMemo } from 'react';
 import PinModal from './PinModal';
 import VisualPinPicker from './VisualPinPicker';
 import { VISUAL_PIN_CATEGORIES } from '@/lib/visualPinData';
-import { CloudCog } from 'lucide-react';
 
 
 interface Child {
@@ -46,6 +45,9 @@ export default function Dashboard() {
     const handleToggleParentMode = () => {
         if (isParentMode) {
             setIsParentMode(false);
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('isParentMode');
+            }
         } else {
             setUserAnswer('');
             setGateError(false);
@@ -54,10 +56,13 @@ export default function Dashboard() {
     };
 
     const verifyParentalGate = () => {
-        const PARENT_PIN = "0000";
+        const PARENT_PIN = user?.parental_pin || "0000";
 
         if (userAnswer === PARENT_PIN) {
             setIsParentMode(true);
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem('isParentMode', 'true');
+            }
             setShowParentalGate(false);
             setGateError(false);
         } else {
@@ -104,6 +109,12 @@ export default function Dashboard() {
     }
 
     useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const savedParentMode = sessionStorage.getItem('isParentMode');
+            if (savedParentMode === 'true') {
+                setIsParentMode(true);
+            }
+        }
         if (userId) {
             fetchChildren(userId);
         }
@@ -190,6 +201,7 @@ export default function Dashboard() {
             await fetch("/api/auth/logout", { method: "POST" });
             if (typeof window !== 'undefined') {
                 localStorage.removeItem('user');
+                sessionStorage.removeItem('isParentMode');
             }
             router.push("/login");
         } catch (err) {

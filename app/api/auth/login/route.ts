@@ -10,6 +10,7 @@ interface User extends RowDataPacket {
     password_hash: string;
     full_name: string;
     role: string;
+    parental_pin: string;
 }
 
 export async function POST(request: Request) {
@@ -25,9 +26,8 @@ export async function POST(request: Request) {
             );
         }
 
-        // Get user from database
         const [rows] = await pool.query<User[]>(
-            'SELECT id, password_hash, full_name, role FROM users WHERE email = ?',
+            'SELECT id, password_hash, full_name, role, parental_pin FROM users WHERE email = ?',
             [email]
         );
 
@@ -67,7 +67,8 @@ export async function POST(request: Request) {
                 id: user.id,
                 full_name: user.full_name,
                 email,
-                role: user.role
+                role: user.role,
+                parental_pin: user.parental_pin
             }
         });
 

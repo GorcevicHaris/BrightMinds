@@ -378,51 +378,72 @@ export default function ShapeMatchingGame({ childId, level, onComplete, isMonito
     // ─── Mood Before ───────────────────────────────────────────
     if (!isMonitor && showMoodBefore) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 rounded-3xl p-8 shadow-xl">
-                <h2 className="text-3xl font-bold text-purple-700 mb-8">Kako se osećaš PRE igre?</h2>
-                <div className="grid grid-cols-5 gap-6">
+            <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
+                <div className="text-center mb-10 md:mb-16">
+                    <span className="px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Mali upitnik</span>
+                    <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
                     {[
-                        { emoji: "😢", label: "Loše", value: "very_upset" },
-                        { emoji: "😕", label: "Nije sjajno", value: "upset" },
-                        { emoji: "😐", label: "Okej", value: "neutral" },
-                        { emoji: "😊", label: "Dobro", value: "happy" },
-                        { emoji: "😄", label: "Super", value: "very_happy" },
+                        { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+                        { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+                        { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+                        { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+                        { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
                     ].map(mood => (
-                        <button key={mood.value} onClick={() => handleMoodBeforeSelect(mood.value)}
-                            className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl">
-                            <span className="text-6xl mb-2">{mood.emoji}</span>
-                            <span className="text-lg font-semibold text-gray-700">{mood.label}</span>
+                        <button
+                            key={mood.value}
+                            onClick={() => handleMoodBeforeSelect(mood.value)}
+                            className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+                        >
+                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
+                            <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+                            <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
                         </button>
                     ))}
                 </div>
+
                 {isConnected && (
-                    <div className="mt-6 text-green-600 font-semibold flex items-center gap-2">
-                        <span className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
-                        Live praćenje aktivno
+                    <div className="mt-10 md:mt-16 flex items-center gap-3 px-4 py-2 md:px-6 md:py-3 bg-white/50 backdrop-blur-sm rounded-2xl border border-green-100 shadow-sm">
+                        <span className="relative flex h-2 w-2 md:h-3 md:w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-full w-full bg-green-500"></span>
+                        </span>
+                        <span className="text-[10px] md:text-sm font-bold text-green-700 tracking-wide uppercase">Spremni za praćenje</span>
                     </div>
                 )}
             </div>
         );
     }
 
-    // ─── Mood After ────────────────────────────────────────────
     if (!isMonitor && showMoodAfter) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[500px] bg-gradient-to-br from-green-100 via-yellow-100 to-orange-100 rounded-3xl p-8 shadow-xl">
-                <h2 className="text-3xl font-bold text-green-700 mb-4">Kako se osećaš POSLE igre?</h2>
-                <p className="text-xl text-gray-600 mb-8">Osvojio/la si <span className="font-bold text-purple-600">{score} poena</span>! 🎉</p>
-                <div className="grid grid-cols-5 gap-6">
+            <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
+                <div className="text-center mb-10 md:mb-16">
+                    <span className="px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je gotova!</span>
+                    <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
+                    <p className="text-lg md:text-xl text-slate-500 font-medium tracking-wide">
+                        Sjajno si uradio/la zadatak! Osvojio/la si <span className="font-black text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
                     {[
-                        { emoji: "😢", label: "Loše", value: "very_upset" },
-                        { emoji: "😕", label: "Nije sjajno", value: "upset" },
-                        { emoji: "😐", label: "Okej", value: "neutral" },
-                        { emoji: "😊", label: "Dobro", value: "happy" },
-                        { emoji: "😄", label: "Super", value: "very_happy" },
+                        { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+                        { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+                        { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+                        { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+                        { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
                     ].map(mood => (
-                        <button key={mood.value} onClick={() => handleMoodAfterSelect(mood.value)}
-                            className="flex flex-col items-center bg-white rounded-3xl p-6 hover:scale-110 transition-transform shadow-lg hover:shadow-2xl">
-                            <span className="text-6xl mb-2">{mood.emoji}</span>
-                            <span className="text-lg font-semibold text-gray-700">{mood.label}</span>
+                        <button
+                            key={mood.value}
+                            onClick={() => handleMoodAfterSelect(mood.value)}
+                            className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+                        >
+                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
+                            <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+                            <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
                         </button>
                     ))}
                 </div>
@@ -498,64 +519,111 @@ export default function ShapeMatchingGame({ childId, level, onComplete, isMonito
 
     // ─── Game Screen ───────────────────────────────────────────
     return (
-        <div className="bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-3xl p-6 md:p-8 shadow-2xl">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-8 bg-white/80 backdrop-blur rounded-2xl p-4 md:p-6 shadow-lg">
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl md:text-3xl font-bold text-purple-700">⭐ {score}</span>
+        <div className="bg-white/90 backdrop-blur-xl rounded-2xl md:rounded-[3rem] p-4 pt-6 md:p-10 shadow-2xl border border-white/50 w-full max-w-6xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative">
+
+            {/* Soft background glow based on target shape */}
+            <div
+                className="absolute inset-0 opacity-[0.03] pointer-events-none transition-colors duration-1000"
+                style={{ backgroundColor: targetShape?.color || '#6366f1' }}
+            ></div>
+
+            {/* Compact Header Area */}
+            <div className="flex justify-between items-center mb-6 md:mb-10 bg-gradient-to-r from-indigo-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-4 py-3 md:px-10 md:py-6 shadow-xl relative overflow-hidden ring-1 ring-indigo-100/50">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+
+                <div className="flex items-center gap-3 md:gap-8 relative z-10">
+                    <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl bg-white shadow-md flex items-center justify-center text-xl md:text-3xl ring-4 ring-indigo-50 border border-indigo-100 transform -rotate-3 transition-transform">
+                        ⭐
+                    </div>
+                    <div>
+                        <h3 className="text-lg md:text-2xl font-black text-slate-800 tracking-wide uppercase">Nivo {level}</h3>
+                    </div>
                 </div>
-                <div className="flex items-center gap-3">
-                    <span className={`text-2xl md:text-3xl font-bold ${timeLeft <= 10 ? 'text-red-600 animate-pulse' : 'text-blue-700'}`}>
-                        ⏱️ {timeLeft}s
-                    </span>
-                    {isConnected && (
-                        <span className="text-sm text-green-600 flex items-center gap-1">
-                            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                            Live
+
+                <div className="flex items-center gap-3 md:gap-6 relative z-10">
+                    <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-indigo-100/50 text-center min-w-[80px] md:min-w-[120px]">
+                        <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Poeni</span>
+                        <span className="text-xl md:text-3xl font-black text-indigo-600">{score}</span>
+                    </div>
+
+                    <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-indigo-100/50 text-center min-w-[70px] md:min-w-[100px]">
+                        <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Vreme</span>
+                        <span className={`text-xl md:text-3xl font-black ${timeLeft <= 10 ? 'text-rose-500 animate-pulse' : 'text-indigo-400'}`}>
+                            {timeLeft}s
                         </span>
-                    )}
+                    </div>
                 </div>
             </div>
 
-            {/* Target shape */}
-            {targetShape && (
-                <div className="mb-8 text-center">
-                    <p className="text-xl md:text-2xl font-bold text-gray-700 mb-4">Pronađi ovaj oblik:</p>
-                    <div className="inline-flex flex-col items-center bg-white rounded-3xl px-10 py-6 shadow-xl border-4 border-purple-100">
-                        <ShapeSVG type={targetShape.type} color={targetShape.color} size={90} />
-                        <p className="text-xl font-bold mt-3" style={{ color: targetShape.color }}>
-                            {SHAPE_NAMES[targetShape.type]}
-                        </p>
+            {/* Game Main Area */}
+            <div className="flex-1 flex flex-col items-center justify-center gap-6 md:gap-12 pt-2 md:pt-4 relative z-10">
+
+                {/* Target prompt */}
+                <div className="text-center">
+                    <span className="inline-block px-4 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] md:text-xs font-black uppercase tracking-widest mb-4 md:mb-8 border border-slate-200">
+                        Pronađi isti oblik
+                    </span>
+
+                    {targetShape && (
+                        <div className="relative group">
+                            <div className="absolute inset-0 bg-white rounded-2xl md:rounded-[3rem] blur-xl opacity-40"></div>
+                            <div className="relative bg-white rounded-2xl md:rounded-[3rem] p-6 md:p-10 shadow-xl border-2 border-slate-50 flex flex-col items-center justify-center ring-1 ring-slate-100">
+                                <ShapeSVG
+                                    type={targetShape.type}
+                                    color={targetShape.color}
+                                    size={80}
+                                />
+                                <div
+                                    className="mt-4 text-xl md:text-2xl font-black tracking-tight"
+                                    style={{ color: targetShape.color }}
+                                >
+                                    {SHAPE_NAMES[targetShape.type]}
+                                </div>
+                                <div className="absolute -bottom-2 md:-bottom-3 px-4 py-1 md:px-6 md:py-1.5 bg-slate-900 rounded-full text-[8px] md:text-[10px] font-black text-white uppercase tracking-widest shadow-lg">
+                                    Cilj
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Multiple choice grid */}
+                <div className="w-full max-w-5xl px-2">
+                    <div className={`grid gap-3 md:gap-8 mx-auto ${shapes.length <= 4
+                        ? 'grid-cols-2 lg:grid-cols-4'
+                        : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8'
+                        }`}>
+                        {shapes.map((shape) => (
+                            <button
+                                key={shape.id}
+                                onClick={() => handleShapeClick(shape)}
+                                disabled={feedback !== null || isMonitor}
+                                className={`group relative aspect-square bg-white rounded-2xl md:rounded-[2.5rem] p-3 md:p-6 flex flex-col items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 border shadow-sm ${feedback === "correct" && targetShape?.type === shape.type
+                                    ? "border-emerald-400 bg-emerald-50 shadow-2xl scale-110 z-20 ring-4 ring-emerald-100"
+                                    : feedback === "wrong" && targetShape?.type !== shape.type
+                                        ? "border-rose-100 opacity-40"
+                                        : "border-slate-50 hover:border-indigo-100 hover:shadow-xl shadow-sm"
+                                    }`}
+                            >
+                                <div className="transform transition-all duration-300 group-hover:rotate-6">
+                                    <ShapeSVG type={shape.type} color={shape.color} size={60} />
+                                </div>
+
+                                {feedback === "correct" && targetShape?.type === shape.type && (
+                                    <div className="absolute -top-2 -right-2 bg-emerald-500 text-white p-2 md:p-3 rounded-full shadow-lg animate-bounce border-2 md:border-4 border-white">
+                                        <svg className="w-4 h-4 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                )}
+                            </button>
+                        ))}
                     </div>
                 </div>
-            )}
+            </div>
 
-            {/* Feedback */}
-            {feedback && (
-                <div className={`text-center mb-4 text-3xl font-bold animate-bounce ${feedback === "correct" ? "text-green-600" : "text-red-600"}`}>
-                    {feedback === "correct" ? "✅ Tačno!" : "❌ Pokušaj ponovo!"}
-                </div>
-            )}
-
-            {/* Shape grid */}
-            <div className={`grid gap-4 md:gap-6 max-w-3xl mx-auto ${shapes.length <= 4 ? 'grid-cols-2 md:grid-cols-4' : shapes.length <= 6 ? 'grid-cols-3 md:grid-cols-3' : 'grid-cols-4 md:grid-cols-4'}`}>
-                {shapes.map(shape => (
-                    <button
-                        key={shape.id}
-                        onClick={() => handleShapeClick(shape)}
-                        className={`group bg-white rounded-2xl p-4 md:p-6 flex flex-col items-center justify-center transition-all duration-300 shadow-md hover:shadow-xl hover:scale-105 active:scale-95 border-2 ${feedback === "correct" && targetShape?.type === shape.type
-                            ? "border-green-400 bg-green-50 scale-110"
-                            : feedback === "wrong"
-                                ? "border-transparent"
-                                : "border-transparent hover:border-purple-200"
-                            }`}
-                    >
-                        <ShapeSVG type={shape.type} color={shape.color} size={70} />
-                        <span className="mt-2 text-sm font-bold text-gray-500 group-hover:text-gray-700 transition-colors">
-                            {SHAPE_NAMES[shape.type]}
-                        </span>
-                    </button>
-                ))}
+            <div className="mt-8 text-center text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-widest opacity-60 px-4">
+                💡 Brzina donosi više poena! Fokusiraj se na oblik i boju.
             </div>
         </div>
     );

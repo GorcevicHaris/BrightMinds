@@ -34,6 +34,8 @@ app.prepare().then(() => {
   });
   // Mapa za praćenje aktivnih sesija: childId -> sessionData
   const activeSessions = new Map();
+  // Mapa za praćenje koji soket pripada kojem detetu: socketId -> childId
+  const socketToChild = new Map();
 
   io.on("connection", (socket) => {
     console.log(`🔌 Client connected: ${socket.id}`);
@@ -70,6 +72,10 @@ app.prepare().then(() => {
     socket.on("game:start", (data) => {
       const childId = parseInt(data.childId);
       const roomName = `child:${childId}`;
+
+      // Poveži ovaj soket sa ovim detetom za kasnije čišćenje
+      socketToChild.set(socket.id, childId);
+
       const update = {
         childId: childId,
         activityId: data.activityId,
@@ -98,6 +104,9 @@ app.prepare().then(() => {
       const roomName = `child:${childId}`;
       const update = { ...data, timestamp: new Date().toISOString() };
 
+      // Osiguraj da imamo mapiranje
+      socketToChild.set(socket.id, childId);
+
       // Ažuriraj sačuvanu sesiju
       if (activeSessions.has(childId)) {
         const session = activeSessions.get(childId);
@@ -110,7 +119,6 @@ app.prepare().then(() => {
           lastUpdate: update.timestamp
         };
         activeSessions.set(childId, updatedSession);
-        // console.log(`📝 Session updated for child ${childId}: score ${updatedSession.data.score}`);
       } else {
         // Ako monitor uđe a sesija nije sačuvana (npr. server restart), kreiraj je iz progresa
         console.log(`⚠️ Progress received for child ${childId} but no active session. Creating one...`);
@@ -134,8 +142,9 @@ app.prepare().then(() => {
         timestamp: new Date().toISOString(),
       };
 
-      // Ukloni sesiju
+      // Ukloni sesiju i mapiranje
       activeSessions.delete(childId);
+      socketToChild.delete(socket.id);
       console.log(`🗑️ Session deleted for child ${childId}`);
 
       io.to(roomName).emit("game:update", update);
@@ -144,6 +153,26 @@ app.prepare().then(() => {
 
     socket.on("disconnect", () => {
       console.log(`🔌 Client disconnected: ${socket.id}`);
+
+      // Ako je ovo bio soket od deteta koje je bilo u igri, obavesti monitore
+      if (socketToChild.has(socket.id)) {
+        const childId = socketToChild.get(socket.id);
+        const roomName = `child:${childId}`;
+
+        console.log(`🧹 Cleaning up session for child ${childId} due to disconnect`);
+
+        // Obavesti monitor da je dete izašlo
+        io.to(roomName).emit("game:update", {
+          childId,
+          event: "completed", // Tretiramo diskonekciju kao kraj igre
+          timestamp: new Date().toISOString(),
+          reason: "disconnect"
+        });
+
+        // Očisti mape
+        activeSessions.delete(childId);
+        socketToChild.delete(socket.id);
+      }
     });
   });
 
