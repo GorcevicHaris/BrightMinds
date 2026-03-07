@@ -1,0 +1,106 @@
+[
+  {
+    "Field": "id",
+    "Type": "int(11)",
+    "Null": "NO",
+    "Key": "PRI",
+    "Default": null,
+    "Extra": "auto_increment"
+  },
+  {
+    "Field": "title",
+    "Type": "varchar(255)",
+    "Null": "NO",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "description",
+    "Type": "text",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "category",
+    "Type": "enum('communication','social','sensory','motor','cognitive','emotional','daily_living')",
+    "Null": "NO",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "difficulty_level",
+    "Type": "enum('beginner','intermediate','advanced')",
+    "Null": "NO",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "estimated_duration",
+    "Type": "int(11)",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "visual_support",
+    "Type": "varchar(500)",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "instructions",
+    "Type": "text",
+    "Null": "NO",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "materials_needed",
+    "Type": "text",
+    "Null": "YES",
+    "Key": "",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "created_by",
+    "Type": "int(11)",
+    "Null": "YES",
+    "Key": "MUL",
+    "Default": null,
+    "Extra": ""
+  },
+  {
+    "Field": "is_public",
+    "Type": "tinyint(1)",
+    "Null": "YES",
+    "Key": "",
+    "Default": "0",
+    "Extra": ""
+  },
+  {
+    "Field": "created_at",
+    "Type": "timestamp",
+    "Null": "NO",
+    "Key": "",
+    "Default": "current_timestamp()",
+    "Extra": ""
+  },
+  {
+    "Field": "updated_at",
+    "Type": "timestamp",
+    "Null": "NO",
+    "Key": "",
+    "Default": "current_timestamp()",
+    "Extra": "on update current_timestamp()"
+  }
+]

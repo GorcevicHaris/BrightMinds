@@ -7,6 +7,7 @@ import MemoryGame from "@/app/components/games/MemoryGame";
 import ColoringGame from "@/app/components/games/ColoringGame";
 import SoundToImageGame from "@/app/components/games/SoundToImageGame";
 import SocialCommunicationGame from "@/app/components/games/SocialCommunicationGame";
+import SocialStoryGame from "@/app/components/games/SocialStoryGame";
 import { ArrowLeft, Timer, Trophy, Target } from "lucide-react";
 
 interface GameContainerProps {
@@ -55,13 +56,21 @@ const GAMES = [
     color: "from-violet-400 to-purple-600",
     shadow: "shadow-violet-200",
   },
+  {
+    id: "social-story",
+    title: "Istraži Grad",
+    description: "Vozi kolima kroz grad do cilja!",
+    icon: "🚗",
+    color: "from-teal-500 to-emerald-600",
+    shadow: "shadow-teal-200",
+  },
 ];
 
 export default function GameContainer({ childId, childName }: GameContainerProps) {
   const [currentLevel, setCurrentLevel] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [selectedGame, setSelectedGame] = useState<"shapes" | "memory" | "coloring" | "sound-to-image" | "social">("shapes");
+  const [selectedGame, setSelectedGame] = useState<"shapes" | "memory" | "coloring" | "sound-to-image" | "social" | "social-story">("shapes");
   const [isGameFocused, setIsGameFocused] = useState(false);
 
   const isSavingRef = useRef(false);
@@ -88,7 +97,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
       else if (score >= 50) successLevel = "partial";
       else successLevel = "struggled";
 
-      const activityId = selectedGame === "shapes" ? 1 : selectedGame === "memory" ? 3 : selectedGame === "sound-to-image" ? 5 : selectedGame === "social" ? 6 : 4;
+      const activityId = selectedGame === "shapes" ? 1 : selectedGame === "memory" ? 3 : selectedGame === "sound-to-image" ? 5 : selectedGame === "social" ? 6 : selectedGame === "social-story" ? 7 : 4;
 
       const response = await fetch("/api/activities/complete", {
         method: "POST",
@@ -194,6 +203,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                 <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
               ) : selectedGame === "social" ? (
                 <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+              ) : selectedGame === "social-story" ? (
+                <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
               ) : (
                 <ColoringGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
               )}
