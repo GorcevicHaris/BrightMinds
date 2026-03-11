@@ -11,7 +11,6 @@ interface Props {
     child: Child;
     childId: number;
 }
-// 
 export default function ChildPageClient({ child, childId }: Props) {
     const [activeView, setActiveView] = useState<"game" | "stats">("game");
     return (
