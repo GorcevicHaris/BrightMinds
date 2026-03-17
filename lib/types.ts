@@ -8,7 +8,7 @@ export interface UserPayload {
 export interface GameUpdate {
     childId: number;
     activityId: number;
-    gameType: 'shape_matching' | 'memory' | 'coloring' | 'sound-to-image';
+    gameType: 'shape_matching' | 'memory' | 'coloring' | 'sound-to-image' | 'social' | 'social-story';
     event: 'started' | 'progress' | 'completed' | 'shape_placed' | 'card_flipped' | 'color_applied' | 'answer' | 'new_round';
     data: any;
     timestamp: string;

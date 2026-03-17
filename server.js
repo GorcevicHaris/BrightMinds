@@ -23,7 +23,6 @@ app.prepare().then(() => {
     }
   });
 
-
   const io = new Server(server, {
     cors: {
       origin: "*",
@@ -32,10 +31,24 @@ app.prepare().then(() => {
     },
     path: "/api/socket",
   });
+
   // Mapa za praćenje aktivnih sesija: childId -> sessionData
   const activeSessions = new Map();
-  // Mapa za praćenje koji soket pripada kojem detetu: socketId -> childId
   const socketToChild = new Map();
+
+  // Čišćenje starih sesija (TTL: 2 sata) - Profesionalno rešenje za "igrice od juče"
+  setInterval(() => {
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [childId, session] of activeSessions.entries()) {
+      const lastUpdate = session.lastUpdate ? new Date(session.lastUpdate).getTime() : 0;
+      if (now - lastUpdate > 2 * 60 * 60 * 1000) {
+        activeSessions.delete(childId);
+        cleaned++;
+      }
+    }
+    if (cleaned > 0) console.log(`🧹 Routine cleanup: Removed ${cleaned} stale sessions`);
+  }, 15 * 60 * 1000); // Provera svakih 15 minuta
 
   io.on("connection", (socket) => {
     console.log(`🔌 Client connected: ${socket.id}`);
@@ -47,13 +60,13 @@ app.prepare().then(() => {
       socket.join(roomName);
       console.log(`👁️ Monitor joined room: ${roomName}`);
 
-      // Ako već postoji aktivna sesija za ovo dete, pošalji je monitoru odmah
+      // Sinhronizacija: Ako već postoji aktivna sesija, pošalji je odmah
       if (activeSessions.has(normalizedChildId)) {
         const session = activeSessions.get(normalizedChildId);
         socket.emit("game:update", {
           ...session,
-          event: "started", // Tretiraj kao start da bi monitor inicijalizovao UI
-          isSync: true      // Oznaka da je ovo sinhronizacija
+          isSync: true,
+          timestamp: new Date().toISOString()
         });
         console.log(`🔄 Synced active session for child ${normalizedChildId} to monitor ${socket.id}`);
       }
@@ -61,19 +74,16 @@ app.prepare().then(() => {
       socket.emit("monitor:joined", { childId: normalizedChildId, room: roomName });
     });
 
-    // Roditelj prestaje da prati dete
     socket.on("monitor:leave", (childId) => {
       const roomName = `child:${childId}`;
       socket.leave(roomName);
       console.log(`👁️ Monitor left room: ${roomName}`);
     });
 
-    // Dete započinje igru
     socket.on("game:start", (data) => {
       const childId = parseInt(data.childId);
       const roomName = `child:${childId}`;
 
-      // Poveži ovaj soket sa ovim detetom za kasnije čišćenje
       socketToChild.set(socket.id, childId);
 
       const update = {
@@ -82,96 +92,84 @@ app.prepare().then(() => {
         gameType: data.gameType,
         event: "started",
         data: {
-          startedAt: new Date().toISOString(),
           score: 0,
           level: data.level || 1,
+          correctCount: 0,
+          incorrectCount: 0,
           ...data
         },
         timestamp: new Date().toISOString(),
+        lastUpdate: new Date().toISOString()
       };
 
-      // Sačuvaj sesiju
       activeSessions.set(childId, update);
-      console.log(`💾 Session saved for child ${childId}. Total sessions: ${activeSessions.size}`);
-
       io.to(roomName).emit("game:update", update);
-      console.log(`🎮 Game started in room ${roomName}`);
+      console.log(`🎮 Game started: ${data.gameType} for child ${childId}`);
     });
 
-    // Real-time progres igre
     socket.on("game:progress", (data) => {
       const childId = parseInt(data.childId);
       const roomName = `child:${childId}`;
-      const update = { ...data, timestamp: new Date().toISOString() };
+      const now = new Date().toISOString();
 
-      // Osiguraj da imamo mapiranje
+      const update = { ...data, timestamp: now };
       socketToChild.set(socket.id, childId);
 
-      // Ažuriraj sačuvanu sesiju
       if (activeSessions.has(childId)) {
         const session = activeSessions.get(childId);
         const updatedSession = {
           ...session,
+          gameType: data.gameType || session.gameType,
           data: {
             ...session.data,
             ...data.data
           },
-          lastUpdate: update.timestamp
+          lastUpdate: now
         };
         activeSessions.set(childId, updatedSession);
       } else {
-        // Ako monitor uđe a sesija nije sačuvana (npr. server restart), kreiraj je iz progresa
-        console.log(`⚠️ Progress received for child ${childId} but no active session. Creating one...`);
         activeSessions.set(childId, {
           ...data,
-          event: "started",
-          lastUpdate: update.timestamp
+          event: "progress",
+          lastUpdate: now
         });
       }
 
       io.to(roomName).emit("game:update", update);
     });
 
-    // Igra završena
     socket.on("game:complete", (data) => {
       const childId = parseInt(data.childId);
       const roomName = `child:${childId}`;
-      const update = {
-        ...data,
-        event: "completed",
-        timestamp: new Date().toISOString(),
-      };
 
-      // Ukloni sesiju i mapiranje
       activeSessions.delete(childId);
       socketToChild.delete(socket.id);
-      console.log(`🗑️ Session deleted for child ${childId}`);
 
-      io.to(roomName).emit("game:update", update);
-      console.log(`✅ Game completed in room ${roomName}`);
+      io.to(roomName).emit("game:update", {
+        ...data,
+        event: "completed",
+        timestamp: new Date().toISOString()
+      });
+      console.log(`✅ Game completed for child ${childId}`);
     });
 
     socket.on("disconnect", () => {
-      console.log(`🔌 Client disconnected: ${socket.id}`);
-
-      // Ako je ovo bio soket od deteta koje je bilo u igri, obavesti monitore
       if (socketToChild.has(socket.id)) {
         const childId = socketToChild.get(socket.id);
         const roomName = `child:${childId}`;
 
-        console.log(`🧹 Cleaning up session for child ${childId} due to disconnect`);
-
-        // Obavesti monitor da je dete izašlo
         io.to(roomName).emit("game:update", {
           childId,
-          event: "completed", // Tretiramo diskonekciju kao kraj igre
+          event: "completed",
           timestamp: new Date().toISOString(),
           reason: "disconnect"
         });
 
-        // Očisti mape
         activeSessions.delete(childId);
         socketToChild.delete(socket.id);
+        console.log(`🧹 Cleaned up session for child ${childId} on disconnect`);
+      } else {
+        console.log(`🔌 Client disconnected: ${socket.id}`);
       }
     });
   });

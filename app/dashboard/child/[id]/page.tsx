@@ -15,18 +15,38 @@ export interface Child {
 }
 
 export default async function ChildPage({ params }: { params: { id: string } }) {
-    const user = await verifyToken();
     const { id } = await params;
+    const childId = Number(id);
 
-    // Dobavi podatke o detetu
-    const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT c.* FROM children c 
-     JOIN user_children uc ON uc.child_id = c.id 
-     WHERE uc.user_id = ? AND c.id = ?`,
-        [user.id, id]
-    );
+    let child: Child | null = null;
 
-    const child = rows[0] as Child;
+    // Try 1: Parent/teacher access via JWT — verify ownership
+    try {
+        const user = await verifyToken();
+        const [rows] = await pool.query<RowDataPacket[]>(
+            `SELECT c.* FROM children c 
+             JOIN user_children uc ON uc.child_id = c.id 
+             WHERE uc.user_id = ? AND c.id = ?`,
+            [user.id, childId]
+        );
+        if (rows.length > 0) {
+            child = rows[0] as Child;
+        }
+    } catch {
+        // No valid JWT — this might be a child self-login via PIN
+    }
+
+    // Try 2: Child self-login — just fetch the child directly
+    // (The child authenticated via PIN on /login and was redirected here)
+    if (!child) {
+        const [rows] = await pool.query<RowDataPacket[]>(
+            `SELECT * FROM children WHERE id = ?`,
+            [childId]
+        );
+        if (rows.length > 0) {
+            child = rows[0] as Child;
+        }
+    }
 
     if (!child) {
         return (
@@ -39,11 +59,11 @@ export default async function ChildPage({ params }: { params: { id: string } }) 
                     <p className="text-gray-600 mb-6">
                         Nemate pristup ovom detetu ili ono ne postoji.
                     </p>
-                    <ExitButton target="/dashboard" />
+                    <ExitButton target="/login" />
                 </div>
             </div>
         );
     }
 
-    return <ChildPageClient child={child} childId={Number(id)} />;
+    return <ChildPageClient child={child} childId={childId} />;
 }

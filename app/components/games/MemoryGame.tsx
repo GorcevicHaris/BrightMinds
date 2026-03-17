@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useGameEmitter } from '@/lib/useSocket';
 
 interface Card {
@@ -25,11 +25,11 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
   const pairsCount = Math.min(3 + level, 8);
 
   const [cards, setCards] = useState<Card[]>(monitorState?.cards || []);
-  const [flippedCards, setFlippedCards] = useState<number[]>(monitorState?.flippedCards || []);
+  const [flippedIds, setFlippedIds] = useState<number[]>([]);
   const [moves, setMoves] = useState(monitorState?.moves || 0);
   const [matchedPairs, setMatchedPairs] = useState(monitorState?.matchedPairs || 0);
   const [isPlaying, setIsPlaying] = useState(isMonitor ? true : false);
-  const [isChecking, setIsChecking] = useState(false);
+  const [isLocked, setIsLocked] = useState(false); // replaces isChecking — locks ALL card clicks
   const [startTime, setStartTime] = useState<number | null>(null);
   const [moodBefore, setMoodBefore] = useState<string | null>(null);
   const [showMoodBefore, setShowMoodBefore] = useState(false);
@@ -37,49 +37,48 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
   const [gameCompleted, setGameCompleted] = useState(false);
   const [incorrectCount, setIncorrectCount] = useState(monitorState?.incorrectCount || 0);
 
-  // Sync with monitor state if in monitor mode
+  // Refs to avoid stale closures in setTimeout
+  const cardsRef = useRef(cards);
+  const matchedPairsRef = useRef(matchedPairs);
+  const incorrectCountRef = useRef(incorrectCount);
+  const movesRef = useRef(moves);
+
+  useEffect(() => { cardsRef.current = cards; }, [cards]);
+  useEffect(() => { matchedPairsRef.current = matchedPairs; }, [matchedPairs]);
+  useEffect(() => { incorrectCountRef.current = incorrectCount; }, [incorrectCount]);
+  useEffect(() => { movesRef.current = moves; }, [moves]);
+
+  // Sync with monitor state
   useEffect(() => {
     if (isMonitor && monitorState) {
-      if (monitorState.cards) setCards(monitorState.cards);
+      if (monitorState.cards) {
+        setCards([...monitorState.cards]);
+      }
       if (monitorState.moves !== undefined) setMoves(monitorState.moves);
       if (monitorState.matchedPairs !== undefined) setMatchedPairs(monitorState.matchedPairs);
-      if (monitorState.flippedCards) setFlippedCards(monitorState.flippedCards);
+      if (monitorState.flippedCards !== undefined) setFlippedIds(monitorState.flippedCards);
       if (monitorState.incorrectCount !== undefined) setIncorrectCount(monitorState.incorrectCount);
       if (monitorState.totalIncorrect !== undefined) setIncorrectCount(monitorState.totalIncorrect);
     }
   }, [isMonitor, monitorState]);
 
-  // 🔴 WebSocket Hook
   const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
 
   const initializeGame = useCallback(() => {
     const selectedEmojis = EMOJIS.slice(0, pairsCount);
-
     const cardPairs: Card[] = [];
     selectedEmojis.forEach((emoji, pairId) => {
-      cardPairs.push({
-        id: pairId * 2,
-        pairId,
-        emoji,
-        isFlipped: false,
-        isMatched: false,
-      });
-      cardPairs.push({
-        id: pairId * 2 + 1,
-        pairId,
-        emoji,
-        isFlipped: false,
-        isMatched: false,
-      });
+      cardPairs.push({ id: pairId * 2, pairId, emoji, isFlipped: false, isMatched: false });
+      cardPairs.push({ id: pairId * 2 + 1, pairId, emoji, isFlipped: false, isMatched: false });
     });
-
     const shuffled = cardPairs.sort(() => Math.random() - 0.5);
     setCards(shuffled);
-    setFlippedCards([]);
+    setFlippedIds([]);
     setMoves(0);
     setMatchedPairs(0);
-    setIsChecking(false);
+    setIsLocked(false);
     setGameCompleted(false);
+    setIncorrectCount(0);
   }, [pairsCount]);
 
   useEffect(() => {
@@ -104,165 +103,148 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
     setIncorrectCount(0);
     initializeGame();
 
-    // 🔴 EMIT: Igra počela
     emitGameStart(childId, 3, 'memory', {
       level,
       cards: cards,
       moves: 0,
-      matchedPairs: 0
+      matchedPairs: 0,
     });
   };
 
-  const handleCardClick = (cardId: number) => {
-    if (!isPlaying || isMonitor) return;
-    if (isChecking) return;
-    if (flippedCards.length >= 2) return;
-    if (flippedCards.includes(cardId)) return;
+  const handleCardClick = useCallback((cardId: number) => {
+    if (!isPlaying || isMonitor || isLocked) return;
 
-    const clickedCard = cards.find(c => c.id === cardId);
-    if (!clickedCard || clickedCard.isMatched) return;
+    const card = cardsRef.current.find(c => c.id === cardId);
+    if (!card || card.isMatched || card.isFlipped) return;
 
-    const newFlipped = [...flippedCards, cardId];
-    setFlippedCards(newFlipped);
-
-    const newCards = cards.map(card =>
-      card.id === cardId ? { ...card, isFlipped: true } : card
+    // Flip the clicked card
+    const updatedCards = cardsRef.current.map(c =>
+      c.id === cardId ? { ...c, isFlipped: true } : c
     );
+    setCards(updatedCards);
 
-    setCards(newCards);
+    setFlippedIds(prev => {
+      const newFlipped = [...prev, cardId];
 
-    // 🔴 EMIT: Kartica okrenuta
-    const currentScore = Math.max(0, 1000 - moves * 50);
-    emitGameProgress({
-      childId,
-      activityId: 3,
-      gameType: 'memory',
-      event: 'card_flipped',
-      data: {
-        cardId,
-        emoji: clickedCard.emoji,
-        flippedCount: newFlipped.length,
-        cards: newCards,
-        moves,
-        score: currentScore,
-        correctCount: matchedPairs,
-        incorrectCount,
-        flippedCards: newFlipped,
-      },
-      timestamp: new Date().toISOString(),
-    });
+      // Emit progress (lightweight — no full cards array)
+      emitGameProgress({
+        childId,
+        activityId: 3,
+        gameType: 'memory',
+        event: 'card_flipped',
+        data: {
+          cardId,
+          emoji: card.emoji,
+          flippedCount: newFlipped.length,
+          moves: movesRef.current,
+          score: Math.max(0, 1000 - movesRef.current * 50),
+          correctCount: matchedPairsRef.current,
+          incorrectCount: incorrectCountRef.current,
+          flippedCards: newFlipped,
+          cards: updatedCards, // Send current card states to monitor
+        },
+        timestamp: new Date().toISOString(),
+      });
 
-    if (newFlipped.length === 2) {
-      setIsChecking(true);
-      const newMoves = moves + 1;
-      setMoves(newMoves);
+      if (newFlipped.length === 2) {
+        setIsLocked(true);
+        const newMoves = movesRef.current + 1;
+        setMoves(newMoves);
 
-      const [firstId, secondId] = newFlipped;
-      const firstCard = cards.find(c => c.id === firstId);
-      const secondCard = cards.find(c => c.id === secondId);
+        const firstCard = cardsRef.current.find(c => c.id === newFlipped[0]);
+        const secondCard = updatedCards.find(c => c.id === newFlipped[1]);
 
-      if (firstCard && secondCard && firstCard.pairId === secondCard.pairId) {
-        setTimeout(() => {
-          setCards(prev => prev.map(card =>
-            card.id === firstId || card.id === secondId
-              ? { ...card, isMatched: true, isFlipped: true }
-              : card
-          ));
-          setFlippedCards([]);
-          const newMatchedPairs = matchedPairs + 1;
-          setMatchedPairs(newMatchedPairs);
-          setIsChecking(false);
+        if (firstCard && secondCard && firstCard.pairId === secondCard.pairId) {
+          // MATCH!
+          setTimeout(() => {
+            const nextCards = cardsRef.current.map(c =>
+              c.id === newFlipped[0] || c.id === newFlipped[1]
+                ? { ...c, isMatched: true, isFlipped: true }
+                : c
+            );
+            setCards(nextCards);
+            const newMatched = matchedPairsRef.current + 1;
+            setMatchedPairs(newMatched);
+            setFlippedIds([]);
+            setIsLocked(false);
 
-          const updatedCards = cards.map(card =>
-            card.id === firstId || card.id === secondId
-              ? { ...card, isMatched: true, isFlipped: true }
-              : card
-          );
+            emitGameProgress({
+              childId,
+              activityId: 3,
+              gameType: 'memory',
+              event: 'progress',
+              data: {
+                matched: true,
+                emoji: firstCard.emoji,
+                score: Math.max(0, 1000 - newMoves * 50),
+                moves: newMoves,
+                correct: true,
+                correctCount: newMatched,
+                incorrectCount: incorrectCountRef.current,
+                matchedPairs: newMatched,
+                flippedCards: [],
+                cards: nextCards, // Send updated matched cards to monitor
+              },
+              timestamp: new Date().toISOString(),
+            });
+          }, 400);
+        } else {
+          // NO MATCH — flip back after delay
+          setTimeout(() => {
+            const resetCards = cardsRef.current.map(c =>
+              c.id === newFlipped[0] || c.id === newFlipped[1]
+                ? { ...c, isFlipped: false }
+                : c
+            );
+            setCards(resetCards);
+            const newIncorrect = incorrectCountRef.current + 1;
+            setIncorrectCount(newIncorrect);
+            setFlippedIds([]);
+            setIsLocked(false);
 
-          // 🔴 EMIT: Par pronađen
-          const updatedScore = Math.max(0, 1000 - newMoves * 50);
-          emitGameProgress({
-            childId,
-            activityId: 3,
-            gameType: 'memory',
-            event: 'progress',
-            data: {
-              matched: true,
-              emoji: firstCard.emoji,
-              score: updatedScore,
-              moves: newMoves,
-              correct: true,
-              correctCount: newMatchedPairs,
-              incorrectCount,
-              cards: updatedCards,
-              flippedCards: [],
-            },
-            timestamp: new Date().toISOString(),
-          });
-        }, 600);
-      } else {
-        setTimeout(() => {
-          setCards(prev => prev.map(card =>
-            card.id === firstId || card.id === secondId
-              ? { ...card, isFlipped: false }
-              : card
-          ));
-          setFlippedCards([]);
-          const newIncorrect = incorrectCount + 1;
-          setIncorrectCount(newIncorrect);
-          setIsChecking(false);
-
-          const updatedCards = cards.map(card =>
-            card.id === firstId || card.id === secondId
-              ? { ...card, isFlipped: false }
-              : card
-          );
-
-          // 🔴 EMIT: Promašaj
-          emitGameProgress({
-            childId,
-            activityId: 3,
-            gameType: 'memory',
-            event: 'progress',
-            data: {
-              matched: false,
-              moves: newMoves,
-              correct: false,
-              correctCount: matchedPairs,
-              incorrectCount: newIncorrect,
-              score: Math.max(0, 1000 - newMoves * 50),
-              cards: updatedCards,
-              flippedCards: [],
-            },
-            timestamp: new Date().toISOString(),
-          });
-        }, 1200);
+            emitGameProgress({
+              childId,
+              activityId: 3,
+              gameType: 'memory',
+              event: 'progress',
+              data: {
+                matched: false,
+                moves: newMoves,
+                correct: false,
+                correctCount: matchedPairsRef.current,
+                incorrectCount: newIncorrect,
+                score: Math.max(0, 1000 - newMoves * 50),
+                matchedPairs: matchedPairsRef.current,
+                flippedCards: [],
+                cards: resetCards, // Sync flipped back cards
+              },
+              timestamp: new Date().toISOString(),
+            });
+          }, 700);
+        }
       }
-    }
-  };
 
+      return newFlipped;
+    });
+  }, [isPlaying, isMonitor, isLocked, childId, emitGameProgress]);
+
+  // Win detection
   useEffect(() => {
     if (matchedPairs === pairsCount && matchedPairs > 0 && isPlaying && !gameCompleted) {
       setGameCompleted(true);
       setIsPlaying(false);
 
-      // 🔴 EMIT: Igra završena
       const finalScore = Math.max(0, 1000 - moves * 50);
       emitGameComplete({
         childId,
         activityId: 3,
         gameType: 'memory',
         event: 'completed',
-        data: {
-          finalScore,
-          totalMoves: moves,
-        },
+        data: { finalScore, totalMoves: moves },
         timestamp: new Date().toISOString(),
       });
 
-      setTimeout(() => {
-        setShowMoodAfter(true);
-      }, 500);
+      setTimeout(() => setShowMoodAfter(true), 500);
     }
   }, [matchedPairs, pairsCount, isPlaying, gameCompleted, moves, childId, emitGameComplete]);
 
@@ -273,6 +255,7 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
     onComplete(score, duration, moodBefore, mood);
   };
 
+  // ── PRE-GAME MOOD ──────────────────────────────────
   if (!isMonitor && showMoodBefore) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
@@ -280,7 +263,6 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
           <span className="px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Vreme za igru</span>
           <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
         </div>
-
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
           {[
             { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
@@ -300,7 +282,6 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
             </button>
           ))}
         </div>
-
         {isConnected && (
           <div className="mt-10 md:mt-16 flex items-center gap-3 px-4 py-2 md:px-6 md:py-3 bg-white/50 backdrop-blur-sm rounded-2xl border border-green-100 shadow-sm">
             <span className="relative flex h-2 w-2 md:h-3 md:w-3">
@@ -314,6 +295,7 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
     );
   }
 
+  // ── POST-GAME MOOD ─────────────────────────────────
   if (!isMonitor && showMoodAfter) {
     const score = Math.max(0, 1000 - moves * 50);
     return (
@@ -325,7 +307,6 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
             Završio/la si za <span className="font-black text-purple-600">{moves} poteza</span>! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
           </p>
         </div>
-
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
           {[
             { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
@@ -349,48 +330,35 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
     );
   }
 
+  // ── START SCREEN ────────────────────────────────────
   if (!isPlaying && moves === 0) {
     return (
       <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-100 shadow-lg">
-
-        {/* Background Decorations */}
         <div className="absolute top-12 left-12 text-6xl opacity-10 animate-pulse -rotate-12">🃏</div>
         <div className="absolute bottom-16 right-12 text-7xl opacity-10 animate-bounce rotate-12">🎴</div>
         <div className="absolute top-24 right-20 text-5xl opacity-10 animate-pulse rotate-45">❓</div>
         <div className="absolute bottom-24 left-24 text-6xl opacity-10 animate-bounce -rotate-6">🎲</div>
-
-        {/* Background Blobs (Softer) */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-200/30 rounded-full blur-3xl -mr-32 -mt-32"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl -ml-32 -mb-32"></div>
 
-        {/* Main Card Content */}
         <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
-
-          {/* Floating Badge */}
           <div className="mb-8 animate-in slide-in-from-top-4 duration-700">
             <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-indigo-100 text-indigo-600 text-sm font-black uppercase tracking-widest shadow-sm">
               Nivo {level}
             </span>
           </div>
-
-          {/* Hero Icon */}
           <div className="mb-10 relative group cursor-default">
             <div className="absolute inset-0 bg-indigo-400 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
             <div className="relative w-40 h-40 bg-gradient-to-b from-white to-indigo-50 rounded-[2.5rem] shadow-xl border-4 border-white flex items-center justify-center transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300">
               <span className="text-8xl drop-shadow-md">🧠</span>
             </div>
-            {/* Decorative mini icons */}
             <div className="absolute -top-4 -right-4 text-3xl animate-bounce delay-100">❓</div>
             <div className="absolute -bottom-4 -left-4 text-3xl animate-bounce delay-300">💡</div>
           </div>
-
-          {/* Title & Description */}
           <h2 className="text-5xl font-black text-slate-800 mb-4 tracking-tight drop-shadow-sm">Spoji Parove</h2>
           <p className="text-slate-600 text-xl font-medium leading-relaxed mb-12 max-w-sm mx-auto">
             Pronađi <span className="text-indigo-600 font-bold">{pairsCount} para</span> istih slika. Zapamti gde se kriju!
           </p>
-
-          {/* Big Action Button */}
           <button
             onClick={startGame}
             className="w-full max-w-sm group bg-indigo-500 hover:bg-indigo-600 text-white rounded-2xl p-1.5 transition-all duration-300 shadow-xl shadow-indigo-200 hover:shadow-indigo-300 hover:-translate-y-1"
@@ -402,25 +370,23 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
               </div>
             </div>
           </button>
-
         </div>
       </div>
     );
   }
 
+  // ── PLAYING ────────────────────────────────────────
   let gridCols = "grid-cols-4";
   if (pairsCount >= 7) gridCols = "grid-cols-4 md:grid-cols-6";
   else if (pairsCount >= 5) gridCols = "grid-cols-4 md:grid-cols-5";
 
   return (
     <div className="bg-white/90 backdrop-blur-xl rounded-2xl md:rounded-[3rem] p-4 pt-6 md:p-10 shadow-2xl border border-white/50 w-full max-w-6xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative">
-      {/* Background glow */}
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none rounded-2xl md:rounded-[3rem]"></div>
 
-      {/* Compact Header Area */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-6 md:mb-10 bg-gradient-to-r from-purple-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-4 py-3 md:px-10 md:py-6 shadow-xl relative overflow-hidden ring-1 ring-purple-100/50">
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-
         <div className="flex items-center gap-3 md:gap-8 relative z-10">
           <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl bg-white shadow-md flex items-center justify-center text-xl md:text-3xl ring-4 ring-purple-50 border border-purple-100 transform -rotate-3 transition-transform">
             🧠
@@ -429,13 +395,11 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
             <h3 className="text-lg md:text-2xl font-black text-slate-800 tracking-wide uppercase leading-tight">Nivo {level}</h3>
           </div>
         </div>
-
         <div className="flex items-center gap-3 md:gap-6 relative z-10">
           <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-purple-100/50 text-center min-w-[70px] md:min-w-[120px]">
             <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Potezi</span>
             <span className="text-xl md:text-3xl font-black text-purple-600">{moves}</span>
           </div>
-
           <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-purple-100/50 text-center min-w-[90px] md:min-w-[140px]">
             <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Pronađeno</span>
             <span className="text-xl md:text-3xl font-black text-emerald-500">
@@ -445,28 +409,54 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
         </div>
       </div>
 
-      {/* Game Grid */}
+      {/* Card Grid */}
       <div className="flex-1 flex items-center justify-center pt-2 md:pt-4 relative z-10">
-        <div className={`grid ${gridCols} gap-3 md:gap-6 w-full max-w-5xl mx-auto px-2`}>
-          {cards.map((card) => (
-            <button
-              key={card.id}
-              onClick={() => handleCardClick(card.id)}
-              disabled={card.isMatched || flippedCards.includes(card.id) || isChecking}
-              className={`aspect-square rounded-xl md:rounded-[2rem] text-3xl md:text-7xl font-bold transition-all duration-500 transform perspective-1000 ${card.isFlipped || card.isMatched
-                ? "bg-white shadow-xl rotate-y-180 scale-100 border border-indigo-50"
-                : "bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 hover:scale-105 active:scale-95 shadow-lg"
-                } ${card.isMatched ? "opacity-60 grayscale-[0.3] scale-90" : ""} ${isChecking ? "cursor-not-allowed" : "cursor-pointer"
-                }`}
-            >
-              <div className={`transition-all duration-500 ${card.isFlipped || card.isMatched ? "rotate-y-0 scale-110" : "scale-0"}`}>
-                {card.isFlipped || card.isMatched ? card.emoji : ""}
-              </div>
-              <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${card.isFlipped || card.isMatched ? "scale-0 opacity-0" : "scale-100 opacity-100"}`}>
-                <span className="text-white/40 font-bold">?</span>
-              </div>
-            </button>
-          ))}
+        <div className={`grid ${gridCols} gap-3 md:gap-5 w-full max-w-5xl mx-auto px-2`}>
+          {cards.map((card) => {
+            const isRevealed = card.isFlipped || card.isMatched;
+            const canClick = isPlaying && !isLocked && !card.isMatched && !card.isFlipped && !isMonitor;
+
+            return (
+              <button
+                key={card.id}
+                onClick={() => canClick && handleCardClick(card.id)}
+                className={`relative aspect-square rounded-xl md:rounded-2xl text-3xl md:text-6xl font-bold transition-all duration-200 overflow-hidden
+                  ${card.isMatched
+                    ? "bg-emerald-50 shadow-sm border-2 border-emerald-200"
+                    : isRevealed
+                      ? "bg-white shadow-lg border-2 border-indigo-100"
+                      : canClick
+                        ? "bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+                        : "bg-gradient-to-br from-indigo-400 via-indigo-500 to-purple-500 shadow-md cursor-default"
+                  }
+                `}
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                {/* Card face (emoji) */}
+                <div
+                  className={`absolute inset-0 flex items-center justify-center transition-all duration-200
+                    ${isRevealed ? "opacity-100 scale-100" : "opacity-0 scale-75"}
+                  `}
+                >
+                  <span className="select-none">{card.emoji}</span>
+                </div>
+
+                {/* Card back (?) */}
+                <div
+                  className={`absolute inset-0 flex items-center justify-center transition-all duration-200
+                    ${isRevealed ? "opacity-0 scale-75" : "opacity-100 scale-100"}
+                  `}
+                >
+                  <span className="text-white/40 font-black text-2xl md:text-4xl select-none">?</span>
+                </div>
+
+                {/* Match sparkle */}
+                {card.isMatched && (
+                  <div className="absolute top-1 right-1 text-sm md:text-lg">✅</div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -54,6 +54,12 @@ export const useGameMonitor = (childId: number, onUpdate: (update: GameUpdate) =
   const { socket, isConnected } = useSocket();
   const [activeSession, setActiveSession] = useState<any>(null);
 
+  // Use a ref to store the latest onUpdate callback to avoid re-triggering the effect
+  const onUpdateRef = useRef(onUpdate);
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
+
   useEffect(() => {
     if (!socket || !isConnected) return;
 
@@ -61,7 +67,7 @@ export const useGameMonitor = (childId: number, onUpdate: (update: GameUpdate) =
     socket.emit('monitor:child', childId);
 
     // Slušaj game update-e
-    socket.on('game:update', (update: GameUpdate) => {
+    const handler = (update: GameUpdate) => {
       console.log('📡 Received game update:', update);
 
       if (update.event === 'started') {
@@ -70,8 +76,10 @@ export const useGameMonitor = (childId: number, onUpdate: (update: GameUpdate) =
         setActiveSession(null);
       }
 
-      onUpdate(update);
-    });
+      onUpdateRef.current(update);
+    };
+
+    socket.on('game:update', handler);
 
     socket.on('monitor:joined', (data) => {
       console.log('👁️ Monitoring child:', data.childId);
@@ -79,10 +87,10 @@ export const useGameMonitor = (childId: number, onUpdate: (update: GameUpdate) =
 
     return () => {
       socket.emit('monitor:leave', childId);
-      socket.off('game:update');
+      socket.off('game:update', handler);
       socket.off('monitor:joined');
     };
-  }, [socket, isConnected, childId, onUpdate]);
+  }, [socket, isConnected, childId]); // Removed onUpdate from deps
 
   return { activeSession, isConnected };
 };

@@ -215,12 +215,17 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
   const template = TEMPLATES[level as keyof typeof TEMPLATES] || TEMPLATES[1];
 
   const initializeGame = () => {
-    const initialZones = template.map(t => ({
+    // Stroke-only zones (whiskers, mouth lines etc.) are too thin to click.
+    // Pre-fill them with their target color so the user only has to color fillable areas.
+    const initialZones = (template as any[]).map(t => ({
       ...t,
-      color: null,
+      color: t.stroke ? t.targetColor : null,
     }));
     setZones(initialZones);
-    setCompletedZones(0);
+
+    // Count pre-filled stroke zones so completion check works correctly
+    const preFilledCount = (template as any[]).filter(t => t.stroke).length;
+    setCompletedZones(preFilledCount);
   };
 
   const startGame = () => {

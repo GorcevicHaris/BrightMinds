@@ -15,19 +15,7 @@ interface GameProps {
     monitorState?: any;
 }
 
-// ─────────────────────────────────────────────────────
-// CITY GRAPH  —  5 cols × 4 rows = 20 intersections
-//
-//  n00─n01─n02─n03─n04
-//   │   │   │   │   │
-//  n10─n11─n12─n13─n14
-//   │   │   │   │   │
-//  n20─n21─n22─n23─n24
-//   │   │   │   │   │
-//  n30─n31─n32─n33─n34
-//
-//  Col x: 90 280 470 660 850
-//  Row y: 110 280 450 620
+
 // ─────────────────────────────────────────────────────
 const CX = [90, 280, 470, 660, 850];
 const CY = [110, 280, 450, 620];
@@ -240,7 +228,9 @@ const BLOCKS = [
 // ─────────────────────────────────────────────────────
 type Phase = "preview" | "mood_before" | "playing" | "checkpoint" | "dead_end" | "win" | "mood_after";
 
-export default function CityNavigatorGame({ childId, level, onComplete, isMonitor }: GameProps) {
+const DE_PENALTY = 20; // points deducted for wrong path
+
+export default function CityNavigatorGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
     const lvl = LEVELS[Math.min(level - 1, LEVELS.length - 1)];
 
     // Use refs for values needed inside setTimeout to avoid stale closures
@@ -248,23 +238,50 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
     const prevIdRef = useRef(lvl.startId);
     const phaseRef = useRef<Phase>("preview");
     const isMovingRef = useRef(false);
+    const scoreRef = useRef(0);
 
-    const [phase, setPhaseState] = useState<Phase>("preview");
-    const [moodBefore, setMoodBefore] = useState<string | null>(null);
+    // Character position for smooth animation (SVG coordinates)
+    const [charPos, setCharPos] = useState({ x: getNode(lvl.startId).x, y: getNode(lvl.startId).y });
+    const [charMoving, setCharMoving] = useState(false);
+
+    const [phase, setPhaseState] = useState<Phase>(monitorState?.phase || "preview");
+    const [moodBefore, setMoodBefore] = useState<string | null>(monitorState?.moodBefore || null);
     const [startTime, setStartTime] = useState(0);
-    const [curId, setCurIdState] = useState(lvl.startId);
-    const [unlockedCPs, setUnlockedCPs] = useState<Set<string>>(new Set());
-    const [visitedDE, setVisitedDE] = useState<Set<string>>(new Set());
-    const [activeCP, setActiveCP] = useState<CP | null>(null);
-    const [activeDE, setActiveDE] = useState<DE | null>(null);
-    const [score, setScore] = useState(0);
-    const [steps, setSteps] = useState(0);
+    const [curId, setCurIdState] = useState(monitorState?.curId || lvl.startId);
+    const [unlockedCPs, setUnlockedCPs] = useState<Set<string>>(new Set(monitorState?.unlockedCPs || []));
+    const [visitedDE, setVisitedDE] = useState<Set<string>>(new Set(monitorState?.visitedDE || []));
+    const [activeCP, setActiveCP] = useState<CP | null>(monitorState?.activeCP || null);
+    const [activeDE, setActiveDE] = useState<DE | null>(monitorState?.activeDE || null);
+    const [score, setScore] = useState(monitorState?.score || 0);
+    const [steps, setSteps] = useState(monitorState?.steps || 0);
     const [facingLeft, setFacingLeft] = useState(false);
     const [isMoving, setIsMoving] = useState(false);
     const [shake, setShake] = useState(false);
     const [wrongIdx, setWrongIdx] = useState<number | null>(null);
+    const [blockedNodes, setBlockedNodes] = useState<Set<string>>(new Set(monitorState?.blockedNodes || []));
 
     const { emitGameStart, emitGameProgress, emitGameComplete } = useGameEmitter();
+
+    // Monitor Sync
+    useEffect(() => {
+        if (isMonitor && monitorState) {
+            if (monitorState.curId) {
+                curIdRef.current = monitorState.curId;
+                setCurIdState(monitorState.curId);
+                const node = getNode(monitorState.curId);
+                setCharPos({ x: node.x, y: node.y });
+            }
+            if (monitorState.phase) setPhaseState(monitorState.phase);
+            if (monitorState.score !== undefined) {
+                scoreRef.current = monitorState.score;
+                setScore(monitorState.score);
+            }
+            if (monitorState.steps !== undefined) setSteps(monitorState.steps);
+            if (monitorState.unlockedCPs) setUnlockedCPs(new Set(monitorState.unlockedCPs));
+            if (monitorState.visitedDE) setVisitedDE(new Set(monitorState.visitedDE));
+            if (monitorState.blockedNodes) setBlockedNodes(new Set(monitorState.blockedNodes));
+        }
+    }, [isMonitor, monitorState]);
 
     // Sync ref helpers
     const setPhase = (p: Phase) => { phaseRef.current = p; setPhaseState(p); };
@@ -277,14 +294,19 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
         prevIdRef.current = l.startId;
         phaseRef.current = "preview";
         isMovingRef.current = false;
+        const startNode = getNode(l.startId);
         setCurIdState(l.startId);
+        setCharPos({ x: startNode.x, y: startNode.y });
         setPhaseState("preview");
         setUnlockedCPs(new Set());
         setVisitedDE(new Set());
+        setBlockedNodes(new Set());
         setScore(0);
+        scoreRef.current = 0;
         setSteps(0);
         setFacingLeft(false);
         setIsMoving(false);
+        setCharMoving(false);
         setActiveCP(null);
         setActiveDE(null);
         setMoodBefore(null);
@@ -313,19 +335,44 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
         setFacingLeft(tgtNode.x < curNode.x);
         isMovingRef.current = true;
         setIsMoving(true);
+        setCharMoving(true);
+
+        // Animate character moving TO target node
+        setCharPos({ x: tgtNode.x, y: tgtNode.y });
 
         setTimeout(() => {
             isMovingRef.current = false;
             setIsMoving(false);
+            setCharMoving(false);
             prevIdRef.current = curIdRef.current;
             setCurId(targetId);
 
             // Check what's at targetId
             const cpDef = lvl.checkpoints.find(cp => cp.nodeId === targetId);
             const deDef = lvl.deadEnds.find(de => de.nodeId === targetId);
+            const cpUnlocked = unlockedCPs.has(targetId);
             const isGoal = targetId === lvl.goalId;
 
-            if (cpDef && !unlockedCPs.has(targetId)) {
+            const nextPhase: Phase = (cpDef && !cpUnlocked) ? "checkpoint" : (deDef && !visitedDE.has(targetId)) ? "dead_end" : isGoal ? "win" : "playing";
+
+            emitGameProgress({
+                childId,
+                activityId: 7,
+                gameType: "social" as any,
+                event: "progress",
+                data: {
+                    curId: targetId,
+                    phase: nextPhase,
+                    score: scoreRef.current,
+                    steps: steps + 1,
+                    unlockedCPs: Array.from(unlockedCPs),
+                    visitedDE: Array.from(visitedDE),
+                    blockedNodes: Array.from(blockedNodes),
+                },
+                timestamp: new Date().toISOString()
+            });
+
+            if (cpDef && !cpUnlocked) {
                 setActiveCP(cpDef);
                 setPhase("checkpoint");
                 return;
@@ -333,38 +380,82 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
 
             if (deDef && !visitedDE.has(targetId)) {
                 setVisitedDE(prev => new Set([...prev, targetId]));
+                setBlockedNodes(prev => new Set([...prev, targetId]));
                 setActiveDE(deDef);
                 doShake();
+                const newScore = Math.max(0, scoreRef.current - DE_PENALTY);
+                scoreRef.current = newScore;
+                setScore(newScore);
                 setPhase("dead_end");
                 return;
             }
 
-            setSteps(s => s + 1);
+            setSteps((s: number) => s + 1);
 
             if (isGoal) {
-                const finalScore = score + 100 + lvl.checkpoints.length * 25;
+                const finalScore = scoreRef.current + 100 + lvl.checkpoints.length * 25;
+                scoreRef.current = finalScore;
                 setScore(finalScore);
                 emitGameComplete({ childId, activityId: 7, gameType: "social" as any, event: "completed", data: { finalScore }, timestamp: new Date().toISOString() });
                 setTimeout(() => setPhase("win"), 300);
             }
         }, 500);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [lvl, unlockedCPs, visitedDE, score, isMonitor]);
+    }, [lvl, unlockedCPs, visitedDE, isMonitor, steps, blockedNodes, childId, emitGameComplete, emitGameProgress]);
 
     const handleCPAnswer = (correct: boolean, idx: number) => {
         if (!correct) { doShake(); setWrongIdx(idx); setTimeout(() => setWrongIdx(null), 700); return; }
-        setUnlockedCPs(prev => new Set([...prev, curIdRef.current]));
-        setScore(s => s + 50);
-        setSteps(s => s + 1);
-        emitGameProgress({ childId, activityId: 7, gameType: "social" as any, event: "progress", data: { correct: true }, timestamp: new Date().toISOString() });
+        const newUnlocked = new Set([...unlockedCPs, curIdRef.current]);
+        setUnlockedCPs(newUnlocked);
+        const newScore = scoreRef.current + 50;
+        scoreRef.current = newScore;
+        setScore(newScore);
+        const newSteps = steps + 1;
+        setSteps((s: number) => s + 1);
+
+        emitGameProgress({
+            childId,
+            activityId: 7,
+            gameType: "social" as any,
+            event: "progress",
+            data: {
+                curId: curIdRef.current,
+                phase: "playing",
+                score: newScore,
+                steps: newSteps,
+                unlockedCPs: Array.from(newUnlocked),
+                correct: true,
+                correctCount: newUnlocked.size,
+            },
+            timestamp: new Date().toISOString()
+        });
+
         setActiveCP(null);
         setPhase("playing");
     };
 
     const handleDEBack = () => {
+        const prevNode = getNode(prevIdRef.current);
+        setCharPos({ x: prevNode.x, y: prevNode.y });
         setCurId(prevIdRef.current);
         setActiveDE(null);
         setPhase("playing");
+
+        emitGameProgress({
+            childId,
+            activityId: 7,
+            gameType: "social" as any,
+            event: "progress",
+            data: {
+                curId: prevIdRef.current,
+                phase: "playing",
+                score: scoreRef.current,
+                steps: steps,
+                visitedDE: Array.from(visitedDE),
+                blockedNodes: Array.from(blockedNodes),
+            },
+            timestamp: new Date().toISOString()
+        });
     };
 
     const handleMoodAfter = (mood: string) => {
@@ -374,8 +465,9 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
 
     // Live values for rendering
     const curNode = getNode(curId);
-    const goalNode = getNode(lvl.goalId);
-    const reachable = new Set(curNode.neighbors);
+    const reachable = new Set(
+        curNode.neighbors.filter(id => !blockedNodes.has(id))
+    );
 
     // ── PREVIEW ─────────────────────────────────────
     if (phase === "preview") {
@@ -464,9 +556,8 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
 
     // ── PLAYING MAP ──────────────────────────────────
     return (
-        <div className="w-full flex-1 flex flex-col gap-4 min-h-[78vh]">
-
-            {/* HUD */}
+        <div className="w-full flex-1 flex flex-col gap-4 max-w-6xl mx-auto">
+            {/* ... HUD content remains same ... */}
             <div className="flex items-center gap-3 bg-white/95 backdrop-blur shadow-xl rounded-[2rem] px-5 py-4 border-4 border-white">
                 <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${lvl.color} flex items-center justify-center shadow-lg shrink-0 text-2xl`}>
                     {lvl.icon}
@@ -483,12 +574,13 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
                 </div>
             </div>
 
-            {/* MAP CONTAINER */}
-            <div className={`relative flex-1 rounded-[3rem] border-[12px] border-white shadow-2xl overflow-hidden min-h-[56vh] ${shake ? "animate-[shake_0.4s_ease-in-out]" : ""}`}>
+            {/* MAP CONTAINER — Reduced padding to "zoom in" a bit more */}
+            <div className={`relative flex-1 rounded-[3rem] border-[12px] border-white shadow-2xl overflow-hidden min-h-[50vh] max-h-[85vh] p-1 md:p-2 lg:p-4 bg-[#c8e6c9] ${shake ? "animate-[shake_0.4s_ease-in-out]" : ""}`}>
                 <svg
                     viewBox="0 0 960 730"
                     width="100%" height="100%"
-                    style={{ display: "block", background: "#c8e6c9" }}
+                    preserveAspectRatio="xMidYMid meet"
+                    style={{ display: "block" }}
                 >
                     {/* ── SIDEWALKS ── */}
                     {NODES.flatMap(n => n.neighbors.filter(id => id > n.id).map(id => {
@@ -517,7 +609,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
 
                     {/* ── ALL NODES (including GOAL — all clickable!) ── */}
                     {NODES.map(n => {
-                        if (n.id === curId) return null; // car is here, drawn separately
+                        if (n.id === curId) return null; // character is here, drawn separately
 
                         const isGoal = n.id === lvl.goalId;
                         const isStart = n.id === lvl.startId;
@@ -535,7 +627,8 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
                         else if (cpDef && !cpUnlocked) { r = 22; fill = "#e0e7ff"; stroke = "#6366f1"; sw = 5; label = "🔒"; }
                         else if (cpDef && cpUnlocked) { r = 20; fill = "#dcfce7"; stroke = "#22c55e"; sw = 4; label = "✅"; }
                         else if (deDef && !deVisited) { r = 18; fill = "#fef9c3"; stroke = "#ca8a04"; sw = 4; }
-                        else if (deDef && deVisited) { r = 14; fill = "#fce7f3"; stroke = "#be185d"; sw = 3; }
+                        // Blocked dead-ends: shown as red X, cannot be clicked
+                        else if (deDef && deVisited) { r = 16; fill = "#fce7f3"; stroke = "#be185d"; sw = 4; label = "❌"; }
 
                         return (
                             <g key={n.id}>
@@ -567,35 +660,44 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
                         );
                     })}
 
-                    {/* ── CAR CHARACTER ── */}
-                    {/* We use foreignObject to get CSS transition on position */}
-                    <g>
-                        <ellipse cx={curNode.x + (facingLeft ? -3 : 3)} cy={curNode.y + 22} rx={28} ry={9} fill="rgba(0,0,0,0.12)" />
+                    {/* ── WALKING CHARACTER ── */}
+                    {/* Use CSS transform translate on a <g> for smooth cross-browser movement */}
+                    <g
+                        style={{
+                            transform: `translate(${charPos.x}px, ${charPos.y}px)`,
+                            transition: charMoving ? "transform 0.45s cubic-bezier(0.4, 0, 0.2, 1)" : "none",
+                        }}
+                    >
+                        {/* Shadow ellipse */}
+                        <ellipse cx={facingLeft ? -3 : 3} cy={18} rx={22} ry={7} fill="rgba(0,0,0,0.15)" />
+                        {/* Character emoji — flipped horizontally when going left */}
                         <text
-                            x={curNode.x}
-                            y={curNode.y + 16}
-                            fontSize={46}
+                            x={0}
+                            y={12}
+                            fontSize={charMoving ? 42 : 40}
                             textAnchor="middle"
                             style={{
-                                transform: facingLeft ? `translate(${curNode.x * 2}px,0) scaleX(-1)` : undefined,
+                                transform: facingLeft ? "scaleX(-1)" : undefined,
                                 transformOrigin: "center",
                                 transformBox: "fill-box",
-                                transition: "x 0.5s ease, y 0.5s ease",
+                                transition: "font-size 0.1s ease",
+                                userSelect: "none",
                             }}
                         >
-                            🚗
+                            {charMoving ? "🏃" : "🧒"}
                         </text>
-                        {/* Motion particles */}
-                        {isMoving && [0, 1, 2].map(i => (
+                        {/* Footstep particles when moving */}
+                        {charMoving && [0, 1, 2].map(i => (
                             <circle
                                 key={i}
-                                cx={curNode.x + (facingLeft ? -(22 + i * 11) : (22 + i * 11))}
-                                cy={curNode.y}
-                                r={5 - i}
-                                fill="#93c5fd"
+                                cx={facingLeft ? (14 + i * 10) : -(14 + i * 10)}
+                                cy={16}
+                                r={4 - i}
+                                fill="#fbbf24"
+                                opacity={0.7 - i * 0.2}
                             >
-                                <animate attributeName="opacity" values="0.8;0;0.8" dur="0.5s" begin={`${i * 0.1}s`} repeatCount="indefinite" />
-                                <animate attributeName="r" values={`${5 - i};${8 - i};${5 - i}`} dur="0.5s" begin={`${i * 0.1}s`} repeatCount="indefinite" />
+                                <animate attributeName="opacity" values="0.7;0;0.7" dur="0.4s" begin={`${i * 0.1}s`} repeatCount="indefinite" />
+                                <animate attributeName="cy" values="16;20;16" dur="0.4s" begin={`${i * 0.1}s`} repeatCount="indefinite" />
                             </circle>
                         ))}
                     </g>
