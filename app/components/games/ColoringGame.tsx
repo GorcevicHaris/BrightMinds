@@ -102,20 +102,24 @@ const TEMPLATES = {
 
   // ─── NIVO 5: SLON ────────────────────────────────────────────────────────────
   5: [
-    { id: 1, path: "M100,205 Q78,258 90,315 L310,315 Q322,258 300,205 Q200,165 100,205 Z", targetColor: "#9CA3AF" },
-    { id: 2, path: "M78,155 Q55,195 75,238 Q108,260 158,248 Q178,215 168,172 Q142,130 78,155 Z", targetColor: "#D1D5DB" },
-    { id: 3, path: "M68,236 Q38,266 48,318 Q60,348 82,348 Q98,348 102,316 L90,314 Q88,340 82,330 Q66,314 70,284 Q82,264 92,240 Z", targetColor: "#9CA3AF" },
-    { id: 4, path: "M55,160 Q22,180 27,232 Q44,262 78,256 Q98,226 88,178 Z", targetColor: "#F9A8D4" },
-    { id: 5, path: "M112,178 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#1F2937" },
-    { id: 6, path: "M108,175 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0", targetColor: "#FFFFFF" },
-    { id: 7, path: "M115,308 L110,390 L140,390 L142,308 Z", targetColor: "#6B7280" },
-    { id: 8, path: "M170,308 L168,390 L198,390 L196,308 Z", targetColor: "#6B7280" },
-    { id: 9, path: "M215,308 L213,390 L243,390 L240,308 Z", targetColor: "#6B7280" },
-    { id: 10, path: "M262,308 L260,390 L290,390 L288,308 Z", targetColor: "#6B7280" },
-    { id: 11, path: "M305,224 Q342,236 347,265 Q342,285 327,280 L326,274 Q337,278 340,265 Q337,240 305,230 Z", targetColor: "#6B7280" },
-    { id: 12, path: "M324,276 Q322,296 312,308 Q318,314 332,306 Q340,290 328,276 Z", targetColor: "#4B5563" },
-    { id: 13, path: "M58,196 Q46,216 52,238 Q58,248 66,242 Q60,226 62,204 Z", targetColor: "#EC4899" },
-    { id: 14, path: "M78,238 Q57,258 62,284 Q73,290 84,274 Q87,258 90,240 Z", targetColor: "#F9FAFB" },
+    { id: 1, path: "M115,165 Q80,165 75,225 Q75,285 135,265", targetColor: "#94A3B8" }, // Zadnja uška (L)
+    { id: 3, path: "M145,260 Q130,360 200,360 Q270,360 255,260 Z", targetColor: "#94A3B8" }, // Telo
+    { id: 4, path: "M120,200 Q120,120 200,120 Q280,120 280,200 Q280,270 200,270 Q120,270 120,200 Z", targetColor: "#CBD5E1" }, // Glava
+    { id: 5, path: "M265,165 Q310,165 315,225 Q315,285 255,265", targetColor: "#94A3B8" }, // Prednja uška (R)
+    { id: 6, path: "M275,185 Q300,185 305,225 Q305,265 265,245", targetColor: "#FDA4AF" }, // Unutrašnjost uške
+    { id: 19, path: "M130,185 Q110,185 105,225 Q105,265 140,245", targetColor: "#FDA4AF" }, // Unutrašnjost uške L
+    { id: 7, path: "M185,230 Q185,320 145,320 C125,320 125,350 145,350 C175,350 215,300 215,230 Z", targetColor: "#94A3B8" }, // Surla
+    { id: 8, path: "M150,340 L145,395 L180,395 L175,340 Z", targetColor: "#475569" }, // Noga napred leva
+    { id: 9, path: "M215,340 L220,395 L255,395 L250,340 Z", targetColor: "#475569" }, // Noga napred desna
+    { id: 10, path: "M135,320 L125,370 L155,370 L160,320 Z", targetColor: "#64748B" }, // Noga pozadi leva
+    { id: 11, path: "M240,320 L245,370 L275,370 L265,320 Z", targetColor: "#64748B" }, // Noga pozadi desna
+    { id: 12, path: "M300,230 Q340,240 345,270 Q340,285 325,280 L323,275 Q338,280 340,270 Q335,240 300,235 Z", targetColor: "#475569" }, // Rep
+    { id: 13, path: "M162,195 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0", targetColor: "#1F2937" }, // Oko L
+    { id: 14, path: "M220,195 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0", targetColor: "#1F2937" }, // Oko R
+    { id: 15, path: "M164,192 a3,4 0 1,0 6,0 a3,4 0 1,0 -6,0", targetColor: "#FFFFFF", stroke: true }, // Odjsaj L
+    { id: 16, path: "M222,192 a3,4 0 1,0 6,0 a3,4 0 1,0 -6,0", targetColor: "#FFFFFF", stroke: true }, // Odsjaj R
+    { id: 17, path: "M145,235 a12,8 0 1,0 24,0 a12,8 0 1,0 -24,0", targetColor: "#FDA4AF" }, // Rumenilo L
+    { id: 18, path: "M231,235 a12,8 0 1,0 24,0 a12,8 0 1,0 -24,0", targetColor: "#FDA4AF" }, // Rumenilo R
   ],
 
   // ─── NIVO 6: RIBA ────────────────────────────────────────────────────────────

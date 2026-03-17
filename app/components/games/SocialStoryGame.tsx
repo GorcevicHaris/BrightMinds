@@ -313,11 +313,10 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
     }, [level]);
 
     const doShake = () => { setShake(true); setTimeout(() => setShake(false), 500); };
-
     const beginPlay = (mood: string) => {
         setMoodBefore(mood);
         setStartTime(Date.now());
-        emitGameStart(childId, 7, "social" as any, { level });
+        emitGameStart(childId, 7, "social-story" as any, { level });
         setPhase("playing");
     };
 
@@ -358,7 +357,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
             emitGameProgress({
                 childId,
                 activityId: 7,
-                gameType: "social" as any,
+                gameType: "social-story" as any,
                 event: "progress",
                 data: {
                     curId: targetId,
@@ -395,8 +394,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
             if (isGoal) {
                 const finalScore = scoreRef.current + 100 + lvl.checkpoints.length * 25;
                 scoreRef.current = finalScore;
-                setScore(finalScore);
-                emitGameComplete({ childId, activityId: 7, gameType: "social" as any, event: "completed", data: { finalScore }, timestamp: new Date().toISOString() });
+                emitGameComplete({ childId, activityId: 7, gameType: "social-story" as any, event: "completed", data: { finalScore }, timestamp: new Date().toISOString() });
                 setTimeout(() => setPhase("win"), 300);
             }
         }, 500);
@@ -416,7 +414,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
         emitGameProgress({
             childId,
             activityId: 7,
-            gameType: "social" as any,
+            gameType: "social-story" as any,
             event: "progress",
             data: {
                 curId: curIdRef.current,
@@ -444,7 +442,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
         emitGameProgress({
             childId,
             activityId: 7,
-            gameType: "social" as any,
+            gameType: "social-story" as any,
             event: "progress",
             data: {
                 curId: prevIdRef.current,

@@ -258,12 +258,16 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
   // ── PRE-GAME MOOD ──────────────────────────────────
   if (!isMonitor && showMoodBefore) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
-        <div className="text-center mb-10 md:mb-16">
-          <span className="px-4 py-1.5 rounded-full bg-indigo-100 text-indigo-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Vreme za igru</span>
-          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
+      <div className="flex flex-col items-center justify-center min-h-[450px] w-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-[2rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl animate-in fade-in duration-500 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full -ml-32 -mb-32 blur-3xl"></div>
+
+        <div className="text-center mb-6 md:mb-12 relative z-10">
+          <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-600 text-[10px] md:text-sm font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Vreme za igru</span>
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
+
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
           {[
             { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
             { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
@@ -274,17 +278,18 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
             <button
               key={mood.value}
               onClick={() => handleMoodBeforeSelect(mood.value)}
-              className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+              className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
-              <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-              <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
+              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-2xl md:rounded-[2.5rem] transition-opacity`}></div>
+              <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+              <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
             </button>
           ))}
         </div>
+
         {isConnected && (
-          <div className="mt-10 md:mt-16 flex items-center gap-3 px-4 py-2 md:px-6 md:py-3 bg-white/50 backdrop-blur-sm rounded-2xl border border-green-100 shadow-sm">
-            <span className="relative flex h-2 w-2 md:h-3 md:w-3">
+          <div className="mt-8 md:mt-12 flex items-center gap-2 md:gap-3 px-4 py-2 md:px-6 md:py-3 bg-white/50 backdrop-blur-sm rounded-2xl border border-green-100 shadow-sm relative z-10">
+            <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-full w-full bg-green-500"></span>
             </span>
@@ -299,15 +304,18 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
   if (!isMonitor && showMoodAfter) {
     const score = Math.max(0, 1000 - moves * 50);
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
-        <div className="text-center mb-10 md:mb-16">
-          <span className="px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
-          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
-          <p className="text-lg md:text-xl text-slate-500 font-medium tracking-wide px-4">
+      <div className="flex flex-col items-center justify-center min-h-[450px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl animate-in fade-in duration-500 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+
+        <div className="text-center mb-6 md:mb-12 relative z-10">
+          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-sm font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
+          <p className="text-sm sm:text-base md:text-xl text-slate-500 font-medium tracking-wide">
             Završio/la si za <span className="font-black text-purple-600">{moves} poteza</span>! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
           </p>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
+
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
           {[
             { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
             { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
@@ -318,11 +326,11 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
             <button
               key={mood.value}
               onClick={() => handleMoodAfterSelect(mood.value)}
-              className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+              className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
-              <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-              <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
+              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-2xl md:rounded-[2.5rem] transition-opacity`}></div>
+              <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+              <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
             </button>
           ))}
         </div>
@@ -381,37 +389,37 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
   else if (pairsCount >= 5) gridCols = "grid-cols-4 md:grid-cols-5";
 
   return (
-    <div className="bg-white/90 backdrop-blur-xl rounded-2xl md:rounded-[3rem] p-4 pt-6 md:p-10 shadow-2xl border border-white/50 w-full max-w-6xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative">
+    <div className="bg-white/95 backdrop-blur-xl rounded-[1.5rem] sm:rounded-2xl md:rounded-[3rem] p-3 sm:p-5 md:p-8 shadow-2xl border border-white/50 w-full max-w-5xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none rounded-2xl md:rounded-[3rem]"></div>
 
       {/* Header */}
-      <div className="flex justify-between items-center mb-6 md:mb-10 bg-gradient-to-r from-purple-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-4 py-3 md:px-10 md:py-6 shadow-xl relative overflow-hidden ring-1 ring-purple-100/50">
+      <div className="flex justify-between items-center mb-4 sm:mb-6 md:mb-8 bg-gradient-to-r from-purple-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-3 py-2 sm:px-6 sm:py-3 md:px-8 md:py-5 shadow-xl relative overflow-hidden ring-1 ring-purple-100/50 flex-shrink-0">
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="flex items-center gap-3 md:gap-8 relative z-10">
-          <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl bg-white shadow-md flex items-center justify-center text-xl md:text-3xl ring-4 ring-purple-50 border border-purple-100 transform -rotate-3 transition-transform">
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-6 relative z-10">
+          <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-lg sm:rounded-xl bg-white shadow-md flex items-center justify-center text-lg sm:text-xl md:text-2xl ring-2 sm:ring-4 ring-purple-50 border border-purple-100 transform -rotate-3 transition-transform">
             🧠
           </div>
-          <div>
-            <h3 className="text-lg md:text-2xl font-black text-slate-800 tracking-wide uppercase leading-tight">Nivo {level}</h3>
+          <div className="hidden sm:block">
+            <h3 className="text-sm sm:text-base md:text-xl font-black text-slate-800 tracking-wide uppercase leading-tight">Nivo {level}</h3>
           </div>
         </div>
-        <div className="flex items-center gap-3 md:gap-6 relative z-10">
-          <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-purple-100/50 text-center min-w-[70px] md:min-w-[120px]">
-            <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Potezi</span>
-            <span className="text-xl md:text-3xl font-black text-purple-600">{moves}</span>
+        <div className="flex items-center gap-2 sm:gap-3 md:gap-6 relative z-10 flex-shrink-0">
+          <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-lg sm:rounded-xl md:rounded-2xl px-2 py-1 sm:px-4 sm:py-2 md:px-6 md:py-2.5 border border-purple-100/50 text-center min-w-[60px] sm:min-w-[80px] md:min-w-[100px]">
+            <span className="block text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Potezi</span>
+            <span className="text-sm sm:text-lg md:text-2xl font-black text-purple-600">{moves}</span>
           </div>
-          <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-purple-100/50 text-center min-w-[90px] md:min-w-[140px]">
-            <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Pronađeno</span>
-            <span className="text-xl md:text-3xl font-black text-emerald-500">
-              {matchedPairs}<span className="text-slate-400 mx-1">/</span>{pairsCount}
+          <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-lg sm:rounded-xl md:rounded-2xl px-2 py-1 sm:px-4 sm:py-2 md:px-6 md:py-2.5 border border-purple-100/50 text-center min-w-[70px] sm:min-w-[90px] md:min-w-[120px]">
+            <span className="block text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Pronađeno</span>
+            <span className="text-sm sm:text-lg md:text-2xl font-black text-emerald-500">
+              {matchedPairs}<span className="text-slate-400 text-xs sm:text-sm mx-0.5 md:mx-1">/</span>{pairsCount}
             </span>
           </div>
         </div>
       </div>
 
       {/* Card Grid */}
-      <div className="flex-1 flex items-center justify-center pt-2 md:pt-4 relative z-10">
-        <div className={`grid ${gridCols} gap-3 md:gap-5 w-full max-w-5xl mx-auto px-2`}>
+      <div className="flex-1 flex items-center justify-center relative z-10 min-h-0">
+        <div className={`grid ${gridCols} gap-2 sm:gap-3 md:gap-4 w-full max-w-4xl mx-auto px-1 sm:px-2 overflow-y-auto max-h-full custom-scrollbar py-2`}>
           {cards.map((card) => {
             const isRevealed = card.isFlipped || card.isMatched;
             const canClick = isPlaying && !isLocked && !card.isMatched && !card.isFlipped && !isMonitor;
@@ -420,7 +428,7 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
               <button
                 key={card.id}
                 onClick={() => canClick && handleCardClick(card.id)}
-                className={`relative aspect-square rounded-xl md:rounded-2xl text-3xl md:text-6xl font-bold transition-all duration-200 overflow-hidden
+                className={`relative aspect-square rounded-xl md:rounded-2xl text-2xl sm:text-4xl md:text-5xl font-bold transition-all duration-200 overflow-hidden
                   ${card.isMatched
                     ? "bg-emerald-50 shadow-sm border-2 border-emerald-200"
                     : isRevealed
@@ -447,12 +455,12 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
                     ${isRevealed ? "opacity-0 scale-75" : "opacity-100 scale-100"}
                   `}
                 >
-                  <span className="text-white/40 font-black text-2xl md:text-4xl select-none">?</span>
+                  <span className="text-white/40 font-black text-xl sm:text-2xl md:text-3xl select-none">?</span>
                 </div>
 
                 {/* Match sparkle */}
                 {card.isMatched && (
-                  <div className="absolute top-1 right-1 text-sm md:text-lg">✅</div>
+                  <div className="absolute top-1 right-1 text-[10px] sm:text-sm md:text-base">✅</div>
                 )}
               </button>
             );
@@ -460,7 +468,7 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
         </div>
       </div>
 
-      <div className="mt-8 text-center text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-widest opacity-60 px-4">
+      <div className="mt-auto pt-3 text-center text-[8px] sm:text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest opacity-60">
         💡 Pokušaj da zapamtiš gde su sličice sakrivene!
       </div>
     </div>
