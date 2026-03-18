@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useGameEmitter } from "@/lib/useSocket";
-import { Star, AlertTriangle, X, Trophy, Lock, Navigation2 } from "lucide-react";
+import { Star, AlertTriangle, X, Trophy, Lock, Navigation2, MapPin, Flag } from "lucide-react";
 
 // ─────────────────────────────────────────────────────
 // TYPES
@@ -260,6 +260,10 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
     const [wrongIdx, setWrongIdx] = useState<number | null>(null);
     const [blockedNodes, setBlockedNodes] = useState<Set<string>>(new Set(monitorState?.blockedNodes || []));
 
+    // Statistics
+    const [correctCount, setCorrectCount] = useState(monitorState?.correctCount || 0);
+    const [incorrectCount, setIncorrectCount] = useState(monitorState?.incorrectCount || 0);
+
     const { emitGameStart, emitGameProgress, emitGameComplete } = useGameEmitter();
 
     // Monitor Sync
@@ -280,6 +284,8 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
             if (monitorState.unlockedCPs) setUnlockedCPs(new Set(monitorState.unlockedCPs));
             if (monitorState.visitedDE) setVisitedDE(new Set(monitorState.visitedDE));
             if (monitorState.blockedNodes) setBlockedNodes(new Set(monitorState.blockedNodes));
+            if (monitorState.correctCount !== undefined) setCorrectCount(monitorState.correctCount);
+            if (monitorState.incorrectCount !== undefined) setIncorrectCount(monitorState.incorrectCount);
         }
     }, [isMonitor, monitorState]);
 
@@ -304,6 +310,8 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
         setScore(0);
         scoreRef.current = 0;
         setSteps(0);
+        setCorrectCount(0);
+        setIncorrectCount(0);
         setFacingLeft(false);
         setIsMoving(false);
         setCharMoving(false);
@@ -364,9 +372,12 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
                     phase: nextPhase,
                     score: scoreRef.current,
                     steps: steps + 1,
+                    moves: steps + 1,
                     unlockedCPs: Array.from(unlockedCPs),
                     visitedDE: Array.from(visitedDE),
                     blockedNodes: Array.from(blockedNodes),
+                    correctCount: correctCount,
+                    incorrectCount: incorrectCount
                 },
                 timestamp: new Date().toISOString()
             });
@@ -378,6 +389,8 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
             }
 
             if (deDef && !visitedDE.has(targetId)) {
+                const newIncorrect = incorrectCount + 1;
+                setIncorrectCount(newIncorrect);
                 setVisitedDE(prev => new Set([...prev, targetId]));
                 setBlockedNodes(prev => new Set([...prev, targetId]));
                 setActiveDE(deDef);
@@ -386,6 +399,17 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
                 scoreRef.current = newScore;
                 setScore(newScore);
                 setPhase("dead_end");
+                // Immediately emit that we hit a dead end (incorrect)
+                emitGameProgress({
+                    childId, activityId: 7, gameType: "social-story" as any, event: "progress",
+                    data: {
+                        curId: targetId, phase: "dead_end",
+                        score: newScore, steps: steps + 1, moves: steps + 1,
+                        correctCount: correctCount, incorrectCount: newIncorrect,
+                        visitedDE: Array.from(new Set([...visitedDE, targetId])),
+                        blockedNodes: Array.from(new Set([...blockedNodes, targetId]))
+                    }, timestamp: new Date().toISOString()
+                });
                 return;
             }
 
@@ -394,7 +418,11 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
             if (isGoal) {
                 const finalScore = scoreRef.current + 100 + lvl.checkpoints.length * 25;
                 scoreRef.current = finalScore;
-                emitGameComplete({ childId, activityId: 7, gameType: "social-story" as any, event: "completed", data: { finalScore }, timestamp: new Date().toISOString() });
+                setScore(finalScore);
+                emitGameComplete({
+                    childId, activityId: 7, gameType: "social-story" as any, event: "completed",
+                    data: { finalScore, correctCount, incorrectCount, moves: steps }, timestamp: new Date().toISOString()
+                });
                 setTimeout(() => setPhase("win"), 300);
             }
         }, 500);
@@ -402,9 +430,28 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
     }, [lvl, unlockedCPs, visitedDE, isMonitor, steps, blockedNodes, childId, emitGameComplete, emitGameProgress]);
 
     const handleCPAnswer = (correct: boolean, idx: number) => {
-        if (!correct) { doShake(); setWrongIdx(idx); setTimeout(() => setWrongIdx(null), 700); return; }
+        const newIncorrect = incorrectCount + 1;
+        if (!correct) {
+            setIncorrectCount(newIncorrect);
+            doShake(); setWrongIdx(idx);
+            setTimeout(() => setWrongIdx(null), 700);
+
+            emitGameProgress({
+                childId, activityId: 7, gameType: "social-story" as any, event: "answer",
+                data: {
+                    curId: curIdRef.current, phase: "checkpoint",
+                    score: scoreRef.current, steps: steps, moves: steps,
+                    correct: false, correctCount: correctCount, incorrectCount: newIncorrect
+                }, timestamp: new Date().toISOString()
+            });
+            return;
+        }
+
         const newUnlocked = new Set([...unlockedCPs, curIdRef.current]);
         setUnlockedCPs(newUnlocked);
+        const newCorrectCount = correctCount + 1;
+        setCorrectCount(newCorrectCount);
+
         const newScore = scoreRef.current + 50;
         scoreRef.current = newScore;
         setScore(newScore);
@@ -415,15 +462,17 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
             childId,
             activityId: 7,
             gameType: "social-story" as any,
-            event: "progress",
+            event: "answer",
             data: {
                 curId: curIdRef.current,
                 phase: "playing",
                 score: newScore,
                 steps: newSteps,
+                moves: newSteps,
                 unlockedCPs: Array.from(newUnlocked),
                 correct: true,
-                correctCount: newUnlocked.size,
+                correctCount: newCorrectCount,
+                incorrectCount: incorrectCount
             },
             timestamp: new Date().toISOString()
         });
@@ -449,6 +498,9 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
                 phase: "playing",
                 score: scoreRef.current,
                 steps: steps,
+                moves: steps,
+                correctCount: correctCount,
+                incorrectCount: incorrectCount,
                 visitedDE: Array.from(visitedDE),
                 blockedNodes: Array.from(blockedNodes),
             },
@@ -494,7 +546,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
                         </div>
                     )}
                     <div className="flex items-center gap-2 bg-amber-50 border-2 border-amber-100 px-5 py-3 rounded-2xl text-amber-700">
-                        <Star size={14} className="fill-amber-500" /> Do {100 + lvl.checkpoints.length * 75} zvezdica
+                        <Star size={14} className="fill-amber-500" /> Do {100 + lvl.checkpoints.length * 75} poena
                     </div>
                 </div>
                 <button
@@ -542,7 +594,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
                 <p className="text-2xl text-slate-500 mb-8 italic">{lvl.destination} pronađena! Odlično vozaštvo 🏆</p>
                 <div className="flex items-center justify-center gap-3 bg-amber-50 border-4 border-amber-200 px-10 py-5 rounded-3xl mb-10">
                     <Star className="text-amber-500 fill-amber-500" size={36} />
-                    <span className="text-4xl font-black">{score} zvezdica</span>
+                    <span className="text-4xl font-black">{score} poena</span>
                 </div>
                 <button onClick={() => setPhase("mood_after")}
                     className="px-12 py-5 bg-indigo-600 text-white text-xl font-black rounded-2xl shadow-xl active:scale-95 hover:scale-105 transition-all">
@@ -552,23 +604,47 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
         );
     }
 
-    // ── PLAYING MAP ──────────────────────────────────
+    // Izračunaj procenat napretka (fizička razdaljina do cilja)
+    const progStart = getNode(lvl.startId);
+    const progGoal = getNode(lvl.goalId);
+    const progCur = getNode(curId);
+    const totalDist = Math.abs(progStart.x - progGoal.x) + Math.abs(progStart.y - progGoal.y);
+    const curDist = Math.abs(progCur.x - progGoal.x) + Math.abs(progCur.y - progGoal.y);
+    const progressPercent = totalDist === 0 ? 100 : Math.max(5, 100 - (curDist / totalDist) * 100);
+
     return (
         <div className="w-full flex-1 flex flex-col gap-4 max-w-6xl mx-auto">
-            {/* ... HUD content remains same ... */}
-            <div className="flex items-center gap-3 bg-white/95 backdrop-blur shadow-xl rounded-[2rem] px-5 py-4 border-4 border-white">
-                <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${lvl.color} flex items-center justify-center shadow-lg shrink-0 text-2xl`}>
-                    {lvl.icon}
+            {/* ── HUD ── */}
+            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 bg-white/95 backdrop-blur shadow-xl rounded-[2rem] px-6 py-5 border-4 border-white">
+                <div className="flex items-center gap-4 flex-1">
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${lvl.color} flex items-center justify-center shadow-lg shrink-0 text-3xl`}>
+                        {lvl.icon}
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-black text-slate-800 text-lg leading-tight uppercase tracking-wide">Cilj: {lvl.destination}</h3>
+                        <p className="text-sm text-slate-400 font-bold mb-2">
+                            Pređeno koraka: <span className="text-slate-600">{steps}</span>
+                        </p>
+                        {/* Progress Bar */}
+                        <div className="flex items-center gap-3">
+                            <MapPin size={16} className="text-slate-400" />
+                            <div className="flex-1 h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
+                                <div
+                                    className={`h-full bg-gradient-to-r ${lvl.color} transition-all duration-500 ease-out`}
+                                    style={{ width: `${progressPercent}%` }}
+                                />
+                            </div>
+                            <Flag size={16} className={progressPercent === 100 ? "text-green-500" : "text-slate-400"} />
+                        </div>
+                    </div>
                 </div>
-                <div className="flex-1">
-                    <h3 className="font-black text-slate-800 text-base leading-tight">Istraži Grad</h3>
-                    <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
-                        CILJ: {lvl.destination} · {steps} koraka
-                    </p>
-                </div>
-                <div className="flex items-center gap-2 bg-amber-50 border-2 border-amber-100 rounded-xl px-4 py-2 shrink-0">
-                    <Star className="text-amber-500 fill-amber-500" size={18} />
-                    <span className="text-xl font-black">{score}</span>
+
+                <div className="flex md:flex-col items-center justify-center gap-2 bg-amber-50 md:bg-transparent border-2 border-amber-100 md:border-none rounded-xl px-5 py-3 shrink-0">
+                    <p className="hidden md:block text-xs font-black text-amber-500 uppercase tracking-widest text-center mb-1">Poeni</p>
+                    <div className="flex items-center gap-2">
+                        <Star className="text-amber-500 fill-amber-500" size={24} />
+                        <span className="text-3xl font-black text-slate-800">{score}</span>
+                    </div>
                 </div>
             </div>
 
