@@ -8,10 +8,11 @@ import ColoringGame from "@/app/components/games/ColoringGame";
 import SoundToImageGame from "@/app/components/games/SoundToImageGame";
 import SocialCommunicationGame from "@/app/components/games/SocialCommunicationGame";
 import SocialStoryGame from "@/app/components/games/SocialStoryGame";
+import EmotionsGame from "@/app/components/games/EmotionsGame";
 
 import { useGameEmitter } from "@/lib/useSocket";
 
-type GameId = "shapes" | "memory" | "coloring" | "sound-to-image" | "social" | "social-story";
+type GameId = "shapes" | "memory" | "coloring" | "sound-to-image" | "social" | "social-story" | "emotions";
 
 interface GameContainerProps {
   childId: number;
@@ -79,6 +80,16 @@ const GAMES = [
     border: "border-teal-200",
     badge: "bg-teal-100 text-teal-700",
   },
+  {
+    id: "emotions" as GameId,
+    title: "Emocije",
+    description: "Kako se osećaš u različitim situacijama?",
+    icon: "😊",
+    color: "from-pink-400 to-rose-500",
+    bg: "bg-pink-50",
+    border: "border-pink-200",
+    badge: "bg-pink-100 text-pink-700",
+  },
 ];
 
 type Screen = "picker" | "level-select" | "playing" | "all-finished";
@@ -119,7 +130,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
           selectedGame === "memory" ? 3 :
             selectedGame === "sound-to-image" ? 5 :
               selectedGame === "social" ? 6 :
-                selectedGame === "social-story" ? 7 : 4;
+                selectedGame === "social-story" ? 7 :
+                  selectedGame === "emotions" ? 8 : 4;
 
       emitGameComplete({
         childId,
@@ -168,7 +180,9 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                 ? 6
                 : selectedGame === "social-story"
                   ? 7
-                  : 4;
+                  : selectedGame === "emotions"
+                    ? 8
+                    : 4;
 
       const response = await fetch("/api/activities/complete", {
         method: "POST",
@@ -446,6 +460,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
               <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
             ) : selectedGame === "social-story" ? (
               <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+            ) : selectedGame === "emotions" ? (
+              <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
             ) : (
               <ColoringGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
             )}
