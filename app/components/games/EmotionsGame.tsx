@@ -2,7 +2,14 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useGameEmitter } from "@/lib/useSocket";
-import { ElevenLabsClient, play } from '@elevenlabs/elevenlabs-js';
+
+// Pomocna funkcija za reprodukciju lokalnih MP3 zvukova iz /sounds/emotions/
+function playSound(filename: string) {
+    const audio = new Audio(`/sounds/emotions/${filename}`);
+    audio.volume = 0.9;
+    audio.play().catch(() => { /* fajl jos nije ubacen, nema greske */ });
+    return audio;
+}
 
 interface GameProps {
     childId: number;
@@ -22,41 +29,49 @@ const SCENARIOS = [
         level: 1,
         text: "Kako se osećaš kada te neko pohvali i kaže da si odličan?",
         correctEmotion: "happy",
+        soundFile: "firstSent.mp3",
     },
     {
         level: 2,
         text: "Kako se osećaš kada ti drug uzme igračku?",
-        correctEmotion: "angry", // ili sad
+        correctEmotion: "angry",
+        soundFile: "secondSent.mp3",
     },
     {
         level: 3,
         text: "Kako se osećaš kada dobiješ poklon?",
         correctEmotion: "happy",
+        soundFile: "thirdSent.mp3",
     },
     {
         level: 4,
         text: "Kako se osećaš kada padneš i udariš koleno?",
         correctEmotion: "sad",
+        soundFile: "fourthSent.mp3",
     },
     {
         level: 5,
         text: "Kako se osećaš kada ti neko sruši kulu od kocaka?",
         correctEmotion: "angry",
+        soundFile: "fifthSent.mp3",
     },
     {
         level: 6,
         text: "Kako se osećaš kada se izgubiš u prodavnici?",
         correctEmotion: "scared",
+        soundFile: "sixthSent.mp3",
     },
     {
         level: 7,
         text: "Kako se osećaš kada neko želi da se igra sa tobom?",
         correctEmotion: "happy",
+        soundFile: "seventSent.mp3",
     },
     {
         level: 8,
         text: "Kako se osećaš kada te juri strašan pas?",
         correctEmotion: "scared",
+        soundFile: "eightSent.mp3",
     },
 ];
 
@@ -112,6 +127,15 @@ export default function EmotionsGame({
 
     const { emitGameStart, emitGameProgress, emitGameComplete } =
         useGameEmitter();
+    const currentAudioRef = useRef<HTMLAudioElement | null>(null);
+
+    const stopCurrentSound = () => {
+        if (currentAudioRef.current) {
+            currentAudioRef.current.pause();
+            currentAudioRef.current.currentTime = 0;
+            currentAudioRef.current = null;
+        }
+    };
 
     // Reset kada se nivo promeni
     useEffect(() => {
@@ -152,13 +176,9 @@ export default function EmotionsGame({
     };
 
     const handleSpeech = () => {
-        if ("speechSynthesis" in window) {
-            const utterance = new SpeechSynthesisUtterance(scenario.text);
-            utterance.lang = "sr-RS";
-            utterance.rate = 0.9;
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(utterance);
-        }
+        stopCurrentSound();
+        const audio = playSound(scenario.soundFile);
+        currentAudioRef.current = audio;
     };
 
     // Autoplay zvuk pitanja na startu
@@ -200,20 +220,8 @@ export default function EmotionsGame({
             });
 
             // Pozitivan zvuk
-            const audio = new Audio("/sounds/success.mp3");
-            audio.volume = 0.5;
-            audio.play().catch(() => { });
-
-            if ("speechSynthesis" in window) {
-                const emoLabel = EMOTIONS.find((e) => e.id === emotionId)?.label;
-                const utterance = new SpeechSynthesisUtterance(
-                    `Tačno! Osećaš se ${emoLabel}.`
-                );
-                utterance.lang = "sr-RS";
-                utterance.rate = 0.9;
-                window.speechSynthesis.cancel();
-                window.speechSynthesis.speak(utterance);
-            }
+            stopCurrentSound();
+            currentAudioRef.current = playSound("correct.mp3");
 
             setTimeout(() => {
                 const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
@@ -249,14 +257,9 @@ export default function EmotionsGame({
                 timestamp: new Date().toISOString(),
             });
 
-            // Ohrazbrenje umesto negativnog
-            if ("speechSynthesis" in window) {
-                const utterance = new SpeechSynthesisUtterance("Pokušaj ponovo, ti to možeš!");
-                utterance.lang = "sr-RS";
-                utterance.rate = 0.9;
-                window.speechSynthesis.cancel();
-                window.speechSynthesis.speak(utterance);
-            }
+            // Zvuk ohrabrenja
+            stopCurrentSound();
+            currentAudioRef.current = playSound("encouragement.mp3");
 
             setTimeout(() => {
                 setIsLocked(false);

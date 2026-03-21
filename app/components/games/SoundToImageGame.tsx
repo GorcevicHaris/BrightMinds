@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useGameEmitter } from '@/lib/useSocket';
+import { useSpeech } from '@/lib/useSpeech';
 
 interface GameProps {
     childId: number;
@@ -68,6 +69,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
     }, [isMonitor, monitorState]);
 
     const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
+    const { speak, stopSpeech: stopTTS } = useSpeech();
 
     const generateRound = useCallback((stats?: { score: number, round: number, correctCount: number, incorrectCount: number }) => {
         // Broj dostupnih zvukova raste sa nivoom
@@ -126,18 +128,16 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
         }
     }, [isPlaying, generateRound, isMonitor]);
 
-    // Cleanup results on unmount
+    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (audioRef.current) {
                 audioRef.current.pause();
                 audioRef.current = null;
             }
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-            }
+            stopTTS();
         };
-    }, []);
+    }, [stopTTS]);
 
     const startGame = () => {
         setShowMoodBefore(true);
@@ -168,11 +168,9 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
             audioRef.current.pause();
             audioRef.current = null;
         }
-        if ('speechSynthesis' in window) {
-            window.speechSynthesis.cancel();
-        }
+        stopTTS();
         setIsPlayingSound(false);
-    }, []);
+    }, [stopTTS]);
 
     const playSound = () => {
         if (!currentSound || isPlayingSound) return;
@@ -188,28 +186,10 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
         const audio = new Audio(currentSound.soundUrl);
         audioRef.current = audio;
 
-        audio.play().catch(err => {
-            console.log("Audio file not found, using text-to-speech fallback");
-
-            // Fallback na Web Speech API
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(currentSound.label);
-                utterance.lang = 'sr-RS'; // Serbian language
-                utterance.rate = 0.8;
-                utterance.pitch = 1.0;
-
-                utterance.onend = () => {
-                    setIsPlayingSound(false);
-                };
-
-                utterance.onerror = () => {
-                    setIsPlayingSound(false);
-                };
-
-                window.speechSynthesis.speak(utterance);
-            } else {
-                setIsPlayingSound(false);
-            }
+        audio.play().catch(() => {
+            console.log("Audio file not found, using ElevenLabs TTS fallback");
+            audioRef.current = null;
+            speak(currentSound.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false));
         });
 
         audio.onended = () => {
@@ -217,27 +197,9 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
         };
 
         audio.onerror = () => {
-            console.log("Audio error, using text-to-speech fallback");
-
-            // Fallback na Web Speech API
-            if ('speechSynthesis' in window) {
-                const utterance = new SpeechSynthesisUtterance(currentSound.label);
-                utterance.lang = 'sr-RS';
-                utterance.rate = 0.8;
-                utterance.pitch = 1.0;
-
-                utterance.onend = () => {
-                    setIsPlayingSound(false);
-                };
-
-                utterance.onerror = () => {
-                    setIsPlayingSound(false);
-                };
-
-                window.speechSynthesis.speak(utterance);
-            } else {
-                setIsPlayingSound(false);
-            }
+            console.log("Audio error, using ElevenLabs TTS fallback");
+            audioRef.current = null;
+            speak(currentSound.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false));
         };
     };
 
