@@ -102,44 +102,130 @@ const TEMPLATES = {
 
   // ─── NIVO 5: SLON ────────────────────────────────────────────────────────────
   5: [
-    { id: 1, path: "M115,165 Q80,165 75,225 Q75,285 135,265", targetColor: "#94A3B8" }, // Zadnja uška (L)
-    { id: 3, path: "M145,260 Q130,360 200,360 Q270,360 255,260 Z", targetColor: "#94A3B8" }, // Telo
-    { id: 4, path: "M120,200 Q120,120 200,120 Q280,120 280,200 Q280,270 200,270 Q120,270 120,200 Z", targetColor: "#CBD5E1" }, // Glava
-    { id: 5, path: "M265,165 Q310,165 315,225 Q315,285 255,265", targetColor: "#94A3B8" }, // Prednja uška (R)
-    { id: 6, path: "M275,185 Q300,185 305,225 Q305,265 265,245", targetColor: "#FDA4AF" }, // Unutrašnjost uške
-    { id: 19, path: "M130,185 Q110,185 105,225 Q105,265 140,245", targetColor: "#FDA4AF" }, // Unutrašnjost uške L
-    { id: 7, path: "M185,230 Q185,320 145,320 C125,320 125,350 145,350 C175,350 215,300 215,230 Z", targetColor: "#94A3B8" }, // Surla
-    { id: 8, path: "M150,340 L145,395 L180,395 L175,340 Z", targetColor: "#475569" }, // Noga napred leva
-    { id: 9, path: "M215,340 L220,395 L255,395 L250,340 Z", targetColor: "#475569" }, // Noga napred desna
-    { id: 10, path: "M135,320 L125,370 L155,370 L160,320 Z", targetColor: "#64748B" }, // Noga pozadi leva
-    { id: 11, path: "M240,320 L245,370 L275,370 L265,320 Z", targetColor: "#64748B" }, // Noga pozadi desna
-    { id: 12, path: "M300,230 Q340,240 345,270 Q340,285 325,280 L323,275 Q338,280 340,270 Q335,240 300,235 Z", targetColor: "#475569" }, // Rep
-    { id: 13, path: "M162,195 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0", targetColor: "#1F2937" }, // Oko L
-    { id: 14, path: "M220,195 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0", targetColor: "#1F2937" }, // Oko R
-    { id: 15, path: "M164,192 a3,4 0 1,0 6,0 a3,4 0 1,0 -6,0", targetColor: "#FFFFFF", stroke: true }, // Odjsaj L
-    { id: 16, path: "M222,192 a3,4 0 1,0 6,0 a3,4 0 1,0 -6,0", targetColor: "#FFFFFF", stroke: true }, // Odsjaj R
-    { id: 17, path: "M145,235 a12,8 0 1,0 24,0 a12,8 0 1,0 -24,0", targetColor: "#FDA4AF" }, // Rumenilo L
-    { id: 18, path: "M231,235 a12,8 0 1,0 24,0 a12,8 0 1,0 -24,0", targetColor: "#FDA4AF" }, // Rumenilo R
+    // --- Tijelo ---
+    { id: 1, path: "M118,245 Q100,340 105,390 L295,390 Q300,340 282,245 Q240,220 200,218 Q160,220 118,245 Z", targetColor: "#94A3B8" },
+
+    // --- Trbuh (svjetliji) ---
+    { id: 2, path: "M140,310 Q140,375 200,378 Q260,375 260,310 Q240,295 200,292 Q160,295 140,310 Z", targetColor: "#CBD5E1" },
+
+    // --- Glava ---
+    { id: 3, path: "M112,195 Q108,130 200,118 Q292,130 288,195 Q288,265 200,272 Q112,265 112,195 Z", targetColor: "#94A3B8" },
+
+    // --- Leva uška (vanjska) ---
+    { id: 4, path: "M115,165 Q65,130 55,195 Q48,255 108,258 Q112,240 112,215 Z", targetColor: "#94A3B8" },
+    // --- Leva uška (unutrašnjost) ---
+    { id: 5, path: "M112,178 Q75,155 68,200 Q63,240 108,245 Q110,230 112,210 Z", targetColor: "#FDA4AF" },
+
+    // --- Desna uška (vanjska) ---
+    { id: 6, path: "M285,165 Q335,130 345,195 Q352,255 292,258 Q288,240 288,215 Z", targetColor: "#94A3B8" },
+    // --- Desna uška (unutrašnjost) ---
+    { id: 7, path: "M288,178 Q325,155 332,200 Q337,240 292,245 Q290,230 288,210 Z", targetColor: "#FDA4AF" },
+
+    // --- Surla (tanka, blago uvijena) ---
+    { id: 8, path: "M193,267 C188,300 183,340 185,373 Q188,390 197,396 Q207,398 213,388 Q214,374 210,355 C208,324 208,295 209,268 Q202,258 193,267 Z", targetColor: "#7F8EA3" },
+    // --- Nozdrve (mali vrh) ---
+    { id: 9, path: "M194,388 Q192,398 200,400 Q209,398 213,389 Q211,382 203,381 Q194,382 194,388 Z", targetColor: "#FDA4AF" },
+    // --- Surla bora 1 ---
+    { id: 10, path: "M190,300 Q201,297 210,300", targetColor: "#64748B", stroke: true },
+    // --- Surla bora 2 ---
+    { id: 11, path: "M188,335 Q200,331 210,336", targetColor: "#64748B", stroke: true },
+
+    // --- Kljove ---
+    { id: 13, path: "M168,248 Q150,255 140,275 Q148,285 162,278 Q172,262 178,250 Z", targetColor: "#FEF3C7" },
+    { id: 14, path: "M232,248 Q250,255 260,275 Q252,285 238,278 Q228,262 222,250 Z", targetColor: "#FEF3C7" },
+
+    // --- Oko levo (bijelo) ---
+    { id: 15, path: "M155,178 m-16,0 a16,14 0 1,0 32,0 a16,14 0 1,0 -32,0", targetColor: "#FFFFFF" },
+    // --- Oko levo (zjenica) ---
+    { id: 16, path: "M157,178 m-8,0 a8,9 0 1,0 16,0 a8,9 0 1,0 -16,0", targetColor: "#1F2937" },
+
+    // --- Oko desno (bijelo) ---
+    { id: 18, path: "M245,178 m-16,0 a16,14 0 1,0 32,0 a16,14 0 1,0 -32,0", targetColor: "#FFFFFF" },
+    // --- Oko desno (zjenica) ---
+    { id: 19, path: "M243,178 m-8,0 a8,9 0 1,0 16,0 a8,9 0 1,0 -16,0", targetColor: "#1F2937" },
+
+    // --- Rumenilo levo ---
+    { id: 21, path: "M133,222 m-16,0 a16,9 0 1,0 32,0 a16,9 0 1,0 -32,0", targetColor: "#FDA4AF" },
+    // --- Rumenilo desno ---
+    { id: 22, path: "M267,222 m-16,0 a16,9 0 1,0 32,0 a16,9 0 1,0 -32,0", targetColor: "#FDA4AF" },
+
+    // --- Noga prednja leva ---
+    { id: 23, path: "M125,358 Q118,388 122,405 L170,405 Q174,388 167,358 Z", targetColor: "#64748B" },
+    // --- Noga prednja desna ---
+    { id: 24, path: "M233,358 Q226,388 230,405 L278,405 Q282,388 275,358 Z", targetColor: "#64748B" },
+    // --- Noga zadnja leva ---
+    { id: 25, path: "M108,362 Q102,390 106,406 L148,406 Q152,390 146,362 Z", targetColor: "#475569" },
+    // --- Noga zadnja desna ---
+    { id: 26, path: "M252,362 Q246,390 250,406 L292,406 Q296,390 290,362 Z", targetColor: "#475569" },
+
+    // --- Prsti noge prednje leve ---
+    { id: 27, path: "M122,404 Q120,412 128,414 Q136,412 138,404 Z M138,404 Q138,412 146,414 Q154,412 154,404 Z M154,404 Q154,412 162,414 Q170,412 170,404 Z", targetColor: "#475569" },
+    // --- Prsti noge prednje desne ---
+    { id: 28, path: "M230,404 Q228,412 236,414 Q244,412 246,404 Z M246,404 Q246,412 254,414 Q262,412 262,404 Z M262,404 Q262,412 270,414 Q278,412 278,404 Z", targetColor: "#475569" },
+
+    // --- Rep ---
+    { id: 29, path: "M288,255 Q328,248 338,275 Q345,295 330,298 Q318,292 316,285 Q328,284 330,276 Q320,255 290,262 Z", targetColor: "#7F8EA3" },
+    // --- Čuperak repa ---
+    { id: 30, path: "M326,294 Q320,305 322,318 Q330,315 336,305 Q340,296 330,298 Z", targetColor: "#475569" },
   ],
 
   // ─── NIVO 6: RIBA ────────────────────────────────────────────────────────────
   6: [
-    { id: 1, path: "M98,200 Q160,148 272,200 Q160,252 98,200 Z", targetColor: "#F97316" },
-    { id: 2, path: "M270,178 L342,142 L342,258 L270,222 Z", targetColor: "#FBBF24" },
-    { id: 3, path: "M158,153 Q200,112 242,150 L200,173 Z", targetColor: "#EF4444" },
-    { id: 4, path: "M158,247 Q200,288 242,250 L200,227 Z", targetColor: "#EF4444" },
-    { id: 5, path: "M190,200 Q196,222 222,228 Q216,200 190,200 Z", targetColor: "#FDE68A" },
-    { id: 6, path: "M118,192 m-17,0 a17,17 0 1,0 34,0 a17,17 0 1,0 -34,0", targetColor: "#FFFFFF" },
-    { id: 7, path: "M118,192 m-9,0 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0", targetColor: "#1F2937" },
-    { id: 8, path: "M112,186 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0", targetColor: "#FFFFFF" },
-    { id: 9, path: "M100,208 Q108,220 120,214 Q110,205 100,208 Z", targetColor: "#EF4444" },
-    { id: 10, path: "M148,170 Q145,200 148,230", targetColor: "#C2410C", stroke: true },
-    { id: 11, path: "M175,175 Q186,170 197,175 Q186,185 175,175 Z", targetColor: "#FB923C" },
-    { id: 12, path: "M207,170 Q218,165 229,170 Q218,180 207,170 Z", targetColor: "#FB923C" },
-    { id: 13, path: "M192,196 Q202,191 212,196 Q202,206 192,196 Z", targetColor: "#FB923C" },
-    { id: 14, path: "M175,218 Q186,213 197,218 Q186,228 175,218 Z", targetColor: "#FB923C" },
-    { id: 15, path: "M87,168 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0", targetColor: "#BAE6FD" },
-    { id: 16, path: "M68,148 m-6,0 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0", targetColor: "#BAE6FD" },
+    // --- Tijelo (osnova) ---
+    { id: 1, path: "M95,210 Q110,155 185,140 Q260,128 305,185 Q330,205 305,225 Q260,272 185,270 Q110,258 95,210 Z", targetColor: "#F97316" },
+
+    // --- Trbuh (svjetliji dio) ---
+    { id: 2, path: "M110,210 Q125,235 185,245 Q240,254 285,222 Q265,250 185,260 Q115,255 105,225 Z", targetColor: "#FED7AA" },
+
+    // --- Rep (veliki, lepezast) ---
+    { id: 3, path: "M305,185 L370,145 L390,200 L370,255 L305,225 Z", targetColor: "#EA580C" },
+    // --- Rep unutrašnjost gornja ---
+    { id: 4, path: "M308,187 L360,155 L375,198 L340,198 Z", targetColor: "#FBBF24" },
+    // --- Rep unutrašnjost donja ---
+    { id: 5, path: "M308,223 L340,212 L375,203 L360,248 Z", targetColor: "#FBBF24" },
+
+    // --- Leđna peraja (gore) ---
+    { id: 6, path: "M170,141 Q185,95 220,88 Q255,95 270,138 Q240,125 200,125 Z", targetColor: "#EF4444" },
+
+    // --- Prsna peraja (bočna) ---
+    { id: 7, path: "M200,195 Q220,215 240,240 Q215,238 195,218 Z", targetColor: "#FB923C" },
+
+    // --- Anal peraja (donja) ---
+    { id: 8, path: "M195,258 Q215,285 240,295 Q220,275 205,265 Z", targetColor: "#EF4444" },
+
+    // --- Oko (bijelo) ---
+    { id: 9, path: "M148,178 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0", targetColor: "#FFFFFF" },
+    // --- Oko (zjenica) ---
+    { id: 10, path: "M150,178 m-11,0 a11,11 0 1,0 22,0 a11,11 0 1,0 -22,0", targetColor: "#1F2937" },
+    // --- Oko (odsjaj) ---
+    { id: 11, path: "M143,172 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0", targetColor: "#FFFFFF", stroke: true },
+
+    // --- Usta ---
+    { id: 12, path: "M100,202 Q106,218 118,212 Q108,204 100,202 Z", targetColor: "#DC2626" },
+
+    // --- Škrge (luk) ---
+    { id: 13, path: "M175,148 Q170,178 174,210", targetColor: "#C2410C", stroke: true },
+
+    // --- Ljuske – gornji red ---
+    { id: 14, path: "M195,155 Q208,148 221,155 Q208,165 195,155 Z", targetColor: "#FB923C" },
+    { id: 15, path: "M225,148 Q238,141 251,148 Q238,158 225,148 Z", targetColor: "#FB923C" },
+    { id: 16, path: "M255,148 Q267,142 278,148 Q267,157 255,148 Z", targetColor: "#FB923C" },
+
+    // --- Ljuske – srednji red ---
+    { id: 17, path: "M188,178 Q200,171 212,178 Q200,188 188,178 Z", targetColor: "#FB923C" },
+    { id: 18, path: "M216,170 Q228,163 240,170 Q228,180 216,170 Z", targetColor: "#FB923C" },
+    { id: 19, path: "M244,165 Q256,158 268,165 Q256,175 244,165 Z", targetColor: "#FB923C" },
+    { id: 20, path: "M270,168 Q280,162 290,168 Q280,178 270,168 Z", targetColor: "#FB923C" },
+
+    // --- Ljuske – donji red ---
+    { id: 21, path: "M195,208 Q207,201 219,208 Q207,218 195,208 Z", targetColor: "#FB923C" },
+    { id: 22, path: "M222,200 Q234,193 246,200 Q234,210 222,200 Z", targetColor: "#FB923C" },
+    { id: 23, path: "M248,196 Q260,189 272,196 Q260,206 248,196 Z", targetColor: "#FB923C" },
+
+    // --- Mjehurići ---
+    { id: 24, path: "M78,175 m-10,0 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0", targetColor: "#BAE6FD" },
+    { id: 25, path: "M58,148 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0", targetColor: "#BAE6FD" },
+    { id: 26, path: "M42,130 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0", targetColor: "#BAE6FD" },
   ],
 
   // ─── NIVO 7: AUTOMOBIL ───────────────────────────────────────────────────────
@@ -304,6 +390,20 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
 
   const handleZoneClick = (zoneId: number) => {
     if (!isPlaying || isMonitor) return;
+
+    // --- COLOR RESTRICTION FOR CAT (Level 8) ---
+    if (level === 8) {
+      if (selectedColor === "#EF4444") { // Crvena
+        new Audio('/sounds/coloring/redCat.mp3').play().catch(e => console.error("Audio error:", e));
+        return;
+      } else if (selectedColor === "#3B82F6" || selectedColor === "#60A5FA") { // Plava / Svetlo plava
+        new Audio('/sounds/coloring/blueCat.mp3').play().catch(e => console.error("Audio error:", e));
+        return;
+      } else if (selectedColor === "#10B981") { // Zelena
+        new Audio('/sounds/coloring/greenCat.mp3').play().catch(e => console.error("Audio error:", e));
+        return;
+      }
+    }
 
     setZones(prev => prev.map(zone => {
       if (zone.id === zoneId) {
