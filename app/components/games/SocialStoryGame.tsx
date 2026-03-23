@@ -244,7 +244,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
     const [charPos, setCharPos] = useState({ x: getNode(lvl.startId).x, y: getNode(lvl.startId).y });
     const [charMoving, setCharMoving] = useState(false);
 
-    const [phase, setPhaseState] = useState<Phase>(monitorState?.phase || "preview");
+    const [phase, setPhaseState] = useState<Phase>(monitorState?.phase || (isMonitor ? "playing" : "preview"));
     const [moodBefore, setMoodBefore] = useState<string | null>(monitorState?.moodBefore || null);
     const [startTime, setStartTime] = useState(0);
     const [curId, setCurIdState] = useState(monitorState?.curId || lvl.startId);
@@ -303,7 +303,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
         const startNode = getNode(l.startId);
         setCurIdState(l.startId);
         setCharPos({ x: startNode.x, y: startNode.y });
-        setPhaseState("preview");
+        setPhaseState(isMonitor ? "playing" : "preview");
         setUnlockedCPs(new Set());
         setVisitedDE(new Set());
         setBlockedNodes(new Set());
@@ -324,7 +324,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
     const beginPlay = (mood: string) => {
         setMoodBefore(mood);
         setStartTime(Date.now());
-        emitGameStart(childId, 7, "social-story" as any, { level });
+        emitGameStart(childId, 7, "social-story" as any, { level, phase: "playing" });
         setPhase("playing");
     };
 

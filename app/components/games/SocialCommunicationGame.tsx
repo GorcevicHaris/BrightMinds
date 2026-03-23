@@ -447,7 +447,7 @@ export default function SocialCommunicationGame({
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
     const [answerState, setAnswerState] = useState<AnswerState>("idle");
     const [hintVisible, setHintVisible] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : false);
+    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : (monitorState?.isPlaying || false));
     const [showMoodBefore, setShowMoodBefore] = useState(false);
     const [showMoodAfter, setShowMoodAfter] = useState(false);
     const [moodBefore, setMoodBefore] = useState<string | null>(null);
@@ -472,8 +472,8 @@ export default function SocialCommunicationGame({
 
             // Sync answer UI state
             if (monitorState.selectedAnswer !== undefined) setSelectedAnswer(monitorState.selectedAnswer);
-            if (monitorState.answerState !== undefined) setAnswerState(monitorState.answerState);
             if (monitorState.hintVisible !== undefined) setHintVisible(monitorState.hintVisible);
+            if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
         }
     }, [isMonitor, monitorState]);
 
@@ -607,7 +607,7 @@ export default function SocialCommunicationGame({
         setWrongAttempts(0);
         setTotalIncorrect(0);
         setAdvancing(false);
-        emitGameStart(childId, 6, "social" as any, { level });
+        emitGameStart(childId, 6, "social" as any, { level, isPlaying: true });
     };
 
     const handleMoodAfterSelect = (mood: string) => {

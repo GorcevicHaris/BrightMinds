@@ -165,9 +165,10 @@ app.prepare().then(() => {
           reason: "disconnect"
         });
 
-        activeSessions.delete(childId);
+        // Ne brišemo sesiju odmah na disconnect da bismo preživeli refresh stranice
+        // activeSessions.delete(childId); 
         socketToChild.delete(socket.id);
-        console.log(`🧹 Cleaned up session for child ${childId} on disconnect`);
+        console.log(`🔌 Socket disconnected for child ${childId} (session preserved)`);
       } else {
         console.log(`🔌 Client disconnected: ${socket.id}`);
       }

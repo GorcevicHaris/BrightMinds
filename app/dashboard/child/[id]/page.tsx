@@ -12,6 +12,8 @@ export interface Child {
     date_of_birth: string;
     gender: string;
     notes?: string;
+    streak: number;
+    experience_points: number;
 }
 
 export default async function ChildPage({ params }: { params: { id: string } }) {

@@ -280,7 +280,7 @@ const TEMPLATES = {
 export default function ColoringGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
   const [zones, setZones] = useState<ColorZone[]>(monitorState?.zones || []);
   const [selectedColor, setSelectedColor] = useState<string>(monitorState?.selectedColor || COLORS[0].value);
-  const [isPlaying, setIsPlaying] = useState(isMonitor ? true : false);
+  const [isPlaying, setIsPlaying] = useState(isMonitor ? true : (monitorState?.isPlaying || false));
   const [startTime, setStartTime] = useState<number | null>(null);
   const [moodBefore, setMoodBefore] = useState<string | null>(null);
   const [showMoodBefore, setShowMoodBefore] = useState(false);
@@ -298,6 +298,7 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
       if (monitorState.timeLeft !== undefined) setTimeLeft(monitorState.timeLeft);
       if (monitorState.completedZones !== undefined) setCompletedZones(monitorState.completedZones);
       if (monitorState.correctCount !== undefined) setCompletedZones(monitorState.correctCount);
+      if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
     }
   }, [isMonitor, monitorState]);
 
@@ -334,7 +335,8 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
       level,
       zones: zones,
       selectedColor: selectedColor,
-      timeLeft: 300
+      timeLeft: 300,
+      isPlaying: true
     });
   };
 

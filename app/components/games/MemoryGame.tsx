@@ -59,6 +59,7 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
       if (monitorState.flippedCards !== undefined) setFlippedIds(monitorState.flippedCards);
       if (monitorState.incorrectCount !== undefined) setIncorrectCount(monitorState.incorrectCount);
       if (monitorState.totalIncorrect !== undefined) setIncorrectCount(monitorState.totalIncorrect);
+      if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
     }
   }, [isMonitor, monitorState]);
 
@@ -82,14 +83,14 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
   }, [pairsCount]);
 
   useEffect(() => {
-    setIsPlaying(false);
+    setIsPlaying(isMonitor ? true : false);
     setShowMoodBefore(false);
     setShowMoodAfter(false);
     setMoodBefore(null);
     setStartTime(null);
     setGameCompleted(false);
     initializeGame();
-  }, [level, initializeGame]);
+  }, [level, isMonitor, initializeGame]);
 
   const startGame = () => {
     setShowMoodBefore(true);
@@ -108,6 +109,7 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
       cards: cards,
       moves: 0,
       matchedPairs: 0,
+      isPlaying: true,
     });
   };
 

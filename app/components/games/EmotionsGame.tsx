@@ -139,14 +139,14 @@ export default function EmotionsGame({
 
     // Reset kada se nivo promeni
     useEffect(() => {
-        setIsPlaying(false);
+        setIsPlaying(isMonitor ? true : false); // Monitoru odmah pokazujemo pitanje ako smo već u syncu
         setStartTime(null);
         setMoves(0);
         setIncorrectCount(0);
         setHasWon(false);
         setSelectedEmotion(null);
         setIsLocked(false);
-    }, [level]);
+    }, [level, isMonitor]);
 
     // Sync monitor state
     useEffect(() => {
@@ -157,6 +157,7 @@ export default function EmotionsGame({
             if (monitorState.hasWon !== undefined) setHasWon(monitorState.hasWon);
             if (monitorState.selectedEmotion !== undefined)
                 setSelectedEmotion(monitorState.selectedEmotion);
+            if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
         }
     }, [isMonitor, monitorState]);
 
@@ -172,10 +173,12 @@ export default function EmotionsGame({
             scenarioText: scenario.text,
             moves: 0,
             incorrectCount: 0,
+            isPlaying: true
         });
     };
 
     const handleSpeech = () => {
+        if (isMonitor) return; // Disable audio for monitor
         stopCurrentSound();
         const audio = playSound(scenario.soundFile);
         currentAudioRef.current = audio;
@@ -189,7 +192,7 @@ export default function EmotionsGame({
             }, 500);
             return () => clearTimeout(timer);
         }
-    }, [isPlaying, hasWon]);
+    }, [isPlaying, hasWon, isMonitor]); // Added isMonitor to dependencies
 
     const handleEmotionSelect = (emotionId: string) => {
         if (isLocked || isMonitor || hasWon || !isPlaying) return;
@@ -202,6 +205,8 @@ export default function EmotionsGame({
 
         if (isCorrect) {
             setHasWon(true);
+            setIsLocked(true); // Ensure it's locked on win
+
             emitGameProgress({
                 childId,
                 activityId: 8,

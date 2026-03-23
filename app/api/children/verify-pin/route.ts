@@ -39,7 +39,50 @@ export async function POST(req: Request) {
         }
 
         // If multiple children have the same PIN, return the first match
-        const child = rows[0];
+        let child = rows[0];
+
+        // ─── STREAK & POINTS LOGIC ─────────────────────────────────────
+        const now = new Date();
+        const lastLogin = child.last_login_at ? new Date(child.last_login_at) : null;
+
+        let newStreak = child.streak || 0;
+        let newPoints = child.experience_points || 0;
+        let streakAdded = false;
+
+        // Provera da li je novi kalendarski dan (Snapchat stil)
+        const isNewDay = !lastLogin || (
+            now.getFullYear() !== lastLogin.getFullYear() ||
+            now.getMonth() !== lastLogin.getMonth() ||
+            now.getDate() !== lastLogin.getDate()
+        );
+
+        if (isNewDay) {
+            streakAdded = true;
+            // Proveri da li je juče bio poslednji login (consecutive)
+            const yesterday = new Date(now);
+            yesterday.setDate(now.getDate() - 1);
+
+            const wasYesterday = lastLogin && (
+                yesterday.getFullYear() === lastLogin.getFullYear() &&
+                yesterday.getMonth() === lastLogin.getMonth() &&
+                yesterday.getDate() === lastLogin.getDate()
+            );
+
+            if (wasYesterday) {
+                newStreak += 1; // Nastavi streak
+            } else {
+                newStreak = 1; // Resetuj na 1 (ako je prvi put ili je prošlo više dana)
+            }
+
+            // Nagrada: +10 poena za dnevni ulazak
+            newPoints += 10;
+
+            // Sačuvaj u bazi
+            await pool.query(
+                'UPDATE children SET streak = ?, experience_points = ?, last_login_at = NOW() WHERE id = ?',
+                [newStreak, newPoints, child.id]
+            );
+        }
 
         return NextResponse.json({
             success: true,
@@ -48,6 +91,9 @@ export async function POST(req: Request) {
                 first_name: child.first_name,
                 last_name: child.last_name,
                 gender: child.gender,
+                streak: newStreak,
+                experiencePoints: newPoints,
+                streakAdded: streakAdded
             }
         });
     } catch (error) {

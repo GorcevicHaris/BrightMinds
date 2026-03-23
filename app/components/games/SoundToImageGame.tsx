@@ -43,7 +43,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
     const [round, setRound] = useState(monitorState?.round || 0);
     const [correctCount, setCorrectCount] = useState(monitorState?.correctCount || 0);
     const [incorrectCount, setIncorrectCount] = useState(monitorState?.incorrectCount || 0);
-    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : false);
+    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : (monitorState?.isPlaying || false));
     const [startTime, setStartTime] = useState<number | null>(null);
     const [moodBefore, setMoodBefore] = useState<string | null>(null);
     const [showMoodBefore, setShowMoodBefore] = useState(false);
@@ -65,6 +65,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
             if (monitorState.incorrectCount !== undefined) setIncorrectCount(monitorState.incorrectCount);
             if (monitorState.currentSound) setCurrentSound(monitorState.currentSound);
             if (monitorState.options) setOptions(monitorState.options);
+            if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
         }
     }, [isMonitor, monitorState]);
 
@@ -160,6 +161,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
             round: 0,
             correctCount: 0,
             incorrectCount: 0,
+            isPlaying: true
         });
     };
 
@@ -173,7 +175,7 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
     }, [stopTTS]);
 
     const playSound = () => {
-        if (!currentSound || isPlayingSound) return;
+        if (!currentSound || isPlayingSound || isMonitor) return;
 
         setIsPlayingSound(true);
 
@@ -189,7 +191,8 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
         audio.play().catch(() => {
             console.log("Audio file not found, using ElevenLabs TTS fallback");
             audioRef.current = null;
-            speak(currentSound.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false));
+            if (!isMonitor) speak(currentSound.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false));
+            else setIsPlayingSound(false);
         });
 
         audio.onended = () => {
@@ -199,7 +202,8 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
         audio.onerror = () => {
             console.log("Audio error, using ElevenLabs TTS fallback");
             audioRef.current = null;
-            speak(currentSound.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false));
+            if (!isMonitor) speak(currentSound.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false));
+            else setIsPlayingSound(false);
         };
     };
 

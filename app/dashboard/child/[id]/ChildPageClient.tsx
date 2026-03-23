@@ -13,6 +13,25 @@ interface Props {
 }
 export default function ChildPageClient({ child, childId }: Props) {
     const [activeView, setActiveView] = useState<"game" | "stats">("game");
+
+    const handleLogout = async () => {
+        try {
+            // 1. Pozovi logout API koji briše cookie
+            await fetch('/api/auth/logout', { method: 'POST' });
+
+            // 2. Obriši session info
+            if (typeof window !== 'undefined') {
+                sessionStorage.removeItem('childLogin');
+            }
+
+            // 3. Pošalji na login ekran
+            window.location.href = '/login';
+        } catch (err) {
+            console.error('Logout error:', err);
+            window.location.href = '/login';
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#F8FAFC] selection:bg-purple-100 font-sans">
             <div className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
@@ -22,10 +41,26 @@ export default function ChildPageClient({ child, childId }: Props) {
                             {child.first_name?.trim()?.charAt(0)}{child.last_name?.trim()?.charAt(0)}
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-gray-900 leading-tight">
-                                {child.first_name} {child.last_name}
-                            </h1>
-                            <p className="text-sm text-gray-500 font-medium">Profil deteta</p>
+                            <div className="flex items-center gap-2">
+                                <h1 className="text-xl font-bold text-gray-900 leading-tight">
+                                    {child.first_name} {child.last_name}
+                                </h1>
+                                {child.streak > 0 && (
+                                    <div className="flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 animate-bounce">
+                                        <span className="text-sm">🔥</span>
+                                        <span className="text-xs font-black text-orange-600">{child.streak}</span>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">Profil deteta</p>
+                                <span className="text-gray-300">•</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] text-purple-400 font-black uppercase tracking-widest leading-none">
+                                        {child.experience_points || 0} poena
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -50,7 +85,12 @@ export default function ChildPageClient({ child, childId }: Props) {
                                 📊 Statistika
                             </button>
                         </nav>
-                        <ExitButton target="/dashboard" />
+                        <button
+                            onClick={handleLogout}
+                            className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-rose-100 active:scale-95"
+                        >
+                            Izađi 👋
+                        </button>
                     </div>
                 </div>
             </div>

@@ -11,6 +11,8 @@ import ColoringGame from './games/ColoringGame';
 import SoundToImageGame from './games/SoundToImageGame';
 import SocialCommunicationGame from './games/SocialCommunicationGame';
 import SocialStoryGame from './games/SocialStoryGame';
+import EmotionsGame from './games/EmotionsGame';
+
 
 interface LiveMonitorProps {
   childId: number;
@@ -30,34 +32,44 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
   const [visualState, setVisualState] = useState<any>(null);
 
   const handleUpdate = useCallback((update: GameUpdate & { isSync?: boolean; reason?: string }) => {
-    // 1. Ako je igra započela (ili se sinhronizujemo na već započetu)
-    if (update.event === 'started' || update.isSync) {
-      setCurrentGame(update.gameType);
-      // Reset state for new game to avoid mixing data from previous games
-      setVisualState(update.data || {});
-      setLiveStats({
-        score: update.data?.score || 0,
-        level: update.data?.level || 1,
-        moves: update.data?.moves || 0,
-        correct: update.data?.correctCount || 0,
-        incorrect: update.data?.incorrectCount || 0,
-      });
+    // 1. Ako je igra započela (ili se sinhronizujemo na već započetu) ili imamo gameType u progresu
+    if (update.event === 'started' || update.isSync || (!currentGame && update.gameType)) {
+      if (update.gameType) setCurrentGame(update.gameType);
 
-      // Ako je sinkronizacija, ne dodajemo u listu feed-a kao novi događaj, 
-      // osim ako je lista prazna (da imamo bar nešto)
+      // Reset state for new game or sync
+      if (update.event === 'started' || update.isSync) {
+        setVisualState(update.data || {});
+        setLiveStats({
+          score: update.data?.score || 0,
+          level: update.data?.level || 1,
+          moves: update.data?.moves || 0,
+          correct: update.data?.correctCount || 0,
+          incorrect: update.data?.incorrectCount || 0,
+        });
+      }
+
       if (update.isSync) {
         setUpdates(prev => prev.length === 0 ? [update] : prev);
-      } else {
+      } else if (update.event === 'started') {
         setUpdates((prev) => [update, ...prev].slice(0, 20));
       }
-    } else if (update.event === 'completed') {
-      // 2. Igra je gotova
+    }
+
+    if (update.event === 'completed') {
+      // Ignorišemo disconnect kao kraj igre da bismo omogućili refresh stranice kod deteta
+      if (update.reason === 'disconnect') {
+        setUpdates((prev) => [update, ...prev].slice(0, 20));
+        return;
+      }
+      // 2. Igra je stvarno gotova (manual exit ili win)
       setCurrentGame(null);
-      setVisualState(null); // Clear preview data
+      setVisualState(null);
       setUpdates((prev) => [update, ...prev].slice(0, 20));
-      // Opaciono: reset stats nakon 5 sekundi ili ih ostavi vidljivim kao "zadnji rezultat"
-    } else {
-      // 3. Običan progres
+      return;
+    }
+
+    // 3. Običan progres (uključujući i slučajeve gde smo gore preskočili started/sync logiku)
+    if (update.event !== 'started' && !update.isSync) {
       setUpdates((prev) => [update, ...prev].slice(0, 20));
       if (update.data) {
         setVisualState((prev: any) => ({
@@ -97,7 +109,7 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
         return newStats;
       });
     }
-  }, [childId, setUpdates, setCurrentGame, setVisualState, setLiveStats]);
+  }, [childId, currentGame, setUpdates, setCurrentGame, setVisualState, setLiveStats]);
 
   const { activeSession, isConnected } = useGameMonitor(childId, handleUpdate);
 
@@ -110,14 +122,14 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
       onComplete: () => { },
       isMonitor: true,
       monitorState: {
-        ...visualState,
+        isPlaying: true,
         currentIndex: visualState.index ?? 0,
         score: liveStats.score,
         correctCount: liveStats.correct,
         totalIncorrect: liveStats.incorrect,
+        ...visualState,
       },
     };
-
     return (
       <div className="mt-6 border-t pt-6 bg-white rounded-xl p-4 shadow-inner">
         <div className="flex items-center gap-2 mb-4 text-blue-600 font-semibold border-b pb-2">
@@ -132,7 +144,9 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
             {currentGame === 'sound-to-image' && <SoundToImageGame {...gameProps} />}
             {currentGame === 'social' && <SocialCommunicationGame {...gameProps} />}
             {currentGame === 'social-story' && <SocialStoryGame {...gameProps} />}
+            {currentGame === 'emotions' && <EmotionsGame {...gameProps} />}
           </div>
+
         </div>
         <p className="text-center text-xs text-gray-400 mt-2">
           * Prikaz je u realnom vremenu i bezbedan za gledanje
@@ -149,7 +163,9 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
       case 'sound-to-image': return 'Zvuk → Slika';
       case 'social': return 'Šta treba da kažeš?';
       case 'social-story': return 'Istraži Grad';
+      case 'emotions': return 'Moja Osećanja';
       default: return gameType;
+
     }
   };
 
@@ -171,18 +187,31 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
             ? `✅ Tačan odgovor (pitanje ${(update.data.index ?? 0) + 1}/${update.data.totalSituations ?? '?'}) — ${update.data.score} poena ukupno`
             : `❌ Pogrešan odgovor na pitanju ${(update.data.index ?? 0) + 1}`;
         }
-        return update.data.correct
-          ? `🔊 Tačno prepoznao zvuk - ${update.data.label || update.data.currentSound?.label} (+${update.data.score - liveStats.score} poena)`
-          : `👂 Pogrešan pokušaj - Sluša ${update.data.currentSound?.label}`;
-      case 'progress':
         if ((update.gameType as string) === 'social-story') {
           return update.data.correct
-            ? `✅ Tačan odgovor na raskrsnici`
-            : `🔄 Napredak na mapi`;
+            ? `✅ Tačan odgovor na raskrsnici (pitanje rešeno)`
+            : `❌ Pogrešan odgovor na raskrsnicu`;
+        }
+        if ((update.gameType as string) === 'sound-to-image') {
+          return update.data.correct
+            ? `🔊 Tačno prepoznao zvuk: ${update.data.currentSound?.label || ''}`
+            : `👂 Pogrešan pokušaj prepoznavanja zvuka`;
+        }
+        return update.data.correct ? '✅ Tačan odgovor' : '❌ Pogrešan odgovor';
+
+      case 'progress':
+        if ((update.gameType as string) === 'social-story') {
+          return `🚗 Vozi se kroz grad: ${update.data.curId || 'n00'}`;
+        }
+        if ((update.gameType as string) === 'emotions') {
+          return update.data.matched
+            ? `✅ Tačno prepoznao emociju: ${update.data.selectedEmotion}`
+            : `❌ Pogrešan izbor emocije: ${update.data.selectedEmotion}`;
         }
         return update.data.matched
           ? `✨ Par pronađen - ${update.data.emoji} (+${update.data.score} poena)`
           : '🔄 Progres';
+
       case 'completed':
         if ((update as any).reason === 'disconnect') return '🔌 Prekinuta veza — dete je izašlo';
         if (update.data?.reason === 'manual_exit') return '🚪 Izašao iz igre pre kraja';
