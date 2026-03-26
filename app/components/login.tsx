@@ -45,6 +45,16 @@ export default function LoginPage() {
                 // Store child info for the session
                 if (typeof window !== 'undefined') {
                     sessionStorage.setItem('childLogin', JSON.stringify(data.child));
+                    // Unlock audio for the next page by creating a context now during user gesture
+                    try {
+                        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+                        const ctx = new AudioCtx();
+                        if (ctx.state === 'suspended') ctx.resume();
+                        // Just a tiny "unlock" flag
+                        sessionStorage.setItem('avatarAudioUnlocked', '1');
+                    } catch (e) {
+                        console.warn('Audio unlock failed', e);
+                    }
                 }
                 router.push(`/dashboard/child/${data.child.id}`);
             } else {

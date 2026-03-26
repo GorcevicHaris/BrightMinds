@@ -5,6 +5,7 @@ import { useState } from "react";
 import ExitButton from "@/app/components/ExitButton";
 import GameContainer from "./GameContainer";
 import ProgressDashboard from "@/app/components/ProgressDashboard";
+import WelcomeAvatar, { triggerAvatarLogout } from "@/app/components/WelcomeAvatar";
 import { Child } from "./page";
 
 interface Props {
@@ -14,17 +15,13 @@ interface Props {
 export default function ChildPageClient({ child, childId }: Props) {
     const [activeView, setActiveView] = useState<"game" | "stats">("game");
 
-    const handleLogout = async () => {
+    // Called by WelcomeAvatar AFTER the goodbye sound finishes
+    const handleLogoutConfirmed = async () => {
         try {
-            // 1. Pozovi logout API koji briše cookie
             await fetch('/api/auth/logout', { method: 'POST' });
-
-            // 2. Obriši session info
             if (typeof window !== 'undefined') {
                 sessionStorage.removeItem('childLogin');
             }
-
-            // 3. Pošalji na login ekran
             window.location.href = '/login';
         } catch (err) {
             console.error('Logout error:', err);
@@ -32,8 +29,20 @@ export default function ChildPageClient({ child, childId }: Props) {
         }
     };
 
+    // Called when child clicks "Izađi" — shows avatar goodbye popup first
+    const handleLogoutClick = () => {
+        triggerAvatarLogout();
+    };
+
     return (
         <div className="min-h-screen bg-[#F8FAFC] selection:bg-purple-100 font-sans">
+
+            {/* Welcome Avatar — top-right corner + goodbye modal */}
+            <WelcomeAvatar
+                childName={child.first_name}
+                onLogoutConfirmed={handleLogoutConfirmed}
+            />
+
             <div className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
                     <div className="flex items-center gap-4">
@@ -85,8 +94,9 @@ export default function ChildPageClient({ child, childId }: Props) {
                                 📊 Statistika
                             </button>
                         </nav>
+                        {/* Logout button — triggers avatar goodbye popup */}
                         <button
-                            onClick={handleLogout}
+                            onClick={handleLogoutClick}
                             className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-rose-100 active:scale-95"
                         >
                             Izađi 👋
