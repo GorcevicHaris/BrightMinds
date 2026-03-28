@@ -184,6 +184,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                     ? 8
                     : 4;
 
+      console.log("🚀 ŠALJEM PROGRESS API:", { childId, activityId, successLevel, score });
       const response = await fetch("/api/activities/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -197,6 +198,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
           moodAfter: moodAfter || null,
         }),
       });
+
+      console.log("📥 RESPONSE STATUS:", response.status);
 
       if (response.ok) {
         if (currentLevel < 8) {

@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Proveri da li korisnik ima pristup detetu
+        // Proveri da li korisnik ima pristup detet
         console.log("🔍 Proveravam pristup detetu...");
         const [accessRows] = await pool.query<RowDataPacket[]>(
             "SELECT id FROM user_children WHERE user_id = ? AND child_id = ?",

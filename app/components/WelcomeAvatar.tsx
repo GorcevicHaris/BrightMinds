@@ -253,6 +253,20 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
         });
     }, [showOutModal, stop, playSound, onLogoutConfirmed]);
 
+    // ── Listen for external "Speak" events (e.g. from ColoringGame)
+    useEffect(() => {
+        const handleSpeak = (e: any) => {
+            const audioUrl = e.detail?.url;
+            if (audioUrl) {
+                // Stop current greeting if active, then speak the new message
+                stop();
+                playSound(audioUrl);
+            }
+        };
+        window.addEventListener('avatar:speak', handleSpeak);
+        return () => window.removeEventListener('avatar:speak', handleSpeak);
+    }, [playSound, stop]);
+
     return (
         <>
             <div

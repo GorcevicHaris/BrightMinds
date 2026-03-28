@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import pool from '../../../../lib/db';
+import jwt from 'jsonwebtoken';
 
 export async function POST(req: Request) {
     try {
@@ -84,18 +85,63 @@ export async function POST(req: Request) {
             );
         }
 
-        return NextResponse.json({
-            success: true,
-            child: {
-                id: child.id,
-                first_name: child.first_name,
-                last_name: child.last_name,
-                gender: child.gender,
-                streak: newStreak,
-                experiencePoints: newPoints,
-                streakAdded: streakAdded
-            }
-        });
+        // ─── JWT & SESSION LOGIC ──────────────────────────────────────
+        // Find the parent (user) associated with this child
+        const [parentRows]: any = await pool.query(
+            'SELECT u.id, u.email, u.role FROM users u JOIN user_children uc ON u.id = uc.user_id WHERE uc.child_id = ? LIMIT 1',
+            [child.id]
+        );
+
+        let response: NextResponse;
+        if (parentRows && parentRows.length > 0) {
+            const parent = parentRows[0];
+
+            // Create JWT token for the parent session
+            const token = jwt.sign(
+                { id: parent.id, email: parent.email, role: parent.role },
+                process.env.JWT_SECRET!,
+                { expiresIn: '7d' }
+            );
+
+            response = NextResponse.json({
+                success: true,
+                child: {
+                    id: child.id,
+                    first_name: child.first_name,
+                    last_name: child.last_name,
+                    gender: child.gender,
+                    streak: newStreak,
+                    experiencePoints: newPoints,
+                    streakAdded: streakAdded
+                }
+            });
+
+            // Set httpOnly cookie so verifyToken() works in progress-logs
+            response.cookies.set('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'strict',
+                maxAge: 60 * 60 * 24 * 7, // 7 days
+                path: '/'
+            });
+        } else {
+            // Fallback for children without explicit user links
+            response = NextResponse.json({
+                success: true,
+                child: {
+                    id: child.id,
+                    first_name: child.first_name,
+                    last_name: child.last_name,
+                    gender: child.gender,
+                    streak: newStreak,
+                    experiencePoints: newPoints,
+                    streakAdded: streakAdded
+                }
+            });
+        }
+
+        return response;
+
     } catch (error) {
         console.error('Error verifying PIN:', error);
         return NextResponse.json(

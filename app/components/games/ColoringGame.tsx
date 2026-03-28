@@ -395,15 +395,26 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
 
     // --- COLOR RESTRICTION FOR CAT (Level 8) ---
     if (level === 8) {
-      if (selectedColor === "#EF4444") { // Crvena
-        new Audio('/sounds/coloring/redCat.mp3').play().catch(e => console.error("Audio error:", e));
-        return;
-      } else if (selectedColor === "#3B82F6" || selectedColor === "#60A5FA") { // Plava / Svetlo plava
-        new Audio('/sounds/coloring/blueCat.mp3').play().catch(e => console.error("Audio error:", e));
-        return;
-      } else if (selectedColor === "#10B981") { // Zelena
-        new Audio('/sounds/coloring/greenCat.mp3').play().catch(e => console.error("Audio error:", e));
-        return;
+      const zone = zones.find(z => z.id === zoneId);
+      if (zone) {
+        let audioUrl = "";
+        const color = selectedColor.toUpperCase();
+
+        // Block these colors ONLY if they are NOT the target color for this zone
+        if (color !== zone.targetColor.toUpperCase()) {
+          if (color === "#EF4444") { // Crvena
+            audioUrl = '/sounds/coloring/redCat.mp3';
+          } else if (color === "#3B82F6" || color === "#60A5FA") { // Plava / Svetlo plava
+            audioUrl = '/sounds/coloring/blueCat.mp3';
+          } else if (color === "#10B981") { // Zelena
+            audioUrl = '/sounds/coloring/greenCat.mp3';
+          }
+        }
+
+        if (audioUrl) {
+          window.dispatchEvent(new CustomEvent('avatar:speak', { detail: { url: audioUrl } }));
+          return;
+        }
       }
     }
 
