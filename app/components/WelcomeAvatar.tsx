@@ -2,11 +2,11 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-// ─── Professor Mentor Avatar (v4.0 - 40+ years old) ───────────────────────────
+// ─── Shared SVG Avatar face ───────────────────────────────────────────────────
 function AvatarFace({
     mouthOpen,
     blinking,
-    size = 100,
+    size = 96,
     isPlaying,
 }: {
     mouthOpen: number;
@@ -14,115 +14,119 @@ function AvatarFace({
     size?: number;
     isPlaying: boolean;
 }) {
-    const scale = size / 100;
-    // Lip-sync logic - EXTRA REDUCED for discrete speech
-    const mH = (1.5 + mouthOpen * 4.5) * scale;
-    const mW = (10 + mouthOpen * 3) * scale;
+    const scale = size / 96;
+    const mouthH = (4 + mouthOpen * 20) * scale;
+    const mouthW = (20 + mouthOpen * 14) * scale;
 
     return (
         <svg
             width={size}
-            height={size * 1.3}
-            viewBox="0 0 100 130"
-            style={{
-                filter: 'drop-shadow(0 15px 40px rgba(0,0,0,0.2))',
-                animation: isPlaying ? 'avatarSway 3.5s ease-in-out infinite' : 'none'
-            }}
+            height={size}
+            viewBox="0 0 96 96"
+            style={{ filter: 'drop-shadow(0 6px 18px rgba(109,40,217,0.4))' }}
         >
             <defs>
-                <linearGradient id="skinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#FFDEBC" />
-                    <stop offset="100%" stopColor="#F1B07A" />
-                </linearGradient>
-                <linearGradient id="suitGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#1E1B4B" />
-                    <stop offset="100%" stopColor="#0F172A" />
-                </linearGradient>
+                <radialGradient id="bodyGradAv" cx="38%" cy="30%" r="65%">
+                    <stop offset="0%" stopColor="#c4b5fd" />
+                    <stop offset="55%" stopColor="#7c3aed" />
+                    <stop offset="100%" stopColor="#4c1d95" />
+                </radialGradient>
+                <radialGradient id="earGradAv" cx="50%" cy="40%" r="60%">
+                    <stop offset="0%" stopColor="#ddd6fe" />
+                    <stop offset="100%" stopColor="#7c3aed" />
+                </radialGradient>
             </defs>
 
-            {/* Professor's Suit & Tie */}
-            <path
-                d="M5 125 Q5 95 50 95 Q95 95 95 125 L95 130 L5 130 Z"
-                fill="url(#suitGrad)"
-            />
-            {/* White Shirt & Tie */}
-            <path d="M42 95 L50 115 L58 95" fill="white" />
-            <path d="M47 95 L50 115 L53 95 L50 125 L47 95" fill="#BE123C" /> {/* Red Tie */}
+            {/* Head */}
+            <circle cx="48" cy="48" r="42" fill="url(#bodyGradAv)" />
 
-            {/* Neck */}
-            <rect x="43" y="85" width="14" height="15" fill="#E8B084" />
-            <path d="M43 85 Q50 91 57 85" fill="#CE966C" />
+            {/* Highlight */}
+            <ellipse cx="34" cy="28" rx="13" ry="8" fill="rgba(255,255,255,0.18)" />
 
-            {/* Mature Face Shape - 40 years old proportions */}
-            <path
-                d="M28 45 C28 15, 72 15, 72 45 L72 75 C72 95, 50 100, 28 75 Z"
-                fill="url(#skinGrad)"
-            />
-
-            {/* Professor's Glasses */}
-            <g stroke="#334155" strokeWidth="1.5" fill="none">
-                <circle cx="41" cy="55" r="7" />
-                <circle cx="59" cy="55" r="7" />
-                <path d="M48 55 Q50 54 52 55" /> {/* Bridge */}
-                <path d="M34 55 L28 53" /> {/* Left arm */}
-                <path d="M66 55 L72 53" /> {/* Right arm */}
-            </g>
+            {/* Ears */}
+            <ellipse cx="9" cy="50" rx="8" ry="10" fill="url(#earGradAv)" />
+            <ellipse cx="87" cy="50" rx="8" ry="10" fill="url(#earGradAv)" />
+            <ellipse cx="9" cy="50" rx="5" ry="6" fill="#f9a8d4" opacity="0.55" />
+            <ellipse cx="87" cy="50" rx="5" ry="6" fill="#f9a8d4" opacity="0.55" />
 
             {/* Eyes */}
             {blinking ? (
                 <>
-                    <line x1="38" y1="55" x2="44" y2="55" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" />
-                    <line x1="56" y1="55" x2="62" y2="55" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" />
+                    <rect x="27" y="40" width="14" height="3" rx="1.5" fill="#1e1b4b" />
+                    <rect x="55" y="40" width="14" height="3" rx="1.5" fill="#1e1b4b" />
                 </>
             ) : (
                 <>
-                    <circle cx="41" cy="55" r="2.5" fill="#0F172A" />
-                    <circle cx="59" cy="55" r="2.5" fill="#0F172A" />
-                    {/* Laugh lines */}
-                    <path d="M30 55 Q32 52 34 55" stroke="rgba(0,0,0,0.1)" fill="none" />
-                    <path d="M66 55 Q68 52 70 55" stroke="rgba(0,0,0,0.1)" fill="none" />
+                    <ellipse cx="34" cy="41" rx="8" ry="9" fill="white" />
+                    <ellipse cx="62" cy="41" rx="8" ry="9" fill="white" />
+                    <ellipse cx="35" cy="42" rx="5" ry="6" fill="#4f46e5" />
+                    <ellipse cx="63" cy="42" rx="5" ry="6" fill="#4f46e5" />
+                    <circle cx="36" cy="40" r="2.2" fill="#1e1b4b" />
+                    <circle cx="64" cy="40" r="2.2" fill="#1e1b4b" />
+                    <circle cx="39" cy="37.5" r="1.5" fill="white" opacity="0.9" />
+                    <circle cx="67" cy="37.5" r="1.5" fill="white" opacity="0.9" />
+                    {/* Happy little squint when speaking */}
+                    {isPlaying && (
+                        <>
+                            <path d="M27 35 Q34 31 41 35" stroke="#3730a3" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                            <path d="M55 35 Q62 31 69 35" stroke="#3730a3" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                        </>
+                    )}
                 </>
             )}
 
-            {/* Mature Eyebrows */}
-            <path d="M35 45 Q41 42 46 45" stroke="#2D1B13" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.8" />
-            <path d="M54 45 Q59 42 65 45" stroke="#2D1B13" strokeWidth="2" fill="none" strokeLinecap="round" opacity="0.8" />
-
-            {/* Nose */}
-            <path d="M48 68 Q50 71 52 68" stroke="#CE966C" strokeWidth="1.8" fill="none" strokeLinecap="round" />
-
-            {/* Mouth - Professional Lip-Sync */}
-            <ellipse
-                cx="50"
-                cy="84"
-                rx={mW / 2 + 1}
-                ry={mH / 2}
-                fill={mouthOpen > 0.1 ? '#3F1F15' : '#BD835F'}
-                style={{ transition: 'ry 0.04s ease' }}
-            />
-            {/* Teeth */}
-            {mouthOpen > 0.4 && (
-                <rect x={50 - mW / 4} y={84 - mH / 2 + 1} width={mW / 2} height="1.8" fill="white" rx="0.3" />
+            {/* Eyebrows */}
+            {!isPlaying && (
+                <>
+                    <path d="M26 31 Q34 27 42 31" stroke="#3730a3" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                    <path d="M54 31 Q62 27 70 31" stroke="#3730a3" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                </>
             )}
 
-            {/* Professor's Hat (Mortarboard) */}
-            <g>
-                {/* Hat Base */}
-                <path d="M35 25 L65 25 L60 35 L40 35 Z" fill="#0F172A" />
-                {/* Diamond Top */}
-                <path d="M20 20 L50 10 L80 20 L50 30 Z" fill="#1E1B4B" stroke="#0F172A" strokeWidth="1" />
-                {/* Tassel */}
-                <path d="M50 20 L82 25 L82 35" fill="none" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" />
-                <rect x="80" y="34" width="4" height="6" fill="#F59E0B" rx="1" />
-            </g>
+            {/* Nose */}
+            <ellipse cx="48" cy="54" rx="3" ry="2" fill="rgba(99,102,241,0.28)" />
 
-            {/* Mature Skin Details */}
-            <path d="M42 92 Q50 95 58 92" stroke="rgba(0,0,0,0.1)" fill="none" strokeWidth="0.8" />
+            {/* Mouth */}
+            <ellipse
+                cx="48"
+                cy="65"
+                rx={mouthW / 2}
+                ry={mouthH / 2}
+                fill={mouthOpen > 0.08 ? '#1e1b4b' : '#c4b5fd'}
+                style={{ transition: 'rx 0.04s ease, ry 0.04s ease' }}
+            />
+            {/* Teeth */}
+            {mouthOpen > 0.22 && (
+                <rect
+                    x={48 - mouthW / 2 + 2}
+                    y={65 - mouthH / 2 + 1}
+                    width={mouthW - 4}
+                    height={Math.min(mouthH * 0.4, 8)}
+                    rx="2"
+                    fill="white"
+                    opacity={Math.min(1, (mouthOpen - 0.22) * 5)}
+                />
+            )}
+            {/* Tongue */}
+            {mouthOpen > 0.55 && (
+                <ellipse
+                    cx="48"
+                    cy={65 + mouthH / 4}
+                    rx={mouthW / 3}
+                    ry={mouthH / 4}
+                    fill="#f43f5e"
+                    opacity={Math.min(1, (mouthOpen - 0.55) * 4)}
+                />
+            )}
+
+            {/* Cheeks */}
+            <ellipse cx="22" cy="58" rx="9" ry="5.5" fill="#f9a8d4" opacity="0.32" />
+            <ellipse cx="74" cy="58" rx="9" ry="5.5" fill="#f9a8d4" opacity="0.32" />
         </svg>
     );
 }
 
-// ─── Shared Logic (Same system) ───────────────────────────────────────────────
+// ─── Audio hook ───────────────────────────────────────────────────────────────
 function useAvatarAudio() {
     const [mouthOpen, setMouthOpen] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -140,9 +144,9 @@ function useAvatarAudio() {
         if (!analyserRef.current) return;
         const data = new Uint8Array(analyserRef.current.frequencyBinCount);
         analyserRef.current.getByteFrequencyData(data);
-        const slice = data.slice(5, 55);
+        const slice = data.slice(2, 55);
         const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-        setMouthOpen(Math.min(1, avg / 95));
+        setMouthOpen(Math.min(1, avg / 75));
         rafRef.current = requestAnimationFrame(analyse);
     }, []);
 
@@ -152,22 +156,32 @@ function useAvatarAudio() {
             if (ctxRef.current) { ctxRef.current.close(); }
             const ctx = new Ctx() as AudioContext;
             ctxRef.current = ctx;
+
             const res = await fetch(url);
             const buf = await res.arrayBuffer();
             const decoded = await ctx.decodeAudioData(buf);
+
             const src = ctx.createBufferSource();
             const analyser = ctx.createAnalyser();
             analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.6;
+            analyser.smoothingTimeConstant = 0.65;
             analyserRef.current = analyser;
+
             src.buffer = decoded;
             src.connect(analyser);
             analyser.connect(ctx.destination);
             src.start(0);
             setIsPlaying(true);
             analyse();
-            src.onended = () => { stopAnalysis(); onEnded?.(); };
-        } catch (e) { console.error('Audio err', e); onEnded?.(); }
+
+            src.onended = () => {
+                stopAnalysis();
+                onEnded?.();
+            };
+        } catch (e) {
+            console.error('Avatar audio error', e);
+            onEnded?.();
+        }
     }, [analyse, stopAnalysis]);
 
     const stop = useCallback(() => {
@@ -178,36 +192,41 @@ function useAvatarAudio() {
     return { mouthOpen, isPlaying, playSound, stop };
 }
 
-// ─── Main Component UI ────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface WelcomeAvatarProps {
+    childName?: string;
+    onLogoutConfirmed: () => void;
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeAvatarProps) {
     const [visible, setVisible] = useState(false);
     const [blinking, setBlinking] = useState(false);
     const [showOutModal, setShowOutModal] = useState(false);
     const [outDone, setOutDone] = useState(false);
-    const [isRemoved, setIsRemoved] = useState(false); // Novi state za sakrivanje
     const playedRef = useRef(false);
 
     const { mouthOpen, isPlaying, playSound, stop } = useAvatarAudio();
 
-    const handleClose = () => {
-        stop();
-        setIsRemoved(true);
-    };
-
+    // ── Entrance animation and auto-greeting
     useEffect(() => {
-        if (isRemoved) return;
         const tVisible = setTimeout(() => setVisible(true), 600);
+
         // Auto-greeting logic
         const tGreet = setTimeout(() => {
-            // PROVERA: Ako je korisnik već pritisnuo Izlaz, nemoj puštati In-zvuk
-            if (!playedRef.current && !showOutModal) {
+            if (!playedRef.current) {
                 playedRef.current = true;
                 playSound('/sounds/avatar/in/avatarIn1.mp3');
             }
-        }, 1800);
-        return () => { clearTimeout(tVisible); clearTimeout(tGreet); };
-    }, [playSound, showOutModal]);
+        }, 1500);
 
+        return () => {
+            clearTimeout(tVisible);
+            clearTimeout(tGreet);
+        };
+    }, [playSound]);
+
+    // ── Random blinking
     useEffect(() => {
         let timeout: ReturnType<typeof setTimeout>;
         const scheduleBlink = () => {
@@ -215,23 +234,24 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
                 setBlinking(true);
                 setTimeout(() => setBlinking(false), 140);
                 scheduleBlink();
-            }, 3500 + Math.random() * 5000);
+            }, 2000 + Math.random() * 3500);
         };
         scheduleBlink();
         return () => clearTimeout(timeout);
     }, []);
 
+    // ── Trigger OUT sound when modal opens
     useEffect(() => {
         if (!showOutModal) return;
         stop();
         setOutDone(false);
         playSound('/sounds/avatar/out/avatarOut1.mp3', () => {
             setOutDone(true);
-            setTimeout(() => onLogoutConfirmed(), 1200);
+            setTimeout(() => {
+                onLogoutConfirmed();
+            }, 1000);
         });
     }, [showOutModal, stop, playSound, onLogoutConfirmed]);
-
-    if (isRemoved) return null;
 
     return (
         <>
@@ -240,64 +260,39 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
                 style={{
                     position: 'fixed',
                     top: '90px',
-                    right: '30px',
+                    right: '25px',
                     zIndex: 150,
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    gap: '12px',
+                    gap: '8px',
                     transform: visible ? 'translateY(0) scale(1)' : 'translateY(-30px) scale(0.85)',
                     opacity: visible ? 1 : 0,
                     transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease',
                     pointerEvents: showOutModal ? 'none' : 'auto',
-                    animation: 'avatarFloat 5s ease-in-out infinite',
+                    animation: 'avatarFloat 3s ease-in-out infinite',
                 }}
             >
-                {/* Close button (X) */}
-                {!showOutModal && (
-                    <button
-                        onClick={handleClose}
-                        style={{
-                            position: 'absolute',
-                            top: '-10px',
-                            right: '-10px',
-                            width: '26px',
-                            height: '26px',
-                            borderRadius: '50%',
-                            background: 'white',
-                            border: '2px solid #E0E7FF',
-                            color: '#64748B',
-                            fontSize: '14px',
-                            fontWeight: 900,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            zIndex: 11,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                            transition: 'all 0.2s ease',
-                        }}
-                        onMouseOver={(e) => { e.currentTarget.style.background = '#EF4444'; e.currentTarget.style.color = 'white'; }}
-                        onMouseOut={(e) => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#64748B'; }}
-                    >
-                        ✕
-                    </button>
-                )}
+                {/* Speech bubble */}
                 {isPlaying && (
-                    <div style={{
-                        background: 'white',
-                        borderRadius: '20px',
-                        padding: '12px 22px',
-                        boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
-                        border: '2px solid #E0E7FF',
-                        fontSize: '15px',
-                        fontWeight: 800,
-                        color: '#1E1B4B',
-                        whiteSpace: 'nowrap',
-                        position: 'relative',
-                        animation: 'avatarPopIn 0.4s ease',
-                    }}>
+                    <div
+                        className="avatar-bubble"
+                        style={{
+                            background: 'white',
+                            borderRadius: '18px',
+                            padding: '10px 16px',
+                            boxShadow: '0 8px 25px rgba(109,40,217,0.22)',
+                            border: '2px solid #ede9fe',
+                            fontSize: '14px',
+                            fontWeight: 800,
+                            color: '#4c1d95',
+                            whiteSpace: 'nowrap',
+                            position: 'relative',
+                            animation: 'avatarSlideUpSmall 0.3s ease',
+                        }}
+                    >
                         {childName ? `Zdravo, ${childName}! 👋` : 'Zdravo! 👋'}
+                        {/* tail */}
                         <div style={{
                             position: 'absolute',
                             bottom: '-8px',
@@ -306,89 +301,124 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
                             width: '12px',
                             height: '12px',
                             background: 'white',
-                            border: '2px solid #E0E7FF',
+                            border: '2px solid #ede9fe',
                             borderTop: 'none',
                             borderLeft: 'none',
+                            borderRadius: '0 0 3px 0',
                         }} />
                     </div>
                 )}
 
-                <div style={{ position: 'relative' }}>
+                <div style={{ position: 'relative', cursor: 'pointer' }}>
                     {isPlaying && (
                         <div style={{
                             position: 'absolute',
                             inset: '-10px',
                             borderRadius: '50%',
-                            background: 'radial-gradient(circle, rgba(79,70,229,0.2) 0%, transparent 70%)',
-                            animation: 'avatarPulse 1.5s ease-in-out infinite',
+                            background: 'radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 75%)',
+                            animation: 'avatarPulse 1s ease-in-out infinite',
+                            pointerEvents: 'none',
                         }} />
                     )}
-                    <AvatarFace mouthOpen={mouthOpen} blinking={blinking} size={110} isPlaying={isPlaying} />
+                    <AvatarFace mouthOpen={mouthOpen} blinking={blinking} size={80} isPlaying={isPlaying} />
                 </div>
             </div>
 
+            {/* ── Goodbye modal ── */}
             {showOutModal && (
-                <div style={{
-                    position: 'fixed',
-                    inset: 0,
-                    zIndex: 9999,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: 'rgba(7, 10, 30, 0.94)',
-                    backdropFilter: 'blur(18px)',
-                }}>
-                    <div style={{
-                        background: 'linear-gradient(145deg, #ffffff, #F8FAFC)',
-                        borderRadius: '50px',
-                        padding: '70px 60px',
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 9999,
                         display: 'flex',
-                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '40px',
-                        boxShadow: '0 60px 150px rgba(0,0,0,0.6)',
-                        border: '2px solid rgba(255,255,255,0.9)',
-                        minWidth: '420px',
-                        textAlign: 'center',
-                        animation: 'avatarHeroIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    }}>
+                        justifyContent: 'center',
+                        background: 'rgba(15, 10, 40, 0.82)',
+                        backdropFilter: 'blur(12px)',
+                        animation: 'avatarFadeIn 0.4s ease',
+                    }}
+                >
+                    <div
+                        style={{
+                            background: 'linear-gradient(145deg, #ffffff, #f5f3ff)',
+                            borderRadius: '42px',
+                            padding: '60px 50px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '30px',
+                            boxShadow: '0 40px 100px rgba(0, 0, 0, 0.5), 0 0 30px rgba(139, 92, 246, 0.3)',
+                            border: '2px solid rgba(167, 139, 250, 0.5)',
+                            minWidth: '350px',
+                            maxWidth: '450px',
+                            textAlign: 'center',
+                            animation: 'avatarSlideUpLarge 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        }}
+                    >
                         <div style={{ position: 'relative' }}>
-                            <AvatarFace mouthOpen={mouthOpen} blinking={blinking} size={220} isPlaying={isPlaying} />
+                            <div style={{
+                                position: 'absolute',
+                                inset: '-25px',
+                                borderRadius: '50%',
+                                background: 'radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%)',
+                                animation: isPlaying ? 'avatarPulse 0.8s ease-in-out infinite' : 'none',
+                            }} />
+                            <AvatarFace mouthOpen={mouthOpen} blinking={blinking} size={150} isPlaying={isPlaying} />
                         </div>
+
                         <div>
-                            <h2 style={{ fontSize: '42px', fontWeight: 950, color: '#1E1B4B', margin: '0 0 12px', letterSpacing: '-0.03em' }}>
-                                {outDone ? 'Bravo! 👋' : 'Doviđenja! 👋'}
+                            <h2 style={{ fontSize: '32px', fontWeight: 900, color: '#3b0764', margin: '0 0 10px', letterSpacing: '-0.5px' }}>
+                                {outDone ? 'Doviđenja! 👋' : 'Doviđenja, drugu! 💖'}
                             </h2>
-                            <p style={{ fontSize: '24px', color: '#4F46E5', fontWeight: 800 }}>
-                                {outDone ? 'Sjajno učenje danas!' : `Vratite se po još poena, ${childName}!`}
+                            <p style={{ fontSize: '18px', color: '#6d28d9', fontWeight: 600, margin: 0 }}>
+                                {outDone ? 'Vidimo se uskoro!' : `Vratite nam se opet!`}
                             </p>
                         </div>
+
+                        {isPlaying && (
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', height: '32px' }}>
+                                {[0, 1, 2, 3, 4, 5].map(i => (
+                                    <div
+                                        key={i}
+                                        style={{
+                                            width: '7px',
+                                            borderRadius: '4px',
+                                            background: 'linear-gradient(to top, #7c3aed, #c4b5fd)',
+                                            height: `${Math.max(10, mouthOpen * 32 * (0.6 + Math.abs(2.5 - i) * 0.15))}px`,
+                                            transition: 'height 0.04s ease',
+                                        }}
+                                    />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
+            {/* Trigger component to bridge logout button to avatar popup */}
             <LogoutTrigger onTrigger={() => setShowOutModal(true)} />
 
             <style>{`
         @keyframes avatarFloat {
           0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-15px); }
+          50% { transform: translateY(-8px); }
         }
-        @keyframes avatarSway {
-          0%, 100% { transform: rotate(-1.5deg); }
-          50% { transform: rotate(1.5deg); }
+        @keyframes avatarFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes avatarSlideUpSmall {
+          from { opacity: 0; transform: translateY(20px) scale(0.9); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes avatarSlideUpLarge {
+          from { opacity: 0; transform: translateY(50px) scale(0.8); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
         @keyframes avatarPulse {
-          0%, 100% { opacity: 0.1; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.15); }
-        }
-        @keyframes avatarPopIn {
-          from { opacity: 0; transform: scale(0.6) translateY(20px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-        @keyframes avatarHeroIn {
-          from { opacity: 0; transform: scale(0.8) translateY(120px); }
-          to { opacity: 1; transform: scale(1) translateY(0); }
+          0%, 100% { opacity: 0.4; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.15); }
         }
       `}</style>
         </>
@@ -397,12 +427,13 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
 
 function LogoutTrigger({ onTrigger }: { onTrigger: () => void }) {
     useEffect(() => {
-        const h = () => onTrigger();
-        window.addEventListener('avatar:logout', h);
-        return () => window.removeEventListener('avatar:logout', h);
-    }, [onTrigger]); return null;
+        const handler = () => onTrigger();
+        window.addEventListener('avatar:logout', handler);
+        return () => window.removeEventListener('avatar:logout', handler);
+    }, [onTrigger]);
+    return null;
 }
 
-export function triggerAvatarLogout() { window.dispatchEvent(new Event('avatar:logout')); }
-
-interface WelcomeAvatarProps { childName?: string; onLogoutConfirmed: () => void; }
+export function triggerAvatarLogout() {
+    window.dispatchEvent(new Event('avatar:logout'));
+}
