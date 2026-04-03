@@ -15,13 +15,14 @@ interface GameProps {
   childId: number;
   level: number;
   onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+  autoStart?: boolean;
   isMonitor?: boolean;
   monitorState?: any;
 }
 
 const EMOJIS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮"];
 
-export default function MemoryGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
+export default function MemoryGame({ childId, level, onComplete, autoStart, isMonitor, monitorState }: GameProps) {
   const pairsCount = Math.min(3 + level, 8);
 
   const [cards, setCards] = useState<Card[]>(monitorState?.cards || []);
@@ -62,6 +63,13 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
       if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
     }
   }, [isMonitor, monitorState]);
+
+  // Auto-start logic
+  useEffect(() => {
+    if (autoStart && !isMonitor && !isPlaying && moves === 0) {
+      handleMoodBeforeSelect("neutral"); // Default mood for auto-start
+    }
+  }, [autoStart, isMonitor, isPlaying, moves]);
 
   const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
 
@@ -246,7 +254,11 @@ export default function MemoryGame({ childId, level, onComplete, isMonitor, moni
         timestamp: new Date().toISOString(),
       });
 
-      setTimeout(() => setShowMoodAfter(true), 500);
+      if (autoStart) {
+        handleMoodAfterSelect("neutral"); // Default mood for auto-transition
+      } else {
+        setTimeout(() => setShowMoodAfter(true), 500);
+      }
     }
   }, [matchedPairs, pairsCount, isPlaying, gameCompleted, moves, childId, emitGameComplete]);
 

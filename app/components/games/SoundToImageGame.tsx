@@ -8,6 +8,7 @@ interface GameProps {
     childId: number;
     level: number;
     onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+    autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
 }
@@ -36,7 +37,7 @@ const SOUND_ITEMS: SoundItem[] = [
     { id: "pig", icon: "🐷", label: "Svinja", soundUrl: "/sounds/svinja.mp3" },
 ];
 
-export default function SoundToImageGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
+export default function SoundToImageGame({ childId, level, onComplete, autoStart, isMonitor, monitorState }: GameProps) {
     const [currentSound, setCurrentSound] = useState<SoundItem | null>(null);
     const [options, setOptions] = useState<SoundItem[]>([]);
     const [score, setScore] = useState(monitorState?.score || 0);
@@ -68,6 +69,13 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
             if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
         }
     }, [isMonitor, monitorState]);
+
+    // Auto-start logic
+    useEffect(() => {
+        if (autoStart && !isMonitor && !isPlaying && round === 0) {
+            handleMoodBeforeSelect("neutral"); // Default mood for auto-start
+        }
+    }, [autoStart, isMonitor, isPlaying, round]);
 
     const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
     const { speak, stopSpeech: stopTTS } = useSpeech();
@@ -264,9 +272,13 @@ export default function SoundToImageGame({ childId, level, onComplete, isMonitor
                     timestamp: new Date().toISOString(),
                 });
 
-                setTimeout(() => {
-                    setShowMoodAfter(true);
-                }, 500);
+                if (autoStart) {
+                    handleMoodAfterSelect("neutral"); // Default mood for auto-transition
+                } else {
+                    setTimeout(() => {
+                        setShowMoodAfter(true);
+                    }, 500);
+                }
             } else {
                 generateRound({
                     score: newScore,

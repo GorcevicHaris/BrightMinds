@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Proveri da li korisnik ima pristup detet
+        // Proveri da li korisnik ima pristup detetu
         console.log("🔍 Proveravam pristup detetu...");
         const [accessRows] = await pool.query<RowDataPacket[]>(
             "SELECT id FROM user_children WHERE user_id = ? AND child_id = ?",
@@ -56,7 +56,6 @@ export async function POST(req: NextRequest) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [childId, activityId, successLevel, durationMinutes, notes, moodBefore, moodAfter, user.id]
         );
-
         console.log("✅ USPEŠNO UPISANO! Insert ID:", result.insertId);
 
         return NextResponse.json({

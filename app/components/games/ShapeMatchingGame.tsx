@@ -16,6 +16,7 @@ interface GameProps {
     childId: number;
     level: number;
     onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+    autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
 }
@@ -207,7 +208,7 @@ function ShapeSVG({ type, color, size }: { type: ShapeType; color: string; size:
     );
 }
 
-export default function ShapeMatchingGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
+export default function ShapeMatchingGame({ childId, level, onComplete, autoStart, isMonitor, monitorState }: GameProps) {
     const [shapes, setShapes] = useState<Shape[]>(monitorState?.shapes || []);
     const [targetShape, setTargetShape] = useState<Shape | null>(monitorState?.targetShape || null);
     const [score, setScore] = useState(monitorState?.score || 0);
@@ -235,6 +236,13 @@ export default function ShapeMatchingGame({ childId, level, onComplete, isMonito
             if (monitorState.totalIncorrect !== undefined) setIncorrectCount(monitorState.totalIncorrect);
         }
     }, [isMonitor, monitorState]);
+  
+    // Auto-start logic
+    useEffect(() => {
+        if (autoStart && !isMonitor && !isPlaying && score === 0) {
+            handleMoodBeforeSelect("neutral"); // Default mood for auto-start
+        }
+    }, [autoStart, isMonitor, isPlaying, score]);
 
     const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
 
@@ -359,7 +367,12 @@ export default function ShapeMatchingGame({ childId, level, onComplete, isMonito
                         data: { finalScore: score, finalLevel: level, timeSpent: 60 },
                         timestamp: new Date().toISOString(),
                     });
-                    setShowMoodAfter(true);
+                    
+                    if (autoStart) {
+                        handleMoodAfterSelect("neutral"); // Default mood for auto-transition
+                    } else {
+                        setShowMoodAfter(true);
+                    }
                     return 0;
                 }
                 return newTime;

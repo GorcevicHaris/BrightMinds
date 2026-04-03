@@ -11,6 +11,7 @@ interface GameProps {
     childId: number;
     level: number;
     onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+    autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
 }
@@ -230,7 +231,7 @@ type Phase = "preview" | "mood_before" | "playing" | "checkpoint" | "dead_end" |
 
 const DE_PENALTY = 20; // points deducted for wrong path
 
-export default function CityNavigatorGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
+export default function CityNavigatorGame({ childId, level, onComplete, autoStart, isMonitor, monitorState }: GameProps) {
     const lvl = LEVELS[Math.min(level - 1, LEVELS.length - 1)];
 
     // Use refs for values needed inside setTimeout to avoid stale closures
@@ -288,6 +289,13 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
             if (monitorState.incorrectCount !== undefined) setIncorrectCount(monitorState.incorrectCount);
         }
     }, [isMonitor, monitorState]);
+
+    // Auto-start logic
+    useEffect(() => {
+        if (autoStart && !isMonitor && phase === "preview") {
+            beginPlay("neutral"); // Default mood for auto-start
+        }
+    }, [autoStart, isMonitor, phase]);
 
     // Sync ref helpers
     const setPhase = (p: Phase) => { phaseRef.current = p; setPhaseState(p); };
@@ -585,7 +593,6 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
         );
     }
 
-    // ── WIN ─────────────────────────────────────────
     if (phase === "win") {
         return (
             <div className="w-full flex-1 flex flex-col items-center justify-center p-10 bg-white rounded-[4rem] shadow-2xl text-center">
@@ -596,7 +603,7 @@ export default function CityNavigatorGame({ childId, level, onComplete, isMonito
                     <Star className="text-amber-500 fill-amber-500" size={36} />
                     <span className="text-4xl font-black">{score} poena</span>
                 </div>
-                <button onClick={() => setPhase("mood_after")}
+                <button onClick={autoStart ? () => handleMoodAfter("neutral") : () => setPhase("mood_after")}
                     className="px-12 py-5 bg-indigo-600 text-white text-xl font-black rounded-2xl shadow-xl active:scale-95 hover:scale-105 transition-all">
                     Nastavi ✓
                 </button>

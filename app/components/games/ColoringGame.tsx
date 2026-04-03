@@ -7,6 +7,7 @@ interface GameProps {
   childId: number;
   level: number;
   onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+  autoStart?: boolean;
   isMonitor?: boolean;
   monitorState?: any;
 }
@@ -277,7 +278,7 @@ const TEMPLATES = {
   ],
 };
 
-export default function ColoringGame({ childId, level, onComplete, isMonitor, monitorState }: GameProps) {
+export default function ColoringGame({ childId, level, onComplete, autoStart, isMonitor, monitorState }: GameProps) {
   const [zones, setZones] = useState<ColorZone[]>(monitorState?.zones || []);
   const [selectedColor, setSelectedColor] = useState<string>(monitorState?.selectedColor || COLORS[0].value);
   const [isPlaying, setIsPlaying] = useState(isMonitor ? true : (monitorState?.isPlaying || false));
@@ -301,6 +302,13 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
       if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
     }
   }, [isMonitor, monitorState]);
+
+  // Auto-start logic
+  useEffect(() => {
+    if (autoStart && !isMonitor && !isPlaying && completedZones === 0) {
+      handleMoodBeforeSelect("neutral"); // Default mood for auto-start
+    }
+  }, [autoStart, isMonitor, isPlaying, completedZones]);
 
   const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
   const template = TEMPLATES[level as keyof typeof TEMPLATES] || TEMPLATES[1];
@@ -387,7 +395,11 @@ export default function ColoringGame({ childId, level, onComplete, isMonitor, mo
       timestamp: new Date().toISOString(),
     });
 
-    setTimeout(() => setShowMoodAfter(true), 1000);
+    if (autoStart) {
+      handleMoodAfterSelect("neutral"); // Default mood for auto-transition
+    } else {
+      setTimeout(() => setShowMoodAfter(true), 1000);
+    }
   };
 
   const handleZoneClick = (zoneId: number) => {

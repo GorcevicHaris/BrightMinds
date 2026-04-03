@@ -100,6 +100,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   const [currentLevel, setCurrentLevel] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [autoStart, setAutoStart] = useState(false);
 
   const isSavingRef = useRef(false);
   const lastSaveTimeRef = useRef(0);
@@ -111,6 +112,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     setSelectedGame(gameId);
     setCurrentLevel(1);
     setMessage("");
+    setAutoStart(false);
     setScreen("level-select");
   };
 
@@ -145,6 +147,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
 
     setScreen("picker");
     setSelectedGame(null);
+    setAutoStart(false);
     setMessage("");
   };
 
@@ -206,9 +209,10 @@ export default function GameContainer({ childId, childName }: GameContainerProps
           setMessage(`🌟 Bravo! Prelazimo na NIVO ${currentLevel + 1}! 🚀`);
           setTimeout(() => {
             setCurrentLevel((prev) => prev + 1);
+            setAutoStart(true);
             setMessage("");
             setIsLoading(false);
-          }, 2500);
+          }, 1500);
         } else {
           // Završio sve nivoe!
           setIsLoading(false);
@@ -330,15 +334,14 @@ export default function GameContainer({ childId, childName }: GameContainerProps
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto flex items-center justify-center p-6 md:p-12">
-          <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-10">
+        <div className="flex-1 overflow-y-auto flex items-center justify-center p-4 sm:p-6 md:p-12">
+          <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-6 md:gap-10 pb-10">
 
             {/* Hero icon */}
             <div
-              className={`w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] bg-gradient-to-br ${activeGame.color} flex items-center justify-center shadow-2xl animate-in zoom-in-90 duration-300`}
-              style={{ fontSize: "72px" }}
+              className={`w-24 h-24 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br ${activeGame.color} flex items-center justify-center shadow-2xl animate-in zoom-in-90 duration-300 text-5xl md:text-[72px]`}
             >
-              {activeGame.icon}
+              <span className="drop-shadow-sm">{activeGame.icon}</span>
             </div>
 
             <div className="text-center">
@@ -400,40 +403,40 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     return (
       <div className="fixed inset-0 z-[60] bg-slate-50 flex flex-col animate-in fade-in duration-300 overflow-hidden">
         {/* Immersive header */}
-        <div className="bg-white/90 backdrop-blur-md px-4 md:px-6 py-3 md:py-4 border-b border-slate-100 flex items-center justify-between shadow-sm flex-shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="bg-white/90 backdrop-blur-md px-3 md:px-6 py-3 border-b border-slate-100 flex items-center justify-between shadow-sm flex-shrink-0 relative z-10">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
             <button
               onClick={() => setScreen("level-select")}
-              className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-all"
+              className="p-1.5 md:p-2 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-all border border-transparent shrink-0"
               aria-label="Nazad na izbor nivoa"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${activeGame.color} flex items-center justify-center text-xl shadow-md`}>
+            <div className={`hidden sm:flex w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br ${activeGame.color} items-center justify-center text-xl md:text-2xl shadow-md shrink-0`}>
               {activeGame.icon}
             </div>
-            <div>
-              <h3 className="text-base md:text-lg font-black text-slate-900 leading-tight">
+            <div className="min-w-0 flex-1">
+              <h3 className="text-sm sm:text-base md:text-lg font-black text-slate-900 leading-tight truncate">
                 {activeGame.title}
               </h3>
-              <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <p className="text-[9px] sm:text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest truncate">
                 Nivo {currentLevel}
               </p>
             </div>
           </div>
           <button
             onClick={handleExit}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 font-bold transition-all flex items-center gap-2 border border-transparent hover:border-red-100 text-sm"
+            className="ml-2 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold transition-all flex items-center gap-1.5 md:gap-2 border border-rose-100 hover:border-rose-200 shadow-sm shrink-0 text-xs md:text-sm"
           >
-            <span className="hidden sm:inline">Završi igru</span>
-            <span className="text-lg">✕</span>
+            <span className="hidden sm:inline">Završi</span>
+            <span className="text-sm md:text-lg">✕</span>
           </button>
         </div>
 
         {/* Game area */}
-        <div className="flex-1 relative overflow-y-auto p-3 md:p-6 flex flex-col">
+        <div className="flex-1 relative overflow-y-auto p-2 sm:p-4 md:p-6 flex flex-col">
           {/* Success / error toast — small and non-intrusive */}
           {message && (
             <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[80] animate-in slide-in-from-top-2 duration-300 w-auto max-w-md pointer-events-none">
@@ -454,19 +457,19 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             key={`${selectedGame}-level-${currentLevel}`}
           >
             {selectedGame === "shapes" ? (
-              <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+              <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
             ) : selectedGame === "memory" ? (
-              <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+              <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
             ) : selectedGame === "sound-to-image" ? (
-              <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+              <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
             ) : selectedGame === "social" ? (
-              <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+              <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
             ) : selectedGame === "social-story" ? (
-              <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+              <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
             ) : selectedGame === "emotions" ? (
-              <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+              <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
             ) : (
-              <ColoringGame childId={childId} level={currentLevel} onComplete={handleGameComplete} />
+              <ColoringGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
             )}
           </div>
         </div>

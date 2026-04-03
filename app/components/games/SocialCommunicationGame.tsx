@@ -7,6 +7,7 @@ interface GameProps {
     childId: number;
     level: number;
     onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+    autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
 }
@@ -39,7 +40,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 2, scene: "👋",
             description: "Srećeš komšiju u hodniku zgrade.",
             question: "Kako ga pozdravljaš?",
-            answers: ["Zdravo!", "Dobar dan!", "Skloni se."],
+            answers: ["Ko ste vi?", "Dobar dan!", "Skloni se."],
             correct: 1,
             hint: "Starije osobe pozdravljamo sa 'Dobar dan'.",
             color: "#0891B2", bgColor: "#E0F2FE",
@@ -438,7 +439,7 @@ function getSituationsForLevel(level: number): Situation[] {
 type AnswerState = "idle" | "correct" | "wrong";
 
 export default function SocialCommunicationGame({
-    childId, level, onComplete, isMonitor, monitorState
+    childId, level, onComplete, autoStart, isMonitor, monitorState
 }: GameProps) {
     const situations = getSituationsForLevel(level);
     const [currentIndex, setCurrentIndex] = useState(monitorState?.currentIndex || 0);
@@ -476,6 +477,13 @@ export default function SocialCommunicationGame({
             if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
         }
     }, [isMonitor, monitorState]);
+
+    // Auto-start logic
+    useEffect(() => {
+        if (autoStart && !isMonitor && !isPlaying && currentIndex === 0 && !completed) {
+            handleMoodBeforeSelect("neutral"); // Default mood for auto-start
+        }
+    }, [autoStart, isMonitor, isPlaying, currentIndex, completed]);
 
     const currentSituation = situations[currentIndex];
     const totalSituations = situations.length;
@@ -590,7 +598,12 @@ export default function SocialCommunicationGame({
             data: { finalScore, correctCount: finalCorrect, totalIncorrect, totalSituations },
             timestamp: new Date().toISOString(),
         });
-        setTimeout(() => setShowMoodAfter(true), 1000);
+        
+        if (autoStart) {
+            handleMoodAfterSelect("neutral"); // Default mood for auto-transition
+        } else {
+            setTimeout(() => setShowMoodAfter(true), 1000);
+        }
     };
 
     const handleMoodBeforeSelect = (mood: string) => {
