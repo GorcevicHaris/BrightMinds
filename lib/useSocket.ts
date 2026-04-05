@@ -80,7 +80,7 @@ export const useGameMonitor = (childId: number, onUpdate: (update: GameUpdate) =
     };
 
     socket.on('game:update', handler);
-
+    // 
     socket.on('monitor:joined', (data) => {
       console.log('👁️ Monitoring child:', data.childId);
     });

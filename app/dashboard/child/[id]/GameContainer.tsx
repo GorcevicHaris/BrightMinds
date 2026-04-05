@@ -1,7 +1,7 @@
 // app/dashboard/child/[id]/GameContainer.tsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import ShapeMatchingGame from "@/app/components/games/ShapeMatchingGame";
 import MemoryGame from "@/app/components/games/MemoryGame";
 import ColoringGame from "@/app/components/games/ColoringGame";
@@ -72,9 +72,9 @@ const GAMES = [
   },
   {
     id: "social-story" as GameId,
-    title: "Istraži Grad",
-    description: "Vozi kolima kroz grad do cilja!",
-    icon: "🚗",
+    title: "Socijalne Priče",
+    description: "Uči o školi, doktoru, parku i još mnogo!",
+    icon: "📖",
     color: "from-teal-500 to-emerald-600",
     bg: "bg-teal-50",
     border: "border-teal-200",
@@ -102,14 +102,36 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   const [message, setMessage] = useState("");
   const [autoStart, setAutoStart] = useState(false);
 
+  // Unlocked levels per game: value = highest level the child can play
+  const [unlockedLevels, setUnlockedLevels] = useState<Record<string, number>>({});
+  const [levelsLoading, setLevelsLoading] = useState(true);
+
   const isSavingRef = useRef(false);
   const lastSaveTimeRef = useRef(0);
+
+  // Fetch unlocked levels on mount
+  useEffect(() => {
+    setLevelsLoading(true);
+    fetch(`/api/children/${childId}/unlocked-levels`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.unlockedLevels) setUnlockedLevels(data.unlockedLevels);
+      })
+      .catch(() => {
+        // On error keep all at level 1 (safe default)
+      })
+      .finally(() => setLevelsLoading(false));
+  }, [childId]);
+
+  // Helper: max playable level for a game (default 1 if not yet loaded)
+  const getMaxUnlocked = (gameId: string) => unlockedLevels[gameId] ?? 1;
 
   const activeGame = GAMES.find((g) => g.id === selectedGame);
 
   // ── 1. Game card clicked → jump straight to level selector (fullscreen)
   const handleGameSelect = (gameId: GameId) => {
     setSelectedGame(gameId);
+    // Auto-select the first unlocked level (level 1 by default)
     setCurrentLevel(1);
     setMessage("");
     setAutoStart(false);
@@ -205,6 +227,12 @@ export default function GameContainer({ childId, childName }: GameContainerProps
       console.log("📥 RESPONSE STATUS:", response.status);
 
       if (response.ok) {
+        // After completing a level, refresh unlocked levels from the server
+        fetch(`/api/children/${childId}/unlocked-levels`)
+          .then((r) => r.json())
+          .then((data) => { if (data.unlockedLevels) setUnlockedLevels(data.unlockedLevels); })
+          .catch(() => {});
+
         if (currentLevel < 8) {
           setMessage(`🌟 Bravo! Prelazimo na NIVO ${currentLevel + 1}! 🚀`);
           setTimeout(() => {
@@ -254,7 +282,15 @@ export default function GameContainer({ childId, childName }: GameContainerProps
 
         {/* Game cards grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-          {GAMES.map((game) => (
+          {GAMES.map((game) => {
+            const maxUnlocked = getMaxUnlocked(game.id);
+            // Show progress indicator: e.g. "Nivo 3/8"
+            const progressLabel = levelsLoading
+              ? "Učitavam..."
+              : maxUnlocked >= 8
+              ? "Sve otključano! 🏆"
+              : `Otključano do Nivoa ${maxUnlocked}`;
+            return (
             <button
               key={game.id}
               id={`game-card-${game.id}`}
@@ -289,19 +325,27 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                 </div>
               </div>
 
-              {/* "Igraj" CTA */}
-              <div
-                className={`mt-5 flex items-center justify-between`}
-              >
-                <span className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${game.badge}`}>
-                  Pritisni za igru
-                </span>
-                <span className="text-2xl group-hover:translate-x-1 transition-transform duration-200">
-                  →
-                </span>
+              {/* Progress bar + CTA */}
+              <div className="mt-5 flex flex-col gap-2">
+                {/* Mini progress bar */}
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full bg-gradient-to-r ${game.color} transition-all duration-700`}
+                    style={{ width: `${(maxUnlocked / 8) * 100}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${game.badge}`}>
+                    {progressLabel}
+                  </span>
+                  <span className="text-2xl group-hover:translate-x-1 transition-transform duration-200">
+                    →
+                  </span>
+                </div>
               </div>
             </button>
-          ))}
+            );
+          })}
         </div>
       </div>
     );
@@ -355,23 +399,45 @@ export default function GameContainer({ childId, childName }: GameContainerProps
 
             {/* Level grid */}
             <div className="w-full">
-              <p className="text-center text-xs font-black text-slate-400 uppercase tracking-widest mb-4">
-                Izaberi težinu
+              <p className="text-center text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
+                Izaberi nivo
+              </p>
+              <p className="text-center text-[11px] text-slate-400 font-medium mb-4">
+                🔓 otključano do <span className="font-black text-slate-600">Nivoa {getMaxUnlocked(selectedGame!)}</span>
+                {getMaxUnlocked(selectedGame!) < 8 && (
+                  <span className="ml-1">— završi nivo da otključaš sledeći 🔒</span>
+                )}
               </p>
               <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((level) => (
-                  <button
-                    key={level}
-                    onClick={() => setCurrentLevel(level)}
-                    className={`aspect-square rounded-2xl font-black text-xl transition-all duration-200 flex items-center justify-center
-                      ${currentLevel === level
-                        ? `bg-gradient-to-br ${activeGame.color} text-white shadow-xl scale-110`
-                        : "bg-white border-2 border-slate-100 text-slate-400 hover:border-slate-300 hover:text-slate-700 hover:scale-105"
-                      }`}
-                  >
-                    {level}
-                  </button>
-                ))}
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((level) => {
+                  const isLocked = level > getMaxUnlocked(selectedGame!);
+                  const isSelected = currentLevel === level;
+                  return (
+                    <button
+                      key={level}
+                      onClick={() => !isLocked && setCurrentLevel(level)}
+                      disabled={isLocked}
+                      title={isLocked ? `Završi Nivo ${level - 1} da otključaš` : `Nivo ${level}`}
+                      className={`aspect-square rounded-2xl font-black text-xl transition-all duration-200 flex flex-col items-center justify-center gap-0.5
+                        ${
+                          isLocked
+                            ? "bg-slate-100 border-2 border-slate-100 text-slate-300 cursor-not-allowed"
+                            : isSelected
+                            ? `bg-gradient-to-br ${activeGame.color} text-white shadow-xl scale-110`
+                            : "bg-white border-2 border-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-700 hover:scale-105 cursor-pointer"
+                        }`}
+                    >
+                      {isLocked ? (
+                        <>
+                          <span className="text-base">🔒</span>
+                          <span className="text-[10px] font-black opacity-50">{level}</span>
+                        </>
+                      ) : (
+                        level
+                      )}
+                    </button>
+                  );
+                })}
               </div>
               <p className="text-center text-sm font-bold text-slate-500 mt-4">
                 Trenutno odabran: <span className="text-slate-900 font-black">Nivo {currentLevel}</span>

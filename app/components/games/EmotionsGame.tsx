@@ -25,53 +25,63 @@ interface GameProps {
     monitorState?: any;
 }
 
+// Kratka, jasna pitanja + emoji koji asocira na situaciju
+// Nivo 1-2: srećno/tužno  |  3-4: ljuto  |  5-6: uplašeno  |  7-8: miks
 const SCENARIOS = [
     {
         level: 1,
-        text: "Kako se osećaš kada te neko pohvali i kaže da si odličan?",
+        text: "Dobio si poklon! 🎁\nKako se osećaš?",
+        sceneEmoji: "🎁",
         correctEmotion: "happy",
         soundFile: "firstSent.mp3",
     },
     {
         level: 2,
-        text: "Kako se osećaš kada ti drug uzme igračku?",
-        correctEmotion: "angry",
+        text: "Pao si i udario koleno. 🤕\nKako se osećaš?",
+        sceneEmoji: "🤕",
+        correctEmotion: "sad",
         soundFile: "secondSent.mp3",
     },
     {
         level: 3,
-        text: "Kako se osećaš kada dobiješ poklon?",
-        correctEmotion: "happy",
+        text: "Drug ti uzeo igračku! 😤\nKako se osećaš?",
+        sceneEmoji: "🧸",
+        correctEmotion: "angry",
         soundFile: "thirdSent.mp3",
     },
     {
         level: 4,
-        text: "Kako se osećaš kada padneš i udariš koleno?",
-        correctEmotion: "sad",
+        text: "Mama te pohvalila! ⭐\nKako se osećaš?",
+        sceneEmoji: "⭐",
+        correctEmotion: "happy",
         soundFile: "fourthSent.mp3",
     },
     {
         level: 5,
-        text: "Kako se osećaš kada ti neko sruši kulu od kocaka?",
-        correctEmotion: "angry",
+        text: "Veliki pas trči prema tebi! 🐕\nKako se osećaš?",
+        sceneEmoji: "🐕",
+        correctEmotion: "scared",
         soundFile: "fifthSent.mp3",
     },
     {
         level: 6,
-        text: "Kako se osećaš kada se izgubiš u prodavnici?",
-        correctEmotion: "scared",
+        text: "Neko srušio tvoju kulu! 🧱\nKako se osećaš?",
+        sceneEmoji: "🧱",
+        correctEmotion: "angry",
         soundFile: "sixthSent.mp3",
     },
     {
         level: 7,
-        text: "Kako se osećaš kada neko želi da se igra sa tobom?",
-        correctEmotion: "happy",
+        text: "Izgubio si se u prodavnici. 🏪\nKako se osećaš?",
+        sceneEmoji: "🏪",
+        correctEmotion: "scared",
         soundFile: "seventSent.mp3",
     },
     {
         level: 8,
-        text: "Kako se osećaš kada te juri strašan pas?",
-        correctEmotion: "scared",
+        text: "Drug želi da se igra s tobom! 🤝\nKako se osećaš?",
+        sceneEmoji: "🤝",
+        correctEmotion: "happy",
         soundFile: "eightSent.mp3",
     },
 ];
@@ -80,30 +90,38 @@ const EMOTIONS = [
     {
         id: "happy",
         emoji: "😀",
-        label: "srećno",
-        color: "from-green-400 to-emerald-500",
-        shadow: "shadow-green-200",
+        label: "Srećno",
+        color: "from-yellow-300 to-amber-400",
+        shadow: "shadow-yellow-200",
+        bg: "bg-yellow-50",
+        border: "border-yellow-300",
     },
     {
         id: "sad",
         emoji: "😢",
-        label: "tužno",
+        label: "Tužno",
         color: "from-blue-400 to-indigo-500",
         shadow: "shadow-blue-200",
+        bg: "bg-blue-50",
+        border: "border-blue-300",
     },
     {
         id: "angry",
         emoji: "😡",
-        label: "ljuto",
+        label: "Ljuto",
         color: "from-red-400 to-rose-500",
         shadow: "shadow-red-200",
+        bg: "bg-red-50",
+        border: "border-red-300",
     },
     {
         id: "scared",
         emoji: "😨",
-        label: "uplašeno",
+        label: "Uplašeno",
         color: "from-purple-400 to-violet-500",
         shadow: "shadow-purple-200",
+        bg: "bg-purple-50",
+        border: "border-purple-300",
     },
 ];
 
@@ -141,7 +159,7 @@ export default function EmotionsGame({
 
     // Reset kada se nivo promeni
     useEffect(() => {
-        setIsPlaying(isMonitor ? true : false); // Monitoru odmah pokazujemo pitanje ako smo već u syncu
+        setIsPlaying(isMonitor ? true : false);
         setStartTime(null);
         setMoves(0);
         setIncorrectCount(0);
@@ -187,7 +205,7 @@ export default function EmotionsGame({
     };
 
     const handleSpeech = () => {
-        if (isMonitor) return; // Disable audio for monitor
+        if (isMonitor) return;
         stopCurrentSound();
         const audio = playSound(scenario.soundFile);
         currentAudioRef.current = audio;
@@ -201,7 +219,7 @@ export default function EmotionsGame({
             }, 500);
             return () => clearTimeout(timer);
         }
-    }, [isPlaying, hasWon, isMonitor]); // Added isMonitor to dependencies
+    }, [isPlaying, hasWon, isMonitor]);
 
     const handleEmotionSelect = (emotionId: string) => {
         if (isLocked || isMonitor || hasWon || !isPlaying) return;
@@ -210,9 +228,7 @@ export default function EmotionsGame({
 
         const newMoves = 1;
         setMoves(newMoves);
-
         setHasWon(true);
-        setIsLocked(true);
 
         emitGameProgress({
             childId,
@@ -231,7 +247,6 @@ export default function EmotionsGame({
             timestamp: new Date().toISOString(),
         });
 
-        // Click sound instead of correct/incorrect
         stopCurrentSound();
         const audio = new Audio('/sounds/click.mp3');
         audio.play().catch(() => { });
@@ -257,27 +272,21 @@ export default function EmotionsGame({
     if (!isPlaying) {
         return (
             <div className="relative flex-1 min-h-[350px] w-full flex items-center justify-center overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 shadow-lg py-10 md:py-6">
-                <div className="absolute top-12 left-12 text-5xl md:text-6xl opacity-20 animate-pulse -rotate-12">😀</div>
-                <div className="absolute bottom-16 right-12 text-7xl opacity-20 animate-bounce rotate-12">❤️</div>
-                <div className="absolute top-24 right-20 text-5xl opacity-20 animate-pulse rotate-45">😢</div>
-                <div className="absolute bottom-24 left-24 text-6xl opacity-20 animate-bounce -rotate-6">😡</div>
-
                 <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
                     <div className="mb-8">
                         <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-pink-200 text-pink-600 text-sm font-black uppercase tracking-widest shadow-sm">
                             Nivo {level}
                         </span>
                     </div>
-                    <div className="mb-8 relative group cursor-default">
-                        <div className="w-32 h-32 md:w-40 md:h-40 bg-gradient-to-b from-white to-pink-50 rounded-full shadow-xl border-4 border-white flex items-center justify-center transform group-hover:scale-110 transition-all duration-300">
-                            <span className="text-7xl md:text-8xl drop-shadow-md">😊</span>
-                        </div>
+                    {/* Large scene emoji as preview */}
+                    <div className="mb-6 w-36 h-36 md:w-44 md:h-44 bg-white rounded-full shadow-2xl border-4 border-pink-100 flex items-center justify-center text-7xl md:text-8xl animate-bounce">
+                        {scenario.sceneEmoji}
                     </div>
-                    <h2 className="text-3xl md:text-5xl font-black text-slate-800 mb-2 md:mb-4 tracking-tight drop-shadow-sm">
+                    <h2 className="text-3xl md:text-4xl font-black text-slate-800 mb-3 tracking-tight">
                         Moja Osećanja
                     </h2>
-                    <p className="text-slate-600 text-base md:text-xl font-medium leading-relaxed mb-8 md:mb-12 max-w-sm mx-auto">
-                        Kako se osećaš u različitim situacijama? Hajde da otkrijemo zajedno!
+                    <p className="text-slate-500 text-base md:text-lg font-semibold mb-10 max-w-xs mx-auto leading-relaxed">
+                        Pogledaj sliku i reci kako se osećaš!
                     </p>
                     <button
                         onClick={startGame}
@@ -285,7 +294,7 @@ export default function EmotionsGame({
                     >
                         <div className="bg-white/10 border border-white/20 rounded-xl px-8 py-5 flex items-center justify-center gap-4 h-full">
                             <span className="text-xl md:text-2xl font-bold tracking-wide uppercase">
-                                ZAPOČNI IGRU
+                                IGRAJ
                             </span>
                             <div className="w-12 h-12 bg-white text-pink-600 rounded-xl flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform shadow-inner">
                                 ▶
@@ -299,23 +308,24 @@ export default function EmotionsGame({
 
     // ── WIN SCREEN ─────────────────────────────────────
     if (hasWon) {
-        const correctEmo = EMOTIONS.find((e) => e.id === scenario.correctEmotion);
+        const chosenEmo = EMOTIONS.find((e) => e.id === selectedEmotion);
         return (
             <div className="relative flex-1 min-h-[350px] w-full flex items-center justify-center overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-green-50 via-emerald-50 to-green-100 shadow-lg p-4 md:p-6">
                 <div className="text-center animate-in zoom-in duration-500">
-                    <div className="w-32 h-32 md:w-48 md:h-48 mx-auto bg-white rounded-full flex items-center justify-center shadow-2xl mb-6 md:mb-8 relative border-4 md:border-8 border-green-200">
+                    <div className="w-36 h-36 md:w-52 md:h-52 mx-auto bg-white rounded-full flex items-center justify-center shadow-2xl mb-6 relative border-4 md:border-8 border-green-200">
                         <div className="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-20"></div>
-                        <span className="text-6xl md:text-8xl drop-shadow-md relative z-10 animate-bounce">
-                            {correctEmo?.emoji}
+                        <span className="text-7xl md:text-9xl drop-shadow-md relative z-10 animate-bounce">
+                            {chosenEmo?.emoji}
                         </span>
                         <div className="absolute -top-4 -right-4 text-4xl animate-pulse">🌟</div>
                         <div className="absolute -bottom-4 -left-4 text-4xl animate-pulse delay-75">✨</div>
                     </div>
-                    <h2 className="text-3xl md:text-6xl font-black text-slate-800 mb-3 md:mb-4 text-green-700">
-                        Zabeleženo!
+                    <h2 className="text-3xl md:text-5xl font-black text-green-700 mb-3">
+                        Bravo! 🎉
                     </h2>
                     <p className="text-xl md:text-2xl font-bold text-slate-600">
-                        Izabrao/la si: <span className="text-green-600 uppercase">{correctEmo?.label}</span>
+                        Odabrao/la si:{" "}
+                        <span className="text-green-600 uppercase font-black">{chosenEmo?.label}</span>
                     </p>
                 </div>
             </div>
@@ -323,72 +333,77 @@ export default function EmotionsGame({
     }
 
     // ── GAME SCREEN ────────────────────────────────────
+    // Split scenario text lines so we can display them separately
+    const [questionLine, promptLine] = scenario.text.split("\n");
+
     return (
         <div className="bg-white/95 backdrop-blur-xl rounded-[1.5rem] md:rounded-[3rem] p-3 sm:p-4 md:p-8 shadow-2xl border border-white/50 w-full max-w-4xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative overflow-hidden">
             {/* Header */}
-            <div className="flex justify-between items-center mb-4 md:mb-10 bg-gradient-to-r from-pink-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-3 py-3 md:px-8 md:py-5 shadow-sm border border-pink-100 flex-shrink-0">
-                <div className="flex items-center gap-2 md:gap-6">
+            <div className="flex justify-between items-center mb-4 md:mb-8 bg-gradient-to-r from-pink-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-3 py-3 md:px-8 md:py-4 shadow-sm border border-pink-100 flex-shrink-0">
+                <div className="flex items-center gap-2 md:gap-4">
                     <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl md:rounded-2xl bg-white shadow-md flex items-center justify-center text-xl md:text-3xl ring-4 ring-pink-50 border border-pink-100 shrink-0">
                         😊
                     </div>
                     <div>
-                        <h3 className="text-lg md:text-xl font-black text-slate-800 uppercase">Nivo {level}</h3>
-                        <p className="text-xs font-bold text-slate-400 uppercase">Prepoznaj emociju</p>
+                        <h3 className="text-base md:text-xl font-black text-slate-800 uppercase">Nivo {level}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Kako se osećaš?</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="bg-white/80 rounded-xl px-4 py-2 border border-pink-100 shadow-sm text-center">
-                        <span className="block text-[10px] font-black text-slate-400 uppercase mb-0.5">Pokušaji</span>
-                        <span className="text-xl font-black text-pink-500">{moves}</span>
-                    </div>
+                {/* Sound replay button */}
+                <button
+                    onClick={handleSpeech}
+                    className="flex items-center gap-2 bg-pink-50 hover:bg-pink-100 border border-pink-200 text-pink-600 px-4 py-2 rounded-xl font-bold text-sm transition-all hover:scale-105 active:scale-95"
+                    aria-label="Pročitaj naglas"
+                >
+                    <span className="text-lg">🔊</span>
+                    <span className="hidden sm:inline font-black text-xs uppercase tracking-wide">Ponovi</span>
+                </button>
+            </div>
+
+            {/* Scenario card */}
+            <div className="flex-shrink-0 flex flex-col sm:flex-row items-center gap-4 md:gap-8 bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl md:rounded-[2.5rem] p-5 md:p-10 mb-6 md:mb-10 border border-pink-100 shadow-inner">
+                {/* Big scene emoji */}
+                <div className="w-24 h-24 md:w-40 md:h-40 flex-shrink-0 bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-xl flex items-center justify-center text-6xl md:text-8xl border-4 border-white animate-in zoom-in duration-500">
+                    {scenario.sceneEmoji}
+                </div>
+                {/* Question text */}
+                <div className="flex-1 text-center sm:text-left">
+                    <p className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-slate-800 leading-snug">
+                        {questionLine}
+                    </p>
+                    {promptLine && (
+                        <p className="mt-2 text-lg md:text-2xl font-bold text-pink-500">
+                            {promptLine}
+                        </p>
+                    )}
                 </div>
             </div>
 
-            {/* Scenario Text */}
-            <div className="flex-1 flex flex-col justify-center gap-6 md:gap-12 relative z-10 min-h-0">
-                <div className="bg-gradient-to-br from-slate-50 to-slate-100 p-4 sm:p-6 md:p-10 rounded-2xl md:rounded-[3rem] text-center shadow-inner border border-slate-200 relative group overflow-y-auto">
-                    <button
-                        onClick={handleSpeech}
-                        className="absolute -top-3 -right-3 md:-top-5 md:right-6 bg-white w-10 h-10 md:w-12 md:h-12 rounded-full shadow-lg border-2 border-slate-100 flex items-center justify-center text-lg md:text-xl hover:scale-110 active:scale-95 transition-all text-slate-600 hover:text-pink-500 z-20"
-                        aria-label="Pročitaj naglas"
-                    >
-                        🔊
-                    </button>
-                    <h2 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black text-slate-800 leading-tight md:leading-tight">
-                        {scenario.text}
-                    </h2>
-                </div>
-
-                {/* Emotion Options */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 px-1 md:px-2 pb-4 md:pb-0">
-                    {EMOTIONS.map((emotion) => {
-                        const isSelected = selectedEmotion === emotion.id;
-
-                        return (
-                            <button
-                                key={emotion.id}
-                                onClick={() => handleEmotionSelect(emotion.id)}
-                                disabled={isLocked || hasWon}
-                                className={`relative flex flex-col items-center justify-center bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border-[3px] md:border-4 transition-all duration-300
-                  ${isSelected
-                                        ? "border-green-400 bg-green-50 scale-105 shadow-2xl"
-                                        : "border-slate-100 hover:border-pink-300 hover:shadow-xl hover:-translate-y-2 active:scale-95 shadow-md"
-                                    }
-                `}
-                            >
-                                <div
-                                    className={`w-14 h-14 md:w-28 md:h-28 flex items-center justify-center rounded-full mb-2 md:mb-4 shadow-lg bg-gradient-to-br ${emotion.color} text-3xl md:text-6xl
-                  `}
-                                >
-                                    <span className="drop-shadow-sm">{emotion.emoji}</span>
-                                </div>
-                                <span className="text-sm md:text-2xl font-black text-slate-700 uppercase tracking-wide text-center">
-                                    {emotion.label}
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+            {/* Emotion buttons */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 px-1 md:px-2 pb-2">
+                {EMOTIONS.map((emotion) => {
+                    const isSelected = selectedEmotion === emotion.id;
+                    return (
+                        <button
+                            key={emotion.id}
+                            onClick={() => handleEmotionSelect(emotion.id)}
+                            disabled={isLocked || hasWon}
+                            className={`relative flex flex-col items-center justify-center p-4 md:p-7 rounded-2xl md:rounded-[2rem] border-4 transition-all duration-300 shadow-md
+                                ${isSelected
+                                    ? `${emotion.bg} ${emotion.border} scale-105 shadow-2xl`
+                                    : `bg-white border-slate-100 hover:${emotion.bg} hover:${emotion.border} hover:shadow-xl hover:-translate-y-1 active:scale-95`
+                                }`}
+                        >
+                            {/* Emoji circle */}
+                            <div className={`w-16 h-16 md:w-28 md:h-28 flex items-center justify-center rounded-full mb-3 shadow-lg bg-gradient-to-br ${emotion.color}`}>
+                                <span className="text-4xl md:text-6xl drop-shadow-sm">{emotion.emoji}</span>
+                            </div>
+                            <span className="text-base md:text-xl font-black text-slate-700 uppercase tracking-wide text-center">
+                                {emotion.label}
+                            </span>
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );
