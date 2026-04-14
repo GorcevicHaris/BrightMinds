@@ -20,10 +20,10 @@ interface GameProps {
   monitorState?: any;
 }
 
-const EMOJIS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮"];
+const EMOJIS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐸", "🐵", "🦉", "🦄", "🐢", "🐧", "🐠", "🦋"];
 
 export default function MemoryGame({ childId, level, onComplete, autoStart, isMonitor, monitorState }: GameProps) {
-  const pairsCount = Math.min(3 + level, 8);
+  const pairsCount = Math.min(2 + level, 16);
 
   const [cards, setCards] = useState<Card[]>(monitorState?.cards || []);
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
@@ -399,7 +399,8 @@ export default function MemoryGame({ childId, level, onComplete, autoStart, isMo
 
   // ── PLAYING ────────────────────────────────────────
   let gridCols = "grid-cols-4";
-  if (pairsCount >= 7) gridCols = "grid-cols-4 md:grid-cols-6";
+  if (pairsCount >= 12) gridCols = "grid-cols-4 sm:grid-cols-6 md:grid-cols-8";
+  else if (pairsCount >= 8) gridCols = "grid-cols-4 sm:grid-cols-5 md:grid-cols-6";
   else if (pairsCount >= 5) gridCols = "grid-cols-4 md:grid-cols-5";
 
   return (

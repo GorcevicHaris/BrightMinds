@@ -598,7 +598,7 @@ export default function SocialCommunicationGame({
             data: { finalScore, correctCount: finalCorrect, totalIncorrect, totalSituations },
             timestamp: new Date().toISOString(),
         });
-        
+
         if (autoStart) {
             handleMoodAfterSelect("neutral"); // Default mood for auto-transition
         } else {
@@ -858,25 +858,25 @@ export default function SocialCommunicationGame({
 
                     <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 md:gap-10">
                         <div
-                            className="relative w-24 h-24 sm:w-32 sm:h-32 md:w-44 md:h-44 rounded-xl sm:rounded-2xl md:rounded-[2.5rem] shadow-lg flex items-center justify-center text-4xl sm:text-6xl md:text-8xl transform transition-transform duration-700 shrink-0 ring-2 sm:ring-4 md:ring-6 ring-slate-50"
+                            className="relative w-20 h-20 sm:w-32 sm:h-32 md:w-44 md:h-44 rounded-xl sm:rounded-2xl md:rounded-[2.5rem] shadow-lg flex items-center justify-center text-3xl sm:text-6xl md:text-8xl transform transition-transform duration-700 shrink-0 ring-2 sm:ring-4 md:ring-6 ring-slate-50"
                             style={{ backgroundColor: currentSituation.bgColor }}
                         >
                             {currentSituation.scene}
                         </div>
 
-                        <div className="flex-1 text-center sm:text-left space-y-3 sm:space-y-4">
+                        <div className="flex-1 text-center sm:text-left space-y-2 sm:space-y-4">
                             <div className="space-y-0.5 sm:space-y-1">
                                 <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Situacija</span>
-                                <h4 className="text-base sm:text-xl md:text-3xl font-black text-slate-800 leading-tight">
+                                <h4 className="text-sm sm:text-xl md:text-3xl font-black text-slate-800 leading-tight">
                                     {currentSituation.description}
                                 </h4>
                             </div>
 
                             <div
-                                className="inline-flex items-center gap-2 md:gap-3 px-3 py-1.5 sm:px-5 sm:py-2.5 md:px-6 md:py-3 rounded-lg sm:rounded-xl md:rounded-[1.5rem] text-xs sm:text-sm md:text-lg font-black shadow-inner ring-1 ring-slate-100 max-w-full"
+                                className="inline-flex items-center gap-2 md:gap-3 px-3 py-1 sm:px-5 sm:py-2.5 md:px-6 md:py-3 rounded-lg sm:rounded-xl md:rounded-[1.5rem] text-[10px] sm:text-sm md:text-lg font-black shadow-inner ring-1 ring-slate-100 max-w-full"
                                 style={{ backgroundColor: `${currentSituation.color}08`, color: currentSituation.color }}
                             >
-                                <span className="text-base sm:text-xl">💬</span>
+                                <span className="text-sm sm:text-xl">💬</span>
                                 <span className="truncate sm:whitespace-normal">{currentSituation.question}</span>
                             </div>
                         </div>

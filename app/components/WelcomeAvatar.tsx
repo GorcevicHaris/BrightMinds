@@ -207,6 +207,7 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
     const playedRef = useRef(false);
 
     const { mouthOpen, isPlaying, playSound, stop } = useAvatarAudio();
+    const [bubbleText, setBubbleText] = useState<string | null>(null);
 
     // ── Entrance animation and auto-greeting
     useEffect(() => {
@@ -216,7 +217,11 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
         const tGreet = setTimeout(() => {
             if (!playedRef.current) {
                 playedRef.current = true;
-                playSound('/sounds/avatar/in/avatarIn1.mp3');
+                const greeting = childName ? `Zdravo, ${childName}! 👋` : 'Zdravo! 👋';
+                setBubbleText(greeting);
+                playSound('/sounds/avatar/in/avatarIn1.mp3', () => {
+                    setBubbleText(null);
+                });
             }
         }, 1500);
 
@@ -224,7 +229,7 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
             clearTimeout(tVisible);
             clearTimeout(tGreet);
         };
-    }, [playSound]);
+    }, [playSound, childName]);
 
     // ── Random blinking
     useEffect(() => {
@@ -245,6 +250,7 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
         if (!showOutModal) return;
         stop();
         setOutDone(false);
+        setBubbleText(null); // Clear bubble when modal is active
         playSound('/sounds/avatar/out/avatarOut1.mp3', () => {
             setOutDone(true);
             setTimeout(() => {
@@ -257,15 +263,27 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
     useEffect(() => {
         const handleSpeak = (e: any) => {
             const audioUrl = e.detail?.url;
+            const customText = e.detail?.text; // Optional custom text for games
             if (audioUrl) {
-                // Stop current greeting if active, then speak the new message
                 stop();
-                playSound(audioUrl);
+                setBubbleText(customText || null); // Only show bubble if text is provided
+                playSound(audioUrl, () => {
+                    setBubbleText(null);
+                });
             }
         };
         window.addEventListener('avatar:speak', handleSpeak);
         return () => window.removeEventListener('avatar:speak', handleSpeak);
     }, [playSound, stop]);
+
+    // Check if on mobile (safe SSR check)
+    const [isMobile, setIsMobile] = useState(false);
+    useEffect(() => {
+        const check = () => setIsMobile(window.innerWidth < 640);
+        check();
+        window.addEventListener('resize', check);
+        return () => window.removeEventListener('resize', check);
+    }, []);
 
     return (
         <>
@@ -273,45 +291,49 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
                 className="welcome-avatar-container"
                 style={{
                     position: 'fixed',
-                    top: '90px',
-                    right: '25px',
+                    bottom: isMobile ? '20px' : 'auto',
+                    top: isMobile ? 'auto' : '90px',
+                    right: isMobile ? '16px' : '25px',
                     zIndex: 150,
                     display: 'flex',
-                    flexDirection: 'column',
+                    flexDirection: isMobile ? 'column-reverse' : 'column',
                     alignItems: 'center',
-                    gap: '8px',
-                    transform: visible ? 'translateY(0) scale(1)' : 'translateY(-30px) scale(0.85)',
+                    gap: isMobile ? '4px' : '8px',
+                    transform: visible 
+                        ? `translateY(0) scale(${isMobile ? 0.8 : 1})` 
+                        : `translateY(${isMobile ? '30px' : '-30px'}) scale(0.6)`,
                     opacity: visible ? 1 : 0,
                     transition: 'transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.5s ease',
                     pointerEvents: showOutModal ? 'none' : 'auto',
                     animation: 'avatarFloat 3s ease-in-out infinite',
                 }}
             >
-                {/* Speech bubble */}
-                {isPlaying && (
+                {/* Speech bubble - on mobile it should be ABOVE (column-reverse handles this) */}
+                {bubbleText && (
                     <div
                         className="avatar-bubble"
                         style={{
                             background: 'white',
-                            borderRadius: '18px',
-                            padding: '10px 16px',
-                            boxShadow: '0 8px 25px rgba(109,40,217,0.22)',
-                            border: '2px solid #ede9fe',
-                            fontSize: '14px',
+                            borderRadius: isMobile ? '16px' : '18px',
+                            padding: isMobile ? '10px 14px' : '10px 16px',
+                            boxShadow: '0 8px 30px rgba(109,40,217,0.25)',
+                            border: '2.5px solid #ede9fe',
+                            fontSize: isMobile ? '12px' : '14px',
                             fontWeight: 800,
                             color: '#4c1d95',
                             whiteSpace: 'nowrap',
                             position: 'relative',
-                            animation: 'avatarSlideUpSmall 0.3s ease',
+                            animation: isMobile ? 'avatarSlideDownSmall 0.3s ease' : 'avatarSlideUpSmall 0.3s ease',
                         }}
                     >
-                        {childName ? `Zdravo, ${childName}! 👋` : 'Zdravo! 👋'}
+                        {bubbleText}
                         {/* tail */}
                         <div style={{
                             position: 'absolute',
-                            bottom: '-8px',
+                            bottom: isMobile ? 'auto' : '-8px',
+                            top: isMobile ? '-8px' : 'auto',
                             left: '50%',
-                            transform: 'translateX(-50%) rotate(45deg)',
+                            transform: `translateX(-50%) rotate(${isMobile ? '-135deg' : '45deg'})`,
                             width: '12px',
                             height: '12px',
                             background: 'white',
@@ -327,14 +349,19 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
                     {isPlaying && (
                         <div style={{
                             position: 'absolute',
-                            inset: '-10px',
+                            inset: isMobile ? '-8px' : '-10px',
                             borderRadius: '50%',
                             background: 'radial-gradient(circle, rgba(139,92,246,0.25) 0%, transparent 75%)',
                             animation: 'avatarPulse 1s ease-in-out infinite',
                             pointerEvents: 'none',
                         }} />
                     )}
-                    <AvatarFace mouthOpen={mouthOpen} blinking={blinking} size={80} isPlaying={isPlaying} />
+                    <AvatarFace 
+                        mouthOpen={mouthOpen} 
+                        blinking={blinking} 
+                        size={isMobile ? 70 : 80} 
+                        isPlaying={isPlaying} 
+                    />
                 </div>
             </div>
 
@@ -356,15 +383,15 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
                     <div
                         style={{
                             background: 'linear-gradient(145deg, #ffffff, #f5f3ff)',
-                            borderRadius: '42px',
-                            padding: '60px 50px',
+                            borderRadius: isMobile ? '32px' : '42px',
+                            padding: isMobile ? '40px 30px' : '60px 50px',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            gap: '30px',
+                            gap: isMobile ? '20px' : '30px',
                             boxShadow: '0 40px 100px rgba(0, 0, 0, 0.5), 0 0 30px rgba(139, 92, 246, 0.3)',
                             border: '2px solid rgba(167, 139, 250, 0.5)',
-                            minWidth: '350px',
+                            minWidth: isMobile ? '280px' : '350px',
                             maxWidth: '450px',
                             textAlign: 'center',
                             animation: 'avatarSlideUpLarge 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -378,14 +405,14 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
                                 background: 'radial-gradient(circle, rgba(139,92,246,0.3) 0%, transparent 70%)',
                                 animation: isPlaying ? 'avatarPulse 0.8s ease-in-out infinite' : 'none',
                             }} />
-                            <AvatarFace mouthOpen={mouthOpen} blinking={blinking} size={150} isPlaying={isPlaying} />
+                            <AvatarFace mouthOpen={mouthOpen} blinking={blinking} size={isMobile ? 120 : 150} isPlaying={isPlaying} />
                         </div>
 
                         <div>
-                            <h2 style={{ fontSize: '32px', fontWeight: 900, color: '#3b0764', margin: '0 0 10px', letterSpacing: '-0.5px' }}>
+                            <h2 style={{ fontSize: isMobile ? '24px' : '32px', fontWeight: 900, color: '#3b0764', margin: '0 0 10px', letterSpacing: '-0.5px' }}>
                                 {outDone ? 'Doviđenja! 👋' : 'Doviđenja, drugu! 💖'}
                             </h2>
-                            <p style={{ fontSize: '18px', color: '#6d28d9', fontWeight: 600, margin: 0 }}>
+                            <p style={{ fontSize: isMobile ? '16px' : '18px', color: '#6d28d9', fontWeight: 600, margin: 0 }}>
                                 {outDone ? 'Vidimo se uskoro!' : `Vratite nam se opet!`}
                             </p>
                         </div>

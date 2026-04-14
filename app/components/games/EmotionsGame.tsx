@@ -388,17 +388,17 @@ export default function EmotionsGame({
                             key={emotion.id}
                             onClick={() => handleEmotionSelect(emotion.id)}
                             disabled={isLocked || hasWon}
-                            className={`relative flex flex-col items-center justify-center p-4 md:p-7 rounded-2xl md:rounded-[2rem] border-4 transition-all duration-300 shadow-md
+                            className={`relative flex flex-col items-center justify-center p-3 sm:p-4 md:p-7 rounded-xl sm:rounded-2xl md:rounded-[2rem] border-2 md:border-4 transition-all duration-300 shadow-md
                                 ${isSelected
                                     ? `${emotion.bg} ${emotion.border} scale-105 shadow-2xl`
                                     : `bg-white border-slate-100 hover:${emotion.bg} hover:${emotion.border} hover:shadow-xl hover:-translate-y-1 active:scale-95`
                                 }`}
                         >
                             {/* Emoji circle */}
-                            <div className={`w-16 h-16 md:w-28 md:h-28 flex items-center justify-center rounded-full mb-3 shadow-lg bg-gradient-to-br ${emotion.color}`}>
-                                <span className="text-4xl md:text-6xl drop-shadow-sm">{emotion.emoji}</span>
+                            <div className={`w-12 h-12 sm:w-16 sm:h-16 md:w-28 md:h-28 flex items-center justify-center rounded-full mb-1 sm:mb-2 md:mb-3 shadow-lg bg-gradient-to-br ${emotion.color}`}>
+                                <span className="text-2xl sm:text-4xl md:text-6xl drop-shadow-sm">{emotion.emoji}</span>
                             </div>
-                            <span className="text-base md:text-xl font-black text-slate-700 uppercase tracking-wide text-center">
+                            <span className="text-[10px] sm:text-base md:text-xl font-black text-slate-700 uppercase tracking-wide text-center">
                                 {emotion.label}
                             </span>
                         </button>

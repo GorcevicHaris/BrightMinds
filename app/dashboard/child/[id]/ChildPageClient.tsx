@@ -44,36 +44,34 @@ export default function ChildPageClient({ child, childId }: Props) {
             />
 
             <div className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100">
-                <div className="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white text-xl font-bold shadow-lg shadow-purple-200 uppercase">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex justify-between items-center">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-purple-600 to-blue-500 flex items-center justify-center text-white text-base sm:text-xl font-bold shadow-lg shadow-purple-200 uppercase">
                             {child.first_name?.trim()?.charAt(0)}{child.last_name?.trim()?.charAt(0)}
                         </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h1 className="text-xl font-bold text-gray-900 leading-tight">
-                                    {child.first_name} {child.last_name}
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                <h1 className="text-sm sm:text-xl font-bold text-gray-900 leading-tight truncate max-w-[100px] sm:max-w-none">
+                                    {child.first_name}
                                 </h1>
                                 {child.streak > 0 && (
-                                    <div className="flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 animate-bounce">
-                                        <span className="text-sm">🔥</span>
-                                        <span className="text-xs font-black text-orange-600">{child.streak}</span>
+                                    <div className="flex items-center gap-0.5 sm:gap-1 bg-orange-50 px-1.5 py-0.5 rounded-full border border-orange-100 shrink-0">
+                                        <span className="text-xs sm:text-sm">🔥</span>
+                                        <span className="text-[10px] sm:text-xs font-black text-orange-600">{child.streak}</span>
                                     </div>
                                 )}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">Profil deteta</p>
+                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                <p className="text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">Profil</p>
                                 <span className="text-gray-300">•</span>
-                                <div className="flex items-center gap-1">
-                                    <span className="text-[10px] text-purple-400 font-black uppercase tracking-widest leading-none">
-                                        {child.experience_points || 0} poena
-                                    </span>
-                                </div>
+                                <span className="text-[8px] sm:text-[10px] text-purple-400 font-black uppercase tracking-widest leading-none">
+                                    {child.experience_points || 0} poena
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3 sm:gap-6">
                         <nav className="hidden md:flex bg-gray-100/80 p-1 rounded-xl">
                             <button
                                 onClick={() => setActiveView("game")}
@@ -97,7 +95,7 @@ export default function ChildPageClient({ child, childId }: Props) {
                         {/* Logout button — triggers avatar goodbye popup */}
                         <button
                             onClick={handleLogoutClick}
-                            className="bg-rose-500 hover:bg-rose-600 text-white px-6 py-2.5 rounded-xl font-black text-sm transition-all shadow-lg shadow-rose-100 active:scale-95"
+                            className="bg-rose-500 hover:bg-rose-600 text-white px-3 py-2 sm:px-6 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-xs sm:text-sm transition-all shadow-lg shadow-rose-100 active:scale-95 shrink-0"
                         >
                             Izađi 👋
                         </button>
@@ -105,23 +103,23 @@ export default function ChildPageClient({ child, childId }: Props) {
                 </div>
             </div>
 
-            <main className="max-w-7xl mx-auto px-6 py-8">
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
                 {/* Mobile Navigation */}
-                <div className="md:hidden flex bg-white rounded-2xl shadow-sm border border-gray-100 p-1 mb-8">
+                <div className="md:hidden flex bg-white rounded-xl shadow-sm border border-slate-200 p-1 mb-6">
                     <button
                         onClick={() => setActiveView("game")}
-                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${activeView === "game"
-                            ? "bg-purple-600 text-white shadow-lg shadow-purple-200"
-                            : "text-gray-500"
+                        className={`flex-1 py-3 rounded-lg font-black text-xs transition-all ${activeView === "game"
+                            ? "bg-purple-600 text-white shadow-lg shadow-purple-100"
+                            : "text-slate-500 hover:bg-slate-50"
                             }`}
                     >
                         🎮 Igraonica
                     </button>
                     <button
                         onClick={() => setActiveView("stats")}
-                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${activeView === "stats"
-                            ? "bg-purple-600 text-white shadow-lg shadow-purple-200"
-                            : "text-gray-500"
+                        className={`flex-1 py-3 rounded-lg font-black text-xs transition-all ${activeView === "stats"
+                            ? "bg-purple-600 text-white shadow-lg shadow-purple-100"
+                            : "text-slate-500 hover:bg-slate-50"
                             }`}
                     >
                         📊 Statistika

@@ -305,7 +305,7 @@ export default function SoundToImageGame({ childId, level, onComplete, autoStart
                     <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-8 w-full max-w-5xl px-2">
                     {[
                         { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
                         { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
@@ -316,11 +316,11 @@ export default function SoundToImageGame({ childId, level, onComplete, autoStart
                         <button
                             key={mood.value}
                             onClick={() => handleMoodBeforeSelect(mood.value)}
-                            className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+                            className="group relative flex flex-col items-center bg-white rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] p-3 sm:p-5 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
                         >
-                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
-                            <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-                            <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
+                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-100 rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] transition-opacity`}></div>
+                            <span className="text-4xl sm:text-6xl md:text-7xl mb-1 sm:mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+                            <span className="text-[10px] sm:text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
                         </button>
                     ))}
                 </div>
@@ -349,7 +349,7 @@ export default function SoundToImageGame({ childId, level, onComplete, autoStart
                     </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-8 w-full max-w-5xl px-2">
                     {[
                         { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
                         { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
@@ -360,11 +360,11 @@ export default function SoundToImageGame({ childId, level, onComplete, autoStart
                         <button
                             key={mood.value}
                             onClick={() => handleMoodAfterSelect(mood.value)}
-                            className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+                            className="group relative flex flex-col items-center bg-white rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] p-3 sm:p-5 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
                         >
-                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
-                            <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-                            <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
+                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-100 rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] transition-opacity`}></div>
+                            <span className="text-4xl sm:text-6xl md:text-7xl mb-1 sm:mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+                            <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700">{mood.label}</span>
                         </button>
                     ))}
                 </div>
@@ -501,7 +501,7 @@ export default function SoundToImageGame({ childId, level, onComplete, autoStart
 
                 {/* Options Grid */}
                 <div className="w-full max-w-5xl px-2">
-                    <div className={`grid gap-3 md:gap-8 mx-auto ${options.length <= 3 ? 'grid-cols-2 md:grid-cols-3' : 'grid-cols-2 md:grid-cols-4'
+                    <div className={`grid gap-2 sm:gap-4 md:gap-8 mx-auto ${options.length <= 3 ? 'grid-cols-3' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4'
                         }`}>
                         {options.map((option, idx) => (
                             <button
@@ -515,10 +515,10 @@ export default function SoundToImageGame({ childId, level, onComplete, autoStart
                                         : "border-slate-50 hover:border-orange-100 hover:shadow-xl hover:-translate-y-1 active:scale-95"
                                     }`}
                             >
-                                <span className="text-5xl md:text-8xl mb-2 md:mb-6 transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6 select-none">
+                                <span className="text-4xl sm:text-6xl md:text-8xl mb-1 sm:mb-2 md:mb-6 transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6 select-none">
                                     {option.icon}
                                 </span>
-                                <span className="text-xs md:text-lg font-black text-slate-700 tracking-tight group-hover:text-orange-600 transition-colors uppercase text-center">
+                                <span className="text-[10px] sm:text-xs md:text-lg font-black text-slate-700 tracking-tight group-hover:text-orange-600 transition-colors uppercase text-center">
                                     {option.label}
                                 </span>
 

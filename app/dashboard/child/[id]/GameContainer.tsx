@@ -112,7 +112,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   // Fetch unlocked levels on mount
   useEffect(() => {
     setLevelsLoading(true);
-    fetch(`/api/children/${childId}/unlocked-levels`)
+    fetch(`/api/children/${childId}/unlocked-levels?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (data.unlockedLevels) setUnlockedLevels(data.unlockedLevels);
@@ -122,6 +122,9 @@ export default function GameContainer({ childId, childName }: GameContainerProps
       })
       .finally(() => setLevelsLoading(false));
   }, [childId]);
+
+  // Helper: max levels for a game
+  const getMaxLevelsForGame = (gameId: string) => (gameId === "shapes" || gameId === "memory" || gameId === "coloring") ? 15 : 8;
 
   // Helper: max playable level for a game (default 1 if not yet loaded)
   const getMaxUnlocked = (gameId: string) => unlockedLevels[gameId] ?? 1;
@@ -228,12 +231,13 @@ export default function GameContainer({ childId, childName }: GameContainerProps
 
       if (response.ok) {
         // After completing a level, refresh unlocked levels from the server
-        fetch(`/api/children/${childId}/unlocked-levels`)
+        fetch(`/api/children/${childId}/unlocked-levels?t=${Date.now()}`, { cache: "no-store" })
           .then((r) => r.json())
           .then((data) => { if (data.unlockedLevels) setUnlockedLevels(data.unlockedLevels); })
-          .catch(() => {});
+          .catch(() => { });
 
-        if (currentLevel < 8) {
+        const maxPossibleLevel = getMaxLevelsForGame(selectedGame!);
+        if (currentLevel < maxPossibleLevel) {
           setMessage(`🌟 Bravo! Prelazimo na NIVO ${currentLevel + 1}! 🚀`);
           setTimeout(() => {
             setCurrentLevel((prev) => prev + 1);
@@ -285,65 +289,66 @@ export default function GameContainer({ childId, childName }: GameContainerProps
           {GAMES.map((game) => {
             const maxUnlocked = getMaxUnlocked(game.id);
             // Show progress indicator: e.g. "Nivo 3/8"
+            const maxLevels = getMaxLevelsForGame(game.id);
             const progressLabel = levelsLoading
               ? "Učitavam..."
-              : maxUnlocked >= 8
-              ? "Sve otključano! 🏆"
-              : `Otključano do Nivoa ${maxUnlocked}`;
+              : maxUnlocked >= maxLevels
+                ? "Sve otključano! 🏆"
+                : `Otključano do Nivoa ${maxUnlocked}/${maxLevels}`;
             return (
-            <button
-              key={game.id}
-              id={`game-card-${game.id}`}
-              onClick={() => handleGameSelect(game.id)}
-              className={`group relative p-6 md:p-8 rounded-3xl text-left transition-all duration-300
-                hover:scale-[1.03] active:scale-[0.97]
-                bg-white border-2 ${game.border}
-                hover:shadow-2xl shadow-sm
+              <button
+                key={game.id}
+                id={`game-card-${game.id}`}
+                onClick={() => handleGameSelect(game.id)}
+                className={`group relative p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-3xl text-left transition-all duration-300
+                hover:scale-[1.02] active:scale-[0.98]
+                bg-white border sm:border-2 ${game.border}
+                hover:shadow-xl shadow-sm
                 hover:border-opacity-80`}
-            >
-              {/* Gradient glow accent */}
-              <div
-                className={`absolute inset-0 rounded-3xl bg-gradient-to-br ${game.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
-              />
-
-              <div className="relative flex items-start gap-5">
-                {/* Icon */}
+              >
+                {/* Gradient glow accent */}
                 <div
-                  className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center text-4xl shadow-lg shrink-0 group-hover:scale-110 transition-transform duration-300`}
-                >
-                  {game.icon}
-                </div>
+                  className={`absolute inset-0 rounded-2xl sm:rounded-3xl bg-gradient-to-br ${game.color} opacity-0 group-hover:opacity-5 transition-opacity duration-300`}
+                />
 
-                {/* Text */}
-                <div className="flex-1 min-w-0 pt-1">
-                  <h3 className="text-xl font-black text-slate-900 leading-tight mb-1">
-                    {game.title}
-                  </h3>
-                  <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                    {game.description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Progress bar + CTA */}
-              <div className="mt-5 flex flex-col gap-2">
-                {/* Mini progress bar */}
-                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                <div className="relative flex items-center sm:items-start gap-4 sm:gap-5">
+                  {/* Icon */}
                   <div
-                    className={`h-full rounded-full bg-gradient-to-r ${game.color} transition-all duration-700`}
-                    style={{ width: `${(maxUnlocked / 8) * 100}%` }}
-                  />
+                    className={`w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-gradient-to-br ${game.color} flex items-center justify-center text-2xl sm:text-4xl shadow-md shrink-0 group-hover:scale-110 transition-transform duration-300`}
+                  >
+                    {game.icon}
+                  </div>
+
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base sm:text-xl font-black text-slate-900 leading-tight mb-0.5">
+                      {game.title}
+                    </h3>
+                    <p className="text-[11px] sm:text-sm text-slate-500 font-medium leading-tight line-clamp-1 sm:line-clamp-none">
+                      {game.description}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${game.badge}`}>
-                    {progressLabel}
-                  </span>
-                  <span className="text-2xl group-hover:translate-x-1 transition-transform duration-200">
-                    →
-                  </span>
+
+                {/* Progress bar + CTA */}
+                <div className="mt-5 flex flex-col gap-2">
+                  {/* Mini progress bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className={`h-full rounded-full bg-gradient-to-r ${game.color} transition-all duration-700`}
+                      style={{ width: `${(maxUnlocked / getMaxLevelsForGame(game.id)) * 100}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-black uppercase tracking-widest px-3 py-1.5 rounded-xl ${game.badge}`}>
+                      {progressLabel}
+                    </span>
+                    <span className="text-2xl group-hover:translate-x-1 transition-transform duration-200">
+                      →
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
             );
           })}
         </div>
@@ -378,18 +383,19 @@ export default function GameContainer({ childId, childName }: GameContainerProps
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto flex items-center justify-center p-4 sm:p-6 md:p-12">
+        <div className="flex-1 overflow-y-auto flex flex-col items-center p-4 sm:p-6 md:p-12">
           <div className="w-full max-w-2xl mx-auto flex flex-col items-center gap-6 md:gap-10 pb-10">
 
-            {/* Hero icon */}
+            {/* Hero icon - Hidden on mobile to save space */}
             <div
-              className={`w-24 h-24 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br ${activeGame.color} flex items-center justify-center shadow-2xl animate-in zoom-in-90 duration-300 text-5xl md:text-[72px]`}
+              className={`hidden sm:flex w-24 h-24 md:w-40 md:h-40 rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br ${activeGame.color} items-center justify-center shadow-2xl animate-in zoom-in-90 duration-300 text-5xl md:text-[72px]`}
             >
               <span className="drop-shadow-sm">{activeGame.icon}</span>
             </div>
 
-            <div className="text-center">
-              <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-3 tracking-tight">
+            {/* Title - Hidden on mobile since it's in the top bar */}
+            <div className="text-center hidden sm:block">
+              <h1 className="text-3xl md:text-5xl font-black text-slate-900 mb-2 tracking-tight">
                 {activeGame.title}
               </h1>
               <p className="text-slate-500 text-base md:text-lg font-medium">
@@ -397,19 +403,22 @@ export default function GameContainer({ childId, childName }: GameContainerProps
               </p>
             </div>
 
-            {/* Level grid */}
-            <div className="w-full">
-              <p className="text-center text-xs font-black text-slate-400 uppercase tracking-widest mb-1">
-                Izaberi nivo
-              </p>
-              <p className="text-center text-[11px] text-slate-400 font-medium mb-4">
-                🔓 otključano do <span className="font-black text-slate-600">Nivoa {getMaxUnlocked(selectedGame!)}</span>
-                {getMaxUnlocked(selectedGame!) < 8 && (
-                  <span className="ml-1">— završi nivo da otključaš sledeći 🔒</span>
-                )}
-              </p>
-              <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((level) => {
+            {/* Level grid area */}
+            <div className="w-full mt-2 sm:mt-0">
+              <div className="text-center mb-4 sm:mb-6">
+                <p className="text-[10px] sm:text-xs font-black text-slate-400 uppercase tracking-widest mb-1 sm:hidden">
+                  {activeGame.title}
+                </p>
+                <p className="text-[11px] sm:text-xs text-slate-400 font-medium">
+                  🔓 Otključano do <span className="font-black text-slate-600">Nivoa {getMaxUnlocked(selectedGame!)}</span>
+                  {getMaxUnlocked(selectedGame!) < getMaxLevelsForGame(selectedGame!) && (
+                    <span className="hidden sm:inline ml-1">— završi nivo da otključaš sledeći 🔒</span>
+                  )}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-2.5 sm:gap-4 max-w-lg mx-auto">
+                {Array.from({ length: getMaxLevelsForGame(selectedGame!) }, (_, i) => i + 1).map((level) => {
                   const isLocked = level > getMaxUnlocked(selectedGame!);
                   const isSelected = currentLevel === level;
                   return (
@@ -417,20 +426,18 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                       key={level}
                       onClick={() => !isLocked && setCurrentLevel(level)}
                       disabled={isLocked}
-                      title={isLocked ? `Završi Nivo ${level - 1} da otključaš` : `Nivo ${level}`}
-                      className={`aspect-square rounded-2xl font-black text-xl transition-all duration-200 flex flex-col items-center justify-center gap-0.5
-                        ${
-                          isLocked
-                            ? "bg-slate-100 border-2 border-slate-100 text-slate-300 cursor-not-allowed"
-                            : isSelected
-                            ? `bg-gradient-to-br ${activeGame.color} text-white shadow-xl scale-110`
-                            : "bg-white border-2 border-slate-100 text-slate-500 hover:border-slate-300 hover:text-slate-700 hover:scale-105 cursor-pointer"
+                      className={`aspect-square rounded-xl sm:rounded-2xl font-black text-base sm:text-xl transition-all duration-200 flex flex-col items-center justify-center gap-0.5
+                        ${isLocked
+                          ? "bg-slate-50 border-2 border-slate-50 text-slate-200 cursor-not-allowed"
+                          : isSelected
+                            ? `bg-gradient-to-br ${activeGame.color} text-white shadow-xl scale-105 sm:scale-110`
+                            : "bg-white border-2 border-slate-100 text-slate-400 hover:border-slate-300 hover:text-slate-700 hover:scale-105 cursor-pointer shadow-sm"
                         }`}
                     >
                       {isLocked ? (
                         <>
-                          <span className="text-base">🔒</span>
-                          <span className="text-[10px] font-black opacity-50">{level}</span>
+                          <span className="text-xs sm:text-base">🔒</span>
+                          <span className="text-[8px] sm:text-[9px] font-black opacity-40">{level}</span>
                         </>
                       ) : (
                         level
@@ -439,23 +446,25 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                   );
                 })}
               </div>
-              <p className="text-center text-sm font-bold text-slate-500 mt-4">
-                Trenutno odabran: <span className="text-slate-900 font-black">Nivo {currentLevel}</span>
+              <p className="text-center text-[10px] sm:text-xs font-bold text-slate-400 mt-4 sm:mt-6 uppercase tracking-wider">
+                Odabran <span className="text-slate-800 font-black">Nivo {currentLevel}</span>
               </p>
             </div>
 
             {/* Launch button */}
-            <button
-              onClick={handleLaunch}
-              className={`w-full max-w-sm relative p-1.5 rounded-2xl bg-gradient-to-r ${activeGame.color} shadow-2xl transition-all duration-300 hover:scale-[1.04] active:scale-[0.97]`}
-            >
-              <div className="bg-white/10 border border-white/20 rounded-xl px-8 py-5 flex items-center justify-center gap-3">
-                <span className="text-xl md:text-2xl font-black text-white uppercase tracking-widest">
-                  Pokreni igru
-                </span>
-                <span className="text-2xl">🚀</span>
-              </div>
-            </button>
+            <div className="w-full max-w-sm mt-auto sm:mt-0 pt-4">
+              <button
+                onClick={handleLaunch}
+                className={`w-full relative p-1 rounded-xl sm:rounded-2xl bg-gradient-to-r ${activeGame.color} shadow-lg sm:shadow-2xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] animate-in slide-in-from-bottom-4 duration-500`}
+              >
+                <div className="bg-white/10 border border-white/20 rounded-lg sm:rounded-xl px-6 py-4 sm:py-5 flex items-center justify-center gap-3">
+                  <span className="text-base sm:text-xl md:text-2xl font-black text-white uppercase tracking-widest">
+                    Pokreni igru
+                  </span>
+                  <span className="text-xl sm:text-2xl">🚀</span>
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </div>

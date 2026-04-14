@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useGameEmitter } from '@/lib/useSocket';
 
-type ShapeType = "house" | "flower" | "sun" | "heart" | "star" | "diamond" | "moon" | "lightning";
+type ShapeType = "house" | "flower" | "sun" | "heart" | "star" | "diamond" | "moon" | "lightning" | "cloud" | "apple" | "car" | "tree" | "butterfly" | "balloon" | "fish";
 
 interface Shape {
     id: number;
@@ -29,7 +29,14 @@ const COLORS: Record<ShapeType, string> = {
     star: "#A78BFA",
     diamond: "#22D3EE",
     moon: "#6EE7B7",
-    lightning: "#FB923C",
+    lightning: "#FFD700",
+    cloud: "#94A3B8",
+    apple: "#EF4444",
+    car: "#3B82F6",
+    tree: "#22C55E",
+    butterfly: "#A855F7",
+    balloon: "#F43F5E",
+    fish: "#06B6D4",
 };
 
 const SHAPE_NAMES: Record<ShapeType, string> = {
@@ -41,10 +48,17 @@ const SHAPE_NAMES: Record<ShapeType, string> = {
     diamond: "Dijamant",
     moon: "Polumesec",
     lightning: "Munja",
+    cloud: "Oblak",
+    apple: "Jabuka",
+    car: "Auto",
+    tree: "Drvo",
+    butterfly: "Leptir",
+    balloon: "Balon",
+    fish: "Riba",
 };
 
 // All 8 shape types - level controls how many are used
-const ALL_SHAPES: ShapeType[] = ["house", "flower", "sun", "heart", "star", "diamond", "moon", "lightning"];
+const ALL_SHAPES: ShapeType[] = ["house", "flower", "sun", "heart", "star", "diamond", "moon", "lightning", "cloud", "apple", "car", "tree", "butterfly", "balloon", "fish"];
 
 // Beautiful SVG shapes rendered inside a 100x100 viewBox
 function ShapeSVG({ type, color, size }: { type: ShapeType; color: string; size: number }) {
@@ -177,31 +191,81 @@ function ShapeSVG({ type, color, size }: { type: ShapeType; color: string; size:
                 <g>
                     {/* Moon crescent */}
                     <path
-                        d="M60,10 A40,40 0 1,0 60,90 A28,28 0 1,1 60,10 Z"
-                        fill={color}
+                        d="M60,10 A40,40 0 1,0 60,90 A30,30 0 1,1 60,10 Z"
+                        fill="#FDE047"
                         stroke="white"
-                        strokeWidth="2"
+                        strokeWidth="3"
+                        strokeLinejoin="round"
                     />
                     {/* Stars beside moon */}
-                    <circle cx="76" cy="22" r="3" fill="white" opacity="0.8" />
-                    <circle cx="82" cy="40" r="2" fill="white" opacity="0.6" />
-                    <circle cx="78" cy="58" r="2.5" fill="white" opacity="0.7" />
+                    <path d="M75,18 L77,24 L83,24 L78,28 L80,34 L75,30 L70,34 L72,28 L67,24 L73,24 Z" fill="white" opacity="0.9" />
+                    <circle cx="85" cy="45" r="2" fill="white" opacity="0.6" />
+                    <circle cx="78" cy="65" r="2.5" fill="white" opacity="0.7" />
                     {/* Shine */}
-                    <ellipse cx="38" cy="36" rx="7" ry="4" fill="white" opacity="0.25" transform="rotate(-10, 38, 36)" />
+                    <ellipse cx="32" cy="36" rx="6" ry="12" fill="white" opacity="0.25" transform="rotate(-25, 32, 36)" />
                 </g>
             )}
             {type === "lightning" && (
                 <g>
-                    {/* Lightning bolt */}
                     <polygon
-                        points="58,5 28,55 52,55 42,95 72,42 48,42"
+                        points="60,5 30,50 50,50 40,95 80,40 55,40"
                         fill={color}
                         stroke="white"
-                        strokeWidth="2"
+                        strokeWidth="3"
                         strokeLinejoin="round"
                     />
-                    {/* Shine */}
                     <ellipse cx="48" cy="25" rx="6" ry="10" fill="white" opacity="0.25" transform="rotate(-15, 48, 25)" />
+                </g>
+            )}
+            {type === "butterfly" && (
+                <g>
+                    <path d="M50,40 Q30,10 15,30 Q10,50 30,60 Q10,70 15,90 Q30,110 50,80 Q70,110 85,90 Q90,70 70,60 Q90,50 85,30 Q70,10 50,40" fill={color} stroke="white" strokeWidth="2" />
+                    <rect x="47" y="30" width="6" height="50" rx="3" fill="#1F2937" />
+                    <line x1="47" y1="30" x2="40" y2="15" stroke="#1F2937" strokeWidth="1.5" />
+                    <line x1="53" y1="30" x2="60" y2="15" stroke="#1F2937" strokeWidth="1.5" />
+                </g>
+            )}
+            {type === "cloud" && (
+                <g>
+                    <path d="M25,65 A15,15 0 0,1 25,35 A20,20 0 0,1 60,30 A20,20 0 0,1 85,45 A15,15 0 0,1 75,75 Z" fill={color} stroke="white" strokeWidth="2" />
+                    <ellipse cx="40" cy="45" rx="6" ry="3" fill="white" opacity="0.3" />
+                </g>
+            )}
+            {type === "apple" && (
+                <g>
+                    <path d="M50,90 C25,90 10,70 10,45 C10,25 25,15 50,25 C75,15 90,25 90,45 C90,70 75,90 50,90 Z" fill={color} stroke="white" strokeWidth="2" />
+                    <path d="M50,25 L50,10" stroke="#92400E" strokeWidth="4" strokeLinecap="round" />
+                    <path d="M50,15 Q65,5 75,15" fill="#22C55E" stroke="white" strokeWidth="1" />
+                </g>
+            )}
+            {type === "car" && (
+                <g>
+                    <path d="M10,70 L10,50 Q10,40 25,35 L40,20 Q45,15 80,15 L95,45 L95,70 Z" fill={color} stroke="white" strokeWidth="2" />
+                    <circle cx="25" cy="75" r="10" fill="#1F2937" stroke="white" strokeWidth="2" />
+                    <circle cx="75" cy="75" r="10" fill="#1F2937" stroke="white" strokeWidth="2" />
+                    <rect x="45" y="25" width="30" height="15" fill="white" opacity="0.5" />
+                </g>
+            )}
+            {type === "tree" && (
+                <g>
+                    <rect x="42" y="60" width="16" height="35" rx="2" fill="#92400E" />
+                    <path d="M50,10 L20,70 L80,70 Z" fill={color} stroke="white" strokeWidth="2" />
+                    <path d="M50,25 L25,60 L75,60 Z" fill={color} stroke="white" strokeWidth="2" opacity="0.8" />
+                </g>
+            )}
+            {type === "balloon" && (
+                <g>
+                    <path d="M50,10 A35,40 0 1,0 50,90 A35,40 0 1,0 50,10 Z" fill={color} stroke="white" strokeWidth="2" />
+                    <path d="M50,90 L50,110 Q50,120 60,125" fill="none" stroke="#94A3B8" strokeWidth="1.5" />
+                    <polygon points="50,90 45,98 55,98" fill={color} stroke="white" strokeWidth="1" />
+                </g>
+            )}
+            {type === "fish" && (
+                <g>
+                    <ellipse cx="45" cy="50" rx="35" ry="20" fill={color} stroke="white" strokeWidth="2" />
+                    <path d="M75,50 L95,30 L95,70 Z" fill={color} stroke="white" strokeWidth="2" />
+                    <circle cx="30" cy="45" r="4" fill="white" />
+                    <circle cx="30" cy="45" r="2" fill="black" />
                 </g>
             )}
         </svg>
@@ -236,7 +300,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
             if (monitorState.totalIncorrect !== undefined) setIncorrectCount(monitorState.totalIncorrect);
         }
     }, [isMonitor, monitorState]);
-  
+
     // Auto-start logic
     useEffect(() => {
         if (autoStart && !isMonitor && !isPlaying && score === 0) {
@@ -247,11 +311,11 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
     const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
 
     const generateShapes = useCallback(() => {
-        // Broj dostupnih oblika raste sa nivoom: nivo 1-2 = 4 oblika, 3-5 = 6, 6+ = svih 8
-        const availableCount = level <= 2 ? 4 : level <= 5 ? 6 : ALL_SHAPES.length;
+        // Broj dostupnih oblika raste sa nivoom 1-15 skaliramo na svih 15 oblika
+        const availableCount = Math.min(ALL_SHAPES.length, 4 + Math.floor(level / 1.5));
         const availableShapes = ALL_SHAPES.slice(0, availableCount);
 
-        const numShapes = Math.min(3 + level, 8); // Broj ponuđenih oblika
+        const numShapes = Math.min(3 + Math.floor(level / 2.5), 8); // Broj opcija na ekranu
         const targetType = availableShapes[Math.floor(Math.random() * availableShapes.length)];
 
         const newShapes: Shape[] = Array.from({ length: numShapes }, (_, i) => {
@@ -367,7 +431,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
                         data: { finalScore: score, finalLevel: level, timeSpent: 60 },
                         timestamp: new Date().toISOString(),
                     });
-                    
+
                     if (autoStart) {
                         handleMoodAfterSelect("neutral"); // Default mood for auto-transition
                     } else {
@@ -397,7 +461,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
                     <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 md:gap-8 w-full max-w-5xl px-2">
                     {[
                         { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
                         { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
@@ -408,11 +472,11 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
                         <button
                             key={mood.value}
                             onClick={() => handleMoodBeforeSelect(mood.value)}
-                            className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+                            className="group relative flex flex-col items-center bg-white rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] p-3 sm:p-5 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
                         >
-                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
-                            <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-                            <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
+                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] transition-opacity`}></div>
+                            <span className="text-4xl sm:text-6xl md:text-7xl mb-1 sm:mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+                            <span className="text-xs sm:text-base md:text-lg font-black text-slate-700">{mood.label}</span>
                         </button>
                     ))}
                 </div>
@@ -441,7 +505,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
                     </p>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-8 w-full max-w-5xl px-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 md:gap-8 w-full max-w-5xl px-2">
                     {[
                         { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
                         { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
@@ -452,11 +516,11 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
                         <button
                             key={mood.value}
                             onClick={() => handleMoodAfterSelect(mood.value)}
-                            className="group relative flex flex-col items-center bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+                            className="group relative flex flex-col items-center bg-white rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] p-3 sm:p-5 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
                         >
-                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[1.5rem] md:rounded-[2.5rem] transition-opacity`}></div>
-                            <span className="text-5xl md:text-7xl mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-                            <span className="text-sm md:text-lg font-black text-slate-700">{mood.label}</span>
+                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] transition-opacity`}></div>
+                            <span className="text-4xl sm:text-6xl md:text-7xl mb-1 sm:mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+                            <span className="text-xs sm:text-base md:text-lg font-black text-slate-700">{mood.label}</span>
                         </button>
                     ))}
                 </div>
@@ -602,9 +666,9 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
 
                 {/* Multiple choice grid */}
                 <div className="w-full max-w-5xl px-2">
-                    <div className={`grid gap-3 md:gap-8 mx-auto ${shapes.length <= 4
+                    <div className={`grid gap-2 sm:gap-4 md:gap-8 mx-auto ${shapes.length <= 4
                         ? 'grid-cols-2 lg:grid-cols-4'
-                        : 'grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8'
+                        : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8'
                         }`}>
                         {shapes.map((shape) => (
                             <button
@@ -618,7 +682,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
                                         : "border-slate-50 hover:border-indigo-100 hover:shadow-xl shadow-sm"
                                     }`}
                             >
-                                <div className="transform transition-all duration-300 group-hover:rotate-6">
+                                <div className="transform transition-all duration-300 group-hover:rotate-6 scale-75 sm:scale-100">
                                     <ShapeSVG type={shape.type} color={shape.color} size={60} />
                                 </div>
 

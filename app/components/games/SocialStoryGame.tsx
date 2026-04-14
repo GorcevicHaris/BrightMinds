@@ -73,7 +73,7 @@ const LEVELS: StoryLevel[] = [
       },
       {
         scene: "🎒 👟",
-        question: "Idš u školu! Šta pakovaš?",
+        question: "Ideš u školu! Šta pakuješ?",
         options: [
           { emoji: "📓", label: "Sveska i olovke", correct: true, feedback: "Bravo! Sveska i olovke su nam potrebni! 🌟" },
           { emoji: "🧸", label: "Igračku", correct: false, feedback: "Igračke ostaju kod kuće tokom škole 😊" },
@@ -414,7 +414,7 @@ export default function SocialStoryGame({
     if (autoStart && !isMonitor && phase === "intro") {
       handleStart();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, isMonitor, phase]);
 
   // Monitor sync
@@ -609,20 +609,20 @@ export default function SocialStoryGame({
       )}
 
       {/* ── Answer options ── */}
-      <div className={`grid gap-3 md:gap-4 ${currentStep.options.length === 2 ? "grid-cols-2" : "grid-cols-2 md:grid-cols-3"}`}>
+      <div className={`grid gap-3 md:gap-4 ${currentStep.options.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-3"}`}>
         {currentStep.options.map((opt, i) => (
           <button
             key={i}
             onClick={() => handleAnswer(opt.correct, opt.feedback)}
             disabled={isLocked}
-            className={`flex flex-col items-center justify-center gap-2 p-4 md:p-6 rounded-2xl md:rounded-3xl border-4 font-black transition-all duration-200
+            className={`flex items-center sm:flex-col justify-start sm:justify-center gap-4 sm:gap-2 p-4 md:p-6 rounded-2xl md:rounded-3xl border-4 font-black transition-all duration-200
               ${isLocked
                 ? "opacity-60 cursor-not-allowed border-slate-100 bg-white"
                 : "bg-white border-slate-100 hover:border-slate-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer shadow-md"
               }`}
           >
-            <span className="text-5xl md:text-6xl leading-none">{opt.emoji}</span>
-            <span className="text-sm md:text-base text-slate-700 text-center leading-tight font-black">
+            <span className="text-4xl sm:text-6xl leading-none shrink-0">{opt.emoji}</span>
+            <span className="text-sm md:text-base text-slate-700 text-left sm:text-center leading-tight font-black">
               {opt.label}
             </span>
           </button>
@@ -638,8 +638,8 @@ export default function SocialStoryGame({
               ${i < stepIdx
                 ? `bg-gradient-to-r ${lvl.color} w-6`
                 : i === stepIdx
-                ? `bg-gradient-to-r ${lvl.color} w-8`
-                : "bg-slate-200 w-2.5"
+                  ? `bg-gradient-to-r ${lvl.color} w-8`
+                  : "bg-slate-200 w-2.5"
               }`}
           />
         ))}
