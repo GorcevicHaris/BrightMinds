@@ -54,7 +54,7 @@ export async function GET(
       const maxCompleted = Number(rows[0]?.max_completed_level) || 0;
       // Level 1 is always unlocked. The next unlocked level = maxCompleted + 1 (capped at 8).
       // So unlockedUpTo = max(1, maxCompleted + 1), but never exceeds 8.
-      const maxCap = (activityId === 1 || activityId === 3 || activityId === 4) ? 15 : 8;
+      const maxCap = (activityId === 1 || activityId === 3 || activityId === 4 || activityId === 6 || activityId === 7 || activityId === 8) ? 15 : 8;
       // TEMPORARY: Unlock all levels for testing
       const unlockedUpTo = maxCap;
       unlockedLevels[gameId] = unlockedUpTo;

@@ -124,7 +124,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   }, [childId]);
 
   // Helper: max levels for a game
-  const getMaxLevelsForGame = (gameId: string) => (gameId === "shapes" || gameId === "memory" || gameId === "coloring") ? 15 : 8;
+  const getMaxLevelsForGame = (gameId: string) => (gameId === "shapes" || gameId === "memory" || gameId === "coloring" || gameId === "social" || gameId === "social-story" || gameId === "emotions") ? 15 : 8;
 
   // Helper: max playable level for a game (default 1 if not yet loaded)
   const getMaxUnlocked = (gameId: string) => unlockedLevels[gameId] ?? 1;

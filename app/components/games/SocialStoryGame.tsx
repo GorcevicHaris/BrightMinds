@@ -45,7 +45,6 @@ interface StoryLevel {
 // Each step: big scene emoji + 1-line question + 2-3 choices
 // ─────────────────────────────────────────────────────
 const LEVELS: StoryLevel[] = [
-  // ── L1: Jutarnja rutina ──────────────────────────
   {
     title: "Jutro",
     place: "Jutarnja rutina",
@@ -57,33 +56,28 @@ const LEVELS: StoryLevel[] = [
         scene: "😴 🛏️",
         question: "Probudilo si se! Šta radiš prvo?",
         options: [
-          { emoji: "🚿", label: "Perem se", correct: true, feedback: "Sjajno! Jutarnje pranje je važno! 🚿" },
-          { emoji: "📱", label: "Gledam telefon", correct: false, feedback: "Prvo se operemo, pa onda telefon 😊" },
-          { emoji: "🍕", label: "Jedem pizzu", correct: false, feedback: "Pizza nije jutarnji obrok 😄" },
+          { emoji: "🚿", label: "Perem se", correct: true, feedback: "Tačno!" },
+          { emoji: "📱", label: "Gledam telefon", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🍽️ 🥛",
-        question: "Dođeš u kuhinju. Šta jedeš ujutru?",
+        question: "Šta jedeš ujutru?",
         options: [
-          { emoji: "🥣", label: "Kaša i mleko", correct: true, feedback: "Odlično! Doručak daje energiju! ⚡" },
-          { emoji: "🍰", label: "Torta", correct: false, feedback: "Torta nije za doručak, slatkiši za posebne prilike 😊" },
-          { emoji: "🍟", label: "Pomfrit", correct: false, feedback: "Pomfrit nije za jutro 😄" },
+          { emoji: "🥣", label: "Kaša i mleko", correct: true, feedback: "Tačno!" },
+          { emoji: "🍰", label: "Torta", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🎒 👟",
-        question: "Ideš u školu! Šta pakuješ?",
+        question: "Šta pakuješ za školu?",
         options: [
-          { emoji: "📓", label: "Sveska i olovke", correct: true, feedback: "Bravo! Sveska i olovke su nam potrebni! 🌟" },
-          { emoji: "🧸", label: "Igračku", correct: false, feedback: "Igračke ostaju kod kuće tokom škole 😊" },
-          { emoji: "🎮", label: "Gamepad", correct: false, feedback: "Gamepad ne ide u ranac za školu 😊" },
+          { emoji: "📓", label: "Svesku", correct: true, feedback: "Tačno!" },
+          { emoji: "🧸", label: "Igračku", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
     ],
   },
-
-  // ── L2: Škola ────────────────────────────────────
   {
     title: "Škola",
     place: "Učionica",
@@ -95,39 +89,28 @@ const LEVELS: StoryLevel[] = [
         scene: "🏫 🚌",
         question: "Stigao si u školu! Šta radiš?",
         options: [
-          { emoji: "💺", label: "Sjednem za klupu", correct: true, feedback: "Tačno! Sedamo na naše mesto 🌟" },
-          { emoji: "🏃", label: "Trčim po hodniku", correct: false, feedback: "U školi ne trčimo po hodniku 😊" },
+          { emoji: "💺", label: "Sjednem za klupu", correct: true, feedback: "Tačno!" },
+          { emoji: "🏃", label: "Trčim po hodniku", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "👩‍🏫 📋",
         question: "Učiteljica govori. Šta radiš?",
         options: [
-          { emoji: "👂", label: "Slušam pažljivo", correct: true, feedback: "Odlično! Slušamo učiteljicu 🌟" },
-          { emoji: "🗣️", label: "Pričam sa drugarom", correct: false, feedback: "Dok govori učiteljica, tiho smo 😊" },
-          { emoji: "😴", label: "Spavam", correct: false, feedback: "Ne spavamo u učionici 😄" },
+          { emoji: "👂", label: "Slušam", correct: true, feedback: "Tačno!" },
+          { emoji: "🗣️", label: "Pričam", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🤚 ❓",
         question: "Znaš odgovor! Šta radiš?",
         options: [
-          { emoji: "✋", label: "Dižem ruku", correct: true, feedback: "Bravo! Ruku dizamo kad znamo odgovor 🌟" },
-          { emoji: "📣", label: "Vikim odgovor", correct: false, feedback: "Ne vičemo, dižemo ruku 😊" },
-        ],
-      },
-      {
-        scene: "🔔 🎒",
-        question: "Zazvonilo je! Šta radiš sa stvarima?",
-        options: [
-          { emoji: "🗂️", label: "Pospremam sve u ranac", correct: true, feedback: "Super! Pospremamo pre odlaska 🌟" },
-          { emoji: "🏃", label: "Bežim odmah", correct: false, feedback: "Prvo pospremimo, pa onda izlazimo 😊" },
+          { emoji: "✋", label: "Dižem ruku", correct: true, feedback: "Tačno!" },
+          { emoji: "📣", label: "Vičem", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
     ],
   },
-
-  // ── L3: Stomatolog ────────────────────────────────
   {
     title: "Stomatolog",
     place: "Ordinacija",
@@ -139,40 +122,28 @@ const LEVELS: StoryLevel[] = [
         scene: "🦷 🪥",
         question: "Kada peremo zube?",
         options: [
-          { emoji: "☀️🌙", label: "Jutro i veče", correct: true, feedback: "Sjajno! Zube peremo 2 puta dnevno 🌟" },
-          { emoji: "🎂", label: "Samo na rođendan", correct: false, feedback: "Zube peremo svaki dan, ne samo jednom godišnje 😊" },
-          { emoji: "❌", label: "Nikad", correct: false, feedback: "Zube moramo uvek prati 😊" },
+          { emoji: "☀️🌙", label: "Jutro i veče", correct: true, feedback: "Tačno!" },
+          { emoji: "🎂", label: "Samo na rođendan", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🏥 😨",
-        question: "Idemo kod stomatologa. Kako je kod stomatologa?",
-        options: [
-          { emoji: "😊", label: "Nije strašno, lekar pomaže", correct: true, feedback: "Tačno! Stomatolog nam pomaže da imamo zdravo zube 🌟" },
-          { emoji: "👹", label: "Strašno je", correct: false, feedback: "Stomatolog je prijatni lekar koji čuva naše zube 😊" },
-        ],
-      },
-      {
-        scene: "📅 ❓",
         question: "Kada idemo kod stomatologa?",
         options: [
-          { emoji: "📆", label: "Redovno, preventivno", correct: true, feedback: "Odlično! Idemo redovno, ne samo kad boli 🌟" },
-          { emoji: "😣", label: "Samo kad boli zub", correct: false, feedback: "Bolje je ići redovnocreating nego čekati da zaboli 😊" },
+          { emoji: "📆", label: "Redovno", correct: true, feedback: "Tačno!" },
+          { emoji: "😣", label: "Samo kad boli", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🪥 ⏱️",
         question: "Koliko dugo peremo zube?",
         options: [
-          { emoji: "2️⃣", label: "2 minute", correct: true, feedback: "Bravo! 2 minute su potrebne za čiste zube 🌟" },
-          { emoji: "⚡", label: "5 sekundi", correct: false, feedback: "5 sekundi nije dovoljno, treba nam 2 minuta 😊" },
-          { emoji: "🕐", label: "Sat vremena", correct: false, feedback: "Sat vremena je previše, 2 minute su dovoljne 😄" },
+          { emoji: "2️⃣", label: "2 minute", correct: true, feedback: "Tačno!" },
+          { emoji: "⚡", label: "5 sekundi", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
     ],
   },
-
-  // ── L4: Prodavnica ───────────────────────────────
   {
     title: "Prodavnica",
     place: "Kupovina",
@@ -182,33 +153,30 @@ const LEVELS: StoryLevel[] = [
     steps: [
       {
         scene: "🛒 📝",
-        question: "Idemo po namirnice. Šta nam pomaže?",
+        question: "Šta nam pomaže u kupovini?",
         options: [
-          { emoji: "📋", label: "Lista za kupovinu", correct: true, feedback: "Odlično! Lista nam pomaže da ne zaboravimo ništa 🌟" },
-          { emoji: "🎮", label: "Konzola za igre", correct: false, feedback: "Konzola nam ne pomaže pri kupovini 😊" },
+          { emoji: "📋", label: "Lista", correct: true, feedback: "Tačno!" },
+          { emoji: "🎮", label: "Konzola igram", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🧀 🥦 🍎",
-        question: "Mama kaže: 'Uzmi sir.' Gde idemo?",
+        question: "Gde stoji sir?",
         options: [
-          { emoji: "🧀", label: "Mlečni proizvodi", correct: true, feedback: "Bravo! Sir je u mlečnim proizvodima 🌟" },
-          { emoji: "🍞", label: "Pekarnica", correct: false, feedback: "Hleb je u pekarnici, ali sir je drugde 😊" },
-          { emoji: "🍭", label: "Slatkiši", correct: false, feedback: "Sir nije u delу sa slatkišima 😊" },
+          { emoji: "🧀", label: "Mlečni proizvodi", correct: true, feedback: "Tačno!" },
+          { emoji: "🍭", label: "Slatkiši", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "💳 💵",
-        question: "Stigli smo do kase. Šta radimo?",
+        question: "Na kasi smo. Šta radimo?",
         options: [
-          { emoji: "💰", label: "Platimo", correct: true, feedback: "Tačno! Na kasi plaćamo što smo uzeli 🌟" },
-          { emoji: "🏃", label: "Odemo bez plaćanja", correct: false, feedback: "Moramo platiti ono što uzimamo 😊" },
+          { emoji: "💰", label: "Platimo", correct: true, feedback: "Tačno!" },
+          { emoji: "🏃", label: "Odemo bez plaćanja", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
     ],
   },
-
-  // ── L5: Park ─────────────────────────────────────
   {
     title: "Park",
     place: "Igra napolju",
@@ -218,41 +186,30 @@ const LEVELS: StoryLevel[] = [
     steps: [
       {
         scene: "🌳 ☀️",
-        question: "Igramo se napolju. Šta nosimo leti?",
+        question: "Leti napolju nosimo...?",
         options: [
-          { emoji: "🧴", label: "Kremu za sunce", correct: true, feedback: "Sjajno! Krema nas štiti od sunca 🌟" },
-          { emoji: "🧥", label: "Zimski kaput", correct: false, feedback: "Leti ne nosimo zimski kaput 😊" },
-          { emoji: "☂️", label: "Suncobran za kišu", correct: false, feedback: "Suncobran za kišu nije za vreo dan 😊" },
+          { emoji: "🧴", label: "Kremu za sunce", correct: true, feedback: "Tačno!" },
+          { emoji: "🧥", label: "Zimski kaput", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "💧 🥤",
-        question: "Igraš se i oznojio si se. Šta radiš?",
+        question: "Znojiš se. Šta radiš?",
         options: [
-          { emoji: "💧", label: "Pijem vodu", correct: true, feedback: "Bravo! Voda nam vraća snagu 🌟" },
-          { emoji: "🍔", label: "Jedem hamburger", correct: false, feedback: "Prvo se napijem vode, hrana može i nakon toga 😊" },
-        ],
-      },
-      {
-        scene: "🛝 👫",
-        question: "Drug želi da se igra tobogan. Šta radiš?",
-        options: [
-          { emoji: "🤝", label: "Prihvatam i igramo zajedno", correct: true, feedback: "Odlično! Igraanje zajedno je super 🌟" },
-          { emoji: "🚫", label: "Ne dam mu tobogan", correct: false, feedback: "Tobogan je za sve, delimo ga 😊" },
+          { emoji: "💧", label: "Pijem vodu", correct: true, feedback: "Tačno!" },
+          { emoji: "🍔", label: "Jedem hamburger", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🌆 🏠",
-        question: "Smrkava se. Mama te zove. Šta radiš?",
+        question: "Smrkava se. Mama zove.",
         options: [
-          { emoji: "🏠", label: "Idem kući", correct: true, feedback: "Bravo! Kad mama zove, idemo kući 🌟" },
-          { emoji: "🌙", label: "Ostanem da se igram", correct: false, feedback: "Kada mama zove, vreme je za kuću 😊" },
+          { emoji: "🏠", label: "Idem kući", correct: true, feedback: "Tačno!" },
+          { emoji: "🌙", label: "Ostanem napolju", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
     ],
   },
-
-  // ── L6: Bolnica ──────────────────────────────────
   {
     title: "Kod doktora",
     place: "Pedijatar",
@@ -264,30 +221,28 @@ const LEVELS: StoryLevel[] = [
         scene: "🤒 🌡️",
         question: "Osećaš se loše. Šta radiš?",
         options: [
-          { emoji: "👨‍👩‍👦", label: "Kažem mami/tati", correct: true, feedback: "Odlično! Uvek kažemo roditeljima kad nam nije dobro 🌟" },
-          { emoji: "🤫", label: "Ćutim", correct: false, feedback: "Ne ćutimo kad smo bolesni, kažemo roditeljima 😊" },
+          { emoji: "👨‍👩‍👦", label: "Kažem mami", correct: true, feedback: "Tačno!" },
+          { emoji: "🤫", label: "Ćutim", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🏥 👨‍⚕️",
-        question: "Doktor te pregleda. Kako se ponašaš?",
+        question: "Doktor te pregleda.",
         options: [
-          { emoji: "😌", label: "Tiho sedim i sarađujem", correct: true, feedback: "Bravo! Doktor nam pomaže kad sarađujemo 🌟" },
-          { emoji: "😭", label: "Vrištim i ne dam se pregledati", correct: false, feedback: "Doktor želi samo da nam pomogne 😊" },
+          { emoji: "😌", label: "Miram sarađujem", correct: true, feedback: "Tačno!" },
+          { emoji: "😭", label: "Vrištim", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "💊 💉",
-        question: "Doktor ti da lek. Šta radiš?",
+        question: "Doktor daje lek.",
         options: [
-          { emoji: "✅", label: "Pijem lek kako je rečeno", correct: true, feedback: "Tačno! Lekovi nam pomažu da ozdravimo 🌟" },
-          { emoji: "🚮", label: "Bacim lek", correct: false, feedback: "Lekove pijemo po uputstvu doktora 😊" },
+          { emoji: "✅", label: "Popijem", correct: true, feedback: "Tačno!" },
+          { emoji: "🚮", label: "Bacim", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
     ],
   },
-
-  // ── L7: Restoran ─────────────────────────────────
   {
     title: "Restoran",
     place: "Jelo napolju",
@@ -297,40 +252,30 @@ const LEVELS: StoryLevel[] = [
     steps: [
       {
         scene: "🍽️ 🪑",
-        question: "Uđeš u restoran. Šta radiš?",
+        question: "U restoranu...",
         options: [
-          { emoji: "💺", label: "Sjedem za sto", correct: true, feedback: "Odlično! U restoranu sedimo za sto 🌟" },
-          { emoji: "🏃", label: "Trčim po restoranu", correct: false, feedback: "U restoranu ne trčimo 😊" },
+          { emoji: "��", label: "Sjedem za sto", correct: true, feedback: "Tačno!" },
+          { emoji: "🏃", label: "Trčim naokolo", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "👨‍🍳 📋",
-        question: "Konobar dolazi. Šta radimo?",
+        question: "Konobar dolazi.",
         options: [
-          { emoji: "🗣️", label: "Naručujemo ljubazno", correct: true, feedback: "Bravo! Naručujemo pristojno 🌟" },
-          { emoji: "😤", label: "Vičemo na konobara", correct: false, feedback: "Na konobara ne vičemo, pristojno tražimo 😊" },
-        ],
-      },
-      {
-        scene: "🍝 😋",
-        question: "Doneli su hranu. Šta radiš?",
-        options: [
-          { emoji: "🙏", label: "Zahvalim se i jedem", correct: true, feedback: "Sjajno! Zahvalnost je važna 🌟" },
-          { emoji: "😒", label: "Žalim se što mi se ne sviđa", correct: false, feedback: "Prema hrani smo zahvalni 😊" },
+          { emoji: "🗣️", label: "Naručujem pristojno", correct: true, feedback: "Tačno!" },
+          { emoji: "😤", label: "Vičem", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🧻 🤲",
-        question: "Završio si jelo. Šta radiš pre ustajanja?",
+        question: "Završio si jelo.",
         options: [
-          { emoji: "🤲", label: "Brišem usta i ruke", correct: true, feedback: "Perfektno! Brisanje ruku i usta je higijena 🌟" },
-          { emoji: "🏃", label: "Odmah ustanem", correct: false, feedback: "Pre ustajanja, brišemo usta i ruke 😊" },
+          { emoji: "🤲", label: "Brišem ruke", correct: true, feedback: "Tačno!" },
+          { emoji: "🏃", label: "Ustanem odmah", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
     ],
   },
-
-  // ── L8: Vatrogasna bezbednost ─────────────────────
   {
     title: "Vatrogasna bezbednost",
     place: "Šta raditi u hitnim situacijama",
@@ -340,39 +285,263 @@ const LEVELS: StoryLevel[] = [
     steps: [
       {
         scene: "🔥 😨",
-        question: "Vidiš dim u kući! Šta radiš?",
+        question: "Ima dima u kući!",
         options: [
-          { emoji: "🏃", label: "Idem van brzo", correct: true, feedback: "Tačno! Kod dima odmah izlazimo napolje 🌟" },
-          { emoji: "🛒", label: "Uzimam igračke pa idem", correct: false, feedback: "Kod dima, odmah napolje bez zadržavanja 😊" },
+          { emoji: "🏃", label: "Izlazim napolje", correct: true, feedback: "Tačno!" },
+          { emoji: "🛒", label: "Uzimam igračke", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "📞 🚒",
-        question: "Ko nam pomaže kad ima požar?",
+        question: "Koga zovemo za požar?",
         options: [
-          { emoji: "🚒", label: "Vatrogasci — zovemo 193", correct: true, feedback: "Bravo! Vatrogasci gase požar, broj je 193 🌟" },
-          { emoji: "🍕", label: "Dostavljač pizze", correct: false, feedback: "Vatrogasci nam pomažu kod požara 😊" },
+          { emoji: "🚒", label: "Vatrogasce (193)", correct: true, feedback: "Tačno!" },
+          { emoji: "🍕", label: "Pizzu", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
         scene: "🔌 💡",
-        question: "Nisi siguran je li nešto bezbedno. Šta radiš?",
+        question: "Nisi siguran da li je toplo.",
         options: [
-          { emoji: "👨‍👩‍👦", label: "Pitam odraslu osobu", correct: true, feedback: "Odlično! Uvek pitamo odrasle kad nismo sigurni 🌟" },
-          { emoji: "🤚", label: "Sam/a to diram", correct: false, feedback: "Kad nismo sigurni, pitamo odrasle 😊" },
+          { emoji: "��‍👩‍👦", label: "Pitam odrasle", correct: true, feedback: "Tačno!" },
+          { emoji: "🤚", label: "Diram", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+    ],
+  },
+  {
+    title: "Rođendan",
+    place: "Proslava",
+    icon: "🥳",
+    color: "from-purple-400 to-fuchsia-500",
+    bg: "bg-purple-50",
+    steps: [
+      {
+        scene: "🎂 🎁",
+        question: "Dobio si poklon! Šta radiš?",
+        options: [
+          { emoji: "🙏", label: "Zahvalim se", correct: true, feedback: "Tačno!" },
+          { emoji: "🗑️", label: "Bacim ga", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
       {
-        scene: "✅ 🙂",
-        question: "Zapamtio/la si pravila! Znaš šta da radiš?",
+        scene: "🕯️  thổi",
+        question: "Vreme je za svećice!",
         options: [
-          { emoji: "💪", label: "Da! Siguran/na sam!", correct: true, feedback: "BRAVO, šampione! 🏆 Znaš sva bezbednosna pravila!" },
-          { emoji: "🤔", label: "Ne znam", correct: false, feedback: "Možeš ponovo! Učimo zajedno 😊" },
+          { emoji: "💨", label: "Duvam svećice", correct: true, feedback: "Tačno!" },
+          { emoji: "😭", label: "Plačem", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "🍰 🍽️",
+        question: "Seče se torta. Šta radiš?",
+        options: [
+          { emoji: "⏳", label: "Čekam svoj red", correct: true, feedback: "Tačno!" },
+          { emoji: "👊", label: "Otmem tortu", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+    ],
+  },
+  {
+    title: "Kućni ljubimac",
+    place: "Briga o psu",
+    icon: "🐶",
+    color: "from-teal-400 to-emerald-500",
+    bg: "bg-teal-50",
+    steps: [
+      {
+        scene: "🐶 🍖",
+        question: "Pas je gladan. Šta mu daješ?",
+        options: [
+          { emoji: "🦴", label: "Hranu za pse", correct: true, feedback: "Tačno!" },
+          { emoji: "🍫", label: "Čokoladu", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "🐕 🚶",
+        question: "Pas želi napolje.",
+        options: [
+          { emoji: "🦮", label: "Idemo u šetnju", correct: true, feedback: "Tačno!" },
+          { emoji: "😡", label: "Viknem na njega", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "💤 🐶",
+        question: "Pas spava.",
+        options: [
+          { emoji: "🤫", label: "Pustim ga", correct: true, feedback: "Tačno!" },
+          { emoji: "🔊", label: "Budim ga", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+    ],
+  },
+  {
+    title: "Putovanje",
+    place: "Voz",
+    icon: "🚆",
+    color: "from-yellow-400 to-orange-500",
+    bg: "bg-yellow-50",
+    steps: [
+      {
+        scene: "🚆 🎫",
+        question: "Ulaziš u voz.",
+        options: [
+          { emoji: "🎟️", label: "Pokažem kartu", correct: true, feedback: "Tačno!" },
+          { emoji: "🏃", label: "Trčim unutra", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "💺 ��",
+        question: "Voz kreće.",
+        options: [
+          { emoji: "🪑", label: "Sednem na mesto", correct: true, feedback: "Tačno!" },
+          { emoji: "🤸", label: "Skačem", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "🤫 👥",
+        question: "Ljudima se spava u vozu.",
+        options: [
+          { emoji: "🤐", label: "Budem tih", correct: true, feedback: "Tačno!" },
+          { emoji: "🗣️", label: "Vičem", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+    ],
+  },
+  {
+    title: "Lekar",
+    place: "Pregled",
+    icon: "👨‍⚕️",
+    color: "from-pink-400 to-rose-500",
+    bg: "bg-pink-50",
+    steps: [
+      {
+        scene: "🌡️ 🤒",
+        question: "Imaš temperaturu.",
+        options: [
+          { emoji: "🗣️", label: "Kažem mami", correct: true, feedback: "Tačno!" },
+          { emoji: "��", label: "Krijem to", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "🩺 👨‍⚕️",
+        question: "Doktor te sluša.",
+        options: [
+          { emoji: "🫁", label: "Dišem duboko", correct: true, feedback: "Tačno!" },
+          { emoji: "😭", label: "Vrištim", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "💊 🥤",
+        question: "Moraš da popiješ lek.",
+        options: [
+          { emoji: "✅", label: "Popijem ga", correct: true, feedback: "Tačno!" },
+          { emoji: "🤮", label: "Pljunem", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+    ],
+  },
+  {
+    title: "Radionica",
+    place: "Crtanje",
+    icon: "🎨",
+    color: "from-indigo-400 to-blue-500",
+    bg: "bg-indigo-50",
+    steps: [
+      {
+        scene: "🎨 🖌️",
+        question: "Crtamo. Šta uzimaš?",
+        options: [
+          { emoji: "🖍️", label: "Bojice", correct: true, feedback: "Tačno!" },
+          { emoji: "👞", label: "Cipele", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "✂️ 📄",
+        question: "Secemo papir.",
+        options: [
+          { emoji: "👁️", label: "Pazim na prste", correct: true, feedback: "Tačno!" },
+          { emoji: "🙈", label: "Sečem bez gledanja", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "🧹 🗑️",
+        question: "Završili smo rad.",
+        options: [
+          { emoji: "🧹", label: "Pospremim za sobom", correct: true, feedback: "Tačno!" },
+          { emoji: "🏃", label: "Samo odem", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+    ],
+  },
+  {
+    title: "Bazen",
+    place: "Plivanje",
+    icon: "🏊",
+    color: "from-emerald-400 to-teal-500",
+    bg: "bg-emerald-50",
+    steps: [
+      {
+        scene: "🏊 🩱",
+        question: "Ulaziš na bazen.",
+        options: [
+          { emoji: "👙", label: "Obučem kupaći", correct: true, feedback: "Tačno!" },
+          { emoji: "👞", label: "Uđem u cipelama", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "🏃 ⚠️",
+        question: "Dal smeš da trčiš pored bazena?",
+        options: [
+          { emoji: "🚶", label: "Ne, klizavo je", correct: true, feedback: "Tačno!" },
+          { emoji: "🏃", label: "Da, uvek", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "🚿 🧴",
+        question: "Posle bazena ideš pod...?",
+        options: [
+          { emoji: "🚿", label: "Tuš", correct: true, feedback: "Tačno!" },
+          { emoji: "🌳", label: "Drvo", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+    ],
+  },
+  {
+    title: "Zima",
+    place: "Sneg",
+    icon: "❄️",
+    color: "from-sky-400 to-blue-500",
+    bg: "bg-sky-50",
+    steps: [
+      {
+        scene: "❄️ 🧥",
+        question: "Hladno je. Šta nosiš?",
+        options: [
+          { emoji: "🧤", label: "Jaknu i kapu", correct: true, feedback: "Tačno!" },
+          { emoji: "🩱", label: "Kupaći", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "⛄",
+        question: "Pravimo Sneška Belića!",
+        options: [
+          { emoji: "🤝", label: "Pomažem", correct: true, feedback: "Tačno!" },
+          { emoji: "💥", label: "Rušim ga", correct: false, feedback: "Pokušaj ponovo!" }
+        ],
+      },
+      {
+        scene: "☕ 🛋️",
+        question: "Ulazimo u toplu kuću.",
+        options: [
+          { emoji: "🍵", label: "Pijemo čaj", correct: true, feedback: "Tačno!" },
+          { emoji: "🧊", label: "Jedemo sneg", correct: false, feedback: "Pokušaj ponovo!" }
         ],
       },
     ],
   },
 ];
+
 
 // ─────────────────────────────────────────────────────
 // COMPONENT

@@ -28,62 +28,21 @@ interface GameProps {
 // Kratka, jasna pitanja + emoji koji asocira na situaciju
 // Nivo 1-2: srećno/tužno  |  3-4: ljuto  |  5-6: uplašeno  |  7-8: miks
 const SCENARIOS = [
-    {
-        level: 1,
-        text: "Dobio si poklon! 🎁\nKako se osećaš?",
-        sceneEmoji: "🎁",
-        correctEmotion: "happy",
-        soundFile: "firstSent.mp3",
-    },
-    {
-        level: 2,
-        text: "Pao si i udario koleno. 🤕\nKako se osećaš?",
-        sceneEmoji: "🤕",
-        correctEmotion: "sad",
-        soundFile: "secondSent.mp3",
-    },
-    {
-        level: 3,
-        text: "Drug ti uzeo igračku! 😤\nKako se osećaš?",
-        sceneEmoji: "🧸",
-        correctEmotion: "angry",
-        soundFile: "thirdSent.mp3",
-    },
-    {
-        level: 4,
-        text: "Mama te pohvalila! ⭐\nKako se osećaš?",
-        sceneEmoji: "⭐",
-        correctEmotion: "happy",
-        soundFile: "fourthSent.mp3",
-    },
-    {
-        level: 5,
-        text: "Veliki pas trči prema tebi! 🐕\nKako se osećaš?",
-        sceneEmoji: "🐕",
-        correctEmotion: "scared",
-        soundFile: "fifthSent.mp3",
-    },
-    {
-        level: 6,
-        text: "Neko srušio tvoju kulu! 🧱\nKako se osećaš?",
-        sceneEmoji: "🧱",
-        correctEmotion: "angry",
-        soundFile: "sixthSent.mp3",
-    },
-    {
-        level: 7,
-        text: "Izgubio si se u prodavnici. 🏪\nKako se osećaš?",
-        sceneEmoji: "🏪",
-        correctEmotion: "scared",
-        soundFile: "seventSent.mp3",
-    },
-    {
-        level: 8,
-        text: "Drug želi da se igra s tobom! 🤝\nKako se osećaš?",
-        sceneEmoji: "🤝",
-        correctEmotion: "happy",
-        soundFile: "eightSent.mp3",
-    },
+    { level: 1, text: "Dobio si poklon! 🎁\nKako se osećaš?", sceneEmoji: "🎁", correctEmotion: "happy", soundFile: "firstSent.mp3" },
+    { level: 2, text: "Pao si i udario koleno. 🤕\nKako se osećaš?", sceneEmoji: "🤕", correctEmotion: "sad", soundFile: "secondSent.mp3" },
+    { level: 3, text: "Drug ti uzeo igračku! 😤\nKako se osećaš?", sceneEmoji: "🧸", correctEmotion: "angry", soundFile: "thirdSent.mp3" },
+    { level: 4, text: "Mama te pohvalila! ⭐\nKako se osećaš?", sceneEmoji: "⭐", correctEmotion: "happy", soundFile: "fourthSent.mp3" },
+    { level: 5, text: "Veliki pas trči prema tebi! 🐕\nKako se osećaš?", sceneEmoji: "🐕", correctEmotion: "scared", soundFile: "fifthSent.mp3" },
+    { level: 6, text: "Neko srušio tvoju kulu! 🧱\nKako se osećaš?", sceneEmoji: "🧱", correctEmotion: "angry", soundFile: "sixthSent.mp3" },
+    { level: 7, text: "Izgubio si se u prodavnici. 🏪\nKako se osećaš?", sceneEmoji: "🏪", correctEmotion: "scared", soundFile: "seventSent.mp3" },
+    { level: 8, text: "Drug želi da se igra s tobom! 🤝\nKako se osećaš?", sceneEmoji: "🤝", correctEmotion: "happy", soundFile: "eightSent.mp3" },
+    { level: 9, text: "Grmi napolju! ⛈️\nKako se osećaš?", sceneEmoji: "⛈️", correctEmotion: "scared", soundFile: "ninthSent.mp3" },
+    { level: 10, text: "Pokvarila se tvoja omiljena igračka. 🚂\nKako se osećaš?", sceneEmoji: "💔", correctEmotion: "sad", soundFile: "tenthSent.mp3" },
+    { level: 11, text: "Neko te gurnuo, a nije se izvinio! 😡\nKako se osećaš?", sceneEmoji: "🧍", correctEmotion: "angry", soundFile: "eleventhSent.mp3" },
+    { level: 12, text: "Slaviš rođendan! 🎂\nKako se osećaš?", sceneEmoji: "🎂", correctEmotion: "happy", soundFile: "twelfthSent.mp3" },
+    { level: 13, text: "Ugasilo se svetlo u sobi. 💡\nKako se osećaš?", sceneEmoji: "💡", correctEmotion: "scared", soundFile: "thirteenthSent.mp3" },
+    { level: 14, text: "Drug ti nije dao čokoladu! 🍫\nKako se osećaš?", sceneEmoji: "🍫", correctEmotion: "angry", soundFile: "fourteenthSent.mp3" },
+    { level: 15, text: "Tvoj crtež se iscepao. 📃\nKako se osećaš?", sceneEmoji: "📃", correctEmotion: "sad", soundFile: "fifteenthSent.mp3" },
 ];
 
 const EMOTIONS = [

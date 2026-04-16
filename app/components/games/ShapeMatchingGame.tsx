@@ -311,11 +311,10 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
     const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
 
     const generateShapes = useCallback(() => {
-        // Broj dostupnih oblika raste sa nivoom 1-15 skaliramo na svih 15 oblika
-        const availableCount = Math.min(ALL_SHAPES.length, 4 + Math.floor(level / 1.5));
+        const availableCount = Math.min(ALL_SHAPES.length, 3 + Math.floor(level / 2));
         const availableShapes = ALL_SHAPES.slice(0, availableCount);
 
-        const numShapes = Math.min(3 + Math.floor(level / 2.5), 8); // Broj opcija na ekranu
+        const numShapes = Math.min(2 + Math.floor(level / 3), 6); // Broj opcija na ekranu
         const targetType = availableShapes[Math.floor(Math.random() * availableShapes.length)];
 
         const newShapes: Shape[] = Array.from({ length: numShapes }, (_, i) => {
