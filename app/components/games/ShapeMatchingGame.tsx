@@ -301,7 +301,6 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
         }
     }, [isMonitor, monitorState]);
 
-    // Auto-start logic
     useEffect(() => {
         if (autoStart && !isMonitor && !isPlaying && score === 0) {
             handleMoodBeforeSelect("neutral"); // Default mood for auto-start
