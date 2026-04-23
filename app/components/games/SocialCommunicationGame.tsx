@@ -743,7 +743,12 @@ export default function SocialCommunicationGame({
     // ─── START SCREEN ─────────────────────────────────────────────────────────────
     if (!isPlaying && !completed) {
         return (
-            <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-100 shadow-lg">
+            <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] shadow-lg"
+                style={{ 
+                    backgroundImage: "linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('/images/stareci.png')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                }}>
                 <div className="absolute top-8 left-10 text-5xl opacity-10 animate-pulse">💬</div>
                 <div className="absolute top-6 right-12 text-6xl opacity-10 animate-bounce">🗣️</div>
                 <div className="absolute bottom-10 left-16 text-5xl opacity-10 animate-bounce">🤝</div>
@@ -753,7 +758,7 @@ export default function SocialCommunicationGame({
 
                 <div className="relative z-10 w-full max-w-lg mx-auto p-6 flex flex-col items-center text-center">
                     <div className="mb-6">
-                        <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur border border-violet-100 text-violet-600 text-sm font-black uppercase tracking-widest shadow-sm">
+                        <span className="px-6 py-2.5 rounded-full bg-white/90 backdrop-blur border border-violet-100 text-violet-600 text-sm font-black uppercase tracking-widest shadow-md">
                             Nivo {level} • {totalSituations} situacija
                         </span>
                     </div>
@@ -767,18 +772,18 @@ export default function SocialCommunicationGame({
                         <div className="absolute -bottom-3 -left-3 text-2xl animate-bounce delay-200">❤️</div>
                     </div>
 
-                    <h2 className="text-4xl md:text-5xl font-black text-slate-800 mb-3 tracking-tight">Šta treba da kažeš?</h2>
-                    <p className="text-slate-500 text-base md:text-lg font-medium leading-relaxed mb-4 max-w-sm mx-auto">
-                        Pročitaj situaciju i izaberi <span className="text-violet-600 font-bold">tačan odgovor</span> klikom na dugme.
+                    <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-3 tracking-tight drop-shadow-sm">Šta treba da kažeš?</h2>
+                    <p className="text-slate-800 text-base md:text-lg font-bold leading-relaxed mb-4 max-w-sm mx-auto">
+                        Pročitaj situaciju i izaberi <span className="text-violet-700 font-black">tačan odgovor</span> klikom na dugme.
                     </p>
 
                     {/* Legenda */}
                     <div className="grid grid-cols-2 gap-3 mb-10 w-full max-w-sm">
-                        <div className="bg-white rounded-2xl p-3 shadow text-center border border-green-100">
+                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow text-center border border-green-100">
                             <div className="text-2xl mb-1">✅</div>
                             <div className="text-xs font-bold text-green-700">Tačan odgovor</div>
                         </div>
-                        <div className="bg-white rounded-2xl p-3 shadow text-center border border-blue-100">
+                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow text-center border border-blue-100">
                             <div className="text-2xl mb-1">💡</div>
                             <div className="text-xs font-bold text-blue-700">Pomoć ako zaglaviš</div>
                         </div>

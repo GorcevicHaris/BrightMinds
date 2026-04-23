@@ -230,10 +230,15 @@ export default function EmotionsGame({
     // ── START SCREEN ────────────────────────────────────
     if (!isPlaying) {
         return (
-            <div className="relative flex-1 min-h-[350px] w-full flex items-center justify-center overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 shadow-lg py-10 md:py-6">
+            <div className="relative flex-1 min-h-[350px] w-full flex items-center justify-center overflow-hidden rounded-[2rem] md:rounded-[2.5rem] shadow-lg py-10 md:py-6"
+                style={{ 
+                    backgroundImage: "linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('/images/emocije.png')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                }}>
                 <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
                     <div className="mb-8">
-                        <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-pink-200 text-pink-600 text-sm font-black uppercase tracking-widest shadow-sm">
+                        <span className="px-6 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border border-pink-200 text-pink-600 text-sm font-black uppercase tracking-widest shadow-md">
                             Nivo {level}
                         </span>
                     </div>
@@ -241,10 +246,10 @@ export default function EmotionsGame({
                     <div className="mb-6 w-36 h-36 md:w-44 md:h-44 bg-white rounded-full shadow-2xl border-4 border-pink-100 flex items-center justify-center text-7xl md:text-8xl animate-bounce">
                         {scenario.sceneEmoji}
                     </div>
-                    <h2 className="text-3xl md:text-4xl font-black text-slate-800 mb-3 tracking-tight">
+                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 mb-3 tracking-tight drop-shadow-md">
                         Moja Osećanja
                     </h2>
-                    <p className="text-slate-500 text-base md:text-lg font-semibold mb-10 max-w-xs mx-auto leading-relaxed">
+                    <p className="text-slate-800 text-base md:text-lg font-bold mb-10 max-w-xs mx-auto leading-relaxed">
                         Pogledaj sliku i reci kako se osećaš!
                     </p>
                     <button

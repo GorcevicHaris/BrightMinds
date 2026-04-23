@@ -355,7 +355,12 @@ export default function MemoryGame({ childId, level, onComplete, autoStart, isMo
   // ── START SCREEN ────────────────────────────────────
   if (!isPlaying && moves === 0) {
     return (
-      <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-100 shadow-lg">
+      <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] shadow-lg"
+        style={{ 
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.75), rgba(255,255,255,0.75)), url('/images/spojiparove.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}>
         <div className="absolute top-12 left-12 text-6xl opacity-10 animate-pulse -rotate-12">🃏</div>
         <div className="absolute bottom-16 right-12 text-7xl opacity-10 animate-bounce rotate-12">🎴</div>
         <div className="absolute top-24 right-20 text-5xl opacity-10 animate-pulse rotate-45">❓</div>
@@ -365,7 +370,7 @@ export default function MemoryGame({ childId, level, onComplete, autoStart, isMo
 
         <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
           <div className="mb-8 animate-in slide-in-from-top-4 duration-700">
-            <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-indigo-100 text-indigo-600 text-sm font-black uppercase tracking-widest shadow-sm">
+            <span className="px-6 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border border-indigo-100 text-indigo-600 text-sm font-black uppercase tracking-widest shadow-md">
               Nivo {level}
             </span>
           </div>
@@ -377,9 +382,9 @@ export default function MemoryGame({ childId, level, onComplete, autoStart, isMo
             <div className="absolute -top-4 -right-4 text-3xl animate-bounce delay-100">❓</div>
             <div className="absolute -bottom-4 -left-4 text-3xl animate-bounce delay-300">💡</div>
           </div>
-          <h2 className="text-5xl font-black text-slate-800 mb-4 tracking-tight drop-shadow-sm">Spoji Parove</h2>
-          <p className="text-slate-600 text-xl font-medium leading-relaxed mb-12 max-w-sm mx-auto">
-            Pronađi <span className="text-indigo-600 font-bold">{pairsCount} para</span> istih slika. Zapamti gde se kriju!
+          <h2 className="text-5xl font-black text-slate-900 mb-4 tracking-tight drop-shadow-md">Spoji Parove</h2>
+          <p className="text-slate-800 text-xl font-bold leading-relaxed mb-12 max-w-sm mx-auto">
+            Pronađi <span className="text-indigo-700 font-black">{pairsCount} para</span> istih slika. Zapamti gde se kriju!
           </p>
           <button
             onClick={startGame}

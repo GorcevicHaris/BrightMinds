@@ -420,7 +420,12 @@ export default function SoundToImageGame({ childId, level, onComplete, autoStart
     // ── Start Screen ────────────────────────────────────────
     if (!isPlaying && round === 0) {
         return (
-            <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100 shadow-lg">
+            <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] shadow-lg"
+                style={{ 
+                    backgroundImage: "linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('/images/slusajispoji.png')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                }}>
                 <div className="absolute top-12 left-12 text-6xl opacity-10 animate-pulse -rotate-12">🔊</div>
                 <div className="absolute bottom-16 right-12 text-7xl opacity-10 animate-bounce rotate-12">🎵</div>
                 <div className="absolute top-24 right-20 text-5xl opacity-10 animate-pulse rotate-45">👂</div>
@@ -430,7 +435,7 @@ export default function SoundToImageGame({ childId, level, onComplete, autoStart
 
                 <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
                     <div className="mb-8 animate-in slide-in-from-top-4 duration-700">
-                        <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-cyan-100 text-cyan-600 text-sm font-black uppercase tracking-widest shadow-sm">
+                        <span className="px-6 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border border-cyan-100 text-cyan-600 text-sm font-black uppercase tracking-widest shadow-md">
                             Nivo {level} / 15
                         </span>
                     </div>
@@ -444,11 +449,11 @@ export default function SoundToImageGame({ childId, level, onComplete, autoStart
                         <div className="absolute -bottom-4 -left-4 text-3xl animate-bounce delay-300">👂</div>
                     </div>
 
-                    <h2 className="text-5xl font-black text-slate-800 mb-4 tracking-tight drop-shadow-sm">Zvuk → Slika</h2>
-                    <p className="text-slate-600 text-xl font-medium leading-relaxed mb-4 max-w-sm mx-auto">
-                        Zvuk se pušta <span className="text-cyan-600 font-bold">automatski</span> — izaberi tačnu sliku!
+                    <h2 className="text-5xl font-black text-slate-900 mb-4 tracking-tight drop-shadow-md">Zvuk → Slika</h2>
+                    <p className="text-slate-800 text-xl font-bold leading-relaxed mb-4 max-w-sm mx-auto">
+                        Zvuk se pušta <span className="text-cyan-700 font-black">automatski</span> — izaberi tačnu sliku!
                     </p>
-                    <p className="text-slate-400 text-sm font-medium mb-12 max-w-sm mx-auto">
+                    <p className="text-slate-600 text-sm font-bold mb-12 max-w-sm mx-auto bg-white/50 py-2 rounded-xl backdrop-blur-sm">
                         {cfg.rounds} pitanja · {cfg.optionsCount} ponuđena odgovora
                     </p>
 

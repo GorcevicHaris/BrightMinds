@@ -59,7 +59,7 @@ export default function ChildPageClient({ child, childId }: Props) {
             {/* ── TOP HEADER ────────────────────────────────────────────
                   Keep it VERY simple for kids — just name + exit + nav  */}
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b-2 border-purple-100/60 shadow-sm">
-                <div className="max-w-5xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
+                <div className="max-w-none mx-auto px-6 sm:px-12 h-16 sm:h-20 flex items-center justify-between gap-3">
 
                     {/* Left: Avatar + Name */}
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -129,44 +129,12 @@ export default function ChildPageClient({ child, childId }: Props) {
             </header>
 
             {/* ── MAIN CONTENT ──────────────────────────────────────────── */}
-            <main className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
+            <main className="max-w-none mx-auto px-4 sm:px-8 md:px-12 py-4 sm:py-10">
 
                 {activeView === "game" ? (
                     /* ── GAME VIEW ─────────────────────────────────────────── */
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
 
-                        {/* Greeting banner */}
-                        <div className="mb-5 sm:mb-8 relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-violet-500 via-purple-500 to-blue-500 p-5 sm:p-8 shadow-2xl shadow-violet-200">
-                            {/* Decorative blobs */}
-                            <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl" />
-                            <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full -ml-8 -mb-8 blur-xl" />
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-
-                            <div className="relative z-10 flex items-center justify-between gap-4">
-                                <div>
-                                    <p className="text-white/70 text-xs sm:text-sm font-bold uppercase tracking-widest mb-1">Dobro jutro! 🌟</p>
-                                    <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-white leading-tight mb-1 sm:mb-2">
-                                        Hajde da igramo, <br className="hidden sm:block" />{firstName}! 🎮
-                                    </h1>
-                                    <p className="text-white/80 text-sm sm:text-base font-semibold">
-                                        Odaberi svoju omiljenu igru i zaigraj!
-                                    </p>
-                                </div>
-
-                                {/* Big friendly emoji decoration */}
-                                <div className="hidden sm:flex flex-col items-center gap-2 shrink-0">
-                                    <div className="text-6xl sm:text-7xl md:text-8xl animate-bounce" style={{ animationDuration: "2s" }}>
-                                        🎯
-                                    </div>
-                                    {child.streak > 0 && (
-                                        <div className="flex items-center gap-1 bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/30">
-                                            <span className="text-sm">🔥</span>
-                                            <span className="text-white font-black text-xs sm:text-sm">{child.streak} dana zaredom!</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
 
                         {/* Game container */}
                         <GameContainer childId={childId} childName={firstName} />

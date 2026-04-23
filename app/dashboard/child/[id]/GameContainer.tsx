@@ -22,13 +22,13 @@ interface GameContainerProps {
 
 // ── Igre ───────────────────────────────────────────────────────────────────────
 const GAMES = [
-  { id: "shapes" as GameId,       title: "Složi oblik",        description: "Prepoznavanje oblika i boja",          icon: "🔷", gradient: "from-emerald-400 to-teal-500",   cardBg: "bg-emerald-50",   border: "border-emerald-200" },
-  { id: "memory" as GameId,       title: "Spoji parove",       description: "Vežbanje memorije i pažnje",           icon: "🧠", gradient: "from-purple-400 to-indigo-500",  cardBg: "bg-purple-50",    border: "border-purple-200" },
-  { id: "coloring" as GameId,     title: "Bojanka",            description: "Kreativnost i fina motorika",          icon: "🎨", gradient: "from-orange-400 to-pink-500",    cardBg: "bg-orange-50",    border: "border-orange-200" },
-  { id: "sound-to-image" as GameId, title: "Zvuk → Slika",    description: "Slušna pažnja i povezivanje",          icon: "🔊", gradient: "from-cyan-400 to-blue-500",      cardBg: "bg-cyan-50",      border: "border-cyan-200" },
-  { id: "social" as GameId,       title: "Šta da kažeš?",     description: "Socijalna komunikacija i govor",        icon: "💬", gradient: "from-violet-400 to-purple-600",  cardBg: "bg-violet-50",    border: "border-violet-200" },
-  { id: "social-story" as GameId, title: "Socijalne Priče",   description: "Uči o školi, doktoru, parku i još mnogo!", icon: "📖", gradient: "from-teal-500 to-emerald-600", cardBg: "bg-teal-50",      border: "border-teal-200" },
-  { id: "emotions" as GameId,     title: "Emocije",           description: "Kako se osećaš u različitim situacijama?", icon: "😊", gradient: "from-pink-400 to-rose-500",  cardBg: "bg-pink-50",      border: "border-pink-200" },
+  { id: "shapes" as GameId, title: "Pogodi oblik", description: "Prepoznavanje oblika i boja", icon: "🔷", gradient: "from-emerald-400 to-teal-500", cardBg: "bg-emerald-50", border: "border-emerald-200", bgImage: "/images/pogodioblik.png" },
+  { id: "memory" as GameId, title: "Spoji parove", description: "Vežbanje memorije i pažnje", icon: "🧠", gradient: "from-purple-400 to-indigo-500", cardBg: "bg-purple-50", border: "border-purple-200", bgImage: "/images/spojiparove.png" },
+  { id: "coloring" as GameId, title: "Bojanka", description: "Kreativnost i fina motorika", icon: "🎨", gradient: "from-orange-400 to-pink-500", cardBg: "bg-orange-50", border: "border-orange-200", bgImage: "/images/oboji.png" },
+  { id: "sound-to-image" as GameId, title: "Zvuk → Slika", description: "Slušna pažnja i povezivanje", icon: "🔊", gradient: "from-cyan-400 to-blue-500", cardBg: "bg-cyan-50", border: "border-cyan-200", bgImage: "/images/slusajispoji.png" },
+  { id: "social" as GameId, title: "Šta da kažeš?", description: "Socijalna komunikacija i govor", icon: "💬", gradient: "from-violet-400 to-purple-600", cardBg: "bg-violet-50", border: "border-violet-200", bgImage: "/images/stareci.png" },
+  { id: "social-story" as GameId, title: "Socijalne Priče", description: "Uči o školi, doktoru, parku i još mnogo!", icon: "📖", gradient: "from-teal-500 to-emerald-600", cardBg: "bg-teal-50", border: "border-teal-200", bgImage: "/images/socijalneprice.png" },
+  { id: "emotions" as GameId, title: "Emocije", description: "Kako se osećaš u različitim situacijama?", icon: "😊", gradient: "from-pink-400 to-rose-500", cardBg: "bg-pink-50", border: "border-pink-200", bgImage: "/images/emocije.png" },
 ];
 
 // ── Konfiguracija težina ───────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     fetch(`/api/children/${childId}/unlocked-levels?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
       .then(data => { if (data.unlockedLevels) setUnlockedLevels(data.unlockedLevels); })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   useEffect(() => {
@@ -127,7 +127,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     fetch(`/api/children/${childId}/unlocked-levels?t=${Date.now()}`, { cache: "no-store" })
       .then(r => r.json())
       .then(data => { if (data.unlockedLevels) setUnlockedLevels(data.unlockedLevels); })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLevelsLoading(false));
   }, [childId]);
 
@@ -246,92 +246,34 @@ export default function GameContainer({ childId, childName }: GameContainerProps
           Izaberi igru koju želiš da igraš 👇
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-none mx-auto px-0">
           {GAMES.map(game => {
-            const maxUnlocked = getMaxUnlocked(game.id);
-            const easyDone   = completedInTier("easy",   maxUnlocked);
-            const mediumDone = completedInTier("medium", maxUnlocked);
-            const hardDone   = completedInTier("hard",   maxUnlocked);
-            const mediumUnlocked = isDiffUnlocked("medium", maxUnlocked);
-            const hardUnlocked   = isDiffUnlocked("hard",   maxUnlocked);
-            const totalDone = Math.min(easyDone, 5) + Math.min(mediumDone, 5) + Math.min(hardDone, 5);
-            const pct = Math.round((totalDone / 15) * 100);
-
             return (
               <button
                 key={game.id}
                 id={`game-card-${game.id}`}
                 onClick={() => handleGameSelect(game.id)}
-                className="group relative flex flex-col rounded-2xl sm:rounded-3xl overflow-hidden text-left transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] shadow-md hover:shadow-2xl bg-white select-none"
+                className="group relative aspect-video rounded-xl md:rounded-2xl overflow-hidden transition-all duration-700 hover:scale-[1.02] active:scale-[0.99] shadow-xl hover:shadow-2xl bg-white select-none border-[6px] border-white"
                 style={{ WebkitTapHighlightColor: "transparent" }}
               >
-                {/* Gradient top — big icon zone */}
-                <div className={`relative bg-gradient-to-br ${game.gradient} flex flex-col items-center justify-center pt-6 pb-5 sm:pt-8 sm:pb-6 px-3`}>
-                  <div className="absolute inset-0 opacity-20"
-                    style={{ backgroundImage: "radial-gradient(circle at 70% 20%, rgba(255,255,255,0.5) 0%, transparent 60%)" }} />
-                  <div className="text-5xl sm:text-6xl md:text-7xl mb-1 drop-shadow-lg group-hover:scale-110 group-hover:-rotate-3 transition-transform duration-300">
-                    {game.icon}
-                  </div>
-                  {totalDone > 0 && (
-                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-white/30 backdrop-blur-sm px-2 py-0.5 rounded-full border border-white/50">
-                      <span className="text-white font-black text-[9px] sm:text-[10px]">{totalDone}/15 ⭐</span>
-                    </div>
-                  )}
-                </div>
+                {/* Clean Original Illustration */}
+                <div 
+                  className="absolute inset-0 bg-cover bg-center transition-transform duration-[2s] group-hover:scale-105"
+                  style={{ backgroundImage: `url(${game.bgImage})` }}
+                />
+                
+                {/* Minimalist Hover Overlay */}
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                {/* Card body */}
-                <div className="flex-1 flex flex-col p-3 sm:p-4 bg-white">
-                  <h3 className="font-black text-slate-900 text-sm sm:text-base md:text-lg leading-tight mb-1">
-                    {game.title}
-                  </h3>
-                  <p className="text-slate-400 text-[10px] sm:text-xs font-medium mb-3 leading-snug line-clamp-2 hidden sm:block">
-                    {game.description}
-                  </p>
-
-                  {/* Difficulty mini badges */}
-                  <div className="flex items-center gap-1 sm:gap-1.5 mt-auto">
-                    <div className="flex-1 flex flex-col items-center gap-0.5 bg-emerald-50 rounded-lg py-1.5 px-1 border border-emerald-100">
-                      <span className="text-sm leading-none">🌱</span>
-                      <div className="flex gap-0.5">
-                        {[1,2,3,4,5].map(i => (
-                          <div key={i} className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${i <= easyDone ? "bg-emerald-500" : "bg-emerald-200"}`} />
-                        ))}
-                      </div>
-                    </div>
-                    <div className={`flex-1 flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-1 border ${mediumUnlocked ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-slate-100 opacity-40"}`}>
-                      <span className="text-sm leading-none">{mediumUnlocked ? "⚡" : "🔒"}</span>
-                      <div className="flex gap-0.5">
-                        {[1,2,3,4,5].map(i => (
-                          <div key={i} className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${mediumUnlocked && i <= mediumDone ? "bg-amber-500" : "bg-slate-200"}`} />
-                        ))}
-                      </div>
-                    </div>
-                    <div className={`flex-1 flex flex-col items-center gap-0.5 rounded-lg py-1.5 px-1 border ${hardUnlocked ? "bg-rose-50 border-rose-100" : "bg-slate-50 border-slate-100 opacity-40"}`}>
-                      <span className="text-sm leading-none">{hardUnlocked ? "🔥" : "🔒"}</span>
-                      <div className="flex gap-0.5">
-                        {[1,2,3,4,5].map(i => (
-                          <div key={i} className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${hardUnlocked && i <= hardDone ? "bg-rose-500" : "bg-slate-200"}`} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Overall progress bar */}
-                  <div className="mt-2">
-                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full bg-gradient-to-r ${game.gradient} transition-all duration-700`}
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                {/* Play Button - Sleek and Minimalist */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-50 group-hover:scale-100">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/30 backdrop-blur-md rounded-full border-2 border-white/80 flex items-center justify-center shadow-xl">
+                    <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[18px] border-l-white border-b-[10px] border-b-transparent ml-1" />
                   </div>
                 </div>
 
-                {/* Bottom CTA */}
-                <div className={`bg-gradient-to-r ${game.gradient} px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between`}>
-                  <span className="text-white font-black text-xs sm:text-sm uppercase tracking-wider">Igraj!</span>
-                  <span className="text-white text-base sm:text-xl group-hover:translate-x-1 transition-transform duration-200">▶</span>
-                </div>
+                {/* Animated Shine Effect */}
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 bg-gradient-to-tr from-white/0 via-white/30 to-white/0 -translate-x-full group-hover:translate-x-full transform transition-transform duration-[1.5s]" />
               </button>
             );
           })}
@@ -347,158 +289,146 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     const maxUnlocked = getMaxUnlocked(selectedGame!);
 
     return (
-      <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden"
-        style={{ background: "linear-gradient(160deg, #f0f4ff 0%, #fdf4ff 50%, #f0fdf4 100%)" }}>
-
-        {/* Decorative blobs — very child-friendly pastel */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-200/40 rounded-full blur-3xl" />
-          <div className="absolute -bottom-20 -right-20 w-72 h-72 bg-blue-200/40 rounded-full blur-3xl" />
-          <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-48 h-48 bg-pink-200/30 rounded-full blur-3xl" />
+      <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-slate-50">
+        {/* Dynamic Background Image with Professional Blur */}
+        <div className="absolute inset-0 z-0">
+          <div
+            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-30"
+            style={{ backgroundImage: `url(${activeGame.bgImage})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-white/90 backdrop-blur-3xl" />
         </div>
 
-        {/* ── Top bar ── */}
-        <div className="relative z-10 flex items-center gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-white/70 backdrop-blur-md border-b border-slate-200/60 shadow-sm flex-shrink-0">
+        {/* Animated Decorative Blobs */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-40">
+          <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-purple-300/40 rounded-full blur-[120px] animate-pulse" />
+          <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] bg-blue-300/40 rounded-full blur-[130px] animate-pulse delay-700" />
+          <div className="absolute top-[20%] left-[40%] w-[30%] h-[30%] bg-pink-300/30 rounded-full blur-[100px] animate-pulse delay-1000" />
+        </div>
+
+        {/* ── Top Navigation ── */}
+        <div className="relative z-10 flex items-center justify-between px-6 py-4 sm:py-6 border-b border-white/50 bg-white/20 backdrop-blur-sm shadow-sm">
           <button
             onClick={handleExit}
-            aria-label="Nazad na igre"
-            className="flex items-center gap-1.5 text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 active:scale-95 px-3 py-2 rounded-xl font-black text-xs sm:text-sm transition-all"
+            className="group flex items-center gap-3 text-slate-600 hover:text-slate-900 bg-white/80 hover:bg-white active:scale-95 px-5 py-3 rounded-2xl font-black text-sm transition-all shadow-md hover:shadow-lg border border-slate-100"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span className="hidden sm:inline">Nazad</span>
+            <div className="bg-slate-100 p-1.5 rounded-lg group-hover:-translate-x-1 transition-transform">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+              </svg>
+            </div>
+            <span>Nazad</span>
           </button>
 
-          <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br ${activeGame.gradient} flex items-center justify-center text-2xl sm:text-3xl shadow-lg shrink-0`}>
-            {activeGame.icon}
+          <div className="flex flex-col items-center">
+            <div className={`h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white shadow-xl flex items-center justify-center text-3xl mb-1 border-2 border-white/80`}>
+              {activeGame.icon}
+            </div>
+            <h2 className="text-sm sm:text-lg font-black text-slate-800 tracking-tight">{activeGame.title}</h2>
           </div>
-          <div className="flex-1 min-w-0">
-            <h2 className="text-base sm:text-xl font-black text-slate-900 leading-tight truncate">{activeGame.title}</h2>
-            <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Odaberi težinu</p>
-          </div>
+
+          <div className="w-24 hidden sm:block" /> {/* Spacer */}
         </div>
 
-        {/* ── Main Content ── */}
-        <div className="relative z-10 flex-1 overflow-y-auto flex flex-col items-center justify-start sm:justify-center px-4 sm:px-6 py-5 sm:py-8">
+        {/* ── Main Layout ── */}
+        <div className="relative z-10 flex-1 overflow-y-auto px-6 py-8 md:py-12 flex flex-col items-center">
 
-          {/* Title */}
-          <div className="text-center mb-5 sm:mb-8">
-            <div className="inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full shadow-sm border border-slate-200 mb-3">
-              <span className="text-lg sm:text-xl">{activeGame.icon}</span>
-              <span className="text-xs sm:text-sm font-black text-slate-600 uppercase tracking-wider">{activeGame.title}</span>
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
-              Koliko je teško? 🎯
+          <div className="text-center mb-10 md:mb-16">
+            <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight mb-4 drop-shadow-sm">
+              Spreman za igru? 🚀
             </h1>
+            <p className="text-slate-500 text-lg md:text-xl font-bold max-w-2xl">
+              Odaberi nivo težine i pokaži koliko si vešt!
+            </p>
           </div>
 
-          {/* ── 3 Difficulty Cards ── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-5 w-full max-w-3xl">
+          {/* Difficulty Selection Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10 w-full max-w-6xl pb-10">
             {DIFFICULTY_ORDER.map((diff, cardIdx) => {
               const cfg = DIFF_CONFIG[diff];
               const unlocked = isDiffUnlocked(diff, maxUnlocked);
               const done = completedInTier(diff, maxUnlocked);
               const allDone = done === 5;
 
-              // Card-specific styles
-              const cardStyles = [
-                { bg: "from-emerald-400 to-teal-500",    shadow: "shadow-emerald-200", ring: "ring-emerald-300", lightBg: "bg-emerald-50",   border: "border-emerald-200" },
-                { bg: "from-amber-400 to-orange-500",    shadow: "shadow-amber-200",   ring: "ring-amber-300",   lightBg: "bg-amber-50",     border: "border-amber-200" },
-                { bg: "from-rose-500 to-pink-600",       shadow: "shadow-rose-200",    ring: "ring-rose-300",    lightBg: "bg-rose-50",      border: "border-rose-200" },
-              ][cardIdx];
+              const themes = {
+                easy: { color: "emerald", icon: "🌱", shadow: "shadow-emerald-200", border: "border-emerald-200" },
+                medium: { color: "amber", icon: "⚡", shadow: "shadow-amber-200", border: "border-amber-200" },
+                hard: { color: "rose", icon: "🔥", shadow: "shadow-rose-200", border: "border-rose-200" }
+              };
+              const theme = themes[diff as keyof typeof themes];
 
               return (
                 <button
                   key={diff}
                   onClick={() => unlocked && handleDifficultySelect(diff)}
                   disabled={!unlocked}
-                  className={`group relative flex flex-col rounded-2xl sm:rounded-3xl overflow-hidden text-center transition-all duration-300 select-none
+                  className={`group relative flex flex-col rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-center transition-all duration-500 border-4
                     ${unlocked
-                      ? `hover:scale-[1.03] hover:-translate-y-1 active:scale-[0.97] shadow-2xl ${cardStyles.shadow} cursor-pointer`
-                      : "opacity-55 cursor-not-allowed shadow-md grayscale"
+                      ? `bg-white hover:scale-[1.05] hover:-translate-y-2 active:scale-95 shadow-2xl ${theme.shadow} ${theme.border} cursor-pointer`
+                      : `bg-slate-50/50 border-slate-200 opacity-60 cursor-not-allowed`
                     }`}
-                  style={{ WebkitTapHighlightColor: "transparent" }}
                 >
-                  {/* ── Cijela kartica je jedan gradient ── */}
-                  <div className={`relative flex flex-col items-center bg-gradient-to-b ${cardStyles.bg} w-full h-full p-5 sm:p-7`}>
-
-                    {/* Sjaj (shine) odozgo */}
-                    <div className="absolute top-0 left-0 right-0 h-2/5 bg-gradient-to-b from-white/20 to-transparent rounded-t-2xl pointer-events-none" />
-                    {/* Sjena odozdo */}
-                    <div className="absolute bottom-0 left-0 right-0 h-1/4 bg-black/10 rounded-b-2xl pointer-events-none" />
-
-                    {/* Completed badge */}
-                    {unlocked && allDone && (
-                      <div className="absolute top-2.5 right-2.5 bg-white/30 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/50">
-                        <span className="text-white font-black text-[9px] sm:text-[10px] uppercase tracking-wider">✅ Gotovo!</span>
-                      </div>
-                    )}
-
-                    {/* Big emoji */}
-                    <div className={`relative z-10 text-5xl sm:text-7xl mb-3 sm:mb-4 drop-shadow-2xl transition-transform duration-300
-                      ${unlocked ? "group-hover:scale-110 group-hover:-rotate-6" : ""}`}>
-                      {unlocked ? cfg.emoji : "🔒"}
-                    </div>
-
-                    {/* Title */}
-                    <h2 className="relative z-10 text-2xl sm:text-3xl font-black text-white tracking-tight drop-shadow mb-1">
-                      {cfg.label}
-                    </h2>
-                    <p className="relative z-10 text-white/80 text-xs sm:text-sm font-bold mb-3 sm:mb-4">
-                      {cfg.sublabel}
-                    </p>
-
-                    {/* Level range pill */}
-                    <div className="relative z-10 mb-4 sm:mb-5 bg-black/20 backdrop-blur-sm border border-white/25 px-4 py-1.5 rounded-full">
-                      <span className="text-white/90 text-[11px] sm:text-xs font-black tracking-widest">{cfg.range}</span>
-                    </div>
-
-                    {/* Star progress — 5 zvjezdica */}
-                    <div className="relative z-10 flex items-center justify-center gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                      {[1,2,3,4,5].map(i => (
-                        <div key={i}
-                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-base sm:text-xl transition-all duration-300
-                            ${unlocked && i <= done
-                              ? "bg-white shadow-lg scale-105"
-                              : "bg-white/20 border border-white/30"
-                            }`}>
-                          {unlocked && i <= done
-                            ? <span>⭐</span>
-                            : <span className="text-white/40 text-xs font-black">{i}</span>}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Progress text */}
-                    <p className="relative z-10 text-white/80 text-[11px] sm:text-xs font-bold mb-4 sm:mb-5">
-                      {!unlocked
-                        ? cfg.lockMsg
-                        : done === 0 ? "Još nisi počeo/la"
-                        : done === 5 ? "Sve urađeno! 🏆"
-                        : `${done} od 5 završeno`}
-                    </p>
-
-                    {/* CTA */}
-                    <div className="relative z-10 w-full bg-white/25 hover:bg-white/35 border-2 border-white/50 rounded-xl sm:rounded-2xl py-3 sm:py-4 flex items-center justify-center gap-2 transition-all group-hover:shadow-xl">
-                      <span className="text-white font-black text-sm sm:text-xl uppercase tracking-wider drop-shadow">
-                        {!unlocked ? "🔒 Zaključano" : allDone ? "🔁 Ponovi" : "▶ Igraj!"}
-                      </span>
+                  {/* Status Badge */}
+                  <div className="absolute top-6 inset-x-0 flex justify-center">
+                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 bg-white
+                      ${unlocked ? `text-${theme.color}-500 border-${theme.color}-100` : "text-slate-400 border-slate-200"}`}>
+                      {unlocked ? (allDone ? "Sjajno!" : "Otključano") : "Zaključano"}
                     </div>
                   </div>
+
+                  {/* Main Visual */}
+                  <div className={`w-28 h-28 md:w-36 md:h-36 mx-auto rounded-full flex items-center justify-center text-6xl md:text-8xl mb-8 transition-transform duration-500
+                    ${unlocked
+                      ? `bg-${theme.color}-50/50 group-hover:scale-110 group-hover:rotate-6`
+                      : "bg-slate-100"}`}>
+                    <span className={unlocked ? "drop-shadow-md" : "grayscale opacity-50"}>
+                      {unlocked ? theme.icon : "🔒"}
+                    </span>
+                  </div>
+
+                  {/* Text Content */}
+                  <div className="space-y-2 mb-8">
+                    <h3 className={`text-2xl md:text-3xl font-black ${unlocked ? "text-slate-800" : "text-slate-400"}`}>
+                      {cfg.label}
+                    </h3>
+                    <p className="text-slate-500 font-bold text-sm md:text-base leading-snug">
+                      {unlocked ? cfg.sublabel : cfg.lockMsg}
+                    </p>
+                  </div>
+
+                  {/* Progress Indicators */}
+                  <div className="mt-auto">
+                    <div className="flex gap-2 justify-center mb-4">
+                      {[1, 2, 3, 4, 5].map(i => (
+                        <div key={i} className={`h-3 w-3 md:h-4 md:w-4 rounded-full border-2 transition-all duration-500
+                          ${i <= done
+                            ? `bg-${theme.color}-500 border-${theme.color}-200 scale-110`
+                            : `bg-slate-100 border-slate-200`}`}
+                        />
+                      ))}
+                    </div>
+                    <div className="bg-slate-100 px-4 py-2 rounded-2xl inline-block">
+                      <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{cfg.range}</span>
+                    </div>
+                  </div>
+
+                  {/* Hover Interaction Overlay */}
+                  {unlocked && (
+                    <div className={`absolute bottom-6 inset-x-0 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0`}>
+                      <span className={`px-8 py-3 rounded-2xl bg-gradient-to-r from-${theme.color}-500 to-${theme.color}-600 text-white font-black text-sm uppercase tracking-wider shadow-xl shadow-${theme.color}-200`}>
+                        Započni! ▶
+                      </span>
+                    </div>
+                  )}
                 </button>
               );
             })}
           </div>
-
-          {/* Bottom hint */}
-          <p className="mt-5 sm:mt-8 text-center text-slate-400 text-xs font-bold animate-pulse">
-            🌟 Završi Lako da otključaš Srednje — pa Teško!
-          </p>
         </div>
       </div>
     );
   }
+
 
   // ══════════════════════════════════════════════════════════════════════════
   // SCREEN C: Playing
@@ -535,7 +465,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                 </span>
                 {/* Level within tier dots */}
                 <div className="hidden sm:flex items-center gap-1">
-                  {[1,2,3,4,5].map(i => (
+                  {[1, 2, 3, 4, 5].map(i => (
                     <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i <= levelInTier ? 'bg-slate-700' : 'bg-slate-200'}`} />
                   ))}
                 </div>
@@ -601,59 +531,60 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     const nextCfg = nextDiff ? DIFF_CONFIG[nextDiff] : null;
 
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-6 text-center overflow-hidden"
-        style={{ background: `linear-gradient(145deg,#0d1117 0%,#161b27 100%)` }}>
-
-        {/* Ambient glow */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-20 blur-3xl animate-pulse"
-            style={{ background: `radial-gradient(circle, ${currentCfg.glow}, transparent)` }} />
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-slate-50">
+        {/* Dynamic Background with Professional Blur */}
+        <div className="absolute inset-0 z-0">
+          <div
+            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-40"
+            style={{ backgroundImage: `url(${activeGame.bgImage})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-white/90 backdrop-blur-3xl" />
         </div>
 
-        <div className="relative z-10 w-full max-w-lg flex flex-col items-center">
-
-          {/* Icon area */}
-          <div className="relative mb-6 sm:mb-8">
-            <div className="text-7xl sm:text-9xl animate-bounce">{currentCfg.emoji}</div>
-            <div className="absolute -top-2 -right-2 text-2xl sm:text-3xl animate-spin" style={{ animationDuration: "3s" }}>✨</div>
-            <div className="absolute -bottom-2 -left-2 text-xl sm:text-2xl animate-ping" style={{ animationDuration: "2s" }}>🌟</div>
+        <div className="relative z-10 w-full max-w-xl flex flex-col items-center animate-in zoom-in duration-500">
+          {/* Main Visual Celebration */}
+          <div className="relative mb-10">
+            <div className={`w-44 h-44 md:w-56 md:h-56 rounded-full bg-white shadow-2xl flex items-center justify-center text-8xl md:text-9xl border-8 border-white`}>
+              {currentCfg.emoji}
+            </div>
+            <div className="absolute -top-4 -right-4 text-5xl animate-bounce">🎊</div>
+            <div className="absolute -bottom-4 -left-4 text-5xl animate-bounce delay-300">🎉</div>
           </div>
 
-          {/* Completed tier badge */}
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r ${currentCfg.gradient} mb-4 sm:mb-6 shadow-lg`}
-            style={{ boxShadow: `0 4px 20px ${currentCfg.glow}` }}>
-            <span className="text-sm sm:text-base font-black text-white uppercase tracking-widest">{currentCfg.label} — ZAVRŠENO!</span>
+          <div className="mb-8">
+            <div className={`inline-flex items-center gap-3 px-6 py-2 rounded-full border-2 border-${currentCfg.badge.split('-')[1]}-100 bg-white mb-4 shadow-lg text-${currentCfg.badge.split('-')[1]}-600`}>
+              <span className="text-sm md:text-base font-black uppercase tracking-widest">{currentCfg.label} — NIVOA ZAVRŠENO!</span>
+            </div>
+            <h1 className="text-4xl md:text-7xl font-black text-slate-900 mb-4 tracking-tight leading-tight">
+              Sjajno! ✨
+            </h1>
+            <p className="text-slate-500 text-lg md:text-xl font-bold max-w-md leading-relaxed">
+              Pobedio si svih <span className="text-slate-900 font-black">5 {currentCfg.label.toLowerCase()} nivoa</span> u igri {activeGame.title}!
+            </p>
           </div>
-
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black text-white mb-3 sm:mb-4 tracking-tight leading-tight">
-            Sjajno! 🎉
-          </h1>
-          <p className="text-white/70 text-base sm:text-lg font-medium mb-6 sm:mb-8 max-w-sm leading-relaxed">
-            Završio/la si svih <span className="text-white font-black">5 {currentCfg.label.toLowerCase()} nivoa</span> u igri {activeGame.title}!
-          </p>
 
           {/* Stars display */}
-          <div className="flex items-center gap-2 sm:gap-3 mb-6 sm:mb-10">
-            {[1,2,3,4,5].map(i => (
-              <span key={i} className="text-2xl sm:text-4xl" style={{ animationDelay: `${i * 0.15}s` }}>⭐</span>
+          <div className="flex items-center gap-3 md:gap-4 mb-12">
+            {[1, 2, 3, 4, 5].map(i => (
+              <div key={i} className="text-4xl md:text-6xl animate-pulse" style={{ animationDelay: `${i * 0.1}s` }}>⭐</div>
             ))}
           </div>
 
           {/* Next difficulty unlock message */}
           {nextCfg && (
-            <div className="w-full mb-5 sm:mb-6 p-4 sm:p-5 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm flex items-center gap-3 sm:gap-4 text-left">
-              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br ${nextCfg.gradient} flex items-center justify-center text-2xl sm:text-3xl shrink-0 shadow-lg`}>
+            <div className={`w-full mb-10 p-6 rounded-[2.5rem] border-2 border-${nextCfg.badge.split('-')[1]}-100 bg-white shadow-xl flex items-center gap-5 text-left`}>
+              <div className={`w-16 h-16 rounded-2xl bg-${nextCfg.badge.split('-')[1]}-500 flex items-center justify-center text-4xl shrink-0 shadow-lg text-white`}>
                 {nextCfg.emoji}
               </div>
               <div>
-                <p className="text-white font-black text-sm sm:text-base">🔓 Otključano: {nextCfg.label}!</p>
-                <p className="text-white/50 text-xs sm:text-sm">{nextCfg.range} je sada dostupno</p>
+                <p className={`text-${nextCfg.badge.split('-')[1]}-600 font-black text-lg`}>🔓 Otključano: {nextCfg.label}!</p>
+                <p className="text-slate-400 font-bold text-sm">{nextCfg.range} je sada spremno za tebe</p>
               </div>
             </div>
           )}
 
           {/* Buttons */}
-          <div className="w-full flex flex-col gap-3 max-w-sm">
+          <div className="w-full flex flex-col gap-4 max-w-md">
             {nextCfg && (
               <button
                 onClick={() => {
@@ -663,26 +594,19 @@ export default function GameContainer({ childId, childName }: GameContainerProps
                   setAutoStart(false);
                   setScreen("playing");
                 }}
-                className={`w-full relative p-1 rounded-2xl bg-gradient-to-r ${nextCfg.gradient} shadow-2xl transition-all duration-300 hover:scale-[1.03] active:scale-[0.97]`}
-                style={{ boxShadow: `0 8px 30px ${nextCfg.glow}` }}
+                className={`w-full group bg-${nextCfg.badge.split('-')[1]}-500 hover:bg-${nextCfg.badge.split('-')[1]}-600 text-white rounded-3xl p-1.5 transition-all duration-300 shadow-xl shadow-${nextCfg.badge.split('-')[1]}-100 hover:-translate-y-1`}
               >
-                <div className="bg-white/10 border border-white/20 rounded-xl px-6 py-4 flex items-center justify-center gap-3">
-                  <span className="text-xl">{nextCfg.emoji}</span>
-                  <span className="text-base sm:text-xl font-black text-white uppercase tracking-widest">Igraj {nextCfg.label}</span>
+                <div className="border-2 border-white/20 rounded-2xl px-8 py-5 flex items-center justify-center gap-4">
+                  <span className="text-xl sm:text-2xl font-black uppercase tracking-widest leading-none">Igraj {nextCfg.label}</span>
+                  <div className="w-12 h-12 bg-white text-slate-900 rounded-xl flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform">▶</div>
                 </div>
               </button>
             )}
             <button
               onClick={() => setScreen("difficulty-select")}
-              className="w-full px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 text-white/80 font-bold text-sm sm:text-base uppercase tracking-widest transition-all duration-200"
+              className="w-full px-8 py-5 rounded-3xl bg-white hover:bg-slate-50 border-2 border-slate-100 text-slate-500 font-black text-sm sm:text-base uppercase tracking-widest transition-all duration-200 shadow-md"
             >
               Nazad na težine
-            </button>
-            <button
-              onClick={handleExit}
-              className="w-full px-6 py-3 rounded-2xl bg-transparent hover:bg-white/5 text-white/40 hover:text-white/60 font-bold text-sm uppercase tracking-widest transition-all duration-200"
-            >
-              Nazad na igre
             </button>
           </div>
         </div>
@@ -695,51 +619,51 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   // ══════════════════════════════════════════════════════════════════════════
   if (screen === "all-finished" && activeGame) {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-8 text-center overflow-hidden"
-        style={{ background: "linear-gradient(145deg,#0d1117 0%,#1a1333 50%,#0d1117 100%)" }}>
-
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-15 blur-3xl animate-pulse"
-            style={{ background: "radial-gradient(circle, rgba(250,204,21,0.5), transparent)" }} />
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-slate-900">
+        {/* Professional Celebration Background */}
+        <div className="absolute inset-0 z-0">
+          <div
+            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-60"
+            style={{ backgroundImage: `url(${activeGame.bgImage})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900/90 backdrop-blur-2xl" />
         </div>
 
-        <div className="relative z-10 w-full max-w-md flex flex-col items-center">
-          <div className="relative mb-6 sm:mb-8">
-            <div className="text-8xl sm:text-[120px] md:text-[140px] animate-bounce">🏆</div>
-            <div className="absolute -top-4 -right-4 text-3xl sm:text-4xl animate-pulse">✨</div>
-            <div className="absolute top-1/2 -left-6 text-2xl sm:text-3xl animate-ping" style={{ animationDuration: "2s" }}>🎉</div>
+        <div className="relative z-10 w-full max-w-2xl flex flex-col items-center animate-in zoom-in duration-700">
+          <div className="relative mb-12 transform scale-125">
+            <div className="text-8xl sm:text-[140px] md:text-[180px] drop-shadow-2xl animate-bounce">🏆</div>
+            <div className="absolute -top-8 -right-8 text-6xl animate-pulse">✨</div>
+            <div className="absolute top-1/2 -left-12 text-5xl animate-ping" style={{ animationDuration: "2s" }}>🎉</div>
           </div>
 
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl sm:text-2xl">🌱</span>
-            <span className="text-xl sm:text-2xl">⚡</span>
-            <span className="text-xl sm:text-2xl">🔥</span>
+          <div className="mb-12">
+            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-yellow-400 to-amber-600 px-8 py-2 rounded-full shadow-2xl mb-6 border-2 border-white/20">
+              <span className="text-white font-black text-xl uppercase tracking-widest px-2">NAJBOLJI SI! 👑</span>
+            </div>
+            <h1 className="text-5xl md:text-8xl font-black text-white mb-6 tracking-tight drop-shadow-lg leading-tight">
+              ŠAMPION!
+            </h1>
+            <p className="text-white/80 text-xl md:text-3xl font-bold max-w-xl leading-relaxed">
+              Završio/la si <span className="text-white font-black underline underline-offset-8 decoration-yellow-400">SVE 15 NIVOA</span> u igri
+            </p>
+            <p className={`mt-6 text-2xl md:text-4xl font-black transition-all duration-300 text-transparent bg-clip-text bg-gradient-to-r ${activeGame.gradient} drop-shadow-sm`}>
+              {activeGame.icon} {activeGame.title}
+            </p>
           </div>
 
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black text-white mb-4 tracking-tight leading-tight">
-            ŠAMPION!
-          </h1>
-          <p className="text-lg sm:text-2xl text-white/70 mb-2 sm:mb-3 font-medium leading-relaxed">
-            Završio/la si <span className="font-black text-white">SVE 15 NIVOA</span> u igri
-          </p>
-          <p className={`text-xl sm:text-3xl font-black mb-8 sm:mb-12 text-transparent bg-clip-text bg-gradient-to-r ${activeGame.gradient}`}>
-            {activeGame.icon} {activeGame.title}
-          </p>
-
-          <div className="flex items-center justify-center gap-1 sm:gap-2 mb-8 sm:mb-12">
+          <div className="flex flex-wrap items-center justify-center gap-3 mb-16 max-w-md">
             {Array.from({ length: 15 }).map((_, i) => (
-              <span key={i} className="text-sm sm:text-lg" style={{ animationDelay: `${i * 0.08}s` }}>⭐</span>
+              <div key={i} className="text-3xl sm:text-4xl animate-bounce" style={{ animationDelay: `${i * 0.05}s` }}>⭐</div>
             ))}
           </div>
 
           <button
             onClick={handleExit}
-            className={`w-full max-w-xs group relative p-1.5 rounded-[2rem] bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 shadow-2xl transition-all duration-300 hover:scale-[1.05] active:scale-[0.95]`}
-            style={{ boxShadow: "0 10px 40px rgba(245,158,11,0.4)" }}
+            className={`group w-full max-w-sm bg-gradient-to-r from-yellow-400 to-amber-600 hover:from-yellow-500 hover:to-amber-700 text-white rounded-[2.5rem] p-1.5 transition-all duration-300 shadow-2xl shadow-yellow-500/20 hover:-translate-y-2`}
           >
-            <div className="bg-white/10 border border-white/20 rounded-[1.5rem] px-8 py-4 sm:py-5 flex items-center justify-center gap-3">
-              <span className="text-base sm:text-2xl font-black text-white uppercase tracking-widest">Nazad na igre</span>
-              <div className="w-8 h-8 sm:w-12 sm:h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform text-white text-xl">
+            <div className="border-2 border-white/20 rounded-[2rem] px-8 py-5 flex items-center justify-center gap-4">
+              <span className="text-xl sm:text-2xl font-black uppercase tracking-widest">Nazad na igre</span>
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform text-2xl">
                 🏠
               </div>
             </div>

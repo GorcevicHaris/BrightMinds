@@ -653,38 +653,43 @@ export default function SocialStoryGame({
   // ── INTRO ───────────────────────────────────────
   if (phase === "intro") {
     return (
-      <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 p-6 md:p-12 text-center">
+      <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 p-6 md:p-12 text-center rounded-[2.5rem] shadow-lg relative overflow-hidden"
+        style={{ 
+          backgroundImage: "linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('/images/socijalneprice.png')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center'
+        }}>
         {/* Icon */}
         <div
-          className={`w-36 h-36 md:w-48 md:h-48 rounded-[3rem] bg-gradient-to-br ${lvl.color} flex items-center justify-center shadow-2xl`}
+          className={`w-36 h-36 md:w-48 md:h-48 rounded-[3rem] bg-gradient-to-br ${lvl.color} flex items-center justify-center shadow-2xl relative z-10`}
           style={{ fontSize: 88 }}
         >
           {lvl.icon}
         </div>
 
         {/* Title */}
-        <div>
-          <span className="inline-block px-4 py-1.5 rounded-full bg-slate-100 text-slate-500 text-xs font-black uppercase tracking-widest mb-3">
-            Priča {level} od 8
+        <div className="relative z-10">
+          <span className="inline-block px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-sm text-slate-600 text-xs font-black uppercase tracking-widest mb-3 border border-slate-100 shadow-sm">
+            Priča {level} od 15
           </span>
-          <h1 className="text-4xl md:text-6xl font-black text-slate-900 mb-2 tracking-tight">
+          <h1 className="text-4xl md:text-6xl font-black text-slate-900 mb-2 tracking-tight drop-shadow-sm">
             {lvl.title}
           </h1>
-          <p className="text-lg md:text-xl text-slate-500 font-semibold italic">{lvl.place}</p>
+          <p className="text-lg md:text-xl text-slate-800 font-bold italic bg-white/40 px-6 py-1 rounded-full backdrop-blur-sm shadow-sm inline-block">{lvl.place}</p>
         </div>
 
         {/* Step preview dots */}
-        <div className="flex items-center gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-2 relative z-10">
           {lvl.steps.map((_, i) => (
-            <div key={i} className={`h-3 w-3 rounded-full bg-gradient-to-br ${lvl.color} opacity-30`} />
+            <div key={i} className={`h-3 w-3 rounded-full bg-gradient-to-br ${lvl.color} opacity-30 shadow-sm`} />
           ))}
-          <span className="ml-2 text-sm font-bold text-slate-400">{totalSteps} koraka</span>
+          <span className="ml-2 text-sm font-black text-slate-600 bg-white/50 px-3 py-0.5 rounded-full backdrop-blur-sm">{totalSteps} koraka</span>
         </div>
 
         {/* Start button */}
         <button
           onClick={handleStart}
-          className={`mt-4 px-14 py-6 bg-gradient-to-br ${lvl.color} text-white text-2xl font-black rounded-[2rem] shadow-2xl hover:scale-105 active:scale-95 transition-all`}
+          className={`mt-4 px-14 py-6 bg-gradient-to-br ${lvl.color} text-white text-2xl font-black rounded-[2rem] shadow-2xl hover:scale-105 active:scale-95 transition-all relative z-10 border-4 border-white/20`}
         >
           Počnimo! {lvl.icon}
         </button>

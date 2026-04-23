@@ -529,7 +529,12 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
     // ─── Start Screen ──────────────────────────────────────────
     if (!isPlaying && score === 0) {
         return (
-            <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-emerald-50 via-teal-50 to-emerald-100 shadow-lg">
+            <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] shadow-lg"
+                style={{ 
+                    backgroundImage: "linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('/images/pogodioblik.png')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                }}>
                 {/* Floating shape decorations */}
                 <div className="absolute top-8 left-10 opacity-10 animate-pulse rotate-12"><ShapeSVG type="house" color="#FF8C69" size={70} /></div>
                 <div className="absolute top-6 right-12 opacity-10 animate-bounce -rotate-12"><ShapeSVG type="sun" color="#FFD700" size={80} /></div>
@@ -541,7 +546,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
 
                 <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
                     <div className="mb-8 animate-in slide-in-from-top-4 duration-700">
-                        <span className="px-6 py-2.5 rounded-full bg-white/80 backdrop-blur-sm border border-emerald-100 text-emerald-600 text-sm font-black uppercase tracking-widest shadow-sm">
+                        <span className="px-6 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border border-emerald-100 text-emerald-600 text-sm font-black uppercase tracking-widest shadow-md">
                             Nivo {level}
                         </span>
                     </div>
@@ -556,9 +561,9 @@ export default function ShapeMatchingGame({ childId, level, onComplete, autoStar
                         <div className="absolute -bottom-4 -left-4 animate-bounce delay-300"><ShapeSVG type="sun" color="#FFD700" size={34} /></div>
                     </div>
 
-                    <h2 className="text-5xl font-black text-slate-800 mb-4 tracking-tight drop-shadow-sm">Složi Oblik</h2>
-                    <p className="text-slate-600 text-xl font-medium leading-relaxed mb-12 max-w-sm mx-auto">
-                        Pronađi <span className="text-emerald-600 font-bold">isti oblik</span> i klikni na njega što brže možeš!
+                    <h2 className="text-5xl font-black text-slate-900 mb-4 tracking-tight drop-shadow-md">Pogodi Oblik</h2>
+                    <p className="text-slate-800 text-xl font-bold leading-relaxed mb-12 max-w-sm mx-auto">
+                        Pronađi <span className="text-emerald-700 font-black">isti oblik</span> i klikni na njega što brže možeš!
                     </p>
 
                     <button
