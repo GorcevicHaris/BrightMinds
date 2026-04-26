@@ -502,19 +502,19 @@ export default function GameContainer({ childId, childName }: GameContainerProps
 
           <div className="relative w-full flex-1 flex flex-col" key={`${selectedGame}-${selectedDifficulty}-level-${currentLevel}`}>
             {selectedGame === "shapes" ? (
-              <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
+              <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
             ) : selectedGame === "memory" ? (
-              <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
+              <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
             ) : selectedGame === "sound-to-image" ? (
-              <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
+              <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
             ) : selectedGame === "social" ? (
-              <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
+              <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
             ) : selectedGame === "social-story" ? (
-              <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
+              <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
             ) : selectedGame === "emotions" ? (
-              <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
+              <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
             ) : (
-              <ColoringGame childId={childId} level={currentLevel} onComplete={handleGameComplete} autoStart={autoStart} />
+              <ColoringGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
             )}
           </div>
         </div>

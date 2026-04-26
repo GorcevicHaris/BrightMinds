@@ -15,6 +15,7 @@ interface GameProps {
   childId: number;
   level: number;
   onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+  onClose?: () => void;
   autoStart?: boolean;
   isMonitor?: boolean;
   monitorState?: any;
@@ -22,7 +23,7 @@ interface GameProps {
 
 const EMOJIS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐸", "🐵", "🦉", "🦄", "🐢", "🐧", "🐠", "🦋"];
 
-export default function MemoryGame({ childId, level, onComplete, autoStart, isMonitor, monitorState }: GameProps) {
+export default function MemoryGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState }: GameProps) {
   const pairsCount = Math.min(2 + level, 16);
 
   const [cards, setCards] = useState<Card[]>(monitorState?.cards || []);
@@ -33,7 +34,7 @@ export default function MemoryGame({ childId, level, onComplete, autoStart, isMo
   const [isLocked, setIsLocked] = useState(false); // replaces isChecking — locks ALL card clicks
   const [startTime, setStartTime] = useState<number | null>(null);
   const [moodBefore, setMoodBefore] = useState<string | null>(null);
-  const [showMoodBefore, setShowMoodBefore] = useState(false);
+  const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
   const [showMoodAfter, setShowMoodAfter] = useState(false);
   const [gameCompleted, setGameCompleted] = useState(false);
   const [incorrectCount, setIncorrectCount] = useState(monitorState?.incorrectCount || 0);
@@ -269,47 +270,73 @@ export default function MemoryGame({ childId, level, onComplete, autoStart, isMo
     onComplete(score, duration, moodBefore, mood);
   };
 
-  // ── PRE-GAME MOOD ──────────────────────────────────
+  // ── Mood Before — Premium Immersive Design ────────────────
   if (!isMonitor && showMoodBefore) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[450px] w-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-[2rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl animate-in fade-in duration-500 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full -ml-32 -mb-32 blur-3xl"></div>
-
-        <div className="text-center mb-6 md:mb-12 relative z-10">
-          <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-600 text-[10px] md:text-sm font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Vreme za igru</span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
+        {/* Background Decor */}
+        <div className="absolute inset-0 bg-slate-50">
+           <div 
+             className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
+             style={{ backgroundImage: "url('/images/spojiparove.png')" }}
+           />
+           <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-white/80 to-indigo-600/10 backdrop-blur-3xl" />
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
-          {[
-            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
-            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
-            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
-            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
-            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-          ].map((mood) => (
-            <button
-              key={mood.value}
-              onClick={() => handleMoodBeforeSelect(mood.value)}
-              className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
+        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
+          {onClose && (
+            <button 
+              onClick={onClose}
+              className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-purple-600 font-black text-xs uppercase tracking-widest shadow-md border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-20"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-2xl md:rounded-[2.5rem] transition-opacity`}></div>
-              <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-              <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
+              <span>⬅</span> Nazad
             </button>
-          ))}
-        </div>
-
-        {isConnected && (
-          <div className="mt-8 md:mt-12 flex items-center gap-2 md:gap-3 px-4 py-2 md:px-6 md:py-3 bg-white/50 backdrop-blur-sm rounded-2xl border border-green-100 shadow-sm relative z-10">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-full w-full bg-green-500"></span>
-            </span>
-            <span className="text-[10px] md:text-sm font-bold text-green-700 tracking-wide uppercase">Spremni za praćenje</span>
+          )}
+          <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-purple-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
+               ✨ Raspoloženje
+            </div>
+            <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
+               Kako si danas?
+            </h2>
+            <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
           </div>
-        )}
+
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-6 w-full max-w-4xl px-4">
+            {[
+              { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+              { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+              { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+              { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+              { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
+            ].map((mood, idx) => (
+              <button
+                key={mood.value}
+                onClick={() => handleMoodBeforeSelect(mood.value)}
+                className="group relative flex flex-col items-center bg-white rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-105 hover:-translate-y-2 cursor-pointer shadow-lg border border-slate-100 hover:border-purple-100 animate-in zoom-in-95 duration-500"
+                style={{ animationDelay: `${idx * 100}ms` }}
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
+                <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
+                   {mood.emoji}
+                </div>
+                <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-purple-600 transition-colors">{mood.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {isConnected && (
+            <div className="mt-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-700">
+               <div className="flex items-center gap-4 px-8 py-4 bg-white/40 backdrop-blur-2xl rounded-3xl border-2 border-white shadow-2xl">
+                <span className="relative flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+                </span>
+                <span className="text-sm sm:text-lg font-black text-emerald-900 tracking-[0.1em] uppercase">Sistemi su aktivni</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
@@ -329,22 +356,24 @@ export default function MemoryGame({ childId, level, onComplete, autoStart, isMo
           </p>
         </div>
 
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-8 w-full max-w-6xl px-4 relative z-10">
           {[
             { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
             { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
             { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
             { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
             { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-          ].map((mood) => (
+          ].map((mood, idx) => (
             <button
               key={mood.value}
               onClick={() => handleMoodAfterSelect(mood.value)}
-              className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
+              className="group relative flex flex-col items-center bg-white rounded-[2.5rem] p-6 sm:p-10 transition-all duration-500 hover:scale-[1.12] hover:-translate-y-4 cursor-pointer shadow-2xl border-4 border-transparent hover:border-white animate-in zoom-in-75 duration-700"
+              style={{ animationDelay: `${idx * 100}ms` }}
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-2xl md:rounded-[2.5rem] transition-opacity`}></div>
-              <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-              <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
+              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[2rem] transition-opacity duration-500`}></div>
+              <span className="text-5xl sm:text-7xl md:text-8xl mb-2 sm:mb-4 transform group-hover:rotate-12 transition-transform duration-500 select-none drop-shadow-xl">{mood.emoji}</span>
+              <span className="text-lg sm:text-2xl font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
+              <div className="absolute inset-0 rounded-[2rem] shadow-inner opacity-10 pointer-events-none" />
             </button>
           ))}
         </div>
@@ -352,55 +381,7 @@ export default function MemoryGame({ childId, level, onComplete, autoStart, isMo
     );
   }
 
-  // ── START SCREEN ────────────────────────────────────
-  if (!isPlaying && moves === 0) {
-    return (
-      <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] shadow-lg"
-        style={{ 
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.75), rgba(255,255,255,0.75)), url('/images/spojiparove.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}>
-        <div className="absolute top-12 left-12 text-6xl opacity-10 animate-pulse -rotate-12">🃏</div>
-        <div className="absolute bottom-16 right-12 text-7xl opacity-10 animate-bounce rotate-12">🎴</div>
-        <div className="absolute top-24 right-20 text-5xl opacity-10 animate-pulse rotate-45">❓</div>
-        <div className="absolute bottom-24 left-24 text-6xl opacity-10 animate-bounce -rotate-6">🎲</div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-200/30 rounded-full blur-3xl -mr-32 -mt-32"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl -ml-32 -mb-32"></div>
-
-        <div className="relative z-10 w-full max-w-md mx-auto p-6 flex flex-col items-center text-center">
-          <div className="mb-8 animate-in slide-in-from-top-4 duration-700">
-            <span className="px-6 py-2.5 rounded-full bg-white/90 backdrop-blur-sm border border-indigo-100 text-indigo-600 text-sm font-black uppercase tracking-widest shadow-md">
-              Nivo {level}
-            </span>
-          </div>
-          <div className="mb-10 relative group cursor-default">
-            <div className="absolute inset-0 bg-indigo-400 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
-            <div className="relative w-40 h-40 bg-gradient-to-b from-white to-indigo-50 rounded-[2.5rem] shadow-xl border-4 border-white flex items-center justify-center transform group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300">
-              <span className="text-8xl drop-shadow-md">🧠</span>
-            </div>
-            <div className="absolute -top-4 -right-4 text-3xl animate-bounce delay-100">❓</div>
-            <div className="absolute -bottom-4 -left-4 text-3xl animate-bounce delay-300">💡</div>
-          </div>
-          <h2 className="text-5xl font-black text-slate-900 mb-4 tracking-tight drop-shadow-md">Spoji Parove</h2>
-          <p className="text-slate-800 text-xl font-bold leading-relaxed mb-12 max-w-sm mx-auto">
-            Pronađi <span className="text-indigo-700 font-black">{pairsCount} para</span> istih slika. Zapamti gde se kriju!
-          </p>
-          <button
-            onClick={startGame}
-            className="w-full max-w-sm group bg-indigo-500 hover:bg-indigo-600 text-white rounded-2xl p-1.5 transition-all duration-300 shadow-xl shadow-indigo-200 hover:shadow-indigo-300 hover:-translate-y-1"
-          >
-            <div className="bg-white/10 border border-white/20 rounded-xl px-8 py-5 flex items-center justify-center gap-4 h-full">
-              <span className="text-2xl font-bold tracking-wide">ZAPOČNI IGRU</span>
-              <div className="w-12 h-12 bg-white text-indigo-600 rounded-xl flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform shadow-inner">
-                ▶
-              </div>
-            </div>
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Start screen removed for faster gameplay
 
   // ── PLAYING ────────────────────────────────────────
   let gridCols = "grid-cols-4";

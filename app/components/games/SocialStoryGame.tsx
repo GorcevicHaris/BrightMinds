@@ -15,6 +15,7 @@ interface GameProps {
     moodBefore?: string | null,
     moodAfter?: string | null
   ) => void;
+  onClose?: () => void;
   autoStart?: boolean;
   isMonitor?: boolean;
   monitorState?: any;
@@ -550,6 +551,7 @@ export default function SocialStoryGame({
   childId,
   level,
   onComplete,
+  onClose,
   autoStart,
   isMonitor,
   monitorState,
@@ -558,8 +560,11 @@ export default function SocialStoryGame({
   const totalSteps = lvl.steps.length;
 
   const [phase, setPhase] = useState<"intro" | "playing" | "win">(
-    isMonitor ? "playing" : "intro"
+    isMonitor ? "playing" : "playing" // No intro anymore
   );
+  const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
+  const [showMoodAfter, setShowMoodAfter] = useState(false);
+  const [moodBefore, setMoodBefore] = useState<string | null>(null);
   const [stepIdx, setStepIdx] = useState(monitorState?.stepIdx ?? 0);
   const [score, setScore] = useState(monitorState?.score ?? 0);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -580,8 +585,8 @@ export default function SocialStoryGame({
 
   // Auto-start
   useEffect(() => {
-    if (autoStart && !isMonitor && phase === "intro") {
-      handleStart();
+    if (autoStart && !isMonitor && (showMoodBefore || phase === "intro")) {
+      handleMoodBeforeSelect("neutral");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart, isMonitor, phase]);
@@ -595,9 +600,16 @@ export default function SocialStoryGame({
     }
   }, [isMonitor, monitorState]);
 
-  const handleStart = () => {
+  const handleMoodBeforeSelect = (mood: string) => {
+    setMoodBefore(mood);
+    setShowMoodBefore(false);
     setPhase("playing");
     emitGameStart(childId, 7, "social-story" as any, { level, stepIdx: 0, score: 0, phase: "playing" });
+  };
+
+  const handleMoodAfterSelect = (mood: string) => {
+    setShowMoodAfter(false);
+    onComplete(score, 0, moodBefore, mood);
   };
 
   const handleAnswer = (correct: boolean, feedbackText: string) => {
@@ -650,57 +662,69 @@ export default function SocialStoryGame({
 
   const currentStep = lvl.steps[Math.min(stepIdx, totalSteps - 1)];
 
-  // ── INTRO ───────────────────────────────────────
-  if (phase === "intro") {
+  // ── Mood Before — Premium Immersive Design ────────────────
+  if (!isMonitor && showMoodBefore) {
     return (
-      <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 p-6 md:p-12 text-center rounded-[2.5rem] shadow-lg relative overflow-hidden"
-        style={{ 
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('/images/socijalneprice.png')",
-          backgroundSize: 'cover',
-          backgroundPosition: 'center'
-        }}>
-        {/* Icon */}
-        <div
-          className={`w-36 h-36 md:w-48 md:h-48 rounded-[3rem] bg-gradient-to-br ${lvl.color} flex items-center justify-center shadow-2xl relative z-10`}
-          style={{ fontSize: 88 }}
-        >
-          {lvl.icon}
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
+        {/* Background Decor */}
+        <div className="absolute inset-0 bg-slate-50">
+          <div 
+            className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
+            style={{ backgroundImage: "url('/images/socijalneprice.png')" }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-white/80 to-purple-500/10 backdrop-blur-3xl" />
         </div>
 
-        {/* Title */}
-        <div className="relative z-10">
-          <span className="inline-block px-4 py-1.5 rounded-full bg-white/90 backdrop-blur-sm text-slate-600 text-xs font-black uppercase tracking-widest mb-3 border border-slate-100 shadow-sm">
-            Priča {level} od 15
-          </span>
-          <h1 className="text-4xl md:text-6xl font-black text-slate-900 mb-2 tracking-tight drop-shadow-sm">
-            {lvl.title}
-          </h1>
-          <p className="text-lg md:text-xl text-slate-800 font-bold italic bg-white/40 px-6 py-1 rounded-full backdrop-blur-sm shadow-sm inline-block">{lvl.place}</p>
-        </div>
+        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
+            {onClose && (
+                <button 
+                  onClick={onClose}
+                  className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-md border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-20"
+                >
+                  <span>⬅</span> Nazad
+                </button>
+            )}
+            <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
+                  ✨ Raspoloženje
+                </div>
+                <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
+                  Kako si danas?
+                </h2>
+                <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
+            </div>
 
-        {/* Step preview dots */}
-        <div className="flex items-center gap-2 mt-2 relative z-10">
-          {lvl.steps.map((_, i) => (
-            <div key={i} className={`h-3 w-3 rounded-full bg-gradient-to-br ${lvl.color} opacity-30 shadow-sm`} />
-          ))}
-          <span className="ml-2 text-sm font-black text-slate-600 bg-white/50 px-3 py-0.5 rounded-full backdrop-blur-sm">{totalSteps} koraka</span>
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-6 w-full max-w-4xl px-4">
+                {[
+                  { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+                  { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+                  { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+                  { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+                  { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
+                ].map((mood, idx) => (
+                  <button
+                    key={mood.value}
+                    onClick={() => handleMoodBeforeSelect(mood.value)}
+                    className="group relative flex flex-col items-center bg-white rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-105 hover:-translate-y-2 cursor-pointer shadow-lg border border-slate-100 hover:border-indigo-100 animate-in zoom-in-95 duration-500"
+                    style={{ animationDelay: `${idx * 100}ms` }}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
+                    <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
+                      {mood.emoji}
+                    </div>
+                    <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
+                  </button>
+                ))}
+            </div>
         </div>
-
-        {/* Start button */}
-        <button
-          onClick={handleStart}
-          className={`mt-4 px-14 py-6 bg-gradient-to-br ${lvl.color} text-white text-2xl font-black rounded-[2rem] shadow-2xl hover:scale-105 active:scale-95 transition-all relative z-10 border-4 border-white/20`}
-        >
-          Počnimo! {lvl.icon}
-        </button>
       </div>
     );
   }
 
   // ── WIN ─────────────────────────────────────────
-  if (phase === "win") {
+  if (phase === "win" && !showMoodAfter) {
     return (
-      <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center">
+      <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center rounded-[3rem] bg-white/80 backdrop-blur-xl shadow-2xl animate-in zoom-in duration-500">
         <div className="relative">
           <div
             className={`w-36 h-36 md:w-52 md:h-52 rounded-full bg-gradient-to-br ${lvl.color} flex items-center justify-center shadow-2xl`}
@@ -711,15 +735,51 @@ export default function SocialStoryGame({
           <span className="absolute -top-4 -right-4 text-5xl animate-bounce">🌟</span>
           <span className="absolute -bottom-4 -left-4 text-4xl animate-bounce">🎉</span>
         </div>
-        <h2 className="text-4xl md:text-6xl font-black text-slate-900">Bravo! 🏆</h2>
-        <p className="text-xl md:text-2xl text-slate-500 font-semibold">
-          Završio/la si priču: <span className="font-black text-slate-800">{lvl.title}</span>
+        <h2 className="text-4xl md:text-6xl font-black text-slate-900 leading-tight">Bravo! 🏆</h2>
+        <p className="text-xl md:text-2xl text-slate-500 font-semibold mb-8">
+          Sjajno si završio/la priču! <br/>
+          <span className="font-black text-slate-800 tracking-tight">{lvl.title}</span>
         </p>
-        <div className="flex items-center gap-3 bg-amber-50 border-4 border-amber-200 px-10 py-5 rounded-3xl">
-          <span className="text-4xl">⭐</span>
-          <span className="text-4xl font-black text-slate-800">{score} poena</span>
-        </div>
+        
+        <button
+          onClick={() => setShowMoodAfter(true)}
+          className={`px-12 py-5 bg-gradient-to-br ${lvl.color} text-white text-2xl font-black rounded-3xl shadow-xl hover:scale-105 transition-transform`}
+        >
+          Završi 🏁
+        </button>
       </div>
+    );
+  }
+
+  if (!isMonitor && showMoodAfter) {
+    return (
+        <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[3rem] p-12 shadow-2xl animate-in fade-in duration-500">
+            <div className="text-center mb-16">
+                <span className="px-6 py-2 rounded-full bg-emerald-100 text-emerald-600 text-sm font-black uppercase tracking-widest mb-4 inline-block">Sjajno urađeno!</span>
+                <h2 className="text-5xl font-black text-slate-900 tracking-tight mb-4 text-center">Kako se osećaš sada? 🌟</h2>
+                <p className="text-2xl text-slate-500 font-medium tracking-wide">Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span></p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 w-full max-w-5xl">
+                {[
+                    { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+                    { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+                    { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+                    { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+                    { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
+                ].map((mood) => (
+                    <button
+                        key={mood.value}
+                        onClick={() => handleMoodAfterSelect(mood.value)}
+                        className="group relative flex flex-col items-center bg-white rounded-[2.5rem] p-10 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+                    >
+                        <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[2.5rem] transition-opacity`} />
+                        <span className="text-7xl mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+                        <span className="text-lg font-black text-slate-700 uppercase tracking-wide">{mood.label}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
     );
   }
 

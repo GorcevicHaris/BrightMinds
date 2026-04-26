@@ -61,13 +61,11 @@ export default function ChildPageClient({ child, childId }: Props) {
             <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b-2 border-purple-100/60 shadow-sm">
                 <div className="max-w-none mx-auto px-6 sm:px-12 h-16 sm:h-20 flex items-center justify-between gap-3">
 
-                    {/* Left: Avatar + Name */}
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                         <div className="relative shrink-0">
                             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-white text-sm sm:text-base font-black shadow-lg shadow-violet-200 uppercase shrink-0">
                                 {initials}
                             </div>
-                            {/* Online dot */}
                             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-emerald-400 rounded-full border-2 border-white shadow-sm" />
                         </div>
                         <div className="min-w-0">

@@ -7,6 +7,7 @@ interface GameProps {
     childId: number;
     level: number;
     onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+    onClose?: () => void;
     autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
@@ -473,7 +474,7 @@ function getSituationsForLevel(level: number): Situation[] {
 type AnswerState = "idle" | "correct" | "wrong";
 
 export default function SocialCommunicationGame({
-    childId, level, onComplete, autoStart, isMonitor, monitorState
+    childId, level, onComplete, onClose, autoStart, isMonitor, monitorState
 }: GameProps) {
     const situations = getSituationsForLevel(level);
     const [currentIndex, setCurrentIndex] = useState(monitorState?.currentIndex || 0);
@@ -482,8 +483,8 @@ export default function SocialCommunicationGame({
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
     const [answerState, setAnswerState] = useState<AnswerState>("idle");
     const [hintVisible, setHintVisible] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : (monitorState?.isPlaying || false));
-    const [showMoodBefore, setShowMoodBefore] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : autoStart);
+    const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
     const [showMoodAfter, setShowMoodAfter] = useState(false);
     const [moodBefore, setMoodBefore] = useState<string | null>(null);
     const [startTime, setStartTime] = useState<number | null>(null);
@@ -671,41 +672,61 @@ export default function SocialCommunicationGame({
         { emoji: "😄", label: "Super", value: "very_happy" },
     ];
 
-    // ─── MOOD BEFORE ──────────────────────────────────────────────────────────────
+    // ── Mood Before — Premium Immersive Design ────────────────
     if (!isMonitor && showMoodBefore) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[450px] w-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-[2rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl animate-in fade-in duration-500 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/5 rounded-full -ml-32 -mb-32 blur-3xl"></div>
-
-                <div className="text-center mb-6 md:mb-12 relative z-10">
-                    <span className="px-3 py-1 rounded-full bg-indigo-100 text-indigo-600 text-[10px] md:text-sm font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Mali upitnik</span>
-                    <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">Kako se osećaš sada? ✨</h2>
+            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
+                {/* Background Decor */}
+                <div className="absolute inset-0 bg-slate-50">
+                    <div 
+                        className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
+                        style={{ backgroundImage: "url('/images/ustacomunicira.png')" }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-white/80 to-purple-600/10 backdrop-blur-3xl" />
                 </div>
 
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
-                    {moodList.map(mood => (
-                        <button
-                            key={mood.value}
-                            onClick={() => handleMoodBeforeSelect(mood.value)}
-                            className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
+                <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
+                    {onClose && (
+                        <button 
+                            onClick={onClose}
+                            className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-md border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-20"
                         >
-                            <div className={`absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 rounded-2xl md:rounded-[2.5rem] transition-opacity`}></div>
-                            <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-                            <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
+                            <span>⬅</span> Nazad
                         </button>
-                    ))}
-                </div>
-
-                {isConnected && (
-                    <div className="mt-8 md:mt-12 flex items-center gap-2 md:gap-3 px-4 py-2 md:px-6 md:py-3 bg-white/50 backdrop-blur-sm rounded-2xl border border-green-100 shadow-sm relative z-10">
-                        <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-full w-full bg-green-500"></span>
-                        </span>
-                        <span className="text-[10px] md:text-sm font-bold text-green-700 tracking-wide uppercase">Spremni za praćenje</span>
+                    )}
+                    <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
+                           ✨ Raspoloženje
+                        </div>
+                        <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
+                           Kako si danas?
+                        </h2>
+                        <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
                     </div>
-                )}
+
+                    <div className="flex flex-wrap justify-center gap-3 sm:gap-6 w-full max-w-4xl px-4">
+                        {[
+                            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+                            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+                            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+                            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+                            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
+                        ].map((mood, idx) => (
+                            <button
+                                key={mood.value}
+                                onClick={() => handleMoodBeforeSelect(mood.value)}
+                                className="group relative flex flex-col items-center bg-white rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-105 hover:-translate-y-2 cursor-pointer shadow-lg border border-slate-100 hover:border-indigo-100 animate-in zoom-in-95 duration-500"
+                                style={{ animationDelay: `${idx * 100}ms` }}
+                            >
+                                <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
+                                <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
+                                   {mood.emoji}
+                                </div>
+                                <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
         );
     }
@@ -740,66 +761,7 @@ export default function SocialCommunicationGame({
         );
     }
 
-    // ─── START SCREEN ─────────────────────────────────────────────────────────────
-    if (!isPlaying && !completed) {
-        return (
-            <div className="relative min-h-[500px] w-full flex items-center justify-center overflow-hidden rounded-[2.5rem] shadow-lg"
-                style={{ 
-                    backgroundImage: "linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('/images/stareci.png')",
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center'
-                }}>
-                <div className="absolute top-8 left-10 text-5xl opacity-10 animate-pulse">💬</div>
-                <div className="absolute top-6 right-12 text-6xl opacity-10 animate-bounce">🗣️</div>
-                <div className="absolute bottom-10 left-16 text-5xl opacity-10 animate-bounce">🤝</div>
-                <div className="absolute bottom-8 right-10 text-4xl opacity-10 animate-pulse">❤️</div>
-                <div className="absolute top-0 right-0 w-80 h-80 bg-violet-200/30 rounded-full blur-3xl -mr-32 -mt-32"></div>
-                <div className="absolute bottom-0 left-0 w-80 h-80 bg-indigo-200/30 rounded-full blur-3xl -ml-32 -mb-32"></div>
-
-                <div className="relative z-10 w-full max-w-lg mx-auto p-6 flex flex-col items-center text-center">
-                    <div className="mb-6">
-                        <span className="px-6 py-2.5 rounded-full bg-white/90 backdrop-blur border border-violet-100 text-violet-600 text-sm font-black uppercase tracking-widest shadow-md">
-                            Nivo {level} • {totalSituations} situacija
-                        </span>
-                    </div>
-
-                    <div className="mb-8 relative">
-                        <div className="absolute inset-0 bg-violet-400 rounded-full blur-2xl opacity-20"></div>
-                        <div className="relative w-36 h-36 bg-gradient-to-b from-white to-violet-50 rounded-[2.5rem] shadow-xl border-4 border-white flex items-center justify-center">
-                            <span className="text-7xl">💬</span>
-                        </div>
-                        <div className="absolute -top-3 -right-3 text-2xl animate-bounce">🤝</div>
-                        <div className="absolute -bottom-3 -left-3 text-2xl animate-bounce delay-200">❤️</div>
-                    </div>
-
-                    <h2 className="text-4xl md:text-5xl font-black text-slate-900 mb-3 tracking-tight drop-shadow-sm">Šta treba da kažeš?</h2>
-                    <p className="text-slate-800 text-base md:text-lg font-bold leading-relaxed mb-4 max-w-sm mx-auto">
-                        Pročitaj situaciju i izaberi <span className="text-violet-700 font-black">tačan odgovor</span> klikom na dugme.
-                    </p>
-
-                    {/* Legenda */}
-                    <div className="grid grid-cols-2 gap-3 mb-10 w-full max-w-sm">
-                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow text-center border border-green-100">
-                            <div className="text-2xl mb-1">✅</div>
-                            <div className="text-xs font-bold text-green-700">Tačan odgovor</div>
-                        </div>
-                        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-3 shadow text-center border border-blue-100">
-                            <div className="text-2xl mb-1">💡</div>
-                            <div className="text-xs font-bold text-blue-700">Pomoć ako zaglaviš</div>
-                        </div>
-                    </div>
-
-                    <button onClick={() => setShowMoodBefore(true)}
-                        className="w-full max-w-sm group bg-violet-600 hover:bg-violet-700 text-white rounded-2xl p-1.5 transition-all duration-300 shadow-xl shadow-violet-200 hover:-translate-y-1">
-                        <div className="bg-white/10 border border-white/20 rounded-xl px-8 py-4 flex items-center justify-center gap-4">
-                            <span className="text-xl font-bold">ZAPOČNI IGRU</span>
-                            <div className="w-10 h-10 bg-white text-violet-600 rounded-xl flex items-center justify-center font-bold text-xl group-hover:scale-110 transition-transform">▶</div>
-                        </div>
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    // Start screen removed for faster gameplay
 
     // ─── END SCREEN ───────────────────────────────────────────────────────────────
     if (completed && !showMoodAfter) {

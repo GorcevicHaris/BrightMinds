@@ -20,6 +20,7 @@ interface GameProps {
         moodBefore?: string | null,
         moodAfter?: string | null
     ) => void;
+    onClose?: () => void;
     autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
@@ -59,7 +60,7 @@ const EMOTIONS = [
         id: "sad",
         emoji: "😢",
         label: "Tužno",
-        color: "from-blue-400 to-indigo-500",
+        color: "from-blue-300 to-indigo-400",
         shadow: "shadow-blue-200",
         bg: "bg-blue-50",
         border: "border-blue-300",
@@ -68,7 +69,7 @@ const EMOTIONS = [
         id: "angry",
         emoji: "😡",
         label: "Ljuto",
-        color: "from-red-400 to-rose-500",
+        color: "from-red-300 to-rose-400",
         shadow: "shadow-red-200",
         bg: "bg-red-50",
         border: "border-red-300",
@@ -77,30 +78,26 @@ const EMOTIONS = [
         id: "scared",
         emoji: "😨",
         label: "Uplašeno",
-        color: "from-purple-400 to-violet-500",
+        color: "from-purple-300 to-violet-400",
         shadow: "shadow-purple-200",
         bg: "bg-purple-50",
         border: "border-purple-300",
     },
 ];
 
-export default function EmotionsGame({
-    childId,
-    level,
-    onComplete,
-    autoStart,
-    isMonitor,
-    monitorState,
-}: GameProps) {
+export default function EmotionsGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState }: GameProps) {
     const scenario = SCENARIOS.find((s) => s.level === level) || SCENARIOS[0];
 
-    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : false);
+    const [isPlaying, setIsPlaying] = useState<boolean>(isMonitor ? true : false);
     const [startTime, setStartTime] = useState<number | null>(null);
     const [moves, setMoves] = useState<number>(monitorState?.moves || 0);
     const [incorrectCount, setIncorrectCount] = useState<number>(
         monitorState?.incorrectCount || 0
     );
     const [hasWon, setHasWon] = useState<boolean>(monitorState?.hasWon || false);
+    const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
+    const [showMoodAfter, setShowMoodAfter] = useState(false);
+    const [moodBefore, setMoodBefore] = useState<string | null>(null);
     const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
     const [isLocked, setIsLocked] = useState(false);
 
@@ -127,10 +124,22 @@ export default function EmotionsGame({
         setIsLocked(false);
     }, [level, isMonitor]);
 
+    const handleMoodBeforeSelect = (mood: string) => {
+        setMoodBefore(mood);
+        setShowMoodBefore(false);
+        startGame();
+    };
+
+    const handleMoodAfterSelect = (mood: string) => {
+        setShowMoodAfter(false);
+        const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+        onComplete(1000, duration, moodBefore, mood);
+    };
+
     // Auto-start logic
     useEffect(() => {
-        if (autoStart && !isMonitor && !isPlaying && moves === 0 && !hasWon) {
-            startGame();
+        if (autoStart && !isMonitor && (showMoodBefore || !isPlaying) && moves === 0 && !hasWon) {
+            handleMoodBeforeSelect("neutral");
         }
     }, [autoStart, isMonitor, isPlaying, moves, hasWon]);
 
@@ -211,21 +220,68 @@ export default function EmotionsGame({
         audio.play().catch(() => { });
 
         setTimeout(() => {
-            const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-            const finalScore = 1000;
-
-            emitGameComplete({
-                childId,
-                activityId: 8,
-                gameType: "emotions",
-                event: "completed",
-                data: { finalScore, totalMoves: newMoves, selectedEmotion: emotionId },
-                timestamp: new Date().toISOString(),
-            });
-
-            onComplete(finalScore, duration, null, null);
+            setShowMoodAfter(true);
         }, 1500);
     };
+
+    // ── MOOD BEFORE ────────────────────────────────────
+    if (!isMonitor && showMoodBefore) {
+        return (
+            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
+                {/* Background Decor */}
+                <div className="absolute inset-0 bg-slate-50">
+                   <div 
+                     className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
+                     style={{ backgroundImage: "url('/images/emocije.png')" }}
+                   />
+                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-white/80 to-purple-600/10 backdrop-blur-3xl" />
+                </div>
+
+                <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
+                    {onClose && (
+                        <button 
+                            onClick={onClose}
+                            className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-md border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-20"
+                        >
+                            <span>⬅</span> Nazad
+                        </button>
+                    )}
+                    <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
+                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
+                           ✨ Raspoloženje
+                        </div>
+                        <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
+                           Kako si danas?
+                        </h2>
+                        <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
+                    </div>
+
+                    <div className="flex flex-wrap justify-center gap-3 sm:gap-6 w-full max-w-4xl px-4">
+                        {[
+                            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+                            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+                            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+                            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+                            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
+                        ].map((mood, idx) => (
+                            <button
+                                key={mood.value}
+                                onClick={() => handleMoodBeforeSelect(mood.value)}
+                                className="group relative flex flex-col items-center bg-white rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-105 hover:-translate-y-2 cursor-pointer shadow-lg border border-slate-100 hover:border-indigo-100 animate-in zoom-in-95 duration-500"
+                                style={{ animationDelay: `${idx * 100}ms` }}
+                            >
+                                <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
+                                <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
+                                   {mood.emoji}
+                                </div>
+                                <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // ── START SCREEN ────────────────────────────────────
     if (!isPlaying) {
@@ -270,7 +326,39 @@ export default function EmotionsGame({
         );
     }
 
-    // ── WIN SCREEN ─────────────────────────────────────
+    // ── Mood After SCREEN ─────────────────────────────────────
+    if (!isMonitor && showMoodAfter) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[3rem] p-12 shadow-2xl animate-in fade-in duration-500">
+                <div className="text-center mb-16">
+                    <span className="px-6 py-2 rounded-full bg-emerald-100 text-emerald-600 text-sm font-black uppercase tracking-widest mb-4 inline-block">Sjajno urađeno!</span>
+                    <h2 className="text-5xl font-black text-slate-900 tracking-tight mb-4 text-center">Kako se osećaš sada? 🌟</h2>
+                    <p className="text-2xl text-slate-500 font-medium tracking-wide">Bravo za prepoznavanje emocija!</p>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 w-full max-w-5xl">
+                    {[
+                        { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+                        { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+                        { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+                        { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+                        { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
+                    ].map((mood) => (
+                        <button
+                            key={mood.value}
+                            onClick={() => handleMoodAfterSelect(mood.value)}
+                            className="group relative flex flex-col items-center bg-white rounded-[2.5rem] p-10 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+                        >
+                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[2.5rem] transition-opacity`} />
+                            <span className="text-7xl mb-4 transform group-hover:scale-110 transition-transform duration-500 select-none">{mood.emoji}</span>
+                            <span className="text-lg font-black text-slate-700 uppercase tracking-wide">{mood.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
     if (hasWon) {
         const chosenEmo = EMOTIONS.find((e) => e.id === selectedEmotion);
         return (
