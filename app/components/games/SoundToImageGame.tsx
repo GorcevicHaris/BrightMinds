@@ -38,7 +38,6 @@ const SOUND_ITEMS: SoundItem[] = [
     { id: "car_horn", icon: "🚗", label: "Sirena auta", soundUrl: "/sounds/sirenaAuta.mp3" },
 ];
 
-// Konfiguracija svakog od 15 nivoa
 interface LevelConfig {
     rounds: number;       // broj rundi (pitanja)
     poolSize: number;     // koliko različitih zvukova se koristi
