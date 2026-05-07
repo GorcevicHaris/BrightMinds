@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useGameEmitter } from "@/lib/useSocket";
+import { speak } from "@/lib/tts";
 
 // Pomocna funkcija za reprodukciju lokalnih MP3 zvukova iz /sounds/emotions/
 function playSound(filename: string) {
@@ -173,10 +174,9 @@ export default function EmotionsGame({ childId, level, onComplete, onClose, auto
     };
 
     const handleSpeech = () => {
-        if (isMonitor) return;
+        if (isMonitor || !scenario.text) return;
         stopCurrentSound();
-        const audio = playSound(scenario.soundFile);
-        currentAudioRef.current = audio;
+        speak(scenario.text.replace("\n", " "));
     };
 
     // Autoplay zvuk pitanja na startu

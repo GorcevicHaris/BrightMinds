@@ -49,22 +49,29 @@ export function useSpeech() {
 
                 const blob = await response.blob();
                 const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                audioRef.current = audio;
 
-                audio.onended = () => {
-                    URL.revokeObjectURL(url);
-                    audioRef.current = null;
-                    onEnd?.();
-                };
+                // Dispatch event so the avatar knows to animate its mouth
+                const event = new CustomEvent('avatar:speak', {
+                    detail: { url, text },
+                    cancelable: true
+                });
+                const wasHandled = !window.dispatchEvent(event);
 
-                audio.onerror = () => {
-                    URL.revokeObjectURL(url);
-                    audioRef.current = null;
-                    useFallback(text, onEnd, onError);
-                };
-
-                await audio.play();
+                if (!wasHandled) {
+                    const audio = new Audio(url);
+                    audioRef.current = audio;
+                    audio.onended = () => {
+                        URL.revokeObjectURL(url);
+                        audioRef.current = null;
+                        onEnd?.();
+                    };
+                    audio.onerror = () => {
+                        URL.revokeObjectURL(url);
+                        audioRef.current = null;
+                        useFallback(text, onEnd, onError);
+                    };
+                    await audio.play();
+                }
             } catch (err: any) {
                 if (err?.name === "AbortError") return;
                 console.warn("ElevenLabs TTS failed, falling back to browser TTS:", err);

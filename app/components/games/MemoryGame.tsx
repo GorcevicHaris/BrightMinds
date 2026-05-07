@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useGameEmitter } from '@/lib/useSocket';
+import { useSpeech } from '@/lib/useSpeech';
 
 interface Card {
   id: number;
   pairId: number;
-  emoji: string;
+  image: string; // path relative to /public
   isFlipped: boolean;
   isMatched: boolean;
 }
@@ -21,10 +22,23 @@ interface GameProps {
   monitorState?: any;
 }
 
-const EMOJIS = ["🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐸", "🐵", "🦉", "🦄", "🐢", "🐧", "🐠", "🦋"];
+const IMAGES = [
+  "/memoryGameImages/kokoska.png",
+  "/memoryGameImages/kravaa.png",
+  "/memoryGameImages/krokodill.png",
+  "/memoryGameImages/lavv.png",
+  "/memoryGameImages/lisica.png",
+  "/memoryGameImages/mackaa.png",
+  "/memoryGameImages/miss.png",
+  "/memoryGameImages/morskikonj.png",
+  "/memoryGameImages/panda.png",
+  "/memoryGameImages/pass.png",
+  "/memoryGameImages/sovaa.png",
+  "/memoryGameImages/tigar.png",
+];
 
 export default function MemoryGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState }: GameProps) {
-  const pairsCount = Math.min(2 + level, 16);
+  const pairsCount = Math.min(2 + level, IMAGES.length);
 
   const [cards, setCards] = useState<Card[]>(monitorState?.cards || []);
   const [flippedIds, setFlippedIds] = useState<number[]>([]);
@@ -73,13 +87,29 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
   }, [autoStart, isMonitor, isPlaying, moves]);
 
   const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
+  const { speak } = useSpeech();
+
+  const animalNames: Record<string, string> = {
+    "kokoska.png": "Kokoška",
+    "kravaa.png": "Krava",
+    "krokodill.png": "Krokodil",
+    "lavv.png": "Lav",
+    "lisica.png": "Lisica",
+    "mackaa.png": "Mačka",
+    "miss.png": "Miš",
+    "morskikonj.png": "Morski konj",
+    "panda.png": "Panda",
+    "pass.png": "Pas",
+    "sovaa.png": "Sova",
+    "tigar.png": "Tigar"
+  };
 
   const initializeGame = useCallback(() => {
-    const selectedEmojis = EMOJIS.slice(0, pairsCount);
+    const selectedImages = IMAGES.slice(0, pairsCount);
     const cardPairs: Card[] = [];
-    selectedEmojis.forEach((emoji, pairId) => {
-      cardPairs.push({ id: pairId * 2, pairId, emoji, isFlipped: false, isMatched: false });
-      cardPairs.push({ id: pairId * 2 + 1, pairId, emoji, isFlipped: false, isMatched: false });
+    selectedImages.forEach((image, pairId) => {
+      cardPairs.push({ id: pairId * 2, pairId, image, isFlipped: false, isMatched: false });
+      cardPairs.push({ id: pairId * 2 + 1, pairId, image, isFlipped: false, isMatched: false });
     });
     const shuffled = cardPairs.sort(() => Math.random() - 0.5);
     setCards(shuffled);
@@ -93,13 +123,15 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
 
   useEffect(() => {
     setIsPlaying(isMonitor ? true : false);
-    setShowMoodBefore(false);
+    // Ne gasi početni ekras raspoloženja na prvom ulasku — inače ostane isPlaying=false i karte nisu klikabilne.
+    // Kada roditelj prosledi autoStart (sledeći nivo), preskoči raspoloženje; inače pokaži ga opet samo ako nije monitor.
+    setShowMoodBefore(!isMonitor && !autoStart);
     setShowMoodAfter(false);
     setMoodBefore(null);
     setStartTime(null);
     setGameCompleted(false);
     initializeGame();
-  }, [level, isMonitor, initializeGame]);
+  }, [level, isMonitor, autoStart, initializeGame]);
 
   const startGame = () => {
     setShowMoodBefore(true);
@@ -134,6 +166,11 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
     );
     setCards(updatedCards);
 
+    // Speak animal name
+    const filename = card.image.split('/').pop() || "";
+    const animalName = animalNames[filename] || "";
+    if (animalName) speak(animalName);
+
     setFlippedIds(prev => {
       const newFlipped = [...prev, cardId];
 
@@ -145,7 +182,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
         event: 'card_flipped',
         data: {
           cardId,
-          emoji: card.emoji,
+          image: card.image,
           flippedCount: newFlipped.length,
           moves: movesRef.current,
           score: Math.max(0, 1000 - movesRef.current * 50),
@@ -186,7 +223,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
               event: 'progress',
               data: {
                 matched: true,
-                emoji: firstCard.emoji,
+                image: firstCard.image,
                 score: Math.max(0, 1000 - newMoves * 50),
                 moves: newMoves,
                 correct: true,
@@ -194,7 +231,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
                 incorrectCount: incorrectCountRef.current,
                 matchedPairs: newMatched,
                 flippedCards: [],
-                cards: nextCards, // Send updated matched cards to monitor
+                cards: nextCards,
               },
               timestamp: new Date().toISOString(),
             });
@@ -429,7 +466,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
               <button
                 key={card.id}
                 onClick={() => canClick && handleCardClick(card.id)}
-                className={`relative aspect-square rounded-xl md:rounded-2xl text-2xl sm:text-4xl md:text-5xl font-bold transition-all duration-200 overflow-hidden
+                className={`relative aspect-square rounded-xl md:rounded-2xl font-bold transition-all duration-200 overflow-hidden
                   ${card.isMatched
                     ? "bg-emerald-50 shadow-sm border-2 border-emerald-200"
                     : isRevealed
@@ -441,27 +478,37 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
                 `}
                 style={{ WebkitTapHighlightColor: 'transparent' }}
               >
-                {/* Card face (emoji) */}
+                {/* Card face — animal image */}
                 <div
-                  className={`absolute inset-0 flex items-center justify-center transition-all duration-200
+                  className={`absolute inset-0 transition-all duration-200
                     ${isRevealed ? "opacity-100 scale-100" : "opacity-0 scale-75"}
                   `}
                 >
-                  <span className="select-none">{card.emoji}</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={card.image}
+                    alt="animal"
+                    draggable={false}
+                    className={`w-full h-full object-cover select-none
+                      ${card.isMatched ? "opacity-60" : "opacity-100"}
+                    `}
+                  />
                 </div>
 
-                {/* Card back (?) */}
+                {/* Card back — gradient with ? */}
                 <div
                   className={`absolute inset-0 flex items-center justify-center transition-all duration-200
                     ${isRevealed ? "opacity-0 scale-75" : "opacity-100 scale-100"}
                   `}
                 >
-                  <span className="text-white/40 font-black text-xl sm:text-2xl md:text-3xl select-none">?</span>
+                  <span className="text-white/50 font-black text-2xl sm:text-3xl md:text-4xl select-none drop-shadow">?</span>
                 </div>
 
-                {/* Match sparkle */}
+                {/* Match checkmark */}
                 {card.isMatched && (
-                  <div className="absolute top-1 right-1 text-[10px] sm:text-sm md:text-base">✅</div>
+                  <div className="absolute top-1 right-1 text-[10px] sm:text-sm">
+                    <span className="bg-emerald-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black shadow">✓</span>
+                  </div>
                 )}
               </button>
             );

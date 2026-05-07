@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useSpeech } from '@/lib/useSpeech';
 
 // ─── Shared SVG Avatar face ───────────────────────────────────────────────────
 function AvatarFace({
@@ -207,6 +208,7 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
     const playedRef = useRef(false);
 
     const { mouthOpen, isPlaying, playSound, stop } = useAvatarAudio();
+    const { speak } = useSpeech();
     const [bubbleText, setBubbleText] = useState<string | null>(null);
 
     // ── Entrance animation and auto-greeting
@@ -217,10 +219,15 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
         const tGreet = setTimeout(() => {
             if (!playedRef.current) {
                 playedRef.current = true;
-                const greeting = childName ? `Zdravo, ${childName}! 👋` : 'Zdravo! 👋';
-                setBubbleText(greeting);
-                playSound('/sounds/avatar/in/avatarIn1.mp3', () => {
-                    setBubbleText(null);
+                const name = childName || 'drugaru';
+                const greeting = `Zdravo ${name}! Dobrodošao nazad! Baš mi je drago što te vidim.`;
+                const bubble = childName ? `Zdravo ${childName}! 👋` : 'Zdravo! 👋';
+                
+                setBubbleText(bubble);
+                
+                // Using speak will dispatch avatar:speak which the component already listens to
+                speak(greeting, { 
+                    onEnd: () => setBubbleText(null)
                 });
             }
         }, 1500);
@@ -262,6 +269,7 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
     // ── Listen for external "Speak" events (e.g. from ColoringGame)
     useEffect(() => {
         const handleSpeak = (e: any) => {
+            e.preventDefault(); // Stop useSpeech from playing it (we will play it to animate mouth)
             const audioUrl = e.detail?.url;
             const customText = e.detail?.text; // Optional custom text for games
             if (audioUrl) {

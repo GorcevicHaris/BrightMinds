@@ -1,57 +1,41 @@
-import { NextRequest, NextResponse } from "next/server";
-import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
+import { ElevenLabsClient } from '@elevenlabs/elevenlabs-js';
 
-const client = new ElevenLabsClient({
-    apiKey: process.env.ELEVENLABS_API_KEY!,
+const elevenlabs = new ElevenLabsClient({
+  apiKey: process.env.ELEVENLABS_API_KEY,
 });
 
-// Glasovi dostupni na ElevenLabs koji dobro rade sa srpskim/slavenskim jezicima
-// "Rachel" je neutralni ženski glas koji dobro izgovara slavenski tekst
-const VOICE_ID = "21m00Tcm4TlvDq8ikWAM"; // Rachel - default ElevenLabs glas
+export async function POST(req) {
+  try {
+    const { text, voiceId } = await req.json();
 
-export async function POST(req: NextRequest) {
-    try {
-        const { text } = await req.json();
-
-        if (!text || typeof text !== "string") {
-            return NextResponse.json({ error: "Text is required" }, { status: 400 });
-        }
-
-        const audioStream = await client.textToSpeech.convert(VOICE_ID, {
-            text,
-            modelId: "eleven_multilingual_v2", // Podržava srpski jezik
-            outputFormat: "mp3_44100_128",
-            voiceSettings: {
-                stability: 0.5,
-                similarityBoost: 0.8,
-                style: 0.2,
-                useSpeakerBoost: true,
-            },
-        });
-
-        // Pretvori ReadableStream u buffer
-        const reader = (audioStream as ReadableStream<Uint8Array>).getReader();
-        const chunks: Uint8Array[] = [];
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (value) chunks.push(value);
-        }
-
-        const buffer = Buffer.concat(chunks);
-
-        return new NextResponse(buffer, {
-            headers: {
-                "Content-Type": "audio/mpeg",
-                "Cache-Control": "no-cache",
-            },
-        });
-    } catch (error: any) {
-        console.error("ElevenLabs TTS error:", error);
-        return NextResponse.json(
-            { error: "TTS generation failed", details: error?.message },
-            { status: 500 }
-        );
+    if (!text) {
+      return new Response(JSON.stringify({ error: 'Text is required' }), { status: 400 });
     }
+
+    const audioStream = await elevenlabs.textToSpeech.convert(
+      voiceId || process.env.ELEVENLABS_VOICE_ID || 'JBFqnCBsd6RMkjVDRZzb',
+      {
+        text: text,
+        modelId: 'eleven_multilingual_v2',
+        outputFormat: 'mp3_44100_128',
+      }
+    );
+
+    // Convert stream to Buffer
+    const chunks = [];
+    for await (const chunk of audioStream) {
+      chunks.push(chunk);
+    }
+    const audioBuffer = Buffer.concat(chunks);
+
+    return new Response(audioBuffer, {
+      headers: {
+        'Content-Type': 'audio/mpeg',
+        'Content-Length': audioBuffer.length.toString(),
+      },
+    });
+  } catch (error) {
+    console.error('ElevenLabs TTS Error:', error);
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
 }

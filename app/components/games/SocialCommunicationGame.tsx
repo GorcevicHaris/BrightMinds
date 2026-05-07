@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useGameEmitter } from "@/lib/useSocket";
+import { useSpeech } from "@/lib/useSpeech";
+import { log } from "console";
 
 interface GameProps {
     childId: number;
@@ -32,7 +34,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 1, scene: "🎁",
             description: "Dobio/la si poklon. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Hvala!","Neću to."],
+            answers: ["Hvala!", "Neću to."],
             correct: 0,
             hint: "Uvek kažemo hvala.",
             color: "#7C3AED", bgColor: "#EDE9FE",
@@ -41,7 +43,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 2, scene: "👋",
             description: "Srećeš učiteljicu. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Ćutiš.","Dobar dan!"],
+            answers: ["Ćutiš.", "Dobar dan!"],
             correct: 1,
             hint: "Starije pozdravljamo.",
             color: "#0891B2", bgColor: "#E0F2FE",
@@ -50,7 +52,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 3, scene: "😢",
             description: "Slučajno si gurnuo druga. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Izvini!","Skloni se."],
+            answers: ["Izvini!", "Skloni se."],
             correct: 0,
             hint: "Kada pogrešimo, kažemo izvini.",
             color: "#059669", bgColor: "#D1FAE5",
@@ -61,7 +63,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 4, scene: "💧",
             description: "Želiš vodu. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Daj vodu!","Molim te, daj mi vodu."],
+            answers: ["Daj vodu!", "Molim te, daj mi vodu."],
             correct: 1,
             hint: "Koristimo reč molim.",
             color: "#DC2626", bgColor: "#FEE2E2",
@@ -70,7 +72,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 5, scene: "🧸",
             description: "Drug ti da igračku. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Hvala ti!","Baciš je."],
+            answers: ["Hvala ti!", "Baciš je."],
             correct: 0,
             hint: "Lepo se zahvalimo.",
             color: "#D97706", bgColor: "#FEF3C7",
@@ -79,7 +81,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 6, scene: "🏠",
             description: "Ideš kući. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Doviđenja!","Samo odeš."],
+            answers: ["Doviđenja!", "Samo odeš."],
             correct: 0,
             hint: "Uvek se pozdravimo pri prelasku.",
             color: "#DB2777", bgColor: "#FCE7F3",
@@ -90,7 +92,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 7, scene: "😭",
             description: "Brat plače. Šta uradiš?",
             question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.","Pitaš: Jesi li dobro?"],
+            answers: ["Smeješ se.", "Pitaš: Jesi li dobro?"],
             correct: 1,
             hint: "Brinemo o drugima.",
             color: "#4B5563", bgColor: "#F3F4F6",
@@ -99,7 +101,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 8, scene: "🍽️",
             description: "Mama napravi ručak. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Baš je ukusno, hvala!","Fuj."],
+            answers: ["Baš je ukusno, hvala!", "Fuj."],
             correct: 0,
             hint: "Zahvalimo se za obrok.",
             color: "#65A30D", bgColor: "#ECFCCB",
@@ -108,7 +110,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 9, scene: "👋",
             description: "Drug ti kaže zdravo. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Zdravo!","Gledaš u pod."],
+            answers: ["Zdravo!", "Gledaš u pod."],
             correct: 0,
             hint: "Odgovorimo na pozdrav.",
             color: "#7C3AED", bgColor: "#EDE9FE",
@@ -119,7 +121,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 10, scene: "⚽",
             description: "Želiš da se igraš sa drugima. Šta pitaš?",
             question: "Šta je najbolje reći?",
-            answers: ["Mogu li i ja?","Uzmim im loptu."],
+            answers: ["Mogu li i ja?", "Uzmim im loptu."],
             correct: 0,
             hint: "Uvek lepo pitaj.",
             color: "#0891B2", bgColor: "#E0F2FE",
@@ -128,7 +130,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 11, scene: "✏️",
             description: "Neko ti uzme olovku. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Vrati to, molim te.","Udariš ga."],
+            answers: ["Vrati to, molim te.", "Udariš ga."],
             correct: 0,
             hint: "Budi pristojan.",
             color: "#059669", bgColor: "#D1FAE5",
@@ -137,7 +139,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 12, scene: "🤕",
             description: "Prijatelj je pao. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.","Treba li ti pomoć?"],
+            answers: ["Smeješ se.", "Treba li ti pomoć?"],
             correct: 1,
             hint: "Pomažemo u nevolji.",
             color: "#DC2626", bgColor: "#FEE2E2",
@@ -148,7 +150,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 13, scene: "🍦",
             description: "Kupuješ sladoled. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Molim vas jedan sladoled.","Daj sladoled!"],
+            answers: ["Molim vas jedan sladoled.", "Daj sladoled!"],
             correct: 0,
             hint: "Koristimo reč molim.",
             color: "#D97706", bgColor: "#FEF3C7",
@@ -157,7 +159,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 14, scene: "🎂",
             description: "Drug slavi rođendan. Šta mu kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Srećan rođendan!","Daj mi tortu."],
+            answers: ["Srećan rođendan!", "Daj mi tortu."],
             correct: 0,
             hint: "Čestitamo rođendane.",
             color: "#DB2777", bgColor: "#FCE7F3",
@@ -166,7 +168,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 15, scene: "🚶",
             description: "Želiš da prođeš. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Skloni se!","Izvinite, mogu li da prođem?"],
+            answers: ["Skloni se!", "Izvinite, mogu li da prođem?"],
             correct: 1,
             hint: "Budimo kulturni.",
             color: "#4B5563", bgColor: "#F3F4F6",
@@ -177,7 +179,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 16, scene: "🎁",
             description: "Dobio/la si poklon. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Hvala!","Neću to."],
+            answers: ["Hvala!", "Neću to."],
             correct: 0,
             hint: "Uvek kažemo hvala.",
             color: "#7C3AED", bgColor: "#EDE9FE",
@@ -186,7 +188,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 17, scene: "👋",
             description: "Srećeš učiteljicu. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Ćutiš.","Dobar dan!"],
+            answers: ["Ćutiš.", "Dobar dan!"],
             correct: 1,
             hint: "Starije pozdravljamo.",
             color: "#0891B2", bgColor: "#E0F2FE",
@@ -195,7 +197,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 18, scene: "😢",
             description: "Slučajno si gurnuo druga. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Izvini!","Skloni se."],
+            answers: ["Izvini!", "Skloni se."],
             correct: 0,
             hint: "Kada pogrešimo, kažemo izvini.",
             color: "#059669", bgColor: "#D1FAE5",
@@ -206,7 +208,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 19, scene: "💧",
             description: "Želiš vodu. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Daj vodu!","Molim te, daj mi vodu."],
+            answers: ["Daj vodu!", "Molim te, daj mi vodu."],
             correct: 1,
             hint: "Koristimo reč molim.",
             color: "#DC2626", bgColor: "#FEE2E2",
@@ -215,7 +217,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 20, scene: "🧸",
             description: "Drug ti da igračku. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Hvala ti!","Baciš je."],
+            answers: ["Hvala ti!", "Baciš je."],
             correct: 0,
             hint: "Lepo se zahvalimo.",
             color: "#D97706", bgColor: "#FEF3C7",
@@ -224,7 +226,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 21, scene: "🏠",
             description: "Ideš kući. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Doviđenja!","Samo odeš."],
+            answers: ["Doviđenja!", "Samo odeš."],
             correct: 0,
             hint: "Uvek se pozdravimo pri prelasku.",
             color: "#DB2777", bgColor: "#FCE7F3",
@@ -235,7 +237,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 22, scene: "😭",
             description: "Brat plače. Šta uradiš?",
             question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.","Pitaš: Jesi li dobro?"],
+            answers: ["Smeješ se.", "Pitaš: Jesi li dobro?"],
             correct: 1,
             hint: "Brinemo o drugima.",
             color: "#4B5563", bgColor: "#F3F4F6",
@@ -244,7 +246,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 23, scene: "🍽️",
             description: "Mama napravi ručak. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Baš je ukusno, hvala!","Fuj."],
+            answers: ["Baš je ukusno, hvala!", "Fuj."],
             correct: 0,
             hint: "Zahvalimo se za obrok.",
             color: "#65A30D", bgColor: "#ECFCCB",
@@ -253,7 +255,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 24, scene: "👋",
             description: "Drug ti kaže zdravo. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Zdravo!","Gledaš u pod."],
+            answers: ["Zdravo!", "Gledaš u pod."],
             correct: 0,
             hint: "Odgovorimo na pozdrav.",
             color: "#7C3AED", bgColor: "#EDE9FE",
@@ -264,7 +266,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 25, scene: "⚽",
             description: "Želiš da se igraš sa drugima. Šta pitaš?",
             question: "Šta je najbolje reći?",
-            answers: ["Mogu li i ja?","Uzmim im loptu."],
+            answers: ["Mogu li i ja?", "Uzmim im loptu."],
             correct: 0,
             hint: "Uvek lepo pitaj.",
             color: "#0891B2", bgColor: "#E0F2FE",
@@ -273,7 +275,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 26, scene: "✏️",
             description: "Neko ti uzme olovku. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Vrati to, molim te.","Udariš ga."],
+            answers: ["Vrati to, molim te.", "Udariš ga."],
             correct: 0,
             hint: "Budi pristojan.",
             color: "#059669", bgColor: "#D1FAE5",
@@ -282,7 +284,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 27, scene: "🤕",
             description: "Prijatelj je pao. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.","Treba li ti pomoć?"],
+            answers: ["Smeješ se.", "Treba li ti pomoć?"],
             correct: 1,
             hint: "Pomažemo u nevolji.",
             color: "#DC2626", bgColor: "#FEE2E2",
@@ -293,7 +295,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 28, scene: "🍦",
             description: "Kupuješ sladoled. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Molim vas jedan sladoled.","Daj sladoled!"],
+            answers: ["Molim vas jedan sladoled.", "Daj sladoled!"],
             correct: 0,
             hint: "Koristimo reč molim.",
             color: "#D97706", bgColor: "#FEF3C7",
@@ -302,7 +304,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 29, scene: "🎂",
             description: "Drug slavi rođendan. Šta mu kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Srećan rođendan!","Daj mi tortu."],
+            answers: ["Srećan rođendan!", "Daj mi tortu."],
             correct: 0,
             hint: "Čestitamo rođendane.",
             color: "#DB2777", bgColor: "#FCE7F3",
@@ -311,7 +313,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 30, scene: "🚶",
             description: "Želiš da prođeš. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Skloni se!","Izvinite, mogu li da prođem?"],
+            answers: ["Skloni se!", "Izvinite, mogu li da prođem?"],
             correct: 1,
             hint: "Budimo kulturni.",
             color: "#4B5563", bgColor: "#F3F4F6",
@@ -322,7 +324,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 31, scene: "🎁",
             description: "Dobio/la si poklon. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Hvala!","Neću to."],
+            answers: ["Hvala!", "Neću to."],
             correct: 0,
             hint: "Uvek kažemo hvala.",
             color: "#7C3AED", bgColor: "#EDE9FE",
@@ -331,7 +333,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 32, scene: "👋",
             description: "Srećeš učiteljicu. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Ćutiš.","Dobar dan!"],
+            answers: ["Ćutiš.", "Dobar dan!"],
             correct: 1,
             hint: "Starije pozdravljamo.",
             color: "#0891B2", bgColor: "#E0F2FE",
@@ -340,7 +342,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 33, scene: "😢",
             description: "Slučajno si gurnuo druga. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Izvini!","Skloni se."],
+            answers: ["Izvini!", "Skloni se."],
             correct: 0,
             hint: "Kada pogrešimo, kažemo izvini.",
             color: "#059669", bgColor: "#D1FAE5",
@@ -351,7 +353,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 34, scene: "💧",
             description: "Želiš vodu. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Daj vodu!","Molim te, daj mi vodu."],
+            answers: ["Daj vodu!", "Molim te, daj mi vodu."],
             correct: 1,
             hint: "Koristimo reč molim.",
             color: "#DC2626", bgColor: "#FEE2E2",
@@ -360,7 +362,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 35, scene: "🧸",
             description: "Drug ti da igračku. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Hvala ti!","Baciš je."],
+            answers: ["Hvala ti!", "Baciš je."],
             correct: 0,
             hint: "Lepo se zahvalimo.",
             color: "#D97706", bgColor: "#FEF3C7",
@@ -369,7 +371,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 36, scene: "🏠",
             description: "Ideš kući. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Doviđenja!","Samo odeš."],
+            answers: ["Doviđenja!", "Samo odeš."],
             correct: 0,
             hint: "Uvek se pozdravimo pri prelasku.",
             color: "#DB2777", bgColor: "#FCE7F3",
@@ -380,7 +382,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 37, scene: "😭",
             description: "Brat plače. Šta uradiš?",
             question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.","Pitaš: Jesi li dobro?"],
+            answers: ["Smeješ se.", "Pitaš: Jesi li dobro?"],
             correct: 1,
             hint: "Brinemo o drugima.",
             color: "#4B5563", bgColor: "#F3F4F6",
@@ -389,7 +391,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 38, scene: "🍽️",
             description: "Mama napravi ručak. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Baš je ukusno, hvala!","Fuj."],
+            answers: ["Baš je ukusno, hvala!", "Fuj."],
             correct: 0,
             hint: "Zahvalimo se za obrok.",
             color: "#65A30D", bgColor: "#ECFCCB",
@@ -398,7 +400,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 39, scene: "👋",
             description: "Drug ti kaže zdravo. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Zdravo!","Gledaš u pod."],
+            answers: ["Zdravo!", "Gledaš u pod."],
             correct: 0,
             hint: "Odgovorimo na pozdrav.",
             color: "#7C3AED", bgColor: "#EDE9FE",
@@ -409,7 +411,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 40, scene: "⚽",
             description: "Želiš da se igraš sa drugima. Šta pitaš?",
             question: "Šta je najbolje reći?",
-            answers: ["Mogu li i ja?","Uzmim im loptu."],
+            answers: ["Mogu li i ja?", "Uzmim im loptu."],
             correct: 0,
             hint: "Uvek lepo pitaj.",
             color: "#0891B2", bgColor: "#E0F2FE",
@@ -418,7 +420,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 41, scene: "✏️",
             description: "Neko ti uzme olovku. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Vrati to, molim te.","Udariš ga."],
+            answers: ["Vrati to, molim te.", "Udariš ga."],
             correct: 0,
             hint: "Budi pristojan.",
             color: "#059669", bgColor: "#D1FAE5",
@@ -427,7 +429,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 42, scene: "🤕",
             description: "Prijatelj je pao. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.","Treba li ti pomoć?"],
+            answers: ["Smeješ se.", "Treba li ti pomoć?"],
             correct: 1,
             hint: "Pomažemo u nevolji.",
             color: "#DC2626", bgColor: "#FEE2E2",
@@ -438,7 +440,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 43, scene: "🍦",
             description: "Kupuješ sladoled. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Molim vas jedan sladoled.","Daj sladoled!"],
+            answers: ["Molim vas jedan sladoled.", "Daj sladoled!"],
             correct: 0,
             hint: "Koristimo reč molim.",
             color: "#D97706", bgColor: "#FEF3C7",
@@ -447,7 +449,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 44, scene: "🎂",
             description: "Drug slavi rođendan. Šta mu kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Srećan rođendan!","Daj mi tortu."],
+            answers: ["Srećan rođendan!", "Daj mi tortu."],
             correct: 0,
             hint: "Čestitamo rođendane.",
             color: "#DB2777", bgColor: "#FCE7F3",
@@ -456,7 +458,7 @@ const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
             id: 45, scene: "🚶",
             description: "Želiš da prođeš. Šta kažeš?",
             question: "Šta je najbolje reći?",
-            answers: ["Skloni se!","Izvinite, mogu li da prođem?"],
+            answers: ["Skloni se!", "Izvinite, mogu li da prođem?"],
             correct: 1,
             hint: "Budimo kulturni.",
             color: "#4B5563", bgColor: "#F3F4F6",
@@ -478,6 +480,8 @@ export default function SocialCommunicationGame({
 }: GameProps) {
     const situations = getSituationsForLevel(level);
     const [currentIndex, setCurrentIndex] = useState(monitorState?.currentIndex || 0);
+    const currentSituation = situations[currentIndex];
+    const totalSituations = situations.length;
     const [score, setScore] = useState(monitorState?.score || 0);
     const [correctCount, setCorrectCount] = useState(monitorState?.correctCount || 0);
     const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -493,8 +497,17 @@ export default function SocialCommunicationGame({
     const [totalIncorrect, setTotalIncorrect] = useState(monitorState?.totalIncorrect || 0);
     const [advancing, setAdvancing] = useState(false); // blocks clicks during auto-advance
 
+    const [isMuted, setIsMuted] = useState(false);
     const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
+    const { speak, stopSpeech } = useSpeech();
 
+    // ── TTS Logic ─────────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (isPlaying && currentSituation && !isMuted && !isMonitor) {
+            const textToSpeak = `${currentSituation.description} ${currentSituation.question}`;
+            speak(textToSpeak);
+        }
+    }, [currentIndex, isPlaying, isMuted, isMonitor, currentSituation, speak]);
     useEffect(() => {
         if (isMonitor && monitorState) {
             // Sync current question index (support both naming conventions)
@@ -519,9 +532,6 @@ export default function SocialCommunicationGame({
             handleMoodBeforeSelect("neutral"); // Default mood for auto-start
         }
     }, [autoStart, isMonitor, isPlaying, currentIndex, completed]);
-
-    const currentSituation = situations[currentIndex];
-    const totalSituations = situations.length;
 
     const handleAnswerClick = (index: number) => {
         if (answerState !== "idle" || isMonitor || advancing) return;
@@ -678,7 +688,7 @@ export default function SocialCommunicationGame({
             <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
                 {/* Background Decor */}
                 <div className="absolute inset-0 bg-slate-50">
-                    <div 
+                    <div
                         className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
                         style={{ backgroundImage: "url('/images/ustacomunicira.png')" }}
                     />
@@ -687,7 +697,7 @@ export default function SocialCommunicationGame({
 
                 <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
                     {onClose && (
-                        <button 
+                        <button
                             onClick={onClose}
                             className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-md border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-20"
                         >
@@ -696,10 +706,10 @@ export default function SocialCommunicationGame({
                     )}
                     <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
-                           ✨ Raspoloženje
+                            ✨ Raspoloženje
                         </div>
                         <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
-                           Kako si danas?
+                            Kako si danas?
                         </h2>
                         <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
                     </div>
@@ -720,7 +730,7 @@ export default function SocialCommunicationGame({
                             >
                                 <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
                                 <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
-                                   {mood.emoji}
+                                    {mood.emoji}
                                 </div>
                                 <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
                             </button>

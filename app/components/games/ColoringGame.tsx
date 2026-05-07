@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useGameEmitter } from '@/lib/useSocket';
+import { useSpeech } from '@/lib/useSpeech';
 
 interface GameProps {
   childId: number;
@@ -45,17 +46,21 @@ const TEMPLATES = {
     { id: 4, path: "M200,225 L320,135 A150,150 0 0,1 320,315 Z", targetColor: "#10B981" },
     { id: 5, path: "M200,225 L80,135 A150,150 0 0,0 80,315 Z", targetColor: "#A855F7" },
     { id: 6, path: "M200,225 m-30,0 a30,30 0 1,0 60,0 a30,30 0 1,0 -60,0", targetColor: "#F3F4F6" },
+    { id: 7, path: "M200,225 m-150,0 a150,150 0 1,0 300,0 a150,150 0 1,0 -300,0", targetColor: "#1E293B", stroke: true },
   ],
 
   // ─── NIVO 2: DRVO ────────────────────────────────────────────────────────────
   2: [
-    { id: 1, path: "M170,300 L170,400 L230,400 L230,300 Z", targetColor: "#92400E" },
-    { id: 2, path: "M200,50 A80,80 0 1,1 270,110 A80,80 0 1,1 240,260 A80,80 0 1,1 160,260 A80,80 0 1,1 130,110 A80,80 0 1,1 200,50 Z", targetColor: "#10B981" },
-    { id: 3, path: "M160,150 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#EF4444" },
-    { id: 4, path: "M240,180 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#EF4444" },
-    { id: 5, path: "M190,220 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#EF4444" },
-    { id: 6, path: "M130,190 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#EF4444" },
-    { id: 7, path: "M260,130 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#EF4444" },
+    // Stablo
+    { id: 1, path: "M180,410 L220,410 L210,290 L190,290 Z", targetColor: "#92400E" },
+    // Krošnja (centrirana i niža)
+    { id: 2, path: "M200,300 C140,300 120,240 160,200 C130,160 160,100 200,120 C240,100 270,160 240,200 C285,240 260,300 200,300 Z", targetColor: "#10B981" },
+    // Jabuke
+    { id: 3, path: "M175,235 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#EF4444" },
+    { id: 4, path: "M225,235 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#EF4444" },
+    { id: 5, path: "M200,185 m-12,0 a12,12 0 1,0 24,0 a12,12 0 1,0 -24,0", targetColor: "#EF4444" },
+    // Jaka crna kontura
+    { id: 6, path: "M180,410 L220,410 L210,290 L190,290 Z M200,300 C140,300 120,240 160,200 C130,160 160,100 200,120 C240,100 270,160 240,200 C285,240 260,300 200,300 Z", targetColor: "#1E293B", stroke: true },
   ],
 
   // ─── NIVO 3: SLADOLED ────────────────────────────────────────────────────────
@@ -153,20 +158,23 @@ const TEMPLATES = {
 
   // ─── NIVO 10: LEPTIR ──────────────────────────────────────────────────────────
   10: [
-    { id: 1, path: "M196,155 L204,155 L208,320 L192,320 Z", targetColor: "#1F2937" },
-    { id: 2, path: "M200,142 m-16,0 a16,16 0 1,0 32,0 a16,16 0 1,0 -32,0", targetColor: "#1F2937" },
-    { id: 3, path: "M193,128 Q168,90 150,70 L154,67 Q173,88 196,126 Z", targetColor: "#4B5563" },
-    { id: 4, path: "M207,128 Q232,90 250,70 L246,67 Q227,88 204,126 Z", targetColor: "#4B5563" },
-    { id: 5, path: "M150,67 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0", targetColor: "#A855F7" },
-    { id: 6, path: "M250,67 m-7,0 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0", targetColor: "#A855F7" },
-    { id: 7, path: "M192,185 Q138,138 70,148 Q44,190 80,242 Q118,275 192,245 Z", targetColor: "#7C3AED" },
-    { id: 8, path: "M208,185 Q262,138 330,148 Q356,190 320,242 Q282,275 208,245 Z", targetColor: "#7C3AED" },
-    { id: 9, path: "M192,255 Q138,260 95,285 Q100,338 155,318 Q182,298 192,272 Z", targetColor: "#A855F7" },
-    { id: 10, path: "M208,255 Q262,260 305,285 Q300,338 245,318 Q218,298 208,272 Z", targetColor: "#A855F7" },
-    { id: 11, path: "M128,198 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0", targetColor: "#FBBF24" },
-    { id: 12, path: "M272,198 m-22,0 a22,22 0 1,0 44,0 a22,22 0 1,0 -44,0", targetColor: "#FBBF24" },
-    { id: 13, path: "M148,275 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0", targetColor: "#FDE68A" },
-    { id: 14, path: "M252,275 m-14,0 a14,14 0 1,0 28,0 a14,14 0 1,0 -28,0", targetColor: "#FDE68A" },
+    // Telo i Glava
+    { id: 1, path: "M200,180 Q185,280 200,380 Q215,280 200,180 Z", targetColor: "#1F2937" },
+    { id: 2, path: "M200,165 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0", targetColor: "#1F2937" },
+    // Gornja Krila
+    { id: 3, path: "M195,210 C140,130 40,150 70,250 C100,350 190,290 195,280 Z", targetColor: "#A855F7" },
+    { id: 4, path: "M205,210 C260,130 360,150 330,250 C300,350 210,290 205,280 Z", targetColor: "#A855F7" },
+    // Donja Krila
+    { id: 5, path: "M195,290 C140,300 90,350 120,410 C150,470 195,410 195,380 Z", targetColor: "#7C3AED" },
+    { id: 6, path: "M205,290 C260,300 310,350 280,410 C250,470 205,410 205,380 Z", targetColor: "#7C3AED" },
+    // Ukrasi na krilima
+    { id: 7, path: "M120,240 m-15,0 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0", targetColor: "#FBBF24" },
+    { id: 8, path: "M280,240 m-15,0 a15,15 0 1,0 30,0 a15,15 0 1,0 -30,0", targetColor: "#FBBF24" },
+    // Antene
+    { id: 9, path: "M190,155 Q160,120 150,130", targetColor: "#1F2937", stroke: true },
+    { id: 10, path: "M210,155 Q240,120 250,130", targetColor: "#1F2937", stroke: true },
+    // Kontura
+    { id: 11, path: "M200,180 Q185,280 200,380 Q215,280 200,180 Z M200,165 m-20,0 a20,20 0 1,0 40,0 a20,20 0 1,0 -40,0 M195,210 C140,130 40,150 70,250 C100,350 190,290 195,280 Z M205,210 C260,130 360,150 330,250 C300,350 210,290 205,280 Z M195,290 C140,300 90,350 120,410 C150,470 195,410 195,380 Z M205,290 C260,300 310,350 280,410 C250,470 205,410 205,380 Z", targetColor: "#1E293B", stroke: true },
   ],
 
   // ─── NIVO 11: MEDA ────────────────────────────────────────────────────────────
@@ -399,7 +407,15 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
   }, [autoStart, isMonitor, isPlaying, completedZones]);
 
   const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
+  const { speak } = useSpeech();
   const template = TEMPLATES[level as keyof typeof TEMPLATES] || TEMPLATES[1];
+
+  // Auto-speak object name
+  useEffect(() => {
+    if (isPlaying && !isMonitor) {
+      speak(`Oboji ${getLevelName(level)}`);
+    }
+  }, [level, isPlaying, isMonitor, speak]);
 
   const initializeGame = () => {
     // Stroke-only zones (whiskers, mouth lines etc.) are too thin to click.
@@ -757,10 +773,10 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
               <path
                 key={zone.id}
                 d={zone.path}
-                fill={zone.color || "#F8FAFC"}
-                stroke={zone.stroke ? zone.targetColor : "#CBD5E1"}
-                strokeWidth={zone.stroke ? "3" : "1.5"}
-                className={`transition-all duration-500 cursor-pointer hover:opacity-80 ${isMonitor ? "pointer-events-none" : ""}`}
+                fill={zone.stroke ? "none" : (zone.color || "#FFFFFF")}
+                stroke={zone.stroke ? zone.targetColor : "#64748B"}
+                strokeWidth={zone.stroke ? "4" : "2.5"}
+                className={`transition-all duration-500 ${zone.stroke ? "pointer-events-none" : "cursor-pointer hover:opacity-80"} ${isMonitor ? "pointer-events-none" : ""}`}
                 onClick={() => handleZoneClick(zone.id)}
               />
             ))}

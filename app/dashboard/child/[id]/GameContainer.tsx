@@ -110,6 +110,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   const [autoStart, setAutoStart] = useState(false);
   const [unlockedLevels, setUnlockedLevels] = useState<Record<string, number>>({});
   const [levelsLoading, setLevelsLoading] = useState(true);
+  const [showNextLevel, setShowNextLevel] = useState(false);
+  const [lastScore, setLastScore] = useState(0);
 
   const isSavingRef = useRef(false);
   const lastSaveTimeRef = useRef(0);
@@ -152,6 +154,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     setCurrentLevel(getStartLevelForDiff(diff, maxUnlocked));
     setMessage("");
     setAutoStart(false);
+    setShowNextLevel(false);
+    setLastScore(0);
     setScreen("playing");
   };
 
@@ -172,6 +176,8 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     setSelectedDifficulty(null);
     setAutoStart(false);
     setMessage("");
+    setShowNextLevel(false);
+    setLastScore(0);
   };
 
   // ── Game complete callback ─────────────────────────────────────────────────
@@ -207,14 +213,10 @@ export default function GameContainer({ childId, childName }: GameContainerProps
         refreshUnlocked();
 
         if (currentLevel < tierMax) {
-          // Nastavi unutar tiera
-          setMessage(`🌟 Odlično! Sledeći nivo!`);
-          setTimeout(() => {
-            setCurrentLevel(prev => prev + 1);
-            setAutoStart(true);
-            setMessage("");
-            setIsLoading(false);
-          }, 1200);
+          // Pokaži ekran sa dugmetom "Sledeći nivo"
+          setIsLoading(false);
+          setLastScore(score);
+          setShowNextLevel(true);
         } else {
           // Tier je gotov
           setIsLoading(false);
@@ -487,16 +489,56 @@ export default function GameContainer({ childId, childName }: GameContainerProps
 
         {/* Game area */}
         <div className="flex-1 relative overflow-y-auto p-2 sm:p-4 md:p-6 flex flex-col">
-          {message && (
-            <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[80] animate-in slide-in-from-top-2 duration-300 w-auto max-w-xs sm:max-w-md pointer-events-none">
-              <div className="px-5 py-3 rounded-2xl text-center text-sm sm:text-base font-black shadow-lg bg-green-50 border border-green-200 text-green-700">
-                {message}
-              </div>
-            </div>
-          )}
           {isLoading && (
             <div className="absolute top-3 right-4 z-[80]">
               <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+            </div>
+          )}
+
+          {/* ── Next Level Overlay ── */}
+          {showNextLevel && selectedDifficulty && (
+            <div className="absolute inset-0 z-[90] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+              <div className="relative bg-white rounded-[2.5rem] p-8 sm:p-12 mx-4 max-w-sm w-full shadow-2xl flex flex-col items-center text-center animate-in zoom-in-90 duration-500">
+                {/* Confetti dots */}
+                <div className="absolute -top-4 -left-4 text-4xl animate-bounce">🎉</div>
+                <div className="absolute -top-4 -right-4 text-4xl animate-bounce" style={{ animationDelay: '0.2s' }}>🌟</div>
+
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-4xl mb-5 shadow-xl">
+                  🏆
+                </div>
+
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-black uppercase tracking-widest mb-3">
+                  Nivo {currentLevel} završen!
+                </div>
+
+                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">Bravo! 🎊</h2>
+                <p className="text-slate-500 font-bold mb-1">
+                  Rezultat: <span className="text-purple-600 font-black text-lg">{lastScore}</span> poena
+                </p>
+                <p className="text-slate-400 text-sm font-bold mb-8">
+                  Sljedeći je Nivo {currentLevel + 1}
+                </p>
+
+                <button
+                  onClick={() => {
+                    setShowNextLevel(false);
+                    setAutoStart(false);
+                    setCurrentLevel(prev => prev + 1);
+                  }}
+                  className="w-full group bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white rounded-2xl p-1 transition-all duration-300 shadow-xl hover:-translate-y-1 active:scale-95 mb-3"
+                >
+                  <div className="border-2 border-white/20 rounded-xl px-6 py-4 flex items-center justify-center gap-3">
+                    <span className="text-lg font-black uppercase tracking-wider">Sledeći nivo ▶</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleExit}
+                  className="w-full px-6 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-sm transition-all"
+                >
+                  Izlaz iz igre
+                </button>
+              </div>
             </div>
           )}
 
