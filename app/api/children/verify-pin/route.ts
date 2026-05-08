@@ -14,8 +14,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // If child_id is provided, verify for that specific child (legacy support)
-        // Otherwise, search ALL children by pin_code (child self-login)
         let rows: any[];
 
         if (child_id) {
