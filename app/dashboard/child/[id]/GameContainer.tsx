@@ -10,6 +10,7 @@ import SocialCommunicationGame from "@/app/components/games/SocialCommunicationG
 import SocialStoryGame from "@/app/components/games/SocialStoryGame";
 import EmotionsGame from "@/app/components/games/EmotionsGame";
 import { useGameEmitter } from "@/lib/useSocket";
+import { useSpeech } from "@/lib/useSpeech";
 
 type GameId = "shapes" | "memory" | "coloring" | "sound-to-image" | "social" | "social-story" | "emotions";
 type Difficulty = "easy" | "medium" | "hard";
@@ -99,6 +100,18 @@ function getActivityId(gameId: GameId | null): number {
   return gameId === "shapes" ? 1 : gameId === "memory" ? 3 : gameId === "sound-to-image" ? 5 : gameId === "social" ? 6 : gameId === "social-story" ? 7 : gameId === "emotions" ? 8 : 4;
 }
 
+interface GameProps {
+  childId: number;
+  level: number;
+  minLevel?: number;
+  maxLevel?: number;
+  onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+  onClose?: () => void;
+  autoStart?: boolean;
+  isMonitor?: boolean;
+  monitorState?: any;
+}
+
 // ── Komponenta ─────────────────────────────────────────────────────────────────
 export default function GameContainer({ childId, childName }: GameContainerProps) {
   const [screen, setScreen] = useState<Screen>("picker");
@@ -116,6 +129,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   const isSavingRef = useRef(false);
   const lastSaveTimeRef = useRef(0);
   const { emitGameComplete } = useGameEmitter();
+  const { speak } = useSpeech();
 
   const refreshUnlocked = () => {
     fetch(`/api/children/${childId}/unlocked-levels?t=${Date.now()}`, { cache: "no-store" })
@@ -222,6 +236,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
           setIsLoading(false);
           if (selectedDifficulty === "hard") {
             setScreen("all-finished");
+            speak(`Bravo ${childName}! Završio si sve nivoe! Ti si pravi šampion!`);
           } else {
             setScreen("tier-finished");
           }
@@ -556,7 +571,15 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             ) : selectedGame === "emotions" ? (
               <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
             ) : (
-              <ColoringGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
+              <ColoringGame 
+                childId={childId} 
+                level={currentLevel} 
+                minLevel={cfg.min}
+                maxLevel={cfg.max}
+                onComplete={handleGameComplete} 
+                onClose={handleExit} 
+                autoStart={autoStart} 
+              />
             )}
           </div>
         </div>
@@ -661,51 +684,70 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   // ══════════════════════════════════════════════════════════════════════════
   if (screen === "all-finished" && activeGame) {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-slate-900">
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-6 text-center overflow-hidden bg-slate-950">
         {/* Professional Celebration Background */}
         <div className="absolute inset-0 z-0">
           <div
-            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-60"
+            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-20 blur-2xl"
             style={{ backgroundImage: `url(${activeGame.bgImage})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/80 via-slate-900/60 to-slate-900/90 backdrop-blur-2xl" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/80 to-slate-950/95 backdrop-blur-3xl" />
         </div>
 
-        <div className="relative z-10 w-full max-w-2xl flex flex-col items-center animate-in zoom-in duration-700">
-          <div className="relative mb-12 transform scale-125">
-            <div className="text-8xl sm:text-[140px] md:text-[180px] drop-shadow-2xl animate-bounce">🏆</div>
-            <div className="absolute -top-8 -right-8 text-6xl animate-pulse">✨</div>
-            <div className="absolute top-1/2 -left-12 text-5xl animate-ping" style={{ animationDuration: "2s" }}>🎉</div>
+        <div className="relative z-10 w-full max-w-3xl flex flex-col items-center animate-in zoom-in duration-1000">
+          {/* Trophy Area - Scaled Down */}
+          <div className="relative mb-4 sm:mb-6 group">
+            <div className="absolute inset-0 bg-yellow-400/20 blur-[80px] rounded-full group-hover:bg-yellow-400/30 transition-all duration-1000"></div>
+            <div className="text-7xl sm:text-9xl md:text-[140px] drop-shadow-[0_0_40px_rgba(234,179,8,0.3)] animate-bounce relative z-10">🏆</div>
+            <div className="absolute -top-6 -right-6 text-4xl animate-pulse">✨</div>
+            <div className="absolute top-1/2 -left-12 text-4xl animate-ping" style={{ animationDuration: "3s" }}>🎉</div>
           </div>
 
-          <div className="mb-12">
-            <div className="inline-flex items-center gap-3 bg-gradient-to-r from-yellow-400 to-amber-600 px-8 py-2 rounded-full shadow-2xl mb-6 border-2 border-white/20">
-              <span className="text-white font-black text-xl uppercase tracking-widest px-2">NAJBOLJI SI! 👑</span>
+          <div className="mb-6 sm:mb-8 px-4 flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-400 bg-[length:200%_auto] animate-gradient-x px-6 sm:px-8 py-2 rounded-full shadow-2xl mb-6 border-2 border-white/20 transform hover:scale-105 transition-transform">
+              <span className="text-white font-black text-xs sm:text-base uppercase tracking-[0.2em] px-2 drop-shadow-md">NAJBOLJI SI! 👑</span>
             </div>
-            <h1 className="text-5xl md:text-8xl font-black text-white mb-6 tracking-tight drop-shadow-lg leading-tight">
-              ŠAMPION!
-            </h1>
-            <p className="text-white/80 text-xl md:text-3xl font-bold max-w-xl leading-relaxed">
-              Završio/la si <span className="text-white font-black underline underline-offset-8 decoration-yellow-400">SVE 15 NIVOA</span> u igri
+            
+            <div className="space-y-1 mb-4">
+               <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter drop-shadow-[0_8px_8px_rgba(0,0,0,0.5)] leading-none italic uppercase">
+                BRAVO
+              </h1>
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-white to-yellow-200 tracking-tighter drop-shadow-[0_8px_8px_rgba(0,0,0,0.5)] leading-none uppercase">
+                {childName}!
+              </h1>
+            </div>
+
+            <p className="text-white/60 text-sm sm:text-base md:text-lg font-black uppercase tracking-[0.2em] mb-4">
+              Završio si <span className="text-yellow-400 border-b-2 border-yellow-400/30 pb-1">SVE NIVOE</span> u igri
             </p>
-            <p className={`mt-6 text-2xl md:text-4xl font-black transition-all duration-300 text-transparent bg-clip-text bg-gradient-to-r ${activeGame.gradient} drop-shadow-sm`}>
-              {activeGame.icon} {activeGame.title}
-            </p>
+            
+            <div className="flex items-center gap-2 mt-2">
+               <div className={`text-xl sm:text-2xl md:text-3xl font-black transition-all duration-300 text-transparent bg-clip-text bg-gradient-to-r ${activeGame.gradient} drop-shadow-sm uppercase tracking-widest`}>
+                {activeGame.icon} {activeGame.title}
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-16 max-w-md">
-            {Array.from({ length: 15 }).map((_, i) => (
-              <div key={i} className="text-3xl sm:text-4xl animate-bounce" style={{ animationDelay: `${i * 0.05}s` }}>⭐</div>
+          {/* Stars Row - Scaled Down */}
+          <div className="flex items-center justify-center gap-1.5 sm:gap-4 mb-8 sm:mb-12">
+            {[1, 2, 3, 4, 5, 6, 7].map(i => (
+              <div 
+                key={i} 
+                className="text-2xl sm:text-3xl md:text-4xl animate-bounce drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]" 
+                style={{ animationDelay: `${i * 0.1}s`, animationDuration: "2s" }}
+              >
+                ⭐
+              </div>
             ))}
           </div>
 
           <button
             onClick={handleExit}
-            className={`group w-full max-w-sm bg-gradient-to-r from-yellow-400 to-amber-600 hover:from-yellow-500 hover:to-amber-700 text-white rounded-[2.5rem] p-1.5 transition-all duration-300 shadow-2xl shadow-yellow-500/20 hover:-translate-y-2`}
+            className={`group w-full max-w-xs bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 hover:from-yellow-500 hover:to-amber-700 text-white rounded-3xl p-1 transition-all duration-300 shadow-xl hover:-translate-y-1 active:scale-95`}
           >
-            <div className="border-2 border-white/20 rounded-[2rem] px-8 py-5 flex items-center justify-center gap-4">
-              <span className="text-xl sm:text-2xl font-black uppercase tracking-widest">Nazad na igre</span>
-              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform text-2xl">
+            <div className="border-2 border-white/20 rounded-[1.4rem] px-6 py-4 flex items-center justify-center gap-4">
+              <span className="text-lg sm:text-xl font-black uppercase tracking-widest leading-none">Nazad na igre</span>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform text-xl sm:text-2xl">
                 🏠
               </div>
             </div>

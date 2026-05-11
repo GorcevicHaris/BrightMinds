@@ -7,6 +7,8 @@ import { useSpeech } from '@/lib/useSpeech';
 interface GameProps {
   childId: number;
   level: number;
+  minLevel?: number;
+  maxLevel?: number;
   onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
   onClose?: () => void;
   autoStart?: boolean;
@@ -280,70 +282,42 @@ const TEMPLATES = {
   // ─── NIVO 14: SLON ────────────────────────────────────────────────────────────
   14: [
     // --- Tijelo ---
-    { id: 1, path: "M118,245 Q100,340 105,390 L295,390 Q300,340 282,245 Q240,220 200,218 Q160,220 118,245 Z", targetColor: "#94A3B8" },
-
+    { id: 1, path: "M110,240 Q90,340 100,390 L300,390 Q310,340 290,240 Q250,215 200,215 Q150,215 110,240 Z", targetColor: "#94A3B8" },
     // --- Trbuh (svjetliji) ---
-    { id: 2, path: "M140,310 Q140,375 200,378 Q260,375 260,310 Q240,295 200,292 Q160,295 140,310 Z", targetColor: "#CBD5E1" },
-
-    // --- Glava ---
-    { id: 3, path: "M112,195 Q108,130 200,118 Q292,130 288,195 Q288,265 200,272 Q112,265 112,195 Z", targetColor: "#94A3B8" },
-
-    // --- Leva uška (vanjska) ---
-    { id: 4, path: "M115,165 Q65,130 55,195 Q48,255 108,258 Q112,240 112,215 Z", targetColor: "#94A3B8" },
-    // --- Leva uška (unutrašnjost) ---
-    { id: 5, path: "M112,178 Q75,155 68,200 Q63,240 108,245 Q110,230 112,210 Z", targetColor: "#FDA4AF" },
-
-    // --- Desna uška (vanjska) ---
-    { id: 6, path: "M285,165 Q335,130 345,195 Q352,255 292,258 Q288,240 288,215 Z", targetColor: "#94A3B8" },
-    // --- Desna uška (unutrašnjost) ---
-    { id: 7, path: "M288,178 Q325,155 332,200 Q337,240 292,245 Q290,230 288,210 Z", targetColor: "#FDA4AF" },
-
-    // --- Surla (tanka, blago uvijena) ---
-    { id: 8, path: "M193,267 C188,300 183,340 185,373 Q188,390 197,396 Q207,398 213,388 Q214,374 210,355 C208,324 208,295 209,268 Q202,258 193,267 Z", targetColor: "#7F8EA3" },
-    // --- Nozdrve (mali vrh) ---
-    { id: 9, path: "M194,388 Q192,398 200,400 Q209,398 213,389 Q211,382 203,381 Q194,382 194,388 Z", targetColor: "#FDA4AF" },
-    // --- Surla bora 1 ---
-    { id: 10, path: "M190,300 Q201,297 210,300", targetColor: "#64748B", stroke: true },
-    // --- Surla bora 2 ---
-    { id: 11, path: "M188,335 Q200,331 210,336", targetColor: "#64748B", stroke: true },
-
-    // --- Kljove ---
-    { id: 13, path: "M168,248 Q150,255 140,275 Q148,285 162,278 Q172,262 178,250 Z", targetColor: "#FEF3C7" },
-    { id: 14, path: "M232,248 Q250,255 260,275 Q252,285 238,278 Q228,262 222,250 Z", targetColor: "#FEF3C7" },
-
-    // --- Oko levo (bijelo) ---
-    { id: 15, path: "M155,178 m-16,0 a16,14 0 1,0 32,0 a16,14 0 1,0 -32,0", targetColor: "#FFFFFF" },
-    // --- Oko levo (zjenica) ---
-    { id: 16, path: "M157,178 m-8,0 a8,9 0 1,0 16,0 a8,9 0 1,0 -16,0", targetColor: "#1F2937" },
-
-    // --- Oko desno (bijelo) ---
-    { id: 18, path: "M245,178 m-16,0 a16,14 0 1,0 32,0 a16,14 0 1,0 -32,0", targetColor: "#FFFFFF" },
-    // --- Oko desno (zjenica) ---
-    { id: 19, path: "M243,178 m-8,0 a8,9 0 1,0 16,0 a8,9 0 1,0 -16,0", targetColor: "#1F2937" },
-
-    // --- Rumenilo levo ---
-    { id: 21, path: "M133,222 m-16,0 a16,9 0 1,0 32,0 a16,9 0 1,0 -32,0", targetColor: "#FDA4AF" },
-    // --- Rumenilo desno ---
-    { id: 22, path: "M267,222 m-16,0 a16,9 0 1,0 32,0 a16,9 0 1,0 -32,0", targetColor: "#FDA4AF" },
-
-    // --- Noga prednja leva ---
-    { id: 23, path: "M125,358 Q118,388 122,405 L170,405 Q174,388 167,358 Z", targetColor: "#64748B" },
-    // --- Noga prednja desna ---
-    { id: 24, path: "M233,358 Q226,388 230,405 L278,405 Q282,388 275,358 Z", targetColor: "#64748B" },
-    // --- Noga zadnja leva ---
-    { id: 25, path: "M108,362 Q102,390 106,406 L148,406 Q152,390 146,362 Z", targetColor: "#475569" },
-    // --- Noga zadnja desna ---
-    { id: 26, path: "M252,362 Q246,390 250,406 L292,406 Q296,390 290,362 Z", targetColor: "#475569" },
-
-    // --- Prsti noge prednje leve ---
-    { id: 27, path: "M122,404 Q120,412 128,414 Q136,412 138,404 Z M138,404 Q138,412 146,414 Q154,412 154,404 Z M154,404 Q154,412 162,414 Q170,412 170,404 Z", targetColor: "#475569" },
-    // --- Prsti noge prednje desne ---
-    { id: 28, path: "M230,404 Q228,412 236,414 Q244,412 246,404 Z M246,404 Q246,412 254,414 Q262,412 262,404 Z M262,404 Q262,412 270,414 Q278,412 278,404 Z", targetColor: "#475569" },
-
-    // --- Rep ---
-    { id: 29, path: "M288,255 Q328,248 338,275 Q345,295 330,298 Q318,292 316,285 Q328,284 330,276 Q320,255 290,262 Z", targetColor: "#7F8EA3" },
-    // --- Čuperak repa ---
-    { id: 30, path: "M326,294 Q320,305 322,318 Q330,315 336,305 Q340,296 330,298 Z", targetColor: "#475569" },
+    { id: 2, path: "M140,310 Q140,375 200,378 Q260,375 260,310 Q240,295 200,295 Q160,295 140,310 Z", targetColor: "#CBD5E1" },
+    // --- Glava (okruglija) ---
+    { id: 3, path: "M115,190 Q110,120 200,110 Q290,120 285,190 Q285,260 200,265 Q115,260 115,190 Z", targetColor: "#94A3B8" },
+    // --- Leva uška (veća i lepša) ---
+    { id: 4, path: "M115,160 Q60,110 45,190 Q35,260 110,250 Q115,230 115,200 Z", targetColor: "#94A3B8" },
+    { id: 5, path: "M110,175 Q75,145 65,195 Q60,240 105,235 Q110,220 110,195 Z", targetColor: "#FDA4AF" },
+    // --- Desna uška ---
+    { id: 6, path: "M285,160 Q340,110 355,190 Q365,260 290,250 Q285,230 285,200 Z", targetColor: "#94A3B8" },
+    { id: 7, path: "M290,175 Q325,145 335,195 Q340,240 295,235 Q290,220 290,195 Z", targetColor: "#FDA4AF" },
+    // --- Surla (lepša i deblja pri vrhu) ---
+    { id: 8, path: "M190,260 C180,300 170,350 175,380 Q180,405 200,405 Q220,405 225,380 C230,350 220,300 210,260 Q200,250 190,260 Z", targetColor: "#7F8EA3" },
+    { id: 9, path: "M190,390 Q200,400 210,390 Q205,385 195,385 Q190,385 190,390 Z", targetColor: "#FDA4AF" },
+    // --- Bore na surli ---
+    { id: 10, path: "M185,300 Q200,295 215,300", targetColor: "#64748B", stroke: true },
+    { id: 11, path: "M182,335 Q200,330 218,335", targetColor: "#64748B", stroke: true },
+    // --- Kljove (čistije) ---
+    { id: 13, path: "M165,245 Q145,255 135,275 Q145,285 160,275 Q170,260 175,245 Z", targetColor: "#FEF3C7" },
+    { id: 14, path: "M235,245 Q255,255 265,275 Q255,285 240,275 Q230,260 225,245 Z", targetColor: "#FEF3C7" },
+    // --- Oči ---
+    { id: 15, path: "M155,175 m-15,0 a15,13 0 1,0 30,0 a15,13 0 1,0 -30,0", targetColor: "#FFFFFF" },
+    { id: 16, path: "M157,175 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0", targetColor: "#1F2937" },
+    { id: 18, path: "M245,175 m-15,0 a15,13 0 1,0 30,0 a15,13 0 1,0 -30,0", targetColor: "#FFFFFF" },
+    { id: 19, path: "M243,175 m-8,0 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0", targetColor: "#1F2937" },
+    // --- Rumenilo ---
+    { id: 21, path: "M135,215 m-12,0 a12,7 0 1,0 24,0 a12,7 0 1,0 -24,0", targetColor: "#FDA4AF" },
+    { id: 22, path: "M265,215 m-12,0 a12,7 0 1,0 24,0 a12,7 0 1,0 -24,0", targetColor: "#FDA4AF" },
+    // --- Noge ---
+    { id: 23, path: "M115,360 Q110,400 115,410 L165,410 Q170,400 165,360 Z", targetColor: "#64748B" },
+    { id: 24, path: "M235,360 Q230,400 235,410 L285,410 Q290,400 285,360 Z", targetColor: "#64748B" },
+    { id: 25, path: "M100,360 Q95,400 100,410 L140,410 Q145,400 140,360 Z", targetColor: "#475569" },
+    { id: 26, path: "M260,360 Q255,400 260,410 L300,410 Q305,400 300,360 Z", targetColor: "#475569" },
+    // --- Nokti ---
+    { id: 27, path: "M115,408 Q115,415 125,415 Q135,415 135,408 Z M135,408 Q135,415 145,415 Q155,415 155,408 Z M155,408 Q155,415 165,415 Q175,415 175,408 Z", targetColor: "#475569" },
+    { id: 28, path: "M235,408 Q235,415 245,415 Q255,415 255,408 Z M255,408 Q255,415 265,415 Q275,415 275,408 Z M275,408 Q275,415 285,415 Q295,415 295,408 Z", targetColor: "#475569" },
   ],
 
   // ─── NIVO 15: MAČKA ───────────────────────────────────────────────────────────
@@ -370,11 +344,23 @@ const TEMPLATES = {
     { id: 20, path: "M264,345 Q322,334 338,302 Q348,276 332,262 Q322,260 320,270 Q330,280 324,300 Q312,325 260,358 Z", targetColor: "#F97316" },
     { id: 21, path: "M143,366 L138,404 L163,404 L160,366 Z", targetColor: "#F97316" },
     { id: 22, path: "M238,366 L235,404 L260,404 L257,366 Z", targetColor: "#F97316" },
+    // Jaka crna kontura za bolju prepoznatljivost
+    { id: 23, path: "M128,244 Q118,314 133,374 L267,374 Q282,314 272,244 Q200,224 128,244 Z M108,178 Q103,234 138,252 Q200,270 262,252 Q297,234 292,178 Q252,132 200,130 Q148,132 108,178 Z M113,188 L98,120 L155,162 Z M287,188 L302,120 L245,162 Z M143,366 L138,404 L163,404 L160,366 Z M238,366 L235,404 L260,404 L257,366 Z M264,345 Q322,334 338,302 Q348,276 332,262 Q322,260 320,270 Q330,280 324,300 Q312,325 260,358 Z M163,188 m-20,0 a20,16 0 1,0 40,0 a20,16 0 1,0 -40,0 M237,188 m-20,0 a20,16 0 1,0 40,0 a20,16 0 1,0 -40,0", targetColor: "#1E293B", stroke: true },
   ],
 };
 
 
-export default function ColoringGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState }: GameProps) {
+export default function ColoringGame({ 
+  childId, 
+  level, 
+  minLevel = 1, 
+  maxLevel = 15, 
+  onComplete, 
+  onClose, 
+  autoStart, 
+  isMonitor, 
+  monitorState 
+}: GameProps) {
   const [zones, setZones] = useState<ColorZone[]>(monitorState?.zones || []);
   const [selectedColor, setSelectedColor] = useState<string>(monitorState?.selectedColor || COLORS[0].value);
   const [isPlaying, setIsPlaying] = useState(isMonitor ? true : (monitorState?.isPlaying || false));
@@ -399,6 +385,14 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
     }
   }, [isMonitor, monitorState]);
 
+  const [displayLevel, setDisplayLevel] = useState(level);
+  const [showLevelPicker, setShowLevelPicker] = useState(false);
+
+  // Sync displayLevel with prop
+  useEffect(() => {
+    setDisplayLevel(level);
+  }, [level]);
+
   // Auto-start logic
   useEffect(() => {
     if (autoStart && !isMonitor && !isPlaying && completedZones === 0) {
@@ -408,14 +402,17 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
 
   const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
   const { speak } = useSpeech();
-  const template = TEMPLATES[level as keyof typeof TEMPLATES] || TEMPLATES[1];
+  const template = TEMPLATES[displayLevel as keyof typeof TEMPLATES] || TEMPLATES[1];
 
-  // Auto-speak object name
+  // Auto-speak object name - Removed for all levels as requested, except maybe handled differently
   useEffect(() => {
+    // Disabled as per user request: "ai ne prica nista za igricu oboji"
+    /*
     if (isPlaying && !isMonitor) {
-      speak(`Oboji ${getLevelName(level)}`);
+      speak(`Oboji ${getLevelName(displayLevel)}`);
     }
-  }, [level, isPlaying, isMonitor, speak]);
+    */
+  }, [displayLevel, isPlaying, isMonitor, speak]);
 
   const initializeGame = () => {
     // Stroke-only zones (whiskers, mouth lines etc.) are too thin to click.
@@ -444,13 +441,20 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
     initializeGame();
 
     emitGameStart(childId, 4, 'coloring', {
-      level,
+      level: displayLevel,
       zones: zones,
       selectedColor: selectedColor,
       timeLeft: 300,
       isPlaying: true
     });
   };
+
+  // Re-initialize when displayLevel changes manually via debug menu
+  useEffect(() => {
+    if (isPlaying) {
+      initializeGame();
+    }
+  }, [displayLevel]);
 
   useEffect(() => {
     if (!isPlaying || timeLeft <= 0 || isMonitor) return;
@@ -465,7 +469,7 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
             activityId: 4,
             gameType: 'coloring',
             event: 'progress',
-            data: { timeLeft: newTime, score, level, completedZones },
+            data: { timeLeft: newTime, score, level: displayLevel, completedZones },
             timestamp: new Date().toISOString(),
           });
         }
@@ -510,25 +514,25 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
     if (!isPlaying || isMonitor) return;
 
     // --- COLOR RESTRICTION FOR CAT (Level 15) ---
-    if (level === 15) {
+    if (displayLevel === 15) {
       const zone = zones.find(z => z.id === zoneId);
       if (zone) {
-        let audioUrl = "";
         const color = selectedColor.toUpperCase();
+        let message = "";
 
         // Block these colors ONLY if they are NOT the target color for this zone
         if (color !== zone.targetColor.toUpperCase()) {
           if (color === "#EF4444") { // Crvena
-            audioUrl = '/sounds/coloring/redCat.mp3';
+            message = "Ne možeš me obojiti u crvenu boju.";
           } else if (color === "#3B82F6" || color === "#60A5FA") { // Plava / Svetlo plava
-            audioUrl = '/sounds/coloring/blueCat.mp3';
+            message = "Ne možeš me obojiti u plavu boju.";
           } else if (color === "#10B981") { // Zelena
-            audioUrl = '/sounds/coloring/greenCat.mp3';
+            message = "Ne možeš me obojiti u zelenu boju.";
           }
         }
 
-        if (audioUrl) {
-          window.dispatchEvent(new CustomEvent('avatar:speak', { detail: { url: audioUrl } }));
+        if (message) {
+          speak(message);
           return;
         }
       }
@@ -678,33 +682,55 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
 
   if (!isMonitor && showMoodAfter) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
-        <div className="text-center mb-10 md:mb-16">
-          <span className="px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
-          <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
-          <p className="text-lg md:text-xl text-slate-500 font-medium tracking-wide">
-            Tvoja slika izgleda prelepo! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
-          </p>
-        </div>
+      <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+        {/* Animated Background */}
+        <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-500" />
+        
+        <div className="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col items-center p-8 md:p-12 text-center border-4 border-emerald-100">
+          {/* Top Celebration Icons */}
+          <div className="absolute -top-6 -left-6 w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center text-4xl shadow-lg animate-bounce">🎨</div>
+          <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-rose-500 rounded-full flex items-center justify-center text-4xl shadow-lg animate-bounce delay-300">✨</div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 md:gap-8 w-full max-w-5xl px-2">
-          {[
-            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
-            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
-            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
-            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
-            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-          ].map((mood) => (
-            <button
-              key={mood.value}
-              onClick={() => handleMoodAfterSelect(mood.value)}
-              className="group relative flex flex-col items-center bg-white rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] p-3 sm:p-5 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] transition-opacity`}></div>
-              <span className="text-4xl sm:text-6xl md:text-7xl mb-1 sm:mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-              <span className="text-xs sm:text-base md:text-lg font-black text-slate-700">{mood.label}</span>
-            </button>
-          ))}
+          <div className="mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-4">
+              ✨ Čestitamo!
+            </div>
+            <h2 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight leading-tight mb-4">
+              Fantastično! 🌟
+            </h2>
+            <p className="text-lg md:text-2xl text-slate-500 font-bold max-w-md">
+              Tvoja slika je završena i izgleda predivno! Dobio si <span className="text-emerald-600 underline decoration-4 underline-offset-8 decoration-emerald-200">{score} poena</span>.
+            </p>
+          </div>
+
+          <div className="w-full h-px bg-slate-100 mb-8" />
+
+          <p className="text-slate-400 text-xs md:text-sm font-black uppercase tracking-[0.2em] mb-8">Kako se sada osećaš?</p>
+
+          <div className="grid grid-cols-5 gap-3 md:gap-6 w-full px-2 mb-10">
+            {[
+              { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
+              { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
+              { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
+              { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
+              { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
+            ].map((mood) => (
+              <button
+                key={mood.value}
+                onClick={() => handleMoodAfterSelect(mood.value)}
+                className="group relative flex flex-col items-center transition-all duration-300 hover:scale-110 active:scale-90"
+              >
+                <div className={`w-12 h-12 md:w-20 md:h-20 bg-white rounded-2xl md:rounded-3xl flex items-center justify-center text-3xl md:text-6xl shadow-lg border border-slate-50 group-hover:shadow-xl group-hover:border-${mood.color.split('-')[1]}-100 transition-all mb-2`}>
+                  {mood.emoji}
+                </div>
+                <span className="text-[10px] md:text-xs font-black text-slate-600 uppercase tracking-wider group-hover:text-slate-900">{mood.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="text-slate-400 text-[10px] font-black uppercase tracking-widest italic animate-pulse">
+            Klikni na smajlija da nastaviš dalje ✨
+          </div>
         </div>
       </div>
     );
@@ -720,12 +746,23 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
       <div className="flex justify-between items-center mb-6 md:mb-10 bg-gradient-to-r from-indigo-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-4 py-3 md:px-10 md:py-6 shadow-xl relative overflow-hidden ring-1 ring-indigo-100/50">
         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
 
-        <div className="flex items-center gap-3 md:gap-8 relative z-10">
-          <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl bg-white shadow-md flex items-center justify-center text-xl md:text-3xl ring-4 ring-indigo-50 border border-indigo-100 transform -rotate-3 transition-transform">
+        <div className="flex flex-col md:flex-row items-center gap-3 md:gap-8 relative z-10">
+          <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl bg-white shadow-md flex items-center justify-center text-xl md:text-3xl ring-4 ring-indigo-50 border border-indigo-100 transform -rotate-3">
             🎨
           </div>
-          <div>
-            <h3 className="text-lg md:text-2xl font-black text-slate-800 tracking-wide uppercase leading-tight">Studio</h3>
+          <div className="flex flex-col gap-2">
+            <h3 className="text-xs md:text-sm font-black text-slate-400 tracking-widest uppercase">Nivoi</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {Array.from({ length: maxLevel - minLevel + 1 }, (_, i) => minLevel + i).map(num => (
+                <button
+                  key={num}
+                  onClick={() => setDisplayLevel(num)}
+                  className={`w-7 h-7 md:w-9 md:h-9 rounded-lg text-[10px] md:text-xs font-black transition-all ${displayLevel === num ? 'bg-indigo-500 text-white shadow-lg scale-110' : 'bg-white text-slate-400 hover:bg-slate-50 border border-slate-100'}`}
+                >
+                  {num}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -775,7 +812,7 @@ export default function ColoringGame({ childId, level, onComplete, onClose, auto
                 d={zone.path}
                 fill={zone.stroke ? "none" : (zone.color || "#FFFFFF")}
                 stroke={zone.stroke ? zone.targetColor : "#64748B"}
-                strokeWidth={zone.stroke ? "4" : "2.5"}
+                strokeWidth={zone.stroke ? "2" : "1.2"}
                 className={`transition-all duration-500 ${zone.stroke ? "pointer-events-none" : "cursor-pointer hover:opacity-80"} ${isMonitor ? "pointer-events-none" : ""}`}
                 onClick={() => handleZoneClick(zone.id)}
               />
