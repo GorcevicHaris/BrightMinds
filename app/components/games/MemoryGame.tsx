@@ -15,7 +15,7 @@ interface Card {
 interface GameProps {
   childId: number;
   level: number;
-  onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+  onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null, stats?: { correct: number, total: number }) => void;
   onClose?: () => void;
   autoStart?: boolean;
   isMonitor?: boolean;
@@ -304,7 +304,8 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
     setShowMoodAfter(false);
     const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
     const score = Math.max(0, 1000 - moves * 50);
-    onComplete(score, duration, moodBefore, mood);
+    // For stars: ratio of pairsCount to moves (perfect is 1.0)
+    onComplete(score, duration, moodBefore, mood, { correct: pairsCount, total: Math.max(pairsCount, moves) });
   };
 
   // ── Mood Before — Premium Immersive Design ────────────────
@@ -324,7 +325,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
           {onClose && (
             <button 
               onClick={onClose}
-              className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-purple-600 font-black text-xs uppercase tracking-widest shadow-md border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-20"
+              className="fixed top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-purple-600 font-black text-xs uppercase tracking-widest shadow-lg border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-[110]"
             >
               <span>⬅</span> Nazad
             </button>

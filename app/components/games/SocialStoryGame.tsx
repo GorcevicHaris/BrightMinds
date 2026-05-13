@@ -561,7 +561,7 @@ export default function SocialStoryGame({
   const totalSteps = lvl.steps.length;
 
   const [phase, setPhase] = useState<"intro" | "playing" | "win">(
-    isMonitor ? "playing" : "playing" // No intro anymore
+    isMonitor ? "playing" : "intro"
   );
   const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
   const [showMoodAfter, setShowMoodAfter] = useState(false);
@@ -588,6 +588,7 @@ export default function SocialStoryGame({
 
   // Reset on level change
   useEffect(() => {
+    stopSpeech();
     setPhase(isMonitor ? "playing" : "intro");
     setStepIdx(0);
     setScore(0);
@@ -613,6 +614,7 @@ export default function SocialStoryGame({
   }, [isMonitor, monitorState]);
 
   const handleMoodBeforeSelect = (mood: string) => {
+    stopSpeech();
     setMoodBefore(mood);
     setShowMoodBefore(false);
     setPhase("playing");
@@ -621,11 +623,13 @@ export default function SocialStoryGame({
 
   const handleMoodAfterSelect = (mood: string) => {
     setShowMoodAfter(false);
-    onComplete(score, 0, moodBefore, mood);
+    const dur = Math.floor((Date.now() - startTime) / 1000);
+    onComplete(score, dur, moodBefore, mood);
   };
 
   const handleAnswer = (correct: boolean, feedbackText: string) => {
     if (isLocked) return;
+    stopSpeech();
     setIsLocked(true);
     setFeedback(feedbackText);
     setFeedbackCorrect(correct);
@@ -661,11 +665,12 @@ export default function SocialStoryGame({
           data: { finalScore, phase: "win" },
           timestamp: new Date().toISOString(),
         });
-        setPhase("win");
-        setTimeout(() => {
-          const dur = Math.floor((Date.now() - startTime) / 1000);
-          onComplete(finalScore, dur, null, null);
-        }, 2200);
+
+        if (autoStart) {
+          handleMoodAfterSelect("neutral");
+        } else {
+          setPhase("win");
+        }
       } else {
         setStepIdx(nextStep);
       }
@@ -690,7 +695,7 @@ export default function SocialStoryGame({
           {onClose && (
             <button
               onClick={onClose}
-              className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-md border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-20"
+              className="fixed top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-lg border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-[110]"
             >
               <span>⬅</span> Nazad
             </button>

@@ -7,7 +7,7 @@ import { useSpeech } from '@/lib/useSpeech';
 interface GameProps {
     childId: number;
     level: number;
-    onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+    onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null, stats?: { correct: number, total: number }) => void;
     onClose?: () => void;
     autoStart?: boolean;
     isMonitor?: boolean;
@@ -16,26 +16,26 @@ interface GameProps {
 
 interface SoundItem {
     id: string;
-    icon: string;
+    image: string;
     label: string;
     soundUrl: string;
 }
 
 const SOUND_ITEMS: SoundItem[] = [
-    { id: "dog", icon: "🐶", label: "Pas", soundUrl: "/sounds/pas.mp3" },
-    { id: "cat", icon: "🐱", label: "Mačka", soundUrl: "/sounds/macka.mp3" },
-    { id: "cow", icon: "🐮", label: "Krava", soundUrl: "/sounds/krava.wav" },
-    { id: "horse", icon: "🐴", label: "Konj", soundUrl: "/sounds/konj.mp3" },
-    { id: "bear", icon: "🐻", label: "Medved", soundUrl: "/sounds/medved.mp3" },
-    { id: "bird", icon: "🐦", label: "Ptica", soundUrl: "/sounds/ptica.mp3" },
-    { id: "monkey", icon: "🐵", label: "Majmun", soundUrl: "/sounds/majmun.mp3" },
-    { id: "rooster", icon: "🐓", label: "Petao", soundUrl: "/sounds/petao.wav" },
-    { id: "pig", icon: "🐷", label: "Svinja", soundUrl: "/sounds/svinja.mp3" },
-    { id: "rain", icon: "🌧️", label: "Kiša", soundUrl: "/sounds/kisa.mp3" },
-    { id: "thunder", icon: "⚡", label: "Grmljavina", soundUrl: "/sounds/grmljavina.mp3" },
-    { id: "doorbell", icon: "🔔", label: "Zvono", soundUrl: "/sounds/zvonoKucno.mp3" },
-    { id: "police", icon: "🚓", label: "Policija", soundUrl: "/sounds/policija.mp3" },
-    { id: "car_horn", icon: "🚗", label: "Sirena auta", soundUrl: "/sounds/sirenaAuta.mp3" },
+    { id: "dog", image: "/soundImage/dog.png", label: "Pas", soundUrl: "/sounds/pas.mp3" },
+    { id: "cat", image: "/soundImage/cat.png", label: "Mačka", soundUrl: "/sounds/macka.mp3" },
+    { id: "cow", image: "/soundImage/cow.png", label: "Krava", soundUrl: "/sounds/krava.wav" },
+    { id: "horse", image: "/soundImage/horsee.png", label: "Konj", soundUrl: "/sounds/konj.mp3" },
+    { id: "bear", image: "/soundImage/bear.png", label: "Medved", soundUrl: "/sounds/medved.mp3" },
+    { id: "bird", image: "/soundImage/bird.png", label: "Ptica", soundUrl: "/sounds/ptica.mp3" },
+    { id: "monkey", image: "/soundImage/monkey.png", label: "Majmun", soundUrl: "/sounds/majmun.mp3" },
+    { id: "rooster", image: "/soundImage/cock.png", label: "Petao", soundUrl: "/sounds/petao.wav" },
+    { id: "pig", image: "/soundImage/pigg.jpg", label: "Svinja", soundUrl: "/sounds/svinja.mp3" },
+    { id: "rain", image: "/soundImage/rain.png", label: "Kiša", soundUrl: "/sounds/kisa.mp3" },
+    { id: "thunder", image: "/soundImage/thunder.png", label: "Grmljavina", soundUrl: "/sounds/grmljavina.mp3" },
+    { id: "doorbell", image: "/soundImage/bell.jpg", label: "Zvono", soundUrl: "/sounds/zvonoKucno.mp3" },
+    { id: "police", image: "/soundImage/policeCar.png", label: "Policija", soundUrl: "/sounds/policija.mp3" },
+    { id: "car_horn", image: "/soundImage/car.jpg", label: "Sirena auta", soundUrl: "/sounds/sirenaAuta.mp3" },
 ];
 
 interface LevelConfig {
@@ -89,12 +89,13 @@ export default function SoundToImageGame({ childId, level, onComplete, onClose, 
     const [correctCount, setCorrectCount] = useState(monitorState?.correctCount || 0);
     const [incorrectCount, setIncorrectCount] = useState(monitorState?.incorrectCount || 0);
     const [isPlaying, setIsPlaying] = useState(isMonitor ? true : (monitorState?.isPlaying || false));
-    const [startTime, setStartTime] = useState<number | null>(null);
     const [moodBefore, setMoodBefore] = useState<string | null>(null);
     const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
     const [showMoodAfter, setShowMoodAfter] = useState(false);
     const [gameCompleted, setGameCompleted] = useState(false);
     const [feedback, setFeedback] = useState<"correct" | "incorrect" | null>(null);
+    const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+    const [startTime, setStartTime] = useState<number | null>(null);
     const [isPlayingSound, setIsPlayingSound] = useState(false);
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -176,12 +177,12 @@ export default function SoundToImageGame({ childId, level, onComplete, onClose, 
 
         const allOptions = [correctAnswer, ...wrongOptions].sort(() => Math.random() - 0.5);
 
-        setCurrentSound(correctAnswer);
+        // Zapamti za auto-play i postavi stanje
+        autoPlaySoundRef.current = correctAnswer;
+        setCurrentSound({ ...correctAnswer });
         setOptions(allOptions);
         setFeedback(null);
-
-        // Zapamti za auto-play
-        autoPlaySoundRef.current = correctAnswer;
+        setSelectedOptionId(null);
 
         if (!isMonitor) {
             emitGameProgress({
@@ -263,6 +264,7 @@ export default function SoundToImageGame({ childId, level, onComplete, onClose, 
 
         stopSound();
         const isCorrect = selectedItem.id === currentSound?.id;
+        setSelectedOptionId(selectedItem.id);
         setFeedback(isCorrect ? "correct" : "incorrect");
 
         const newScore = isCorrect ? score + 100 : score;
@@ -334,7 +336,7 @@ export default function SoundToImageGame({ childId, level, onComplete, onClose, 
     const handleMoodAfterSelect = (mood: string) => {
         setShowMoodAfter(false);
         const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-        onComplete(score, duration, moodBefore, mood);
+        onComplete(score, duration, moodBefore, mood, { correct: correctCount, total: maxRounds });
     };
 
     // ── Mood Before — Premium Immersive Design ────────────────
@@ -495,11 +497,14 @@ export default function SoundToImageGame({ childId, level, onComplete, onClose, 
                         </button>
                     </div>
 
-                    {feedback && (
-                        <div className={`mt-4 md:mt-8 text-xl md:text-2xl font-black uppercase tracking-widest animate-bounce ${feedback === 'correct' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                            {feedback === 'correct' ? '✅ Tačno!' : '❌ Pokušaj ponovo'}
-                        </div>
-                    )}
+                    {/* Rezervisani prostor za feedback da se slike ne pomeraju */}
+                    <div className="h-12 md:h-20 flex items-center justify-center">
+                        {feedback && (
+                            <div className={`text-xl md:text-2xl font-black uppercase tracking-widest animate-bounce ${feedback === 'correct' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {feedback === 'correct' ? '✅ Tačno!' : '❌ Pogrešno'}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Options Grid */}
@@ -512,34 +517,50 @@ export default function SoundToImageGame({ childId, level, onComplete, onClose, 
                                 ? 'grid-cols-3 sm:grid-cols-3'
                                 : 'grid-cols-2 sm:grid-cols-4'
                         }`}>
-                        {options.map((option, idx) => (
-                            <button
-                                key={`${option.id}-${idx}`}
-                                onClick={() => handleAnswer(option)}
-                                disabled={isMonitor || feedback === 'correct'}
-                                className={`group relative bg-white rounded-2xl md:rounded-[2.5rem] p-4 md:p-8 flex flex-col items-center justify-center transition-all duration-300 transform border shadow-sm ${feedback === 'correct' && option.id === currentSound?.id
-                                    ? "border-emerald-400 bg-emerald-50 shadow-2xl scale-110 z-20 ring-4 ring-emerald-100"
-                                    : feedback === 'incorrect' && option.id !== currentSound?.id
-                                        ? "border-rose-100 opacity-40"
-                                        : "border-slate-50 hover:border-orange-100 hover:shadow-xl hover:-translate-y-1 active:scale-95"
-                                    }`}
-                            >
-                                <span className="text-4xl sm:text-6xl md:text-7xl mb-1 sm:mb-2 md:mb-4 transform transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6 select-none">
-                                    {option.icon}
-                                </span>
-                                <span className="text-[10px] sm:text-xs md:text-base font-black text-slate-700 tracking-tight group-hover:text-orange-600 transition-colors uppercase text-center">
-                                    {option.label}
-                                </span>
+                        {options.map((option, idx) => {
+                            const isSelected = option.id === selectedOptionId;
+                            const isCorrect = option.id === currentSound?.id;
 
-                                {feedback === 'correct' && option.id === currentSound?.id && (
-                                    <div className="absolute -top-2 -right-2 bg-emerald-500 text-white p-2 md:p-3 rounded-xl md:rounded-2xl shadow-lg animate-bounce border-2 md:border-4 border-white">
-                                        <svg className="w-4 h-4 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
-                                        </svg>
+                            return (
+                                <button
+                                    key={`${option.id}-${idx}`}
+                                    onClick={() => handleAnswer(option)}
+                                    disabled={isMonitor || feedback === 'correct'}
+                                    className={`group relative bg-white rounded-[24] flex flex-col items-stretch justify-start transition-all duration-300 transform border shadow-sm overflow-hidden h-[160px] sm:h-[220px] md:h-[280px] ${feedback === 'correct' && isCorrect
+                                        ? "border-emerald-400 bg-emerald-50 shadow-2xl scale-105 z-20 ring-4 ring-emerald-100"
+                                        : feedback === 'incorrect' && isSelected
+                                            ? "border-rose-400 bg-rose-50 shadow-lg scale-95 z-10 opacity-70"
+                                            : "border-slate-50 hover:border-orange-100 hover:shadow-xl hover:-translate-y-1 active:scale-95"
+                                        }`}
+                                >
+                                    {/* Image Container - Full Width/Height Fill */}
+                                    <div className="flex-1 relative overflow-hidden">
+                                        <img
+                                            src={option.image}
+                                            alt={option.label}
+                                            className="absolute inset-0 w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110"
+                                        />
+                                        {/* Subtle gradient overlay for the label */}
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                     </div>
-                                )}
-                            </button>
-                        ))}
+
+                                    {/* Label Bar */}
+                                    <div className={`py-2 md:py-4 px-2 text-center transition-colors duration-300 ${feedback === 'correct' && option.id === currentSound?.id ? 'bg-emerald-50' : 'bg-white group-hover:bg-orange-50'}`}>
+                                        <span className={`text-[10px] sm:text-xs md:text-lg font-black tracking-tight uppercase ${feedback === 'correct' && option.id === currentSound?.id ? 'text-emerald-700' : 'text-slate-700 group-hover:text-orange-600'}`}>
+                                            {option.label}
+                                        </span>
+                                    </div>
+
+                                    {feedback === 'correct' && option.id === currentSound?.id && (
+                                        <div className="absolute top-2 right-2 bg-emerald-500 text-white p-2 rounded-xl shadow-lg animate-bounce border-2 border-white z-30">
+                                            <svg className="w-4 h-4 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             </div>

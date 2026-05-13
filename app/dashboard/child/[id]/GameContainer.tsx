@@ -75,25 +75,22 @@ const DIFF_CONFIG = {
 const DIFFICULTY_ORDER: Difficulty[] = ["easy", "medium", "hard"];
 
 // ── Helper funkcije ────────────────────────────────────────────────────────────
-/** maxUnlocked = max completed + 1 (ili 1 ako ništa nije urađeno) */
 function isDiffUnlocked(diff: Difficulty, maxUnlocked: number): boolean {
   if (diff === "easy") return true;
   if (diff === "medium") return maxUnlocked > 5;
   return maxUnlocked > 10;
 }
 
-/** Koliko nivoa je završeno u ovom tieru (0–5) */
 function completedInTier(diff: Difficulty, maxUnlocked: number): number {
-  const done = maxUnlocked - 1; // broj završenih nivoa ukupno
+  const done = maxUnlocked - 1; 
   const offset = DIFF_CONFIG[diff].min - 1;
   return Math.min(Math.max(done - offset, 0), 5);
 }
 
-/** Nivo od kojeg startujemo u odabranom tieru */
 function getStartLevelForDiff(diff: Difficulty, maxUnlocked: number): number {
   const comp = completedInTier(diff, maxUnlocked);
   const { min } = DIFF_CONFIG[diff];
-  return comp < 5 ? min + comp : min; // replay od početka ako je tier završen
+  return comp < 5 ? min + comp : min;
 }
 
 function getActivityId(gameId: GameId | null): number {
@@ -105,7 +102,7 @@ interface GameProps {
   level: number;
   minLevel?: number;
   maxLevel?: number;
-  onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+  onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null, stats?: { correct: number, total: number }) => void;
   onClose?: () => void;
   autoStart?: boolean;
   isMonitor?: boolean;
@@ -125,6 +122,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   const [levelsLoading, setLevelsLoading] = useState(true);
   const [showNextLevel, setShowNextLevel] = useState(false);
   const [lastScore, setLastScore] = useState(0);
+  const [lastStars, setLastStars] = useState(0);
 
   const isSavingRef = useRef(false);
   const lastSaveTimeRef = useRef(0);
@@ -151,7 +149,6 @@ export default function GameContainer({ childId, childName }: GameContainerProps
   const activeGame = GAMES.find(g => g.id === selectedGame);
   const tierMax = selectedDifficulty ? DIFF_CONFIG[selectedDifficulty].max : 15;
 
-  // ── Game card clicked ──────────────────────────────────────────────────────
   const handleGameSelect = (gameId: GameId) => {
     setSelectedGame(gameId);
     setSelectedDifficulty(null);
@@ -160,7 +157,6 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     setScreen("difficulty-select");
   };
 
-  // ── Difficulty selected ────────────────────────────────────────────────────
   const handleDifficultySelect = (diff: Difficulty) => {
     const maxUnlocked = getMaxUnlocked(selectedGame!);
     if (!isDiffUnlocked(diff, maxUnlocked)) return;
@@ -173,7 +169,6 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     setScreen("playing");
   };
 
-  // ── Exit ───────────────────────────────────────────────────────────────────
   const handleExit = () => {
     if (screen === "playing" && selectedGame) {
       emitGameComplete({
@@ -194,8 +189,7 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     setLastScore(0);
   };
 
-  // ── Game complete callback ─────────────────────────────────────────────────
-  const handleGameComplete = async (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => {
+  const handleGameComplete = async (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null, stats?: { correct: number, total: number }) => {
     const now = Date.now();
     if (isSavingRef.current || now - lastSaveTimeRef.current < 2000) return;
     isSavingRef.current = true;
@@ -203,240 +197,136 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     setIsLoading(true);
 
     try {
-      let successLevel: "struggled" | "partial" | "successful" | "excellent";
-      if (score >= 200) successLevel = "excellent";
-      else if (score >= 100) successLevel = "successful";
-      else if (score >= 50) successLevel = "partial";
-      else successLevel = "struggled";
+      let stars = 0;
+      if (stats) {
+        const ratio = stats.correct / stats.total;
+        if (ratio >= 0.9) stars = 3;
+        else if (ratio >= 0.6) stars = 2;
+        else if (ratio >= 0.3) stars = 1;
+        else stars = 0;
+      } else {
+        if (score >= 200) stars = 3;
+        else if (score >= 100) stars = 2;
+        else if (score >= 50) stars = 1;
+        else stars = 0;
+      }
+      setLastStars(stars);
 
-      const response = await fetch("/api/activities/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          childId,
-          activityId: getActivityId(selectedGame),
-          successLevel,
-          durationMinutes: Math.ceil(duration / 60) || 1,
-          notes: `Automatski prelaz - Nivo ${currentLevel}, Rezultat: ${score} poena`,
-          moodBefore: moodBefore || null,
-          moodAfter: moodAfter || null,
-        }),
-      });
+      let successLevel: "struggled" | "partial" | "successful" | "excellent" = "struggled";
+      if (stars === 3) successLevel = "excellent";
+      else if (stars === 2) successLevel = "successful";
+      else if (stars === 1) successLevel = "partial";
 
-      if (response.ok) {
-        refreshUnlocked();
+      if (stars > 0) {
+        const response = await fetch("/api/activities/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            childId,
+            activityId: getActivityId(selectedGame),
+            successLevel,
+            durationMinutes: Math.ceil(duration / 60) || 1,
+            notes: `Nivo ${currentLevel}, Zvezdice: ${stars}, Rezultat: ${score}`,
+            moodBefore: moodBefore || null,
+            moodAfter: moodAfter || null,
+          }),
+        });
+        if (response.ok) refreshUnlocked();
+      }
 
-        if (currentLevel < tierMax) {
-          // Pokaži ekran sa dugmetom "Sledeći nivo"
-          setIsLoading(false);
-          setLastScore(score);
-          setShowNextLevel(true);
+      if (currentLevel < tierMax) {
+        setIsLoading(false);
+        setLastScore(score);
+        setShowNextLevel(true);
+      } else if (stars > 0) {
+        setIsLoading(false);
+        if (selectedDifficulty === "hard") {
+          setScreen("all-finished");
+          speak(`Bravo ${childName}! Završio si sve nivoe! Ti si pravi šampion!`);
         } else {
-          // Tier je gotov
-          setIsLoading(false);
-          if (selectedDifficulty === "hard") {
-            setScreen("all-finished");
-            speak(`Bravo ${childName}! Završio si sve nivoe! Ti si pravi šampion!`);
-          } else {
-            setScreen("tier-finished");
-          }
+          setScreen("tier-finished");
         }
       } else {
-        setMessage("⚠️ Problem sa čuvanjem poena");
-        setTimeout(() => setMessage(""), 3000);
+        setIsLoading(false);
+        setLastScore(score);
+        setShowNextLevel(true);
       }
-    } catch {
-      setMessage("⚠️ Greška na mreži");
-      setTimeout(() => setMessage(""), 3000);
+    } catch (err) {
+      console.error(err);
+      setMessage("⚠️ Greška");
     } finally {
       setTimeout(() => { isSavingRef.current = false; }, 2000);
     }
   };
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // SCREEN A: Game Picker — optimizovano za decu 3+
-  // ══════════════════════════════════════════════════════════════════════════
   if (screen === "picker") {
     return (
       <div className="pb-6 sm:pb-10">
         <p className="text-center text-slate-400 text-xs sm:text-sm font-black uppercase tracking-widest mb-4 sm:mb-6">
           Izaberi igru koju želiš da igraš 👇
         </p>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-none mx-auto px-0">
-          {GAMES.map(game => {
-            return (
-              <button
-                key={game.id}
-                id={`game-card-${game.id}`}
-                onClick={() => handleGameSelect(game.id)}
-                className="group relative aspect-video rounded-xl md:rounded-2xl overflow-hidden transition-all duration-700 hover:scale-[1.02] active:scale-[0.99] shadow-xl hover:shadow-2xl bg-white select-none border-[6px] border-white"
-                style={{ WebkitTapHighlightColor: "transparent" }}
-              >
-                {/* Clean Original Illustration */}
-                <div 
-                  className="absolute inset-0 bg-cover bg-center transition-transform duration-[2s] group-hover:scale-105"
-                  style={{ backgroundImage: `url(${game.bgImage})` }}
-                />
-                
-                {/* Minimalist Hover Overlay */}
-                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                {/* Play Button - Sleek and Minimalist */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-50 group-hover:scale-100">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/30 backdrop-blur-md rounded-full border-2 border-white/80 flex items-center justify-center shadow-xl">
-                    <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[18px] border-l-white border-b-[10px] border-b-transparent ml-1" />
-                  </div>
+          {GAMES.map(game => (
+            <button
+              key={game.id}
+              onClick={() => handleGameSelect(game.id)}
+              className="group relative aspect-video rounded-xl md:rounded-2xl overflow-hidden transition-all duration-700 hover:scale-[1.02] active:scale-[0.99] shadow-xl hover:shadow-2xl bg-white select-none border-[6px] border-white"
+            >
+              <div className="absolute inset-0 bg-cover bg-center transition-transform duration-[2s] group-hover:scale-105" style={{ backgroundImage: `url(${game.bgImage})` }} />
+              <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 group-hover:opacity-100 transition-all duration-500 transform scale-50 group-hover:scale-100">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white/30 backdrop-blur-md rounded-full border-2 border-white/80 flex items-center justify-center shadow-xl">
+                  <div className="w-0 h-0 border-t-[10px] border-t-transparent border-l-[18px] border-l-white border-b-[10px] border-b-transparent ml-1" />
                 </div>
-
-                {/* Animated Shine Effect */}
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-1000 bg-gradient-to-tr from-white/0 via-white/30 to-white/0 -translate-x-full group-hover:translate-x-full transform transition-transform duration-[1.5s]" />
-              </button>
-            );
-          })}
+              </div>
+            </button>
+          ))}
         </div>
       </div>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // SCREEN B: Difficulty Select — fun, bright, child-friendly
-  // ══════════════════════════════════════════════════════════════════════════
   if (screen === "difficulty-select" && activeGame) {
     const maxUnlocked = getMaxUnlocked(selectedGame!);
-
     return (
       <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-slate-50">
-        {/* Dynamic Background Image with Professional Blur */}
         <div className="absolute inset-0 z-0">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-30"
-            style={{ backgroundImage: `url(${activeGame.bgImage})` }}
-          />
+          <div className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-30" style={{ backgroundImage: `url(${activeGame.bgImage})` }} />
           <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-white/90 backdrop-blur-3xl" />
         </div>
-
-        {/* Animated Decorative Blobs */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0 opacity-40">
-          <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-purple-300/40 rounded-full blur-[120px] animate-pulse" />
-          <div className="absolute -bottom-[10%] -right-[10%] w-[45%] h-[45%] bg-blue-300/40 rounded-full blur-[130px] animate-pulse delay-700" />
-          <div className="absolute top-[20%] left-[40%] w-[30%] h-[30%] bg-pink-300/30 rounded-full blur-[100px] animate-pulse delay-1000" />
-        </div>
-
-        {/* ── Top Navigation ── */}
         <div className="relative z-10 flex items-center justify-between px-6 py-4 sm:py-6 border-b border-white/50 bg-white/20 backdrop-blur-sm shadow-sm">
-          <button
-            onClick={handleExit}
-            className="group flex items-center gap-3 text-slate-600 hover:text-slate-900 bg-white/80 hover:bg-white active:scale-95 px-5 py-3 rounded-2xl font-black text-sm transition-all shadow-md hover:shadow-lg border border-slate-100"
-          >
-            <div className="bg-slate-100 p-1.5 rounded-lg group-hover:-translate-x-1 transition-transform">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-              </svg>
-            </div>
-            <span>Nazad</span>
+          <button onClick={handleExit} className="group flex items-center gap-3 text-slate-600 hover:text-slate-900 bg-white/80 hover:bg-white active:scale-95 px-5 py-3 rounded-2xl font-black text-sm transition-all shadow-md hover:shadow-lg border border-slate-100">
+            Nazad
           </button>
-
           <div className="flex flex-col items-center">
-            <div className={`h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white shadow-xl flex items-center justify-center text-3xl mb-1 border-2 border-white/80`}>
-              {activeGame.icon}
-            </div>
+            <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-white shadow-xl flex items-center justify-center text-3xl mb-1 border-2 border-white/80">{activeGame.icon}</div>
             <h2 className="text-sm sm:text-lg font-black text-slate-800 tracking-tight">{activeGame.title}</h2>
           </div>
-
-          <div className="w-24 hidden sm:block" /> {/* Spacer */}
+          <div className="w-24 hidden sm:block" />
         </div>
-
-        {/* ── Main Layout ── */}
         <div className="relative z-10 flex-1 overflow-y-auto px-6 py-8 md:py-12 flex flex-col items-center">
-
           <div className="text-center mb-10 md:mb-16">
-            <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight mb-4 drop-shadow-sm">
-              Spreman za igru? 🚀
-            </h1>
-            <p className="text-slate-500 text-lg md:text-xl font-bold max-w-2xl">
-              Odaberi nivo težine i pokaži koliko si vešt!
-            </p>
+            <h1 className="text-4xl md:text-6xl font-black text-slate-900 tracking-tight mb-4">Spreman za igru? 🚀</h1>
+            <p className="text-slate-500 text-lg md:text-xl font-bold">Odaberi nivo težine i pokaži koliko si vešt!</p>
           </div>
-
-          {/* Difficulty Selection Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-10 w-full max-w-6xl pb-10">
-            {DIFFICULTY_ORDER.map((diff, cardIdx) => {
+            {DIFFICULTY_ORDER.map(diff => {
               const cfg = DIFF_CONFIG[diff];
               const unlocked = isDiffUnlocked(diff, maxUnlocked);
               const done = completedInTier(diff, maxUnlocked);
               const allDone = done === 5;
-
-              const themes = {
-                easy: { color: "emerald", icon: "🌱", shadow: "shadow-emerald-200", border: "border-emerald-200" },
-                medium: { color: "amber", icon: "⚡", shadow: "shadow-amber-200", border: "border-amber-200" },
-                hard: { color: "rose", icon: "🔥", shadow: "shadow-rose-200", border: "border-rose-200" }
-              };
-              const theme = themes[diff as keyof typeof themes];
-
+              const theme = { easy: "emerald", medium: "amber", hard: "rose" }[diff];
+              const emoji = { easy: "🌱", medium: "⚡", hard: "🔥" }[diff];
               return (
-                <button
-                  key={diff}
-                  onClick={() => unlocked && handleDifficultySelect(diff)}
-                  disabled={!unlocked}
-                  className={`group relative flex flex-col rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-center transition-all duration-500 border-4
-                    ${unlocked
-                      ? `bg-white hover:scale-[1.05] hover:-translate-y-2 active:scale-95 shadow-2xl ${theme.shadow} ${theme.border} cursor-pointer`
-                      : `bg-slate-50/50 border-slate-200 opacity-60 cursor-not-allowed`
-                    }`}
-                >
-                  {/* Status Badge */}
-                  <div className="absolute top-6 inset-x-0 flex justify-center">
-                    <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border-2 bg-white
-                      ${unlocked ? `text-${theme.color}-500 border-${theme.color}-100` : "text-slate-400 border-slate-200"}`}>
-                      {unlocked ? (allDone ? "Sjajno!" : "Otključano") : "Zaključano"}
-                    </div>
-                  </div>
-
-                  {/* Main Visual */}
-                  <div className={`w-28 h-28 md:w-36 md:h-36 mx-auto rounded-full flex items-center justify-center text-6xl md:text-8xl mb-8 transition-transform duration-500
-                    ${unlocked
-                      ? `bg-${theme.color}-50/50 group-hover:scale-110 group-hover:rotate-6`
-                      : "bg-slate-100"}`}>
-                    <span className={unlocked ? "drop-shadow-md" : "grayscale opacity-50"}>
-                      {unlocked ? theme.icon : "🔒"}
-                    </span>
-                  </div>
-
-                  {/* Text Content */}
-                  <div className="space-y-2 mb-8">
-                    <h3 className={`text-2xl md:text-3xl font-black ${unlocked ? "text-slate-800" : "text-slate-400"}`}>
-                      {cfg.label}
-                    </h3>
-                    <p className="text-slate-500 font-bold text-sm md:text-base leading-snug">
-                      {unlocked ? cfg.sublabel : cfg.lockMsg}
-                    </p>
-                  </div>
-
-                  {/* Progress Indicators */}
+                <button key={diff} onClick={() => unlocked && handleDifficultySelect(diff)} disabled={!unlocked} className={`group relative flex flex-col rounded-[2.5rem] md:rounded-[3rem] p-8 md:p-12 text-center transition-all duration-500 border-4 ${unlocked ? "bg-white hover:scale-[1.05] hover:-translate-y-2 active:scale-95 shadow-2xl border-white cursor-pointer" : "bg-slate-50/50 border-slate-200 opacity-60 cursor-not-allowed"}`}>
+                  <div className={`w-28 h-28 md:w-36 md:h-36 mx-auto rounded-full flex items-center justify-center text-6xl md:text-8xl mb-8 ${unlocked ? "bg-slate-50" : "bg-slate-100"}`}>{unlocked ? emoji : "🔒"}</div>
+                  <h3 className={`text-2xl md:text-3xl font-black mb-2 ${unlocked ? "text-slate-800" : "text-slate-400"}`}>{cfg.label}</h3>
+                  <p className="text-slate-500 font-bold text-sm mb-8">{unlocked ? cfg.sublabel : cfg.lockMsg}</p>
                   <div className="mt-auto">
                     <div className="flex gap-2 justify-center mb-4">
-                      {[1, 2, 3, 4, 5].map(i => (
-                        <div key={i} className={`h-3 w-3 md:h-4 md:w-4 rounded-full border-2 transition-all duration-500
-                          ${i <= done
-                            ? `bg-${theme.color}-500 border-${theme.color}-200 scale-110`
-                            : `bg-slate-100 border-slate-200`}`}
-                        />
-                      ))}
-                    </div>
-                    <div className="bg-slate-100 px-4 py-2 rounded-2xl inline-block">
-                      <span className="text-xs font-black text-slate-400 uppercase tracking-widest">{cfg.range}</span>
+                      {[1, 2, 3, 4, 5].map(i => <div key={i} className={`h-3 w-3 md:h-4 md:w-4 rounded-full border-2 ${i <= done ? `bg-${theme}-500 border-${theme}-200` : "bg-slate-100 border-slate-200"}`} />)}
                     </div>
                   </div>
-
-                  {/* Hover Interaction Overlay */}
-                  {unlocked && (
-                    <div className={`absolute bottom-6 inset-x-0 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-y-4 group-hover:translate-y-0`}>
-                      <span className={`px-8 py-3 rounded-2xl bg-gradient-to-r from-${theme.color}-500 to-${theme.color}-600 text-white font-black text-sm uppercase tracking-wider shadow-xl shadow-${theme.color}-200`}>
-                        Započni! ▶
-                      </span>
-                    </div>
-                  )}
                 </button>
               );
             })}
@@ -446,312 +336,100 @@ export default function GameContainer({ childId, childName }: GameContainerProps
     );
   }
 
-
-  // ══════════════════════════════════════════════════════════════════════════
-  // SCREEN C: Playing
-  // ══════════════════════════════════════════════════════════════════════════
   if (screen === "playing" && activeGame && selectedDifficulty) {
     const cfg = DIFF_CONFIG[selectedDifficulty];
-    const levelInTier = currentLevel - cfg.min + 1; // 1-5
-
+    const levelInTier = currentLevel - cfg.min + 1;
     return (
       <div className="fixed inset-0 z-[60] bg-slate-50 flex flex-col animate-in fade-in duration-300 overflow-hidden">
-        {/* Header */}
-        <div className="bg-white/90 backdrop-blur-md px-3 sm:px-5 md:px-6 py-3 border-b border-slate-100 flex items-center justify-between shadow-sm flex-shrink-0 relative z-10">
-          <div className="flex items-center gap-2 sm:gap-3 md:gap-4 flex-1 min-w-0">
-            <button
-              onClick={() => setScreen("difficulty-select")}
-              className="p-1.5 md:p-2 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-all border border-transparent shrink-0"
-              aria-label="Nazad"
-            >
-              <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-
-            <div className={`hidden sm:flex w-9 h-9 md:w-11 md:h-11 rounded-xl bg-gradient-to-br ${activeGame.gradient} items-center justify-center text-xl shadow-md shrink-0`}>
-              {activeGame.icon}
-            </div>
-
-            <div className="min-w-0 flex-1">
-              <h3 className="text-xs sm:text-sm md:text-base font-black text-slate-900 leading-tight truncate">{activeGame.title}</h3>
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                {/* Difficulty badge */}
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black text-white uppercase tracking-wider ${cfg.badge}`}>
-                  {cfg.emoji} {cfg.label}
-                </span>
-                {/* Level within tier dots */}
-                <div className="hidden sm:flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map(i => (
-                    <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i <= levelInTier ? 'bg-slate-700' : 'bg-slate-200'}`} />
-                  ))}
-                </div>
-                <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                  {levelInTier}/5
-                </span>
-              </div>
+        <div className="bg-white/90 backdrop-blur-md px-6 py-3 border-b border-slate-100 flex items-center justify-between shadow-sm relative z-10">
+          <div className="flex items-center gap-4 flex-1">
+            <button onClick={() => setScreen("difficulty-select")} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg></button>
+            <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${activeGame.gradient} flex items-center justify-center text-xl shadow-md`}>{activeGame.icon}</div>
+            <div>
+              <h3 className="text-sm font-black text-slate-900 truncate">{activeGame.title}</h3>
+              <div className="flex items-center gap-2"><span className={`px-2 py-0.5 rounded-full text-[10px] font-black text-white ${cfg.badge}`}>{cfg.label}</span><span className="text-[10px] font-bold text-slate-400">{levelInTier}/5</span></div>
             </div>
           </div>
-
-          <button
-            onClick={handleExit}
-            className="ml-2 px-2.5 py-1.5 sm:px-3 sm:py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold transition-all flex items-center gap-1 sm:gap-1.5 border border-rose-100 hover:border-rose-200 shadow-sm shrink-0 text-xs md:text-sm"
-          >
-            <span className="hidden sm:inline">Zatvori</span>
-            <span className="text-sm md:text-base">✕</span>
-          </button>
+          <button onClick={handleExit} className="px-4 py-2 rounded-xl bg-rose-50 text-rose-600 font-bold text-sm">Zatvori ✕</button>
         </div>
-
-        {/* Game area */}
-        <div className="flex-1 relative overflow-y-auto p-2 sm:p-4 md:p-6 flex flex-col">
-          {isLoading && (
-            <div className="absolute top-3 right-4 z-[80]">
-              <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-            </div>
-          )}
-
-          {/* ── Next Level Overlay ── */}
-          {showNextLevel && selectedDifficulty && (
-            <div className="absolute inset-0 z-[90] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-              <div className="relative bg-white rounded-[2.5rem] p-8 sm:p-12 mx-4 max-w-sm w-full shadow-2xl flex flex-col items-center text-center animate-in zoom-in-90 duration-500">
-                {/* Confetti dots */}
-                <div className="absolute -top-4 -left-4 text-4xl animate-bounce">🎉</div>
-                <div className="absolute -top-4 -right-4 text-4xl animate-bounce" style={{ animationDelay: '0.2s' }}>🌟</div>
-
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-4xl mb-5 shadow-xl">
-                  🏆
+        <div className="flex-1 relative overflow-y-auto p-4 flex flex-col">
+          {showNextLevel && (
+            <div className="absolute inset-0 z-[120] flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" />
+              <div className="relative w-full max-w-xl bg-white rounded-[3rem] shadow-2xl p-8 md:p-12 animate-in zoom-in-95 duration-500 border-4 border-white/20 text-center">
+                <div className="flex justify-center gap-4 mb-8">
+                  {[1, 2, 3].map(s => <div key={s} className={`text-5xl md:text-7xl transition-all duration-700 ${s <= lastStars ? "text-yellow-400 animate-bounce" : "text-slate-200 grayscale scale-90"}`}>⭐</div>)}
                 </div>
-
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-black uppercase tracking-widest mb-3">
-                  Nivo {currentLevel} završen!
+                <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4 ${lastStars > 0 ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>{lastStars > 0 ? "✨ Sjajno urađeno!" : "💪 Probaj ponovo!"}</div>
+                <h2 className="text-3xl sm:text-5xl font-black text-slate-900 mb-2">{lastStars > 0 ? "Nivo Završen!" : "Skoro si uspeo!"}</h2>
+                <p className="text-slate-500 text-lg md:text-xl font-bold mb-8">{lastStars > 0 ? `Osvojio si ${lastScore} poena i ${lastStars} ${lastStars === 1 ? "zvezdicu" : "zvezdice"}!` : "Treba ti barem jedna zvezdica da pređeš na sledeći nivo."}</p>
+                <div className="flex flex-col gap-4">
+                  {lastStars > 0 ? (
+                    <button onClick={() => { setShowNextLevel(false); setCurrentLevel(prev => prev + 1); }} className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-[2rem] p-5 font-black text-xl shadow-xl">Sledeći nivo ➜</button>
+                  ) : (
+                    <button onClick={() => setShowNextLevel(false)} className="w-full bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-[2rem] p-5 font-black text-xl shadow-xl">Pokušaj ponovo 🔄</button>
+                  )}
+                  <button onClick={handleExit} className="text-slate-400 font-black text-xs uppercase tracking-widest py-2">Izlaz iz igre</button>
                 </div>
-
-                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-2">Bravo! 🎊</h2>
-                <p className="text-slate-500 font-bold mb-1">
-                  Rezultat: <span className="text-purple-600 font-black text-lg">{lastScore}</span> poena
-                </p>
-                <p className="text-slate-400 text-sm font-bold mb-8">
-                  Sljedeći je Nivo {currentLevel + 1}
-                </p>
-
-                <button
-                  onClick={() => {
-                    setShowNextLevel(false);
-                    setAutoStart(false);
-                    setCurrentLevel(prev => prev + 1);
-                  }}
-                  className="w-full group bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white rounded-2xl p-1 transition-all duration-300 shadow-xl hover:-translate-y-1 active:scale-95 mb-3"
-                >
-                  <div className="border-2 border-white/20 rounded-xl px-6 py-4 flex items-center justify-center gap-3">
-                    <span className="text-lg font-black uppercase tracking-wider">Sledeći nivo ▶</span>
-                  </div>
-                </button>
-
-                <button
-                  onClick={handleExit}
-                  className="w-full px-6 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold text-sm transition-all"
-                >
-                  Izlaz iz igre
-                </button>
               </div>
             </div>
           )}
-
           <div className="relative w-full flex-1 flex flex-col" key={`${selectedGame}-${selectedDifficulty}-level-${currentLevel}`}>
-            {selectedGame === "shapes" ? (
-              <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
-            ) : selectedGame === "memory" ? (
-              <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
-            ) : selectedGame === "sound-to-image" ? (
-              <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
-            ) : selectedGame === "social" ? (
-              <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
-            ) : selectedGame === "social-story" ? (
-              <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
-            ) : selectedGame === "emotions" ? (
-              <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />
-            ) : (
-              <ColoringGame 
-                childId={childId} 
-                level={currentLevel} 
-                minLevel={cfg.min}
-                maxLevel={cfg.max}
-                onComplete={handleGameComplete} 
-                onClose={handleExit} 
-                autoStart={autoStart} 
-              />
-            )}
+            {selectedGame === "shapes" ? <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
+             selectedGame === "memory" ? <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
+             selectedGame === "sound-to-image" ? <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
+             selectedGame === "social" ? <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
+             selectedGame === "social-story" ? <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
+             selectedGame === "emotions" ? <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
+             <ColoringGame childId={childId} level={currentLevel} minLevel={cfg.min} maxLevel={cfg.max} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />}
           </div>
         </div>
       </div>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // SCREEN D: Tier Finished — celebration
-  // ══════════════════════════════════════════════════════════════════════════
   if (screen === "tier-finished" && activeGame && selectedDifficulty) {
     const currentCfg = DIFF_CONFIG[selectedDifficulty];
-    const nextDiff: Difficulty | null = selectedDifficulty === "easy" ? "medium" : selectedDifficulty === "medium" ? "hard" : null;
+    const nextDiff = selectedDifficulty === "easy" ? "medium" : selectedDifficulty === "medium" ? "hard" : null;
     const nextCfg = nextDiff ? DIFF_CONFIG[nextDiff] : null;
-
     return (
       <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-slate-50">
-        {/* Dynamic Background with Professional Blur */}
         <div className="absolute inset-0 z-0">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-40"
-            style={{ backgroundImage: `url(${activeGame.bgImage})` }}
-          />
+          <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${activeGame.bgImage})` }} />
           <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-white/90 backdrop-blur-3xl" />
         </div>
-
         <div className="relative z-10 w-full max-w-xl flex flex-col items-center animate-in zoom-in duration-500">
-          {/* Main Visual Celebration */}
-          <div className="relative mb-10">
-            <div className={`w-44 h-44 md:w-56 md:h-56 rounded-full bg-white shadow-2xl flex items-center justify-center text-8xl md:text-9xl border-8 border-white`}>
-              {currentCfg.emoji}
-            </div>
-            <div className="absolute -top-4 -right-4 text-5xl animate-bounce">🎊</div>
-            <div className="absolute -bottom-4 -left-4 text-5xl animate-bounce delay-300">🎉</div>
-          </div>
-
+          <div className="relative mb-10"><div className="w-44 h-44 md:w-56 md:h-56 rounded-full bg-white shadow-2xl flex items-center justify-center text-8xl md:text-9xl border-8 border-white">{currentCfg.emoji}</div></div>
           <div className="mb-8">
-            <div className={`inline-flex items-center gap-3 px-6 py-2 rounded-full border-2 border-${currentCfg.badge.split('-')[1]}-100 bg-white mb-4 shadow-lg text-${currentCfg.badge.split('-')[1]}-600`}>
-              <span className="text-sm md:text-base font-black uppercase tracking-widest">{currentCfg.label} — NIVOA ZAVRŠENO!</span>
-            </div>
-            <h1 className="text-4xl md:text-7xl font-black text-slate-900 mb-4 tracking-tight leading-tight">
-              Sjajno! ✨
-            </h1>
-            <p className="text-slate-500 text-lg md:text-xl font-bold max-w-md leading-relaxed">
-              Pobedio si svih <span className="text-slate-900 font-black">5 {currentCfg.label.toLowerCase()} nivoa</span> u igri {activeGame.title}!
-            </p>
+            <h1 className="text-4xl md:text-7xl font-black text-slate-900 mb-4">Sjajno! ✨</h1>
+            <p className="text-slate-500 text-lg md:text-xl font-bold">Pobedio si svih 5 {currentCfg.label.toLowerCase()} nivoa u igri {activeGame.title}!</p>
           </div>
-
-          {/* Stars display */}
-          <div className="flex items-center gap-3 md:gap-4 mb-12">
-            {[1, 2, 3, 4, 5].map(i => (
-              <div key={i} className="text-4xl md:text-6xl animate-pulse" style={{ animationDelay: `${i * 0.1}s` }}>⭐</div>
-            ))}
-          </div>
-
-          {/* Next difficulty unlock message */}
-          {nextCfg && (
-            <div className={`w-full mb-10 p-6 rounded-[2.5rem] border-2 border-${nextCfg.badge.split('-')[1]}-100 bg-white shadow-xl flex items-center gap-5 text-left`}>
-              <div className={`w-16 h-16 rounded-2xl bg-${nextCfg.badge.split('-')[1]}-500 flex items-center justify-center text-4xl shrink-0 shadow-lg text-white`}>
-                {nextCfg.emoji}
-              </div>
-              <div>
-                <p className={`text-${nextCfg.badge.split('-')[1]}-600 font-black text-lg`}>🔓 Otključano: {nextCfg.label}!</p>
-                <p className="text-slate-400 font-bold text-sm">{nextCfg.range} je sada spremno za tebe</p>
-              </div>
-            </div>
-          )}
-
-          {/* Buttons */}
           <div className="w-full flex flex-col gap-4 max-w-md">
             {nextCfg && (
-              <button
-                onClick={() => {
-                  setSelectedDifficulty(nextDiff!);
-                  const maxUnlocked = getMaxUnlocked(selectedGame!);
-                  setCurrentLevel(getStartLevelForDiff(nextDiff!, maxUnlocked));
-                  setAutoStart(false);
-                  setScreen("playing");
-                }}
-                className={`w-full group bg-${nextCfg.badge.split('-')[1]}-500 hover:bg-${nextCfg.badge.split('-')[1]}-600 text-white rounded-3xl p-1.5 transition-all duration-300 shadow-xl shadow-${nextCfg.badge.split('-')[1]}-100 hover:-translate-y-1`}
-              >
-                <div className="border-2 border-white/20 rounded-2xl px-8 py-5 flex items-center justify-center gap-4">
-                  <span className="text-xl sm:text-2xl font-black uppercase tracking-widest leading-none">Igraj {nextCfg.label}</span>
-                  <div className="w-12 h-12 bg-white text-slate-900 rounded-xl flex items-center justify-center font-bold text-2xl group-hover:scale-110 transition-transform">▶</div>
-                </div>
-              </button>
+              <button onClick={() => { setSelectedDifficulty(nextDiff!); setCurrentLevel(getStartLevelForDiff(nextDiff!, getMaxUnlocked(selectedGame!))); setScreen("playing"); }} className="w-full bg-emerald-500 text-white rounded-3xl p-5 font-black text-xl shadow-xl">Igraj {nextCfg.label} ▶</button>
             )}
-            <button
-              onClick={() => setScreen("difficulty-select")}
-              className="w-full px-8 py-5 rounded-3xl bg-white hover:bg-slate-50 border-2 border-slate-100 text-slate-500 font-black text-sm sm:text-base uppercase tracking-widest transition-all duration-200 shadow-md"
-            >
-              Nazad na težine
-            </button>
+            <button onClick={() => setScreen("difficulty-select")} className="w-full px-8 py-5 rounded-3xl bg-white border-2 border-slate-100 text-slate-500 font-black">Nazad na težine</button>
           </div>
         </div>
       </div>
     );
   }
 
-  // ══════════════════════════════════════════════════════════════════════════
-  // SCREEN E: All Finished (Hard sve završeno = šampion!)
-  // ══════════════════════════════════════════════════════════════════════════
   if (screen === "all-finished" && activeGame) {
     return (
       <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-6 text-center overflow-hidden bg-slate-950">
-        {/* Professional Celebration Background */}
         <div className="absolute inset-0 z-0">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-20 blur-2xl"
-            style={{ backgroundImage: `url(${activeGame.bgImage})` }}
-          />
+          <div className="absolute inset-0 bg-cover bg-center opacity-20 blur-2xl" style={{ backgroundImage: `url(${activeGame.bgImage})` }} />
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/80 to-slate-950/95 backdrop-blur-3xl" />
         </div>
-
         <div className="relative z-10 w-full max-w-3xl flex flex-col items-center animate-in zoom-in duration-1000">
-          {/* Trophy Area - Scaled Down */}
-          <div className="relative mb-4 sm:mb-6 group">
-            <div className="absolute inset-0 bg-yellow-400/20 blur-[80px] rounded-full group-hover:bg-yellow-400/30 transition-all duration-1000"></div>
-            <div className="text-7xl sm:text-9xl md:text-[140px] drop-shadow-[0_0_40px_rgba(234,179,8,0.3)] animate-bounce relative z-10">🏆</div>
-            <div className="absolute -top-6 -right-6 text-4xl animate-pulse">✨</div>
-            <div className="absolute top-1/2 -left-12 text-4xl animate-ping" style={{ animationDuration: "3s" }}>🎉</div>
+          <div className="relative mb-6 group"><div className="text-6xl sm:text-9xl animate-bounce">🏆</div></div>
+          <div className="mb-8 px-4 flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 px-6 py-2 rounded-full shadow-2xl mb-6 border-2 border-white/20"><span className="text-white font-black text-xs sm:text-base uppercase tracking-widest">NAJBOLJI SI! 👑</span></div>
+            <h1 className="text-3xl sm:text-5xl md:text-7xl font-black text-white italic uppercase mb-2">BRAVO {childName}!</h1>
+            <p className="text-white/60 text-sm sm:text-lg font-black uppercase tracking-widest">Završio si SVE NIVOE u igri {activeGame.title}</p>
           </div>
-
-          <div className="mb-6 sm:mb-8 px-4 flex flex-col items-center">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-400 bg-[length:200%_auto] animate-gradient-x px-6 sm:px-8 py-2 rounded-full shadow-2xl mb-6 border-2 border-white/20 transform hover:scale-105 transition-transform">
-              <span className="text-white font-black text-xs sm:text-base uppercase tracking-[0.2em] px-2 drop-shadow-md">NAJBOLJI SI! 👑</span>
-            </div>
-            
-            <div className="space-y-1 mb-4">
-               <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter drop-shadow-[0_8px_8px_rgba(0,0,0,0.5)] leading-none italic uppercase">
-                BRAVO
-              </h1>
-              <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-white to-yellow-200 tracking-tighter drop-shadow-[0_8px_8px_rgba(0,0,0,0.5)] leading-none uppercase">
-                {childName}!
-              </h1>
-            </div>
-
-            <p className="text-white/60 text-sm sm:text-base md:text-lg font-black uppercase tracking-[0.2em] mb-4">
-              Završio si <span className="text-yellow-400 border-b-2 border-yellow-400/30 pb-1">SVE NIVOE</span> u igri
-            </p>
-            
-            <div className="flex items-center gap-2 mt-2">
-               <div className={`text-xl sm:text-2xl md:text-3xl font-black transition-all duration-300 text-transparent bg-clip-text bg-gradient-to-r ${activeGame.gradient} drop-shadow-sm uppercase tracking-widest`}>
-                {activeGame.icon} {activeGame.title}
-              </div>
-            </div>
-          </div>
-
-          {/* Stars Row - Scaled Down */}
-          <div className="flex items-center justify-center gap-1.5 sm:gap-4 mb-8 sm:mb-12">
-            {[1, 2, 3, 4, 5, 6, 7].map(i => (
-              <div 
-                key={i} 
-                className="text-2xl sm:text-3xl md:text-4xl animate-bounce drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]" 
-                style={{ animationDelay: `${i * 0.1}s`, animationDuration: "2s" }}
-              >
-                ⭐
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={handleExit}
-            className={`group w-full max-w-xs bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 hover:from-yellow-500 hover:to-amber-700 text-white rounded-3xl p-1 transition-all duration-300 shadow-xl hover:-translate-y-1 active:scale-95`}
-          >
-            <div className="border-2 border-white/20 rounded-[1.4rem] px-6 py-4 flex items-center justify-center gap-4">
-              <span className="text-lg sm:text-xl font-black uppercase tracking-widest leading-none">Nazad na igre</span>
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-white/20 rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform text-xl sm:text-2xl">
-                🏠
-              </div>
-            </div>
-          </button>
+          <button onClick={handleExit} className="bg-gradient-to-r from-yellow-400 to-amber-600 text-white rounded-3xl px-8 py-4 sm:px-12 sm:py-5 font-black text-xl sm:text-2xl shadow-xl shadow-yellow-500/20">Nazad na igre 🏠</button>
         </div>
       </div>
     );

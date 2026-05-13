@@ -535,6 +535,7 @@ export default function SocialCommunicationGame({
 
     const handleAnswerClick = (index: number) => {
         if (answerState !== "idle" || isMonitor || advancing) return;
+        stopSpeech();
         setSelectedAnswer(index);
 
         if (index === currentSituation.correct) {
@@ -699,7 +700,7 @@ export default function SocialCommunicationGame({
                     {onClose && (
                         <button
                             onClick={onClose}
-                            className="absolute -top-12 left-0 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-md border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-20"
+                            className="fixed top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-lg border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-[110]"
                         >
                             <span>⬅</span> Nazad
                         </button>
