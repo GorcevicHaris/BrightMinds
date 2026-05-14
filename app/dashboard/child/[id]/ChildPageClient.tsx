@@ -2,10 +2,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import GameContainer from "./GameContainer";
 import ProgressDashboard from "@/app/components/ProgressDashboard";
-import WelcomeAvatar, { triggerAvatarLogout } from "@/app/components/WelcomeAvatar";
 import { Child } from "./page";
+
+// Dynamic import – Three.js ne radi na serveru
+const Professor3D = dynamic(() => import("@/app/components/Professor3D"), { ssr: false });
+import { triggerAvatarLogout } from "@/app/components/Professor3D";
 
 interface Props {
     child: Child;
@@ -53,8 +57,8 @@ export default function ChildPageClient({ child, childId }: Props) {
     return (
         <div className="min-h-screen font-sans" style={{ background: "linear-gradient(160deg, #f0f4ff 0%, #fdf4ff 50%, #f0fdf4 100%)" }}>
 
-            {/* ── Welcome Avatar ─────────────────────────────────────── */}
-            <WelcomeAvatar childName={firstName} onLogoutConfirmed={handleLogoutConfirmed} />
+            {/* ── 3D Professor Avatar ─────────────────────────────────────── */}
+            <Professor3D childName={firstName} onLogoutConfirmed={handleLogoutConfirmed} size={200} />
 
             {/* ── TOP HEADER ────────────────────────────────────────────
                   Keep it VERY simple for kids — just name + exit + nav  */}

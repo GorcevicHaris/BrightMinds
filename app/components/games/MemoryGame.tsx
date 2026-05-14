@@ -167,9 +167,9 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
     setCards(updatedCards);
 
     // Speak animal name
-    const filename = card.image.split('/').pop() || "";
-    const animalName = animalNames[filename] || "";
-    if (animalName) speak(animalName);
+    // const filename = card.image.split('/').pop() || "";
+    // const animalName = animalNames[filename] || "";
+    // if (animalName) speak(animalName);
 
     setFlippedIds(prev => {
       const newFlipped = [...prev, cardId];
