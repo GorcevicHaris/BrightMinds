@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
     
     if (!selectedVoiceId) {
         if (gender?.toLowerCase() === 'female') {
-            selectedVoiceId = process.env.ELEVENLABS_FEMALE_VOICE_ID || '21m0pTcm4TlvDq8ikWAM';
+            selectedVoiceId = process.env.ELEVENLABS_FEMALE_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL';
         } else {
             selectedVoiceId = process.env.ELEVENLABS_VOICE_ID || 'JBFqnCBsd6RMkjVDRZzb';
         }

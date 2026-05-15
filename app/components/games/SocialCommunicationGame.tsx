@@ -471,6 +471,8 @@ const ALL_SITUATIONS = Object.values(SITUATIONS_BY_LEVEL).flat();
 function getSituationsForLevel(level: number): Situation[] {
     if (level >= 1 && level <= 15) return SITUATIONS_BY_LEVEL[level] || SITUATIONS_BY_LEVEL[1];
     return [...ALL_SITUATIONS].sort(() => Math.random() - 0.5).slice(0, 8);
+}
+
 type AnswerState = "idle" | "correct" | "wrong";
 
 export default function SocialCommunicationGame({
