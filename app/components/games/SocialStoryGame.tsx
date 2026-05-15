@@ -582,9 +582,9 @@ export default function SocialStoryGame({
   // TTS Logic
   useEffect(() => {
     if (phase === "playing" && currentStep && !isMonitor) {
-      speak(currentStep.question);
+      speak(currentStep.question, undefined, undefined, gender);
     }
-  }, [stepIdx, phase, currentStep, isMonitor, speak]);
+  }, [stepIdx, phase, currentStep, isMonitor, speak, gender]);
 
   // Reset on level change
   useEffect(() => {

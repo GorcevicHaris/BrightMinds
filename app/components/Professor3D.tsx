@@ -4,17 +4,28 @@ import { Suspense, useRef, useEffect, useState, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useGLTF, useAnimations, Environment, OrbitControls } from '@react-three/drei';
 import { useSpeech } from '@/lib/useSpeech';
+import { useAvatarAudio } from '@/lib/useAvatarAudio';
 import * as THREE from 'three';
 
 const MALE_MODEL = '/avatars/teacher-joe/source/Joe_01.glb';
 const FEMALE_MODEL = '/avatars/animated-female-teacher-for-narration/source/Teacher Female Narration 01 (1).glb';
 
+// Cached mouth morph target keys to avoid string lookup every frame
+const MOUTH_KEYS = [
+  'jawOpen', 'mouthOpen', 'Mouth_Open', 'mouth_open',
+  'viseme_aa', 'viseme_O', 'viseme_CH', 'viseme_kk', 'viseme_PP',
+  'MouthOpen', 'Jaw_Open', 'vowels_A', 'vowels_O',
+];
+
 function ProfessorModel({ mouthOpen, isSpeaking, gender }: { mouthOpen: number; isSpeaking: boolean; gender?: string }) {
   const group = useRef<THREE.Group>(null!);
-  const modelUrl = gender === 'Female' ? FEMALE_MODEL : MALE_MODEL;
+  const normalizedGender = gender?.toLowerCase();
+  const modelUrl = normalizedGender === 'female' ? FEMALE_MODEL : MALE_MODEL;
   const { scene, animations } = useGLTF(modelUrl);
   const { actions, names } = useAnimations(animations, group);
   const activeAnim = useRef<string | null>(null);
+  // Cache morph target indices once — avoids scene.traverse every frame
+  const morphCacheRef = useRef<Array<{ inf: number[]; indices: number[] }>>([]);
 
   const playAnim = useCallback((name: string) => {
     if (activeAnim.current === name) return;
@@ -26,23 +37,34 @@ function ProfessorModel({ mouthOpen, isSpeaking, gender }: { mouthOpen: number; 
     activeAnim.current = name;
   }, [actions]);
 
-  // Start idle on mount
+  // Build morph cache + start idle on mount
   useEffect(() => {
     if (!names.length) return;
-    console.log('[Joe animations]', names);
+    console.log(`Dostupne animacije za ${gender}:`, names);
+    
     const idle = names.find(n => /idle/i.test(n)) ?? names[0];
     if (idle) { actions[idle]?.reset().fadeIn(0.5).play(); activeAnim.current = idle; }
-  }, [actions, names]);
+
+    // Build cache once
+    const cache: Array<{ inf: number[]; indices: number[] }> = [];
+    scene.traverse((obj: any) => {
+      if (!obj.isMesh || !obj.morphTargetDictionary || !obj.morphTargetInfluences) return;
+      const indices = MOUTH_KEYS
+        .map(k => obj.morphTargetDictionary[k])
+        .filter((i): i is number => i !== undefined);
+      if (indices.length) cache.push({ inf: obj.morphTargetInfluences, indices });
+    });
+    morphCacheRef.current = cache;
+  }, [actions, names, scene, gender]);
 
   // Switch idle ↔ talking
   useEffect(() => {
     if (isSpeaking) {
-      // Find animation that looks like talking or gesticulating
-      const talk = names.find(n => /talk|speak|gesture|greet|hello|say|explain/i.test(n));
+      // Proširena pretraga za bilo kakav pokret tokom govora
+      const talk = names.find(n => /talk|speak|gesture|greet|hello|say|explain|body|move|action/i.test(n));
       if (talk) {
         playAnim(talk);
       } else {
-        // Fallback: search for anything that isn't idle
         const anyAction = names.find(n => !/idle/i.test(n));
         if (anyAction) playAnim(anyAction);
         else {
@@ -59,32 +81,20 @@ function ProfessorModel({ mouthOpen, isSpeaking, gender }: { mouthOpen: number; 
     }
   }, [isSpeaking, names, actions, playAnim]);
 
-  // Mouth morph targets driven by audio
-  useFrame(() => {
-    scene.traverse((obj: any) => {
-      if (!obj.isMesh || !obj.morphTargetDictionary || !obj.morphTargetInfluences) return;
-      const dict = obj.morphTargetDictionary;
-      const inf  = obj.morphTargetInfluences;
-      const val  = isSpeaking ? mouthOpen * 0.9 : 0;
-      // List of common mouth morph targets
-      const mouthTargets = [
-        'jawOpen', 'mouthOpen', 'Mouth_Open', 'mouth_open',
-        'viseme_aa', 'viseme_O', 'viseme_CH', 'viseme_kk', 'viseme_PP',
-        'MouthOpen', 'Jaw_Open', 'vowels_A', 'vowels_O'
-      ];
-      mouthTargets.forEach(k => {
-        if (dict[k] !== undefined) inf[dict[k]] = THREE.MathUtils.lerp(inf[dict[k]], val, 0.25);
-      });
-    });
-  });
-
-  // Float only when idle — still when speaking
+  // Single useFrame — mouth morph + float combined
   useFrame(({ clock }) => {
-    if (!group.current) return;
-    if (isSpeaking) {
-      group.current.position.y = THREE.MathUtils.lerp(group.current.position.y, 0, 0.08);
-    } else {
-      group.current.position.y = Math.sin(clock.elapsedTime * 0.5) * 0.012;
+    // Float animation
+    if (group.current) {
+      group.current.position.y = isSpeaking
+        ? THREE.MathUtils.lerp(group.current.position.y, 0, 0.08)
+        : Math.sin(clock.elapsedTime * 0.5) * 0.012;
+    }
+    // Mouth morph — uses pre-built cache, no traverse
+    const val = isSpeaking ? mouthOpen * 0.9 : 0;
+    for (const { inf, indices } of morphCacheRef.current) {
+      for (const idx of indices) {
+        inf[idx] = THREE.MathUtils.lerp(inf[idx], val, 0.25);
+      }
     }
   });
 
@@ -98,8 +108,8 @@ function ProfessorModel({ mouthOpen, isSpeaking, gender }: { mouthOpen: number; 
     <group ref={group}>
       <primitive
         object={scene}
-        scale={gender === 'Female' ? 2.8 : 2.5}
-        position={[0, gender === 'Female' ? -1.0 : -0.8, 0]}
+        scale={normalizedGender === 'female' ? 0.9 : 2.5}
+        position={[0, normalizedGender === 'female' ? -1.83 : -0.8, 0]}
         rotation={[0, 0, 0]}
       />
     </group>
@@ -121,7 +131,7 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
       playedRef.current = true;
       const name = childName || 'drugaru';
       setBubbleText(`Zdravo ${name}! 👋`);
-      speak(`Zdravo ${name}! Dobrodošao nazad!`, () => setBubbleText(null));
+      speak(`Zdravo ${name}! Dobrodošao nazad!`, () => setBubbleText(null), undefined, gender);
     }, 1500);
     return () => clearTimeout(t);
   }, [childName, speak]);
@@ -136,7 +146,7 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
 
     const handleLogout = () => {
       try { stop(); } catch (e) { }
-      setBubbleText('Vidimo se! 👋');
+      setBubbleText('Vidimo se uskoro! Bio si odličan danas!');
 
       // Sigurnosni timeout: ako govor potraje predugo ili pukne, ipak uradi logout
       const logoutTimeout = setTimeout(() => {
@@ -147,7 +157,7 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
         clearTimeout(logoutTimeout);
         setBubbleText(null);
         onLogoutConfirmed();
-      });
+      }, undefined, gender);
     };
 
     window.addEventListener('avatar:speak', handleSpeak);
@@ -162,8 +172,8 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
     <div style={{
       position: 'fixed',
       top: '-180px',
-      right: '-50px',      /* GORNJI DESNI ugao */
-      zIndex: 45,  /* ispod headera (z-50 = 50) ali iznad ostatka stranice */
+      right: '-60px',      /* DONJI DESNI ugao */
+      zIndex: 250,  /* Iznad igara (koje su obično z-100) */
       width: '320px',
       height: '450px',
       pointerEvents: 'none',
@@ -237,63 +247,6 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
       `}</style>
     </div>
   );
-}
-
-// Audio hook (kopija postojećeg koji radi)
-function useAvatarAudio() {
-  const [mouthOpen, setMouthOpen] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const rafRef = useRef<number | null>(null);
-  const ctxRef = useRef<AudioContext | null>(null);
-
-  const analyse = useCallback(() => {
-    if (!analyserRef.current) return;
-    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(data);
-    const avg = data.slice(2, 50).reduce((a, b) => a + b, 0) / 48;
-    setMouthOpen(Math.min(1, avg / 60));
-    rafRef.current = requestAnimationFrame(analyse);
-  }, []);
-
-  const playSound = useCallback(async (url: string, onEnded?: () => void) => {
-    try {
-      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-      if (ctxRef.current && ctxRef.current.state !== 'closed') {
-        await ctxRef.current.close().catch(() => { });
-      }
-      const ctx = new Ctx();
-      ctxRef.current = ctx;
-      const res = await fetch(url);
-      const buf = await res.arrayBuffer();
-      const decoded = await ctx.decodeAudioData(buf);
-      const src = ctx.createBufferSource();
-      const analyser = ctx.createAnalyser();
-      analyserRef.current = analyser;
-      src.buffer = decoded;
-      src.connect(analyser);
-      analyser.connect(ctx.destination);
-      src.start(0);
-      setIsPlaying(true);
-      analyse();
-      src.onended = () => {
-        setIsPlaying(false);
-        setMouthOpen(0);
-        cancelAnimationFrame(rafRef.current!);
-        onEnded?.();
-      };
-    } catch (e) { onEnded?.(); }
-  }, [analyse]);
-
-  const stop = useCallback(() => {
-    if (ctxRef.current && ctxRef.current.state !== 'closed') {
-      ctxRef.current.close().catch(() => { });
-    }
-    setIsPlaying(false);
-    setMouthOpen(0);
-  }, []);
-
-  return { mouthOpen, isPlaying, playSound, stop };
 }
 
 export function triggerAvatarLogout() {

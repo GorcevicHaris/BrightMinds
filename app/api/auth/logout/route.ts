@@ -6,8 +6,12 @@ export async function POST() {
         message: 'Uspešno ste se odjavili'
     });
 
-    // Obriši cookie
-    response.cookies.delete('token');
+    // Obriši cookie sa eksplicitnom putanjom
+    response.cookies.set('token', '', {
+        path: '/',
+        expires: new Date(0),
+        httpOnly: true,
+    });
 
     return response;
 }

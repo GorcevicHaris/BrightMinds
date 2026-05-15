@@ -86,7 +86,9 @@ const EMOTIONS = [
     },
 ];
 
-export default function EmotionsGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState }: GameProps) {
+export default function EmotionsGame({
+    childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender
+}: GameProps & { gender?: string }) {
     const scenario = SCENARIOS.find((s) => s.level === level) || SCENARIOS[0];
 
     const [isPlaying, setIsPlaying] = useState<boolean>(isMonitor ? true : false);
@@ -176,7 +178,7 @@ export default function EmotionsGame({ childId, level, onComplete, onClose, auto
     const handleSpeech = () => {
         if (isMonitor || !scenario.text) return;
         stopCurrentSound();
-        speak(scenario.text.replace("\n", " "));
+        speak(scenario.text.replace("\n", " "), undefined, gender);
     };
 
     // Autoplay zvuk pitanja na startu

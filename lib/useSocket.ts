@@ -5,47 +5,55 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { GameUpdate } from './types';
 
+// ── Singleton socket — shared across all components ─────────────────────────
+let _socket: Socket | null = null;
+let _connectionCount = 0;
+
+function getSocket(): Socket {
+  if (_socket && _socket.connected) return _socket;
+  const url =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+
+  _socket = io(url, {
+    path: '/api/socket',
+    transports: ['websocket', 'polling'],
+    reconnectionAttempts: 5,
+  });
+  return _socket;
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export const useSocket = () => {
   const [isConnected, setIsConnected] = useState(false);
-  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
-    if (socketRef.current) return;
+    const socket = getSocket();
+    _connectionCount++;
 
-    const socketUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    // Sync initial state
+    if (socket.connected) setIsConnected(true);
 
-    console.log('🔌 Connecting to socket at:', socketUrl);
+    const onConnect = () => setIsConnected(true);
+    const onDisconnect = () => setIsConnected(false);
 
-    socketRef.current = io(socketUrl, {
-      path: '/api/socket',
-      transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-    });
-
-    socketRef.current.on('connect', () => {
-      console.log('✅ Socket connected:', socketRef.current?.id);
-      setIsConnected(true);
-    });
-
-    socketRef.current.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
-      setIsConnected(false);
-    });
-
-    socketRef.current.on('connect_error', (err) => {
-      console.error('❌ Socket connection error:', err);
-    });
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
 
     return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-        socketRef.current = null;
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      _connectionCount--;
+      // Only disconnect when no component is using the socket
+      if (_connectionCount === 0 && _socket) {
+        _socket.disconnect();
+        _socket = null;
       }
     };
   }, []);
 
   return useMemo(() => ({
-    socket: socketRef.current,
+    socket: _socket,
     isConnected,
   }), [isConnected]);
 };
@@ -53,44 +61,32 @@ export const useSocket = () => {
 export const useGameMonitor = (childId: number, onUpdate: (update: GameUpdate) => void) => {
   const { socket, isConnected } = useSocket();
   const [activeSession, setActiveSession] = useState<any>(null);
-
-  // Use a ref to store the latest onUpdate callback to avoid re-triggering the effect
   const onUpdateRef = useRef(onUpdate);
-  useEffect(() => {
-    onUpdateRef.current = onUpdate;
-  }, [onUpdate]);
+
+  useEffect(() => { onUpdateRef.current = onUpdate; }, [onUpdate]);
 
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    // Prijavi se za praćenje deteta
     socket.emit('monitor:child', childId);
 
-    // Slušaj game update-e
     const handler = (update: GameUpdate) => {
-      console.log('📡 Received game update:', update);
-
-      if (update.event === 'started') {
-        setActiveSession(update);
-      } else if (update.event === 'completed') {
-        setActiveSession(null);
-      }
-
+      if (update.event === 'started') setActiveSession(update);
+      else if (update.event === 'completed') setActiveSession(null);
       onUpdateRef.current(update);
     };
 
+    const onJoined = () => {}; // silenced — was console.log
+
     socket.on('game:update', handler);
-    // 
-    socket.on('monitor:joined', (data) => {
-      console.log('👁️ Monitoring child:', data.childId);
-    });
+    socket.on('monitor:joined', onJoined);
 
     return () => {
       socket.emit('monitor:leave', childId);
       socket.off('game:update', handler);
-      socket.off('monitor:joined');
+      socket.off('monitor:joined', onJoined);
     };
-  }, [socket, isConnected, childId]); // Removed onUpdate from deps
+  }, [socket, isConnected, childId]);
 
   return { activeSession, isConnected };
 };

@@ -373,19 +373,13 @@ export default function ShapeMatchingGame({ childId, level, onComplete, onClose,
 
             emitGameProgress({
                 childId, activityId: 1, gameType: 'shape_matching', event: 'shape_placed',
-                data: { shape: shape.type, correct: true, score: newScore, level, correctCount: newCorrect, incorrectCount, feedback: 'correct', shapes, targetShape, timeLeft },
+                data: { shape: shape.type, correct: true, score: newScore, level, correctCount: newCorrect, incorrectCount, feedback: 'correct', timeLeft },
                 timestamp: new Date().toISOString(),
             });
 
             setTimeout(() => {
                 setFeedback(null);
                 generateShapes();
-                // Očisti feedback i na monitoru
-                emitGameProgress({
-                    childId, activityId: 1, gameType: 'shape_matching', event: 'progress',
-                    data: { feedback: null, score: newScore, level, correctCount: newCorrect, incorrectCount },
-                    timestamp: new Date().toISOString(),
-                });
             }, 600);
         } else {
             const newIncorrect = incorrectCount + 1;
@@ -394,19 +388,11 @@ export default function ShapeMatchingGame({ childId, level, onComplete, onClose,
 
             emitGameProgress({
                 childId, activityId: 1, gameType: 'shape_matching', event: 'shape_placed',
-                data: { shape: shape.type, correct: false, score, level, correctCount, incorrectCount: newIncorrect, feedback: 'wrong', shapes, targetShape, timeLeft },
+                data: { shape: shape.type, correct: false, score, level, correctCount, incorrectCount: newIncorrect, feedback: 'wrong', timeLeft },
                 timestamp: new Date().toISOString(),
             });
 
-            setTimeout(() => {
-                setFeedback(null);
-                // Očisti feedback i na monitoru
-                emitGameProgress({
-                    childId, activityId: 1, gameType: 'shape_matching', event: 'progress',
-                    data: { feedback: null, score, level, correctCount, incorrectCount: newIncorrect },
-                    timestamp: new Date().toISOString(),
-                });
-            }, 600);
+            setTimeout(() => setFeedback(null), 600);
         }
     };
 
@@ -416,26 +402,8 @@ export default function ShapeMatchingGame({ childId, level, onComplete, onClose,
         const timer = setInterval(() => {
             setTimeLeft((prev: number) => {
                 const newTime = prev - 1;
-                if (newTime > 0 && newTime % 10 === 0) {
-                    emitGameProgress({
-                        childId, activityId: 1, gameType: 'shape_matching', event: 'progress',
-                        data: { timeLeft: newTime, score, level, correctCount, incorrectCount },
-                        timestamp: new Date().toISOString(),
-                    });
-                }
                 if (newTime <= 0) {
                     setIsPlaying(false);
-                    emitGameComplete({
-                        childId, activityId: 1, gameType: 'shape_matching', event: 'completed',
-                        data: { finalScore: score, finalLevel: level, timeSpent: 60 },
-                        timestamp: new Date().toISOString(),
-                    });
-
-                    if (autoStart) {
-                        handleMoodAfterSelect("neutral"); // Default mood for auto-transition
-                    } else {
-                        setShowMoodAfter(true);
-                    }
                     return 0;
                 }
                 return newTime;
@@ -443,7 +411,23 @@ export default function ShapeMatchingGame({ childId, level, onComplete, onClose,
         }, 1000);
 
         return () => clearInterval(timer);
-    }, [isPlaying, timeLeft, score, level, childId, emitGameComplete]);
+    }, [isPlaying, isMonitor]);
+
+    // Handle game over when timer reaches 0
+    useEffect(() => {
+        if (timeLeft !== 0 || !isPlaying || isMonitor) return;
+        emitGameComplete({
+            childId, activityId: 1, gameType: 'shape_matching', event: 'completed',
+            data: { finalScore: score, finalLevel: level, timeSpent: 60 },
+            timestamp: new Date().toISOString(),
+        });
+        if (autoStart) {
+            handleMoodAfterSelect("neutral");
+        } else {
+            setShowMoodAfter(true);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [timeLeft, isPlaying, isMonitor]);
 
     const handleMoodAfterSelect = (mood: string) => {
         setShowMoodAfter(false);

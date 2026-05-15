@@ -81,7 +81,9 @@ function getLevelConfig(level: number): LevelConfig {
     return LEVEL_CONFIGS[Math.min(level - 1, LEVEL_CONFIGS.length - 1)];
 }
 
-export default function SoundToImageGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState }: GameProps) {
+export default function SoundToImageGame({ 
+    childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender 
+}: GameProps & { gender?: string }) {
     const [currentSound, setCurrentSound] = useState<SoundItem | null>(null);
     const [options, setOptions] = useState<SoundItem[]>([]);
     const [score, setScore] = useState(monitorState?.score || 0);
@@ -152,14 +154,14 @@ export default function SoundToImageGame({ childId, level, onComplete, onClose, 
 
         audio.play().catch(() => {
             audioRef.current = null;
-            if (!isMonitor) speak(target.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false));
+            if (!isMonitor) speak(target.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false), gender);
             else setIsPlayingSound(false);
         });
 
         audio.onended = () => setIsPlayingSound(false);
         audio.onerror = () => {
             audioRef.current = null;
-            if (!isMonitor) speak(target.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false));
+            if (!isMonitor) speak(target.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false), gender);
             else setIsPlayingSound(false);
         };
     }, [currentSound, isMonitor, speak]);

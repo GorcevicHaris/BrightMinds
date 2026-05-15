@@ -16,7 +16,7 @@ export interface Child {
     experience_points: number;
 }
 
-export default async function ChildPage({ params }: { params: { id: string } }) {
+export default async function ChildPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const childId = Number(id);
 

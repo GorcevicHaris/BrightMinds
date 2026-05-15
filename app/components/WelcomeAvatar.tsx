@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useSpeech } from '@/lib/useSpeech';
+import { useAvatarAudio } from '@/lib/useAvatarAudio';
 
 // ─── Shared SVG Avatar face ───────────────────────────────────────────────────
 function AvatarFace({
@@ -127,72 +128,6 @@ function AvatarFace({
     );
 }
 
-// ─── Audio hook ───────────────────────────────────────────────────────────────
-function useAvatarAudio() {
-    const [mouthOpen, setMouthOpen] = useState(0);
-    const [isPlaying, setIsPlaying] = useState(false);
-    const ctxRef = useRef<AudioContext | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const rafRef = useRef<number | null>(null);
-
-    const stopAnalysis = useCallback(() => {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        setIsPlaying(false);
-        setMouthOpen(0);
-    }, []);
-
-    const analyse = useCallback(() => {
-        if (!analyserRef.current) return;
-        const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-        analyserRef.current.getByteFrequencyData(data);
-        const slice = data.slice(2, 55);
-        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-        setMouthOpen(Math.min(1, avg / 75));
-        rafRef.current = requestAnimationFrame(analyse);
-    }, []);
-
-    const playSound = useCallback(async (url: string, onEnded?: () => void) => {
-        try {
-            const Ctx = window.AudioContext || (window as any).webkitAudioContext;
-            if (ctxRef.current) { ctxRef.current.close(); }
-            const ctx = new Ctx() as AudioContext;
-            ctxRef.current = ctx;
-
-            const res = await fetch(url);
-            const buf = await res.arrayBuffer();
-            const decoded = await ctx.decodeAudioData(buf);
-
-            const src = ctx.createBufferSource();
-            const analyser = ctx.createAnalyser();
-            analyser.fftSize = 256;
-            analyser.smoothingTimeConstant = 0.65;
-            analyserRef.current = analyser;
-
-            src.buffer = decoded;
-            src.connect(analyser);
-            analyser.connect(ctx.destination);
-            src.start(0);
-            setIsPlaying(true);
-            analyse();
-
-            src.onended = () => {
-                stopAnalysis();
-                onEnded?.();
-            };
-        } catch (e) {
-            console.error('Avatar audio error', e);
-            onEnded?.();
-        }
-    }, [analyse, stopAnalysis]);
-
-    const stop = useCallback(() => {
-        stopAnalysis();
-        ctxRef.current?.close();
-    }, [stopAnalysis]);
-
-    return { mouthOpen, isPlaying, playSound, stop };
-}
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WelcomeAvatarProps {
     childName?: string;
@@ -222,13 +157,8 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
                 const name = childName || 'drugaru';
                 const greeting = `Zdravo ${name}! Dobrodošao nazad! Baš mi je drago što te vidim.`;
                 const bubble = childName ? `Zdravo ${childName}! 👋` : 'Zdravo! 👋';
-                
                 setBubbleText(bubble);
-                
-                // Using speak will dispatch avatar:speak which the component already listens to
-                speak(greeting, { 
-                    onEnd: () => setBubbleText(null)
-                });
+                speak(greeting, () => setBubbleText(null), undefined, (childName === 'Sara' ? 'female' : undefined)); // Temporary hardcode or fix prop later if needed
             }
         }, 1500);
 
@@ -284,13 +214,14 @@ export default function WelcomeAvatar({ childName, onLogoutConfirmed }: WelcomeA
         return () => window.removeEventListener('avatar:speak', handleSpeak);
     }, [playSound, stop]);
 
-    // Check if on mobile (safe SSR check)
+    // Check if on mobile — uses matchMedia, no resize listener overhead
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth < 640);
-        check();
-        window.addEventListener('resize', check);
-        return () => window.removeEventListener('resize', check);
+        const mq = window.matchMedia('(max-width: 639px)');
+        setIsMobile(mq.matches);
+        const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+        mq.addEventListener('change', handler);
+        return () => mq.removeEventListener('change', handler);
     }, []);
 
     return (

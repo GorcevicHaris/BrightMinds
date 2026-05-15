@@ -359,8 +359,9 @@ export default function ColoringGame({
   onClose, 
   autoStart, 
   isMonitor, 
-  monitorState 
-}: GameProps) {
+  monitorState,
+  gender,
+}: GameProps & { gender?: string }) {
   const [zones, setZones] = useState<ColorZone[]>(monitorState?.zones || []);
   const [selectedColor, setSelectedColor] = useState<string>(monitorState?.selectedColor || COLORS[0].value);
   const [isPlaying, setIsPlaying] = useState(isMonitor ? true : (monitorState?.isPlaying || false));
@@ -409,7 +410,7 @@ export default function ColoringGame({
     // Disabled as per user request: "ai ne prica nista za igricu oboji"
     /*
     if (isPlaying && !isMonitor) {
-      speak(`Oboji ${getLevelName(displayLevel)}`);
+      speak(`Oboji ${getLevelName(displayLevel)}`, undefined, undefined, gender);
     }
     */
   }, [displayLevel, isPlaying, isMonitor, speak]);
@@ -532,7 +533,7 @@ export default function ColoringGame({
         }
 
         if (message) {
-          speak(message);
+          speak(message, undefined, undefined, gender);
           return;
         }
       }

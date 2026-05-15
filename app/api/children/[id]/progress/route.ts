@@ -4,597 +4,154 @@ import { verifyToken } from "@/lib/auth";
 import pool from "@/lib/db";
 import { RowDataPacket } from "mysql2";
 
+const ACTIVITY_IDS = [1, 3, 4, 5, 6, 7, 8];
+
+interface StatsRow extends RowDataPacket {
+  activity_id: number;
+  total_games: number;
+  avg_score: number;
+  best_score: number;
+  total_minutes: number;
+  excellent_count: number;
+  successful_count: number;
+  partial_count: number;
+  struggled_count: number;
+}
+
 export async function GET(
-    req: NextRequest,
-    { params }: { params: { id: string } }
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
 ) {
-    try {
-        const user = await verifyToken();
-        const { id: childId } = await params;
+  try {
+    const user = await verifyToken();
+    const { id: childId } = await params;
 
-        // Proveri pristup detetu
-        const [accessRows] = await pool.query<RowDataPacket[]>(
-            "SELECT id FROM user_children WHERE user_id = ? AND child_id = ?",
-            [user.id, childId]
-        );
-        if (accessRows.length === 0) {
-            return NextResponse.json(
-                { error: "Nemate pristup ovom detetu" },
-                { status: 403 }
-            );
-        }
-
-        // ============================================
-        // SLOŽI OBLIK (activity_id = 1)
-        // ============================================
-        const [shapesStats] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                COUNT(*) as total_games,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score,
-                SUM(duration_minutes) as total_minutes,
-                SUM(CASE WHEN success_level = 'excellent' THEN 1 ELSE 0 END) as excellent_count,
-                SUM(CASE WHEN success_level = 'successful' THEN 1 ELSE 0 END) as successful_count,
-                SUM(CASE WHEN success_level = 'partial' THEN 1 ELSE 0 END) as partial_count,
-                SUM(CASE WHEN success_level = 'struggled' THEN 1 ELSE 0 END) as struggled_count
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 1`,
-            [childId]
-        );
-
-        const [shapesRecent] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                id,
-                completed_at,
-                success_level,
-                mood_before,
-                mood_after,
-                duration_minutes,
-                notes,
-                CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED) as score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 1
-            ORDER BY completed_at DESC 
-            LIMIT 10`,
-            [childId]
-        );
-
-        const [shapesProgress] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                DATE(completed_at) as date,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as max_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 1
-            GROUP BY DATE(completed_at)
-            ORDER BY date DESC
-            LIMIT 30`,
-            [childId]
-        );
-
-        const [shapesLevels] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) as level,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 1 AND notes LIKE '%Nivo%'
-            GROUP BY level
-            ORDER BY level`,
-            [childId]
-        );
-
-        // ============================================
-        // SPOJI PAROVE (activity_id = 3)
-        // ============================================
-        const [memoryStats] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                COUNT(*) as total_games,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score,
-                SUM(duration_minutes) as total_minutes,
-                SUM(CASE WHEN success_level = 'excellent' THEN 1 ELSE 0 END) as excellent_count,
-                SUM(CASE WHEN success_level = 'successful' THEN 1 ELSE 0 END) as successful_count,
-                SUM(CASE WHEN success_level = 'partial' THEN 1 ELSE 0 END) as partial_count,
-                SUM(CASE WHEN success_level = 'struggled' THEN 1 ELSE 0 END) as struggled_count
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 3`,
-            [childId]
-        );
-
-        const [memoryRecent] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                id,
-                completed_at,
-                success_level,
-                mood_before,
-                mood_after,
-                duration_minutes,
-                notes,
-                CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED) as score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 3
-            ORDER BY completed_at DESC 
-            LIMIT 10`,
-            [childId]
-        );
-
-        const [memoryProgress] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                DATE(completed_at) as date,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as max_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 3
-            GROUP BY DATE(completed_at)
-            ORDER BY date DESC
-            LIMIT 30`,
-            [childId]
-        );
-
-        const [memoryLevels] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) as level,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 3 AND notes LIKE '%Nivo%'
-            GROUP BY level
-            ORDER BY level`,
-            [childId]
-        );
-        // ==================================================================
-        // coloring activity id = 4
-        const [coloringStats] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                COUNT(*) as total_games,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score,
-                SUM(duration_minutes) as total_minutes,
-                SUM(CASE WHEN success_level = 'excellent' THEN 1 ELSE 0 END) as excellent_count,
-                SUM(CASE WHEN success_level = 'successful' THEN 1 ELSE 0 END) as successful_count,
-                SUM(CASE WHEN success_level = 'partial' THEN 1 ELSE 0 END) as partial_count,
-                SUM(CASE WHEN success_level = 'struggled' THEN 1 ELSE 0 END) as struggled_count
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 4`,
-            [childId]
-        );
-
-        const [coloringRecent] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                id,
-                completed_at,
-                success_level,
-                mood_before,
-                mood_after,
-                duration_minutes,
-                notes,
-                CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED) as score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 4
-            ORDER BY completed_at DESC 
-            LIMIT 10`,
-            [childId]
-        );
-
-        const [coloringProgress] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                DATE(completed_at) as date,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as max_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 4
-            GROUP BY DATE(completed_at)
-            ORDER BY date DESC
-            LIMIT 30`,
-            [childId]
-        );
-
-        const [coloringLevels] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) as level,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 4 AND notes LIKE '%Nivo%'
-            GROUP BY level
-            ORDER BY level`,
-            [childId]
-        );
-
-        // ============================================
-        // ZVUK -> SLIKA (activity_id = 5)
-        // ============================================
-        const [soundToImageStats] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                COUNT(*) as total_games,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score,
-                SUM(duration_minutes) as total_minutes,
-                SUM(CASE WHEN success_level = 'excellent' THEN 1 ELSE 0 END) as excellent_count,
-                SUM(CASE WHEN success_level = 'successful' THEN 1 ELSE 0 END) as successful_count,
-                SUM(CASE WHEN success_level = 'partial' THEN 1 ELSE 0 END) as partial_count,
-                SUM(CASE WHEN success_level = 'struggled' THEN 1 ELSE 0 END) as struggled_count
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 5`,
-            [childId]
-        );
-
-        const [soundToImageRecent] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                id,
-                completed_at,
-                success_level,
-                mood_before,
-                mood_after,
-                duration_minutes,
-                notes,
-                CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED) as score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 5
-            ORDER BY completed_at DESC 
-            LIMIT 10`,
-            [childId]
-        );
-
-        const [soundToImageProgress] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                DATE(completed_at) as date,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as max_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 5
-            GROUP BY DATE(completed_at)
-            ORDER BY date DESC
-            LIMIT 30`,
-            [childId]
-        );
-
-        const [soundToImageLevels] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) as level,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 5 AND notes LIKE '%Nivo%'
-            GROUP BY level
-            ORDER BY level`,
-            [childId]
-        );
-
-        // ============================================
-        // ISTRAŽI GRAD (activity_id = 7)
-        // ============================================
-        const [socialStoryStats] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                COUNT(*) as total_games,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score,
-                SUM(duration_minutes) as total_minutes,
-                SUM(CASE WHEN success_level = 'excellent' THEN 1 ELSE 0 END) as excellent_count,
-                SUM(CASE WHEN success_level = 'successful' THEN 1 ELSE 0 END) as successful_count,
-                SUM(CASE WHEN success_level = 'partial' THEN 1 ELSE 0 END) as partial_count,
-                SUM(CASE WHEN success_level = 'struggled' THEN 1 ELSE 0 END) as struggled_count
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 7`,
-            [childId]
-        );
-
-        const [socialStoryRecent] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                id,
-                completed_at,
-                success_level,
-                mood_before,
-                mood_after,
-                duration_minutes,
-                notes,
-                CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED) as score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 7
-            ORDER BY completed_at DESC 
-            LIMIT 10`,
-            [childId]
-        );
-
-        const [socialStoryProgress] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                DATE(completed_at) as date,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as max_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 7
-            GROUP BY DATE(completed_at)
-            ORDER BY date DESC
-            LIMIT 30`,
-            [childId]
-        );
-
-        const [socialStoryLevels] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) as level,
-                COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 7 AND notes LIKE '%Nivo%'
-            GROUP BY level
-            ORDER BY level`,
-            [childId]
-        );
-
-        // ============================================
-        // SOCIAL COMMUNICATION (activity_id = 6)
-        // ============================================
-        const [socialStats] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                COUNT(*) as total_games,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score,
-                SUM(duration_minutes) as total_minutes,
-                SUM(CASE WHEN success_level = 'excellent' THEN 1 ELSE 0 END) as excellent_count,
-                SUM(CASE WHEN success_level = 'successful' THEN 1 ELSE 0 END) as successful_count,
-                SUM(CASE WHEN success_level = 'partial' THEN 1 ELSE 0 END) as partial_count,
-                SUM(CASE WHEN success_level = 'struggled' THEN 1 ELSE 0 END) as struggled_count
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 6`,
-            [childId]
-        );
-
-        const [socialRecent] = await pool.query<RowDataPacket[]>(
-            `SELECT pl.id, pl.completed_at, pl.success_level, pl.mood_before, pl.mood_after, pl.duration_minutes, pl.notes,
-                CAST(SUBSTRING_INDEX(pl.notes, ' ', -2) AS UNSIGNED) as score
-            FROM progress_logs pl WHERE pl.child_id = ? AND pl.activity_id = 6 ORDER BY pl.completed_at DESC LIMIT 10`,
-            [childId]
-        );
-
-        const [socialProgress] = await pool.query<RowDataPacket[]>(
-            `SELECT DATE(completed_at) as date, COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as max_score
-            FROM progress_logs WHERE child_id = ? AND activity_id = 6 GROUP BY DATE(completed_at) ORDER BY date DESC LIMIT 30`,
-            [childId]
-        );
-
-        const [socialLevels] = await pool.query<RowDataPacket[]>(
-            `SELECT SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) as level, COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score
-            FROM progress_logs WHERE child_id = ? AND activity_id = 6 AND notes LIKE '%Nivo%' GROUP BY level ORDER BY level`,
-            [childId]
-        );
-
-        // ============================================
-        // EMOTIONS (activity_id = 8)
-        // ============================================
-        const [emotionsStats] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                COUNT(*) as total_games,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score,
-                SUM(duration_minutes) as total_minutes,
-                SUM(CASE WHEN success_level = 'excellent' THEN 1 ELSE 0 END) as excellent_count,
-                SUM(CASE WHEN success_level = 'successful' THEN 1 ELSE 0 END) as successful_count,
-                SUM(CASE WHEN success_level = 'partial' THEN 1 ELSE 0 END) as partial_count,
-                SUM(CASE WHEN success_level = 'struggled' THEN 1 ELSE 0 END) as struggled_count
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id = 8`,
-            [childId]
-        );
-
-        const [emotionsRecent] = await pool.query<RowDataPacket[]>(
-            `SELECT pl.id, pl.completed_at, pl.success_level, pl.mood_before, pl.mood_after, pl.duration_minutes, pl.notes,
-                CAST(SUBSTRING_INDEX(pl.notes, ' ', -2) AS UNSIGNED) as score
-            FROM progress_logs pl WHERE pl.child_id = ? AND pl.activity_id = 8 ORDER BY pl.completed_at DESC LIMIT 10`,
-            [childId]
-        );
-
-        const [emotionsProgress] = await pool.query<RowDataPacket[]>(
-            `SELECT DATE(completed_at) as date, COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as max_score
-            FROM progress_logs WHERE child_id = ? AND activity_id = 8 GROUP BY DATE(completed_at) ORDER BY date DESC LIMIT 30`,
-            [childId]
-        );
-
-        const [emotionsLevels] = await pool.query<RowDataPacket[]>(
-            `SELECT SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) as level, COUNT(*) as games_count,
-                AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as avg_score,
-                MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) as best_score
-            FROM progress_logs WHERE child_id = ? AND activity_id = 8 AND notes LIKE '%Nivo%' GROUP BY level ORDER BY level`,
-            [childId]
-        );
-
-        // ============================================
-        // UKUPNE STATISTIKE
-        // ============================================
-        const [totalStats] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                COUNT(*) as total_games,
-                SUM(duration_minutes) as total_minutes,
-                SUM(CASE WHEN success_level = 'excellent' THEN 1 ELSE 0 END) as excellent_count,
-                SUM(CASE WHEN success_level = 'successful' THEN 1 ELSE 0 END) as successful_count,
-                SUM(CASE WHEN success_level = 'partial' THEN 1 ELSE 0 END) as partial_count,
-                SUM(CASE WHEN success_level = 'struggled' THEN 1 ELSE 0 END) as struggled_count
-            FROM progress_logs 
-            WHERE child_id = ? AND activity_id IN (1, 3, 4, 5, 6, 7, 8)`,
-            [childId]
-        );
-
-        // Sve igre (sve aktivnosti) za hronološki prikaz
-        const [allGames] = await pool.query<RowDataPacket[]>(
-            `SELECT 
-                pl.id,
-                pl.completed_at,
-                pl.success_level,
-                pl.mood_before,
-                pl.mood_after,
-                pl.duration_minutes,
-                pl.notes,
-                a.title as activity_title,
-                CAST(SUBSTRING_INDEX(pl.notes, ' ', -2) AS UNSIGNED) as score
-            FROM progress_logs pl
-            JOIN activities a ON a.id = pl.activity_id
-            WHERE pl.child_id = ? AND pl.activity_id IN (1, 3, 4, 5, 6, 7, 8)
-            ORDER BY pl.completed_at DESC 
-            LIMIT 30`,
-            [childId]
-        );
-
-        // Osiguraj da svi podaci imaju default vrednosti
-        const safeTotal = {
-            total_games: Number(totalStats[0]?.total_games) || 0,
-            total_minutes: Number(totalStats[0]?.total_minutes) || 0,
-            excellent_count: Number(totalStats[0]?.excellent_count) || 0,
-            successful_count: Number(totalStats[0]?.successful_count) || 0,
-            partial_count: Number(totalStats[0]?.partial_count) || 0,
-            struggled_count: Number(totalStats[0]?.struggled_count) || 0,
-        };
-
-        const safeShapesStats = {
-            total_games: Number(shapesStats[0]?.total_games) || 0,
-            avg_score: Number(shapesStats[0]?.avg_score) || 0,
-            best_score: Number(shapesStats[0]?.best_score) || 0,
-            total_minutes: Number(shapesStats[0]?.total_minutes) || 0,
-            excellent_count: Number(shapesStats[0]?.excellent_count) || 0,
-            successful_count: Number(shapesStats[0]?.successful_count) || 0,
-            partial_count: Number(shapesStats[0]?.partial_count) || 0,
-            struggled_count: Number(shapesStats[0]?.struggled_count) || 0,
-        };
-
-        const safeMemoryStats = {
-            total_games: Number(memoryStats[0]?.total_games) || 0,
-            avg_score: Number(memoryStats[0]?.avg_score) || 0,
-            best_score: Number(memoryStats[0]?.best_score) || 0,
-            total_minutes: Number(memoryStats[0]?.total_minutes) || 0,
-            excellent_count: Number(memoryStats[0]?.excellent_count) || 0,
-            successful_count: Number(memoryStats[0]?.successful_count) || 0,
-            partial_count: Number(memoryStats[0]?.partial_count) || 0,
-            struggled_count: Number(memoryStats[0]?.struggled_count) || 0,
-        };
-
-        const safeColoringStats = {
-            total_games: Number(coloringStats[0]?.total_games) || 0,
-            avg_score: Number(coloringStats[0]?.avg_score) || 0,
-            best_score: Number(coloringStats[0]?.best_score) || 0,
-            total_minutes: Number(coloringStats[0]?.total_minutes) || 0,
-            excellent_count: Number(coloringStats[0]?.excellent_count) || 0,
-            successful_count: Number(coloringStats[0]?.successful_count) || 0,
-            partial_count: Number(coloringStats[0]?.partial_count) || 0,
-            struggled_count: Number(coloringStats[0]?.struggled_count) || 0,
-        };
-
-        const safeSoundToImageStats = {
-            total_games: Number(soundToImageStats[0]?.total_games) || 0,
-            avg_score: Number(soundToImageStats[0]?.avg_score) || 0,
-            best_score: Number(soundToImageStats[0]?.best_score) || 0,
-            total_minutes: Number(soundToImageStats[0]?.total_minutes) || 0,
-            excellent_count: Number(soundToImageStats[0]?.excellent_count) || 0,
-            successful_count: Number(soundToImageStats[0]?.successful_count) || 0,
-            partial_count: Number(soundToImageStats[0]?.partial_count) || 0,
-            struggled_count: Number(soundToImageStats[0]?.struggled_count) || 0,
-        };
-
-        const safeSocialStats = {
-            total_games: Number(socialStats[0]?.total_games) || 0,
-            avg_score: Number(socialStats[0]?.avg_score) || 0,
-            best_score: Number(socialStats[0]?.best_score) || 0,
-            total_minutes: Number(socialStats[0]?.total_minutes) || 0,
-            excellent_count: Number(socialStats[0]?.excellent_count) || 0,
-            successful_count: Number(socialStats[0]?.successful_count) || 0,
-            partial_count: Number(socialStats[0]?.partial_count) || 0,
-            struggled_count: Number(socialStats[0]?.struggled_count) || 0,
-        };
-
-        const safeSocialStoryStats = {
-            total_games: Number(socialStoryStats[0]?.total_games) || 0,
-            avg_score: Number(socialStoryStats[0]?.avg_score) || 0,
-            best_score: Number(socialStoryStats[0]?.best_score) || 0,
-            total_minutes: Number(socialStoryStats[0]?.total_minutes) || 0,
-            excellent_count: Number(socialStoryStats[0]?.excellent_count) || 0,
-            successful_count: Number(socialStoryStats[0]?.successful_count) || 0,
-            partial_count: Number(socialStoryStats[0]?.partial_count) || 0,
-            struggled_count: Number(socialStoryStats[0]?.struggled_count) || 0,
-        };
-
-        const safeEmotionsStats = {
-            total_games: Number(emotionsStats[0]?.total_games) || 0,
-            avg_score: Number(emotionsStats[0]?.avg_score) || 0,
-            best_score: Number(emotionsStats[0]?.best_score) || 0,
-            total_minutes: Number(emotionsStats[0]?.total_minutes) || 0,
-            excellent_count: Number(emotionsStats[0]?.excellent_count) || 0,
-            successful_count: Number(emotionsStats[0]?.successful_count) || 0,
-            partial_count: Number(emotionsStats[0]?.partial_count) || 0,
-            struggled_count: Number(emotionsStats[0]?.struggled_count) || 0,
-        };
-
-
-        return NextResponse.json({
-            // Ukupno
-            total: safeTotal,
-            allGames: allGames || [],
-
-            // Složi oblik
-            shapes: {
-                stats: safeShapesStats,
-                recentGames: shapesRecent || [],
-                progress: shapesProgress || [],
-                levelStats: shapesLevels || [],
-            },
-
-            // Spoji parove
-            memory: {
-                stats: safeMemoryStats,
-                recentGames: memoryRecent || [],
-                progress: memoryProgress || [],
-                levelStats: memoryLevels || [],
-            },
-            coloring: {
-                stats: safeColoringStats,
-                recentGames: coloringRecent || [],
-                progress: coloringProgress || [],
-                levelStats: coloringLevels || [],
-            },
-            soundToImage: {
-                stats: safeSoundToImageStats,
-                recentGames: soundToImageRecent || [],
-                progress: soundToImageProgress || [],
-                levelStats: soundToImageLevels || [],
-            },
-            social: {
-                stats: safeSocialStats,
-                recentGames: socialRecent || [],
-                progress: socialProgress || [],
-                levelStats: socialLevels || [],
-            },
-            socialStory: {
-                stats: safeSocialStoryStats,
-                recentGames: socialStoryRecent || [],
-                progress: socialStoryProgress || [],
-                levelStats: socialStoryLevels || [],
-            },
-            emotions: {
-                stats: safeEmotionsStats,
-                recentGames: emotionsRecent || [],
-                progress: emotionsProgress || [],
-                levelStats: emotionsLevels || [],
-            }
-        });
-
-    } catch (error) {
-        console.error("Error fetching progress:", error);
-        return NextResponse.json(
-            { error: "Greška pri dobavljanju statistike" },
-            { status: 500 }
-        );
+    // Access check
+    const [accessRows] = await pool.query<RowDataPacket[]>(
+      "SELECT id FROM user_children WHERE user_id = ? AND child_id = ?",
+      [user.id, childId]
+    );
+    if (accessRows.length === 0) {
+      return NextResponse.json({ error: "Nemate pristup ovom detetu" }, { status: 403 });
     }
+
+    // ── 1. Aggregate stats for ALL games in one query ─────────────────────────
+    const [allStats] = await pool.query<StatsRow[]>(
+      `SELECT
+         activity_id,
+         COUNT(*) AS total_games,
+         AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS avg_score,
+         MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS best_score,
+         SUM(duration_minutes) AS total_minutes,
+         SUM(CASE WHEN success_level = 'excellent'   THEN 1 ELSE 0 END) AS excellent_count,
+         SUM(CASE WHEN success_level = 'successful'  THEN 1 ELSE 0 END) AS successful_count,
+         SUM(CASE WHEN success_level = 'partial'     THEN 1 ELSE 0 END) AS partial_count,
+         SUM(CASE WHEN success_level = 'struggled'   THEN 1 ELSE 0 END) AS struggled_count
+       FROM progress_logs
+       WHERE child_id = ? AND activity_id IN (${ACTIVITY_IDS.join(",")})
+       GROUP BY activity_id`,
+      [childId]
+    );
+
+    // ── 2. Recent games per activity (last 10 each) ───────────────────────────
+    const [recentRaw] = await pool.query<RowDataPacket[]>(
+      `SELECT id, activity_id, completed_at, success_level, mood_before, mood_after,
+              duration_minutes, notes,
+              CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED) AS score,
+              ROW_NUMBER() OVER (PARTITION BY activity_id ORDER BY completed_at DESC) AS rn
+       FROM progress_logs
+       WHERE child_id = ? AND activity_id IN (${ACTIVITY_IDS.join(",")})
+       HAVING rn <= 10`,
+      [childId]
+    );
+
+    // ── 3. Daily progress per activity (last 30 days each) ────────────────────
+    const [progressRaw] = await pool.query<RowDataPacket[]>(
+      `SELECT
+         activity_id,
+         DATE(completed_at) AS date,
+         COUNT(*) AS games_count,
+         AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS avg_score,
+         MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS max_score
+       FROM progress_logs
+       WHERE child_id = ? AND activity_id IN (${ACTIVITY_IDS.join(",")})
+         AND completed_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+       GROUP BY activity_id, DATE(completed_at)
+       ORDER BY date DESC`,
+      [childId]
+    );
+
+    // ── 4. Level stats per activity ───────────────────────────────────────────
+    const [levelsRaw] = await pool.query<RowDataPacket[]>(
+      `SELECT
+         activity_id,
+         SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) AS level,
+         COUNT(*) AS games_count,
+         AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS avg_score,
+         MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS best_score
+       FROM progress_logs
+       WHERE child_id = ? AND activity_id IN (${ACTIVITY_IDS.join(",")}) AND notes LIKE '%Nivo%'
+       GROUP BY activity_id, level
+       ORDER BY activity_id, level`,
+      [childId]
+    );
+
+    // ── 5. Total stats + all recent games (for timeline) ─────────────────────
+    const [allGames] = await pool.query<RowDataPacket[]>(
+      `SELECT pl.id, pl.completed_at, pl.success_level, pl.mood_before, pl.mood_after,
+              pl.duration_minutes, pl.notes, a.title AS activity_title,
+              CAST(SUBSTRING_INDEX(pl.notes, ' ', -2) AS UNSIGNED) AS score
+       FROM progress_logs pl
+       JOIN activities a ON a.id = pl.activity_id
+       WHERE pl.child_id = ? AND pl.activity_id IN (${ACTIVITY_IDS.join(",")})
+       ORDER BY pl.completed_at DESC
+       LIMIT 30`,
+      [childId]
+    );
+
+    // ── Group results by activity_id ──────────────────────────────────────────
+    function statsFor(actId: number) {
+      const s = allStats.find((r) => r.activity_id === actId);
+      return {
+        total_games:     Number(s?.total_games)     || 0,
+        avg_score:       Number(s?.avg_score)       || 0,
+        best_score:      Number(s?.best_score)      || 0,
+        total_minutes:   Number(s?.total_minutes)   || 0,
+        excellent_count: Number(s?.excellent_count) || 0,
+        successful_count:Number(s?.successful_count)|| 0,
+        partial_count:   Number(s?.partial_count)   || 0,
+        struggled_count: Number(s?.struggled_count) || 0,
+      };
+    }
+    const recentFor  = (actId: number) => recentRaw.filter((r) => r.activity_id === actId);
+    const progressFor= (actId: number) => progressRaw.filter((r) => r.activity_id === actId);
+    const levelsFor  = (actId: number) => levelsRaw.filter((r) => r.activity_id === actId);
+
+    // Total across all activities
+    const safeTotal = {
+      total_games:     allStats.reduce((a, r) => a + (Number(r.total_games) || 0), 0),
+      total_minutes:   allStats.reduce((a, r) => a + (Number(r.total_minutes) || 0), 0),
+      excellent_count: allStats.reduce((a, r) => a + (Number(r.excellent_count) || 0), 0),
+      successful_count:allStats.reduce((a, r) => a + (Number(r.successful_count) || 0), 0),
+      partial_count:   allStats.reduce((a, r) => a + (Number(r.partial_count) || 0), 0),
+      struggled_count: allStats.reduce((a, r) => a + (Number(r.struggled_count) || 0), 0),
+    };
+
+    return NextResponse.json({
+      total:    safeTotal,
+      allGames: allGames || [],
+      shapes:      { stats: statsFor(1), recentGames: recentFor(1),  progress: progressFor(1),  levelStats: levelsFor(1)  },
+      memory:      { stats: statsFor(3), recentGames: recentFor(3),  progress: progressFor(3),  levelStats: levelsFor(3)  },
+      coloring:    { stats: statsFor(4), recentGames: recentFor(4),  progress: progressFor(4),  levelStats: levelsFor(4)  },
+      soundToImage:{ stats: statsFor(5), recentGames: recentFor(5),  progress: progressFor(5),  levelStats: levelsFor(5)  },
+      social:      { stats: statsFor(6), recentGames: recentFor(6),  progress: progressFor(6),  levelStats: levelsFor(6)  },
+      socialStory: { stats: statsFor(7), recentGames: recentFor(7),  progress: progressFor(7),  levelStats: levelsFor(7)  },
+      emotions:    { stats: statsFor(8), recentGames: recentFor(8),  progress: progressFor(8),  levelStats: levelsFor(8)  },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { error: "Greška pri dobavljanju statistike" },
+      { status: 500 }
+    );
+  }
 }

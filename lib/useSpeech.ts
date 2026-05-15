@@ -2,61 +2,61 @@ import { useRef, useCallback } from "react";
 
 /**
  * Hook za ElevenLabs Text-to-Speech.
- * Poziva /api/tts rutu na serveru koja komunicira sa ElevenLabs API-jem.
- * Fallback na browser speechSynthesis ako API nije dostupan.
+ * Koristi isključivo ElevenLabs glas definisan u .env datoteci.
  */
 export function useSpeech() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const stopSpeech = useCallback(() => {
-        // Zaustavi trenutni audio
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.src = "";
             audioRef.current = null;
         }
-        // Otkaži aktivni fetch
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
         }
-        // Zaustavi browser TTS fallback
-        if (typeof window !== "undefined" && "speechSynthesis" in window) {
-            window.speechSynthesis.cancel();
-        }
     }, []);
 
     const speak = useCallback(
-        async (text: string, onEnd?: () => void, onError?: () => void) => {
-            // Zaustavi sve što se trenutno reprodukuje
+        async (text: string, onEnd?: () => void, onError?: () => void, gender?: string) => {
             stopSpeech();
 
             try {
                 const controller = new AbortController();
                 abortControllerRef.current = controller;
 
+                // Šaljemo tekst i pol, server će odabrati glas
                 const response = await fetch("/api/tts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text }),
+                    body: JSON.stringify({ text, gender }),
                     signal: controller.signal,
                 });
 
                 if (!response.ok) {
-                    throw new Error(`TTS API returned ${response.status}`);
+                    let errorData;
+                    try {
+                        errorData = await response.json();
+                    } catch (e) {
+                        errorData = { error: `HTTP ${response.status}` };
+                    }
+                    throw new Error(`TTS API error: ${errorData.error || response.statusText}`);
                 }
 
                 const blob = await response.blob();
                 const url = URL.createObjectURL(blob);
 
-                // Dispatch event so the avatar knows to animate its mouth
+                // Obaveštavamo Professor3D komponentu da pokrene animaciju usta
                 const event = new CustomEvent('avatar:speak', {
                     detail: { url, text },
                     cancelable: true
                 });
                 const wasHandled = !window.dispatchEvent(event);
 
+                // Ako avatar nije preuzeo zvuk (npr. nismo u igri gde je avatar vidljiv), puštamo ga ovde
                 if (!wasHandled) {
                     const audio = new Audio(url);
                     audioRef.current = audio;
@@ -68,16 +68,14 @@ export function useSpeech() {
                     audio.onerror = () => {
                         URL.revokeObjectURL(url);
                         audioRef.current = null;
-                        useFallback(text, onEnd, onError);
+                        onError?.();
                     };
                     await audio.play();
                 }
             } catch (err: any) {
                 if (err?.name === "AbortError") return;
-                console.warn("ElevenLabs TTS failed:", err);
-                // NE koristiti browser TTS fallback — samo tišina
+                console.error("ElevenLabs TTS Error:", err);
                 onError?.();
-                onEnd?.();
             }
         },
         [stopSpeech]
@@ -85,6 +83,3 @@ export function useSpeech() {
 
     return { speak, stopSpeech };
 }
-
-// Browser TTS fallback je onemogućen — koristi se samo ElevenLabs
-// function useFallback(...) { ... }

@@ -471,13 +471,11 @@ const ALL_SITUATIONS = Object.values(SITUATIONS_BY_LEVEL).flat();
 function getSituationsForLevel(level: number): Situation[] {
     if (level >= 1 && level <= 15) return SITUATIONS_BY_LEVEL[level] || SITUATIONS_BY_LEVEL[1];
     return [...ALL_SITUATIONS].sort(() => Math.random() - 0.5).slice(0, 8);
-}
-
 type AnswerState = "idle" | "correct" | "wrong";
 
 export default function SocialCommunicationGame({
-    childId, level, onComplete, onClose, autoStart, isMonitor, monitorState
-}: GameProps) {
+    childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender
+}: GameProps & { gender?: string }) {
     const situations = getSituationsForLevel(level);
     const [currentIndex, setCurrentIndex] = useState(monitorState?.currentIndex || 0);
     const currentSituation = situations[currentIndex];
@@ -505,7 +503,7 @@ export default function SocialCommunicationGame({
     useEffect(() => {
         if (isPlaying && currentSituation && !isMuted && !isMonitor) {
             const textToSpeak = `${currentSituation.description} ${currentSituation.question}`;
-            speak(textToSpeak);
+            speak(textToSpeak, undefined, undefined, gender);
         }
     }, [currentIndex, isPlaying, isMuted, isMonitor, currentSituation, speak]);
     useEffect(() => {

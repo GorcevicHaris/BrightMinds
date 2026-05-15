@@ -1,16 +1,19 @@
 // app/dashboard/child/[id]/GameContainer.tsx
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import ShapeMatchingGame from "@/app/components/games/ShapeMatchingGame";
-import MemoryGame from "@/app/components/games/MemoryGame";
-import ColoringGame from "@/app/components/games/ColoringGame";
-import SoundToImageGame from "@/app/components/games/SoundToImageGame";
-import SocialCommunicationGame from "@/app/components/games/SocialCommunicationGame";
-import SocialStoryGame from "@/app/components/games/SocialStoryGame";
-import EmotionsGame from "@/app/components/games/EmotionsGame";
+import { useState, useRef, useEffect, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useGameEmitter } from "@/lib/useSocket";
 import { useSpeech } from "@/lib/useSpeech";
+
+// Lazy-load each game — only the selected game is downloaded
+const ShapeMatchingGame = dynamic(() => import("@/app/components/games/ShapeMatchingGame"), { ssr: false });
+const MemoryGame = dynamic(() => import("@/app/components/games/MemoryGame"), { ssr: false });
+const ColoringGame = dynamic(() => import("@/app/components/games/ColoringGame"), { ssr: false });
+const SoundToImageGame = dynamic(() => import("@/app/components/games/SoundToImageGame"), { ssr: false });
+const SocialCommunicationGame = dynamic(() => import("@/app/components/games/SocialCommunicationGame"), { ssr: false });
+const SocialStoryGame = dynamic(() => import("@/app/components/games/SocialStoryGame"), { ssr: false });
+const EmotionsGame = dynamic(() => import("@/app/components/games/EmotionsGame"), { ssr: false });
 
 type GameId = "shapes" | "memory" | "coloring" | "sound-to-image" | "social" | "social-story" | "emotions";
 type Difficulty = "easy" | "medium" | "hard";
@@ -110,7 +113,7 @@ interface GameProps {
 }
 
 // ── Komponenta ─────────────────────────────────────────────────────────────────
-export default function GameContainer({ childId, childName }: GameContainerProps) {
+export default function GameContainer({ childId, childName, gender }: GameContainerProps & { gender?: string }) {
   const [screen, setScreen] = useState<Screen>("picker");
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
@@ -238,18 +241,25 @@ export default function GameContainer({ childId, childName }: GameContainerProps
         setIsLoading(false);
         setLastScore(score);
         setShowNextLevel(true);
+        if (stars > 0) {
+          speak(`Sjajno ${childName}! Nivo je završen! Osvojio si ${stars} ${stars === 1 ? 'zvezdicu' : 'zvezdice'}.`, undefined, undefined, gender);
+        } else {
+          speak(`Skoro si uspeo! Probaj ponovo, možeš ti to!`, undefined, undefined, gender);
+        }
       } else if (stars > 0) {
         setIsLoading(false);
         if (selectedDifficulty === "hard") {
           setScreen("all-finished");
-          speak(`Bravo ${childName}! Završio si sve nivoe! Ti si pravi šampion!`);
+          speak(`Bravo ${childName}! Završio si apsolutno sve nivoe u ovoj igri! Ti si pravi šampion!`, undefined, undefined, gender);
         } else {
           setScreen("tier-finished");
+          speak(`Odlično ${childName}! Završio si sve nivoe na ovoj težini! Spreman si za sledeći izazov?`, undefined, undefined, gender);
         }
       } else {
         setIsLoading(false);
         setLastScore(score);
         setShowNextLevel(true);
+        speak(`Skoro si uspeo! Probaj još jednom, siguran sam da možeš!`, undefined, undefined, gender);
       }
     } catch (err) {
       console.error(err);
@@ -350,7 +360,12 @@ export default function GameContainer({ childId, childName }: GameContainerProps
               <div className="flex items-center gap-2"><span className={`px-2 py-0.5 rounded-full text-[10px] font-black text-white ${cfg.badge}`}>{cfg.label}</span><span className="text-[10px] font-bold text-slate-400">{levelInTier}/5</span></div>
             </div>
           </div>
-          <button onClick={handleExit} className="px-4 py-2 rounded-xl bg-rose-50 text-rose-600 font-bold text-sm">Zatvori ✕</button>
+          <button 
+            onClick={handleExit} 
+            className="fixed top-4 right-6 z-[300] px-4 py-2 rounded-xl bg-rose-50 text-rose-600 font-black text-sm border-2 border-rose-100 shadow-sm hover:bg-rose-100 transition-colors"
+          >
+            Zatvori ✕
+          </button>
         </div>
         <div className="flex-1 relative overflow-y-auto p-4 flex flex-col">
           {showNextLevel && (
@@ -375,13 +390,19 @@ export default function GameContainer({ childId, childName }: GameContainerProps
             </div>
           )}
           <div className="relative w-full flex-1 flex flex-col" key={`${selectedGame}-${selectedDifficulty}-level-${currentLevel}`}>
-            {selectedGame === "shapes" ? <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
-             selectedGame === "memory" ? <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
-             selectedGame === "sound-to-image" ? <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
-             selectedGame === "social" ? <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
-             selectedGame === "social-story" ? <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
-             selectedGame === "emotions" ? <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} /> :
-             <ColoringGame childId={childId} level={currentLevel} minLevel={cfg.min} maxLevel={cfg.max} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} />}
+            <Suspense fallback={
+              <div className="flex-1 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
+              </div>
+            }>
+              {selectedGame === "shapes" ? <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+               selectedGame === "memory" ? <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+               selectedGame === "sound-to-image" ? <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+               selectedGame === "social" ? <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+               selectedGame === "social-story" ? <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+               selectedGame === "emotions" ? <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+               <ColoringGame childId={childId} level={currentLevel} minLevel={cfg.min} maxLevel={cfg.max} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} />}
+            </Suspense>
           </div>
         </div>
       </div>

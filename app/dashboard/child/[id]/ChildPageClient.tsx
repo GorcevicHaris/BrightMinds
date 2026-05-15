@@ -26,6 +26,8 @@ export default function ChildPageClient({ child, childId }: Props) {
             await fetch("/api/auth/logout", { method: "POST" });
             if (typeof window !== "undefined") {
                 sessionStorage.removeItem("childLogin");
+                localStorage.removeItem("user");
+                sessionStorage.clear();
             }
             window.location.href = "/login";
         } catch {
@@ -64,7 +66,7 @@ export default function ChildPageClient({ child, childId }: Props) {
 
             {/* ── TOP HEADER ────────────────────────────────────────────
                   Keep it VERY simple for kids — just name + exit + nav  */}
-            <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b-2 border-purple-100/60 shadow-sm">
+            <header className="sticky top-0 z-[300] bg-white/80 backdrop-blur-xl border-b-2 border-purple-100/60 shadow-sm">
                 <div className="max-w-none mx-auto px-6 sm:px-12 h-16 sm:h-20 flex items-center justify-between gap-3">
 
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -151,10 +153,8 @@ export default function ChildPageClient({ child, childId }: Props) {
                 {activeView === "game" ? (
                     /* ── GAME VIEW ─────────────────────────────────────────── */
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-
                         {/* Game container */}
-                        <GameContainer childId={childId} childName={firstName} />
+                        <GameContainer childId={childId} childName={firstName} gender={child.gender} />
                     </div>
 
                 ) : (

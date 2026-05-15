@@ -1,11 +1,11 @@
-export async function speak(text: string, voiceId?: string) {
+export async function speak(text: string, voiceId?: string, gender?: string) {
   try {
     const response = await fetch('/api/tts', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text, voiceId }),
+      body: JSON.stringify({ text, voiceId, gender }),
     });
 
     if (!response.ok) {
