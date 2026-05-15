@@ -19,6 +19,7 @@ interface Props {
 export default function ChildPageClient({ child, childId }: Props) {
     const [activeView, setActiveView] = useState<"game" | "stats">("game");
     const [showExitConfirm, setShowExitConfirm] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const handleLogoutConfirmed = async () => {
         try {
@@ -38,6 +39,7 @@ export default function ChildPageClient({ child, childId }: Props) {
 
     const handleConfirmExit = () => {
         setShowExitConfirm(false);
+        setIsLoggingOut(true);
         triggerAvatarLogout();
     };
 
@@ -58,7 +60,7 @@ export default function ChildPageClient({ child, childId }: Props) {
         <div className="min-h-screen font-sans" style={{ background: "linear-gradient(160deg, #f0f4ff 0%, #fdf4ff 50%, #f0fdf4 100%)" }}>
 
             {/* ── 3D Professor Avatar ─────────────────────────────────────── */}
-            <Professor3D childName={firstName} onLogoutConfirmed={handleLogoutConfirmed} size={200} />
+            <Professor3D childName={firstName} gender={child.gender} onLogoutConfirmed={handleLogoutConfirmed} />
 
             {/* ── TOP HEADER ────────────────────────────────────────────
                   Keep it VERY simple for kids — just name + exit + nav  */}
@@ -120,11 +122,24 @@ export default function ChildPageClient({ child, childId }: Props) {
                         {/* Exit button — big, friendly */}
                         <button
                             onClick={handleLogoutClick}
+                            disabled={isLoggingOut}
                             aria-label="Izađi"
-                            className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 active:scale-95 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all shadow-lg shadow-rose-200 border-b-4 border-rose-700"
+                            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all shadow-lg border-b-4 ${isLoggingOut
+                                ? "bg-rose-400 cursor-wait opacity-80 border-rose-500 shadow-none scale-95"
+                                : "bg-rose-500 hover:bg-rose-600 active:scale-95 text-white shadow-rose-200 border-rose-700"
+                                }`}
                         >
-                            <span className="text-base">👋</span>
-                            <span className="hidden sm:inline">Izađi</span>
+                            {isLoggingOut ? (
+                                <>
+                                    <span className="animate-spin text-base">⏳</span>
+                                    <span className="hidden sm:inline">Odjavljujem...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="text-base">👋</span>
+                                    <span className="hidden sm:inline">Izađi</span>
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>

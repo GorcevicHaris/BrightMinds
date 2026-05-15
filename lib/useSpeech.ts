@@ -74,8 +74,10 @@ export function useSpeech() {
                 }
             } catch (err: any) {
                 if (err?.name === "AbortError") return;
-                console.warn("ElevenLabs TTS failed, falling back to browser TTS:", err);
-                useFallback(text, onEnd, onError);
+                console.warn("ElevenLabs TTS failed:", err);
+                // NE koristiti browser TTS fallback — samo tišina
+                onError?.();
+                onEnd?.();
             }
         },
         [stopSpeech]
@@ -84,16 +86,5 @@ export function useSpeech() {
     return { speak, stopSpeech };
 }
 
-function useFallback(text: string, onEnd?: () => void, onError?: () => void) {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-        onError?.();
-        return;
-    }
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "sr-RS";
-    utterance.rate = 0.85;
-    utterance.onend = () => onEnd?.();
-    utterance.onerror = () => onError?.();
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utterance);
-}
+// Browser TTS fallback je onemogućen — koristi se samo ElevenLabs
+// function useFallback(...) { ... }
