@@ -12,6 +12,7 @@ interface GameProps {
     autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
+    gender?: string;
 }
 
 interface SoundItem {
@@ -83,7 +84,7 @@ function getLevelConfig(level: number): LevelConfig {
 
 export default function SoundToImageGame({ 
     childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender 
-}: GameProps & { gender?: string }) {
+}: GameProps) {
     const [currentSound, setCurrentSound] = useState<SoundItem | null>(null);
     const [options, setOptions] = useState<SoundItem[]>([]);
     const [score, setScore] = useState(monitorState?.score || 0);
@@ -164,7 +165,7 @@ export default function SoundToImageGame({
             if (!isMonitor) speak(target.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false), gender);
             else setIsPlayingSound(false);
         };
-    }, [currentSound, isMonitor, speak]);
+    }, [currentSound, isMonitor, speak, gender]);
 
     const generateRound = useCallback((stats?: { score: number, round: number, correctCount: number, incorrectCount: number }) => {
         const { poolSize, optionsCount } = getLevelConfig(level);
@@ -408,7 +409,7 @@ export default function SoundToImageGame({
                     <span className="px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
                     <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
                     <p className="text-lg md:text-xl text-slate-500 font-medium tracking-wide">
-                        Sjajno si prepoznao/la zvukove! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
+                        Sjajno si {gender?.toLowerCase() === 'female' ? 'prepoznala' : 'prepoznao'} zvukove! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
                     </p>
                 </div>
 
@@ -531,7 +532,7 @@ export default function SoundToImageGame({
                                     className={`group relative bg-white rounded-[24] flex flex-col items-stretch justify-start transition-all duration-300 transform border shadow-sm overflow-hidden h-[160px] sm:h-[220px] md:h-[280px] ${feedback === 'correct' && isCorrect
                                         ? "border-emerald-400 bg-emerald-50 shadow-2xl scale-105 z-20 ring-4 ring-emerald-100"
                                         : feedback === 'incorrect' && isSelected
-                                            ? "border-rose-400 bg-rose-50 shadow-lg scale-95 z-10 opacity-70"
+                                            ? "border-rose-400 bg-rose-50 shadow-lg scale-95 z-10 opacity-70 animate-shake"
                                             : "border-slate-50 hover:border-orange-100 hover:shadow-xl hover:-translate-y-1 active:scale-95"
                                         }`}
                                 >

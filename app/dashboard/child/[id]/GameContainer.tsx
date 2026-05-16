@@ -115,6 +115,7 @@ interface GameProps {
 // ── Komponenta ─────────────────────────────────────────────────────────────────
 export default function GameContainer({ childId, childName, gender }: GameContainerProps & { gender?: string }) {
   const [screen, setScreen] = useState<Screen>("picker");
+  const isFemale = gender?.toLowerCase() === 'female';
   const [selectedGame, setSelectedGame] = useState<GameId | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
   const [currentLevel, setCurrentLevel] = useState(1);
@@ -203,14 +204,15 @@ export default function GameContainer({ childId, childName, gender }: GameContai
       let stars = 0;
       if (stats) {
         const ratio = stats.correct / stats.total;
-        if (ratio >= 0.9) stars = 3;
-        else if (ratio >= 0.6) stars = 2;
-        else if (ratio >= 0.3) stars = 1;
+        if (ratio >= 0.95) stars = 3;
+        else if (ratio >= 0.8) stars = 2;
+        else if (ratio >= 0.4) stars = 1;
         else stars = 0;
       } else {
-        if (score >= 200) stars = 3;
-        else if (score >= 100) stars = 2;
-        else if (score >= 50) stars = 1;
+        // Fallback for games without stats
+        if (score >= 900) stars = 3;
+        else if (score >= 700) stars = 2;
+        else if (score >= 500) stars = 1;
         else stars = 0;
       }
       setLastStars(stars);
@@ -242,24 +244,24 @@ export default function GameContainer({ childId, childName, gender }: GameContai
         setLastScore(score);
         setShowNextLevel(true);
         if (stars > 0) {
-          speak(`Sjajno ${childName}! Nivo je završen! Osvojio si ${stars} ${stars === 1 ? 'zvezdicu' : 'zvezdice'}.`, undefined, undefined, gender);
+          speak(`Sjajno ${childName}! Nivo je završen! ${isFemale ? 'Osvojila si' : 'Osvojio si'} ${stars} ${stars === 1 ? 'zvezdicu' : 'zvezdice'}.`, undefined, undefined, gender);
         } else {
-          speak(`Skoro si uspeo! Probaj ponovo, možeš ti to!`, undefined, undefined, gender);
+          speak(`Skoro si ${isFemale ? 'uspela' : 'uspeo'}! Probaj ponovo, možeš ti to!`, undefined, undefined, gender);
         }
       } else if (stars > 0) {
         setIsLoading(false);
         if (selectedDifficulty === "hard") {
           setScreen("all-finished");
-          speak(`Bravo ${childName}! Završio si apsolutno sve nivoe u ovoj igri! Ti si pravi šampion!`, undefined, undefined, gender);
+          speak(`Bravo ${childName}! ${isFemale ? 'Završila si' : 'Završio si'} apsolutno sve nivoe u ovoj igri! Ti si pravi šampion!`, undefined, undefined, gender);
         } else {
           setScreen("tier-finished");
-          speak(`Odlično ${childName}! Završio si sve nivoe na ovoj težini! Spreman si za sledeći izazov?`, undefined, undefined, gender);
+          speak(`Odlično ${childName}! ${isFemale ? 'Završila si' : 'Završio si'} sve nivoe na ovoj težini! ${isFemale ? 'Spremna si' : 'Spreman si'} za sledeći izazov?`, undefined, undefined, gender);
         }
       } else {
         setIsLoading(false);
         setLastScore(score);
         setShowNextLevel(true);
-        speak(`Skoro si uspeo! Probaj još jednom, siguran sam da možeš!`, undefined, undefined, gender);
+        speak(`Skoro si ${isFemale ? 'uspela' : 'uspeo'}! Probaj još jednom, siguran sam da možeš!`, undefined, undefined, gender);
       }
     } catch (err) {
       console.error(err);
@@ -299,7 +301,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
   if (screen === "difficulty-select" && activeGame) {
     const maxUnlocked = getMaxUnlocked(selectedGame!);
     return (
-      <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-slate-50">
+      <div className="fixed inset-0 z-[400] flex flex-col overflow-hidden bg-slate-50">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-30" style={{ backgroundImage: `url(${activeGame.bgImage})` }} />
           <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-white/90 backdrop-blur-3xl" />
@@ -350,7 +352,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
     const cfg = DIFF_CONFIG[selectedDifficulty];
     const levelInTier = currentLevel - cfg.min + 1;
     return (
-      <div className="fixed inset-0 z-[60] bg-slate-50 flex flex-col animate-in fade-in duration-300 overflow-hidden">
+      <div className="fixed inset-0 z-[400] bg-slate-50 flex flex-col animate-in fade-in duration-300 overflow-hidden">
         <div className="bg-white/90 backdrop-blur-md px-6 py-3 border-b border-slate-100 flex items-center justify-between shadow-sm relative z-10">
           <div className="flex items-center gap-4 flex-1">
             <button onClick={() => setScreen("difficulty-select")} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg></button>
@@ -362,7 +364,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
           </div>
           <button 
             onClick={handleExit} 
-            className="fixed top-4 right-6 z-[300] px-4 py-2 rounded-xl bg-rose-50 text-rose-600 font-black text-sm border-2 border-rose-100 shadow-sm hover:bg-rose-100 transition-colors"
+            className="fixed top-4 right-6 z-[500] px-4 py-2 rounded-xl bg-rose-50 text-rose-600 font-black text-sm border-2 border-rose-100 shadow-sm hover:bg-rose-100 transition-colors"
           >
             Zatvori ✕
           </button>
@@ -377,7 +379,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
                 </div>
                 <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4 ${lastStars > 0 ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>{lastStars > 0 ? "✨ Sjajno urađeno!" : "💪 Probaj ponovo!"}</div>
                 <h2 className="text-3xl sm:text-5xl font-black text-slate-900 mb-2">{lastStars > 0 ? "Nivo Završen!" : "Skoro si uspeo!"}</h2>
-                <p className="text-slate-500 text-lg md:text-xl font-bold mb-8">{lastStars > 0 ? `Osvojio si ${lastScore} poena i ${lastStars} ${lastStars === 1 ? "zvezdicu" : "zvezdice"}!` : "Treba ti barem jedna zvezdica da pređeš na sledeći nivo."}</p>
+                <p className="text-slate-500 text-lg md:text-xl font-bold mb-8">{lastStars > 0 ? `${isFemale ? 'Osvojila si' : 'Osvojio si'} ${lastScore} poena i ${lastStars} ${lastStars === 1 ? "zvezdicu" : "zvezdice"}!` : "Treba ti barem jedna zvezdica da pređeš na sledeći nivo."}</p>
                 <div className="flex flex-col gap-4">
                   {lastStars > 0 ? (
                     <button onClick={() => { setShowNextLevel(false); setCurrentLevel(prev => prev + 1); }} className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-[2rem] p-5 font-black text-xl shadow-xl">Sledeći nivo ➜</button>
@@ -414,7 +416,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
     const nextDiff = selectedDifficulty === "easy" ? "medium" : selectedDifficulty === "medium" ? "hard" : null;
     const nextCfg = nextDiff ? DIFF_CONFIG[nextDiff] : null;
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-slate-50">
+      <div className="fixed inset-0 z-[400] flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-slate-50">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${activeGame.bgImage})` }} />
           <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-white/90 backdrop-blur-3xl" />
@@ -423,7 +425,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
           <div className="relative mb-10"><div className="w-44 h-44 md:w-56 md:h-56 rounded-full bg-white shadow-2xl flex items-center justify-center text-8xl md:text-9xl border-8 border-white">{currentCfg.emoji}</div></div>
           <div className="mb-8">
             <h1 className="text-4xl md:text-7xl font-black text-slate-900 mb-4">Sjajno! ✨</h1>
-            <p className="text-slate-500 text-lg md:text-xl font-bold">Pobedio si svih 5 {currentCfg.label.toLowerCase()} nivoa u igri {activeGame.title}!</p>
+            <p className="text-slate-500 text-lg md:text-xl font-bold">{isFemale ? 'Pobedila si' : 'Pobedio si'} svih 5 {currentCfg.label.toLowerCase()} nivoa u igri {activeGame.title}!</p>
           </div>
           <div className="w-full flex flex-col gap-4 max-w-md">
             {nextCfg && (
@@ -438,7 +440,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
 
   if (screen === "all-finished" && activeGame) {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-6 text-center overflow-hidden bg-slate-950">
+      <div className="fixed inset-0 z-[400] flex flex-col items-center justify-center p-4 sm:p-6 text-center overflow-hidden bg-slate-950">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-cover bg-center opacity-20 blur-2xl" style={{ backgroundImage: `url(${activeGame.bgImage})` }} />
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/80 to-slate-950/95 backdrop-blur-3xl" />
@@ -448,7 +450,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
           <div className="mb-8 px-4 flex flex-col items-center">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-yellow-400 to-amber-500 px-6 py-2 rounded-full shadow-2xl mb-6 border-2 border-white/20"><span className="text-white font-black text-xs sm:text-base uppercase tracking-widest">NAJBOLJI SI! 👑</span></div>
             <h1 className="text-3xl sm:text-5xl md:text-7xl font-black text-white italic uppercase mb-2">BRAVO {childName}!</h1>
-            <p className="text-white/60 text-sm sm:text-lg font-black uppercase tracking-widest">Završio si SVE NIVOE u igri {activeGame.title}</p>
+            <p className="text-white/60 text-sm sm:text-lg font-black uppercase tracking-widest">{isFemale ? 'Završila si' : 'Završio si'} SVE NIVOE u igri {activeGame.title}</p>
           </div>
           <button onClick={handleExit} className="bg-gradient-to-r from-yellow-400 to-amber-600 text-white rounded-3xl px-8 py-4 sm:px-12 sm:py-5 font-black text-xl sm:text-2xl shadow-xl shadow-yellow-500/20">Nazad na igre 🏠</button>
         </div>

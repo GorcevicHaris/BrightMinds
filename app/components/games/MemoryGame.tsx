@@ -20,6 +20,7 @@ interface GameProps {
   autoStart?: boolean;
   isMonitor?: boolean;
   monitorState?: any;
+  gender?: string;
 }
 
 const IMAGES = [
@@ -37,7 +38,7 @@ const IMAGES = [
   "/memoryGameImages/tigar.png",
 ];
 
-export default function MemoryGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState }: GameProps) {
+export default function MemoryGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender }: GameProps) {
   const pairsCount = Math.min(2 + level, IMAGES.length);
 
   const [cards, setCards] = useState<Card[]>(monitorState?.cards || []);
@@ -52,6 +53,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
   const [showMoodAfter, setShowMoodAfter] = useState(false);
   const [gameCompleted, setGameCompleted] = useState(false);
   const [incorrectCount, setIncorrectCount] = useState(monitorState?.incorrectCount || 0);
+  const [mismatchedIds, setMismatchedIds] = useState<number[]>([]);
 
   // Refs to avoid stale closures in setTimeout
   const cardsRef = useRef(cards);
@@ -237,7 +239,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
             });
           }, 400);
         } else {
-          // NO MATCH — flip back after delay
+          setMismatchedIds(newFlipped);
           setTimeout(() => {
             const resetCards = cardsRef.current.map(c =>
               c.id === newFlipped[0] || c.id === newFlipped[1]
@@ -248,6 +250,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
             const newIncorrect = incorrectCountRef.current + 1;
             setIncorrectCount(newIncorrect);
             setFlippedIds([]);
+            setMismatchedIds([]);
             setIsLocked(false);
 
             emitGameProgress({
@@ -390,7 +393,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
           <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-sm font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
           <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
           <p className="text-sm sm:text-base md:text-xl text-slate-500 font-medium tracking-wide">
-            Završio/la si za <span className="font-black text-purple-600">{moves} poteza</span>! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
+            {gender?.toLowerCase() === 'female' ? 'Završila si' : 'Završio si'} za <span className="font-black text-purple-600">{moves} poteza</span>! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
           </p>
         </div>
 
@@ -470,11 +473,13 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
                 className={`relative aspect-square rounded-xl md:rounded-2xl font-bold transition-all duration-200 overflow-hidden
                   ${card.isMatched
                     ? "bg-emerald-50 shadow-sm border-2 border-emerald-200"
-                    : isRevealed
-                      ? "bg-white shadow-lg border-2 border-indigo-100"
-                      : canClick
-                        ? "bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
-                        : "bg-gradient-to-br from-indigo-400 via-indigo-500 to-purple-500 shadow-md cursor-default"
+                    : mismatchedIds.includes(card.id)
+                      ? "bg-rose-50 shadow-lg border-2 border-rose-200 animate-shake"
+                      : isRevealed
+                        ? "bg-white shadow-lg border-2 border-indigo-100"
+                        : canClick
+                          ? "bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+                          : "bg-gradient-to-br from-indigo-400 via-indigo-500 to-purple-500 shadow-md cursor-default"
                   }
                 `}
                 style={{ WebkitTapHighlightColor: 'transparent' }}

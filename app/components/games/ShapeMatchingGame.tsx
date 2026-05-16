@@ -20,6 +20,7 @@ interface GameProps {
     autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
+    gender?: string;
 }
 
 const COLORS: Record<ShapeType, string> = {
@@ -273,7 +274,7 @@ function ShapeSVG({ type, color, size }: { type: ShapeType; color: string; size:
     );
 }
 
-export default function ShapeMatchingGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState }: GameProps) {
+export default function ShapeMatchingGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender }: GameProps) {
     const [shapes, setShapes] = useState<Shape[]>(monitorState?.shapes || []);
     const [targetShape, setTargetShape] = useState<Shape | null>(monitorState?.targetShape || null);
     const [score, setScore] = useState(monitorState?.score || 0);
@@ -286,6 +287,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, onClose,
     const [showMoodAfter, setShowMoodAfter] = useState(false);
     const [correctCount, setCorrectCount] = useState(0);
     const [incorrectCount, setIncorrectCount] = useState(0);
+    const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
 
     // Sync with monitor state
     useEffect(() => {
@@ -362,6 +364,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, onClose,
     const handleShapeClick = (shape: Shape) => {
         if (!isPlaying || !targetShape || isMonitor) return;
 
+        setSelectedShapeId(shape.id);
         const isCorrect = shape.type === targetShape.type;
 
         if (isCorrect) {
@@ -514,7 +517,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, onClose,
                     <span className="px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je gotova!</span>
                     <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
                     <p className="text-lg md:text-xl text-slate-500 font-medium tracking-wide">
-                        Sjajno si uradio/la zadatak! Osvojio/la si <span className="font-black text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
+                        Sjajno si {gender?.toLowerCase() === 'female' ? 'uradila' : 'uradio'} zadatak! {gender?.toLowerCase() === 'female' ? 'Osvojila si' : 'Osvojio si'} <span className="font-black text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
                     </p>
                 </div>
 
@@ -636,9 +639,11 @@ export default function ShapeMatchingGame({ childId, level, onComplete, onClose,
                                 disabled={feedback !== null || isMonitor}
                                 className={`group relative h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 bg-white rounded-xl md:rounded-2xl flex items-center justify-center transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm border ${feedback === "correct" && targetShape?.type === shape.type
                                     ? "ring-4 ring-emerald-400 bg-emerald-50 shadow-md scale-105 z-20 border-white"
-                                    : feedback === "wrong" && targetShape?.type !== shape.type
-                                        ? "opacity-20 scale-95 grayscale"
-                                        : "border-slate-100 hover:border-indigo-100 hover:shadow-md"
+                                    : feedback === "wrong" && selectedShapeId === shape.id
+                                        ? "border-rose-400 bg-rose-50 animate-shake"
+                                        : feedback === "wrong" && targetShape?.type !== shape.type
+                                            ? "opacity-20 scale-95 grayscale"
+                                            : "border-slate-100 hover:border-indigo-100 hover:shadow-md"
                                     }`}
                             >
                                 <div className="transform transition-all duration-500 group-hover:rotate-6">

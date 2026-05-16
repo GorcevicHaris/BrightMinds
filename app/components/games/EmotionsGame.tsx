@@ -25,22 +25,23 @@ interface GameProps {
     autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
+    gender?: string;
 }
 
 // Kratka, jasna pitanja + emoji koji asocira na situaciju
 // Nivo 1-2: srećno/tužno  |  3-4: ljuto  |  5-6: uplašeno  |  7-8: miks
 const SCENARIOS = [
-    { level: 1, text: "Dobio si poklon! 🎁\nKako se osećaš?", sceneEmoji: "🎁", correctEmotion: "happy", soundFile: "firstSent.mp3" },
-    { level: 2, text: "Pao si i udario koleno. 🤕\nKako se osećaš?", sceneEmoji: "🤕", correctEmotion: "sad", soundFile: "secondSent.mp3" },
+    { level: 1, text: "Dobio/la si poklon! 🎁\nKako se osećaš?", sceneEmoji: "🎁", correctEmotion: "happy", soundFile: "firstSent.mp3" },
+    { level: 2, text: "Pao/la si i udario/la koleno. 🤕\nKako se osećaš?", sceneEmoji: "🤕", correctEmotion: "sad", soundFile: "secondSent.mp3" },
     { level: 3, text: "Drug ti uzeo igračku! 😤\nKako se osećaš?", sceneEmoji: "🧸", correctEmotion: "angry", soundFile: "thirdSent.mp3" },
     { level: 4, text: "Mama te pohvalila! ⭐\nKako se osećaš?", sceneEmoji: "⭐", correctEmotion: "happy", soundFile: "fourthSent.mp3" },
     { level: 5, text: "Veliki pas trči prema tebi! 🐕\nKako se osećaš?", sceneEmoji: "🐕", correctEmotion: "scared", soundFile: "fifthSent.mp3" },
     { level: 6, text: "Neko srušio tvoju kulu! 🧱\nKako se osećaš?", sceneEmoji: "🧱", correctEmotion: "angry", soundFile: "sixthSent.mp3" },
-    { level: 7, text: "Izgubio si se u prodavnici. 🏪\nKako se osećaš?", sceneEmoji: "🏪", correctEmotion: "scared", soundFile: "seventSent.mp3" },
+    { level: 7, text: "Izgubio/la si se u prodavnici. 🏪\nKako se osećaš?", sceneEmoji: "🏪", correctEmotion: "scared", soundFile: "seventSent.mp3" },
     { level: 8, text: "Drug želi da se igra s tobom! 🤝\nKako se osećaš?", sceneEmoji: "🤝", correctEmotion: "happy", soundFile: "eightSent.mp3" },
     { level: 9, text: "Grmi napolju! ⛈️\nKako se osećaš?", sceneEmoji: "⛈️", correctEmotion: "scared", soundFile: "ninthSent.mp3" },
     { level: 10, text: "Pokvarila se tvoja omiljena igračka. 🚂\nKako se osećaš?", sceneEmoji: "💔", correctEmotion: "sad", soundFile: "tenthSent.mp3" },
-    { level: 11, text: "Neko te gurnuo, a nije se izvinio! 😡\nKako se osećaš?", sceneEmoji: "🧍", correctEmotion: "angry", soundFile: "eleventhSent.mp3" },
+    { level: 11, text: "Neko te gurnuo/la, a nije se izvinio/la! 😡\nKako se osećaš?", sceneEmoji: "🧍", correctEmotion: "angry", soundFile: "eleventhSent.mp3" },
     { level: 12, text: "Slaviš rođendan! 🎂\nKako se osećaš?", sceneEmoji: "🎂", correctEmotion: "happy", soundFile: "twelfthSent.mp3" },
     { level: 13, text: "Ugasilo se svetlo u sobi. 💡\nKako se osećaš?", sceneEmoji: "💡", correctEmotion: "scared", soundFile: "thirteenthSent.mp3" },
     { level: 14, text: "Drug ti nije dao čokoladu! 🍫\nKako se osećaš?", sceneEmoji: "🍫", correctEmotion: "angry", soundFile: "fourteenthSent.mp3" },
@@ -88,7 +89,7 @@ const EMOTIONS = [
 
 export default function EmotionsGame({
     childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender
-}: GameProps & { gender?: string }) {
+}: GameProps) {
     const scenario = SCENARIOS.find((s) => s.level === level) || SCENARIOS[0];
 
     const [isPlaying, setIsPlaying] = useState<boolean>(isMonitor ? true : false);
@@ -97,6 +98,19 @@ export default function EmotionsGame({
     const [incorrectCount, setIncorrectCount] = useState<number>(
         monitorState?.incorrectCount || 0
     );
+
+    const formatText = (text: string) => {
+        if (!gender) return text;
+        const isFemale = gender.toLowerCase() === 'female';
+        return text
+            .replace(/Dobio\/la/g, isFemale ? 'Dobila' : 'Dobio')
+            .replace(/Pao\/la/g, isFemale ? 'Pala' : 'Pao')
+            .replace(/udario\/la/g, isFemale ? 'udarila' : 'udario')
+            .replace(/Izgubio\/la/g, isFemale ? 'Izgubila' : 'Izgubio')
+            .replace(/gurnuo\/la/g, isFemale ? 'gurnula' : 'gurnuo')
+            .replace(/izvinio\/la/g, isFemale ? 'izvinila' : 'izvinio')
+            .replace(/Odabrao\/la/g, isFemale ? 'Odabrala' : 'Odabrao');
+    };
     const [hasWon, setHasWon] = useState<boolean>(monitorState?.hasWon || false);
     const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
     const [showMoodAfter, setShowMoodAfter] = useState(false);
@@ -136,7 +150,7 @@ export default function EmotionsGame({
     const handleMoodAfterSelect = (mood: string) => {
         setShowMoodAfter(false);
         const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-        onComplete(1000, duration, moodBefore, mood);
+        onComplete(1000, duration, moodBefore, mood, { correct: 1, total: 1 + incorrectCount });
     };
 
     // Auto-start logic
@@ -178,7 +192,7 @@ export default function EmotionsGame({
     const handleSpeech = () => {
         if (isMonitor || !scenario.text) return;
         stopCurrentSound();
-        speak(scenario.text.replace("\n", " "), undefined, gender);
+        speak(formatText(scenario.text.replace("\n", " ")), undefined, gender);
     };
 
     // Autoplay zvuk pitanja na startu
@@ -189,41 +203,70 @@ export default function EmotionsGame({
             }, 500);
             return () => clearTimeout(timer);
         }
-    }, [isPlaying, hasWon, isMonitor]);
+    }, [isPlaying, hasWon, isMonitor, handleSpeech]);
 
     const handleEmotionSelect = (emotionId: string) => {
         if (isLocked || isMonitor || hasWon || !isPlaying) return;
         setIsLocked(true);
         setSelectedEmotion(emotionId);
 
-        const newMoves = 1;
-        setMoves(newMoves);
-        setHasWon(true);
+        const isCorrect = emotionId === scenario.correctEmotion;
 
-        emitGameProgress({
-            childId,
-            activityId: 8,
-            gameType: "emotions",
-            event: "progress",
-            data: {
-                matched: true,
-                moves: newMoves,
-                score: 1000,
-                correct: true,
-                incorrectCount: 0,
-                hasWon: true,
-                selectedEmotion: emotionId,
-            },
-            timestamp: new Date().toISOString(),
-        });
+        if (isCorrect) {
+            const newMoves = moves + 1;
+            setMoves(newMoves);
+            setHasWon(true);
 
-        stopCurrentSound();
-        const audio = new Audio('/sounds/click.mp3');
-        audio.play().catch(() => { });
+            emitGameProgress({
+                childId,
+                activityId: 8,
+                gameType: "emotions",
+                event: "progress",
+                data: {
+                    matched: true,
+                    moves: newMoves,
+                    score: 1000,
+                    correct: true,
+                    incorrectCount,
+                    hasWon: true,
+                    selectedEmotion: emotionId,
+                },
+                timestamp: new Date().toISOString(),
+            });
 
-        setTimeout(() => {
-            setShowMoodAfter(true);
-        }, 1500);
+            stopCurrentSound();
+            const audio = new Audio('/sounds/click.mp3');
+            audio.play().catch(() => { });
+
+            setTimeout(() => {
+                setShowMoodAfter(true);
+            }, 1500);
+        } else {
+            const newIncorrect = incorrectCount + 1;
+            setIncorrectCount(newIncorrect);
+            
+            emitGameProgress({
+                childId,
+                activityId: 8,
+                gameType: "emotions",
+                event: "progress",
+                data: {
+                    matched: false,
+                    moves: moves + 1,
+                    score: 0,
+                    correct: false,
+                    incorrectCount: newIncorrect,
+                    hasWon: false,
+                    selectedEmotion: emotionId,
+                },
+                timestamp: new Date().toISOString(),
+            });
+
+            setTimeout(() => {
+                setSelectedEmotion(null);
+                setIsLocked(false);
+            }, 800);
+        }
     };
 
     // ── MOOD BEFORE ────────────────────────────────────
@@ -378,7 +421,7 @@ export default function EmotionsGame({
                         Bravo! 🎉
                     </h2>
                     <p className="text-xl md:text-2xl font-bold text-slate-600">
-                        Odabrao/la si:{" "}
+                        {formatText("Odabrao/la si:")}{" "}
                         <span className="text-green-600 uppercase font-black">{chosenEmo?.label}</span>
                     </p>
                 </div>
@@ -388,7 +431,7 @@ export default function EmotionsGame({
 
     // ── GAME SCREEN ────────────────────────────────────
     // Split scenario text lines so we can display them separately
-    const [questionLine, promptLine] = scenario.text.split("\n");
+    const [questionLine, promptLine] = formatText(scenario.text).split("\n");
 
     return (
         <div className="bg-white/95 backdrop-blur-xl rounded-[1.5rem] md:rounded-[3rem] p-3 sm:p-4 md:p-8 shadow-2xl border border-white/50 w-full max-w-4xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative overflow-hidden">
@@ -443,9 +486,11 @@ export default function EmotionsGame({
                             onClick={() => handleEmotionSelect(emotion.id)}
                             disabled={isLocked || hasWon}
                             className={`relative flex flex-col items-center justify-center p-3 sm:p-4 md:p-7 rounded-xl sm:rounded-2xl md:rounded-[2rem] border-2 md:border-4 transition-all duration-300 shadow-md
-                                ${isSelected
-                                    ? `${emotion.bg} ${emotion.border} scale-105 shadow-2xl`
-                                    : `bg-white border-slate-100 hover:${emotion.bg} hover:${emotion.border} hover:shadow-xl hover:-translate-y-1 active:scale-95`
+                                ${isSelected && emotion.id === scenario.correctEmotion
+                                    ? "bg-emerald-50 border-emerald-400 scale-105 shadow-2xl z-10"
+                                    : isSelected && emotion.id !== scenario.correctEmotion
+                                        ? "bg-rose-50 border-rose-400 animate-shake shadow-lg"
+                                        : `bg-white border-slate-100 hover:${emotion.bg} hover:${emotion.border} hover:shadow-xl hover:-translate-y-1 active:scale-95`
                                 }`}
                         >
                             {/* Emoji circle */}

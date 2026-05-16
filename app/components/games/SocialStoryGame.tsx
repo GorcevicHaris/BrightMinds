@@ -20,6 +20,7 @@ interface GameProps {
   autoStart?: boolean;
   isMonitor?: boolean;
   monitorState?: any;
+  gender?: string;
 }
 
 interface StoryStep {
@@ -56,7 +57,7 @@ const LEVELS: StoryLevel[] = [
     steps: [
       {
         scene: "😴 🛏️",
-        question: "Probudio si se! Šta radiš prvo?",
+        question: "Probudio/la si se! Šta radiš prvo?",
         options: [
           { emoji: "🚿", label: "Perem se", correct: true, feedback: "Tačno!" },
           { emoji: "📱", label: "Gledam telefon", correct: false, feedback: "Pokušaj ponovo!" }
@@ -89,7 +90,7 @@ const LEVELS: StoryLevel[] = [
     steps: [
       {
         scene: "🏫 🚌",
-        question: "Stigao si u školu! Šta radiš?",
+        question: "Stigao/la si u školu! Šta radiš?",
         options: [
           { emoji: "💺", label: "Sjednem za klupu", correct: true, feedback: "Tačno!" },
           { emoji: "🏃", label: "Trčim po hodniku", correct: false, feedback: "Pokušaj ponovo!" }
@@ -320,7 +321,7 @@ const LEVELS: StoryLevel[] = [
     steps: [
       {
         scene: "🎂 🎁",
-        question: "Dobio si poklon! Šta radiš?",
+        question: "Dobio/la si poklon! Šta radiš?",
         options: [
           { emoji: "🙏", label: "Zahvalim se", correct: true, feedback: "Tačno!" },
           { emoji: "🗑️", label: "Bacim ga", correct: false, feedback: "Pokušaj ponovo!" }
@@ -556,6 +557,7 @@ export default function SocialStoryGame({
   autoStart,
   isMonitor,
   monitorState,
+  gender,
 }: GameProps) {
   const lvl = LEVELS[Math.min(level - 1, LEVELS.length - 1)];
   const totalSteps = lvl.steps.length;
@@ -571,7 +573,21 @@ export default function SocialStoryGame({
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackCorrect, setFeedbackCorrect] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+  const [correctCount, setCorrectCount] = useState(0);
+  const [totalAttempts, setTotalAttempts] = useState(0);
   const [startTime] = useState(Date.now());
+
+  const formatText = (text: string) => {
+    if (!gender) return text;
+    const isFemale = gender.toLowerCase() === 'female';
+    return text
+      .replace(/Dobio\/la/g, isFemale ? 'Dobila' : 'Dobio')
+      .replace(/Probudio\/la/g, isFemale ? 'Probudila' : 'Probudio')
+      .replace(/Stigao\/la/g, isFemale ? 'Stigla' : 'Stigao')
+      .replace(/Završio\/la/g, isFemale ? 'Završila' : 'Završio')
+      .replace(/uradio\/la/g, isFemale ? 'uradila' : 'uradio');
+  };
 
   const { emitGameStart, emitGameProgress, emitGameComplete } = useGameEmitter();
   const { speak, stopSpeech } = useSpeech();
@@ -582,7 +598,7 @@ export default function SocialStoryGame({
   // TTS Logic
   useEffect(() => {
     if (phase === "playing" && currentStep && !isMonitor) {
-      speak(currentStep.question, undefined, undefined, gender);
+      speak(formatText(currentStep.question), undefined, undefined, gender);
     }
   }, [stepIdx, phase, currentStep, isMonitor, speak, gender]);
 
@@ -624,15 +640,19 @@ export default function SocialStoryGame({
   const handleMoodAfterSelect = (mood: string) => {
     setShowMoodAfter(false);
     const dur = Math.floor((Date.now() - startTime) / 1000);
-    onComplete(score, dur, moodBefore, mood);
+    onComplete(score, dur, moodBefore, mood, { correct: correctCount, total: totalAttempts });
   };
 
-  const handleAnswer = (correct: boolean, feedbackText: string) => {
+  const handleAnswer = (opt: StoryOption) => {
     if (isLocked) return;
+    const { correct, feedback: feedbackText, label } = opt;
     stopSpeech();
     setIsLocked(true);
     setFeedback(feedbackText);
     setFeedbackCorrect(correct);
+    setSelectedLabel(label);
+    setTotalAttempts(prev => prev + 1);
+    if (correct) setCorrectCount(prev => prev + 1);
 
     const newScore = correct ? score + 100 : score;
     if (correct) setScore(newScore);
@@ -753,7 +773,7 @@ export default function SocialStoryGame({
         </div>
         <h2 className="text-4xl md:text-6xl font-black text-slate-900 leading-tight">Bravo! 🏆</h2>
         <p className="text-xl md:text-2xl text-slate-500 font-semibold mb-8">
-          Sjajno si završio/la priču! <br />
+          Sjajno si {gender?.toLowerCase() === 'female' ? 'završila' : 'završio'} priču! <br />
           <span className="font-black text-slate-800 tracking-tight">{lvl.title}</span>
         </p>
 
@@ -840,7 +860,7 @@ export default function SocialStoryGame({
         </div>
         {/* Question */}
         <p className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-800 leading-tight max-w-lg">
-          {currentStep.question}
+          {formatText(currentStep.question)}
         </p>
       </div>
 
@@ -862,12 +882,14 @@ export default function SocialStoryGame({
         {currentStep.options.map((opt, i) => (
           <button
             key={i}
-            onClick={() => handleAnswer(opt.correct, opt.feedback)}
+            onClick={() => handleAnswer(opt)}
             disabled={isLocked}
             className={`flex items-center sm:flex-col justify-start sm:justify-center gap-4 sm:gap-2 p-4 md:p-6 rounded-2xl md:rounded-3xl border-4 font-black transition-all duration-200
-              ${isLocked
-                ? "opacity-60 cursor-not-allowed border-slate-100 bg-white"
-                : "bg-white border-slate-100 hover:border-slate-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer shadow-md"
+              ${!feedbackCorrect && selectedLabel === opt.label
+                ? "border-rose-400 bg-rose-50 animate-shake"
+                : isLocked
+                  ? "opacity-60 cursor-not-allowed border-slate-100 bg-white"
+                  : "bg-white border-slate-100 hover:border-slate-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer shadow-md"
               }`}
           >
             <span className="text-4xl sm:text-6xl leading-none shrink-0">{opt.emoji}</span>

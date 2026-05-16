@@ -13,6 +13,7 @@ interface GameProps {
     autoStart?: boolean;
     isMonitor?: boolean;
     monitorState?: any;
+    gender?: string;
 }
 
 interface Situation {
@@ -477,7 +478,7 @@ type AnswerState = "idle" | "correct" | "wrong";
 
 export default function SocialCommunicationGame({
     childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender
-}: GameProps & { gender?: string }) {
+}: GameProps) {
     const situations = getSituationsForLevel(level);
     const [currentIndex, setCurrentIndex] = useState(monitorState?.currentIndex || 0);
     const currentSituation = situations[currentIndex];
@@ -497,6 +498,16 @@ export default function SocialCommunicationGame({
     const [totalIncorrect, setTotalIncorrect] = useState(monitorState?.totalIncorrect || 0);
     const [advancing, setAdvancing] = useState(false); // blocks clicks during auto-advance
 
+    const formatText = (text: string) => {
+        if (!gender) return text;
+        const isFemale = gender.toLowerCase() === 'female';
+        return text
+            .replace(/Dobio\/la/g, isFemale ? 'Dobila' : 'Dobio')
+            .replace(/Slučajno si gurnuo/g, isFemale ? 'Slučajno si gurnula' : 'Slučajno si gurnuo')
+            .replace(/si prepoznao\/la/g, isFemale ? 'si prepoznala' : 'si prepoznao')
+            .replace(/si uradio\/la/g, isFemale ? 'si uradila' : 'si uradio');
+    };
+
     const [isMuted, setIsMuted] = useState(false);
     const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
     const { speak, stopSpeech } = useSpeech();
@@ -504,10 +515,10 @@ export default function SocialCommunicationGame({
     // ── TTS Logic ─────────────────────────────────────────────────────────────
     useEffect(() => {
         if (isPlaying && currentSituation && !isMuted && !isMonitor) {
-            const textToSpeak = `${currentSituation.description} ${currentSituation.question}`;
+            const textToSpeak = `${formatText(currentSituation.description)} ${formatText(currentSituation.question)}`;
             speak(textToSpeak, undefined, undefined, gender);
         }
-    }, [currentIndex, isPlaying, isMuted, isMonitor, currentSituation, speak]);
+    }, [currentIndex, isPlaying, isMuted, isMonitor, currentSituation, speak, gender]);
     useEffect(() => {
         if (isMonitor && monitorState) {
             // Sync current question index (support both naming conventions)
@@ -672,7 +683,7 @@ export default function SocialCommunicationGame({
     const handleMoodAfterSelect = (mood: string) => {
         setShowMoodAfter(false);
         const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-        onComplete(score, duration, moodBefore, mood);
+        onComplete(score, duration, moodBefore, mood, { correct: correctCount, total: correctCount + totalIncorrect });
     };
 
     const moodList = [
@@ -787,7 +798,7 @@ export default function SocialCommunicationGame({
 
                     <div>
                         <span className="px-6 py-2 rounded-full bg-indigo-100 text-indigo-600 text-xs font-black uppercase tracking-widest mb-4 inline-block">Sjajan uspeh!</span>
-                        <h2 className="text-5xl font-black text-slate-900 tracking-tight">Fantastično si uradio/la!</h2>
+                        <h2 className="text-5xl font-black text-slate-900 tracking-tight">Fantastično si {gender?.toLowerCase() === 'female' ? 'uradila' : 'uradio'}!</h2>
                     </div>
 
                     <p className="text-2xl font-bold text-slate-600 italic leading-relaxed">
@@ -880,7 +891,7 @@ export default function SocialCommunicationGame({
                             <div className="space-y-0.5 sm:space-y-1">
                                 <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Situacija</span>
                                 <h4 className="text-sm sm:text-xl md:text-3xl font-black text-slate-800 leading-tight">
-                                    {currentSituation.description}
+                                    {formatText(currentSituation.description)}
                                 </h4>
                             </div>
 
@@ -889,7 +900,7 @@ export default function SocialCommunicationGame({
                                 style={{ backgroundColor: `${currentSituation.color}08`, color: currentSituation.color }}
                             >
                                 <span className="text-sm sm:text-xl">💬</span>
-                                <span className="truncate sm:whitespace-normal">{currentSituation.question}</span>
+                                <span className="truncate sm:whitespace-normal">{formatText(currentSituation.question)}</span>
                             </div>
                         </div>
                     </div>
@@ -921,7 +932,7 @@ export default function SocialCommunicationGame({
                                 className={`group w-full relative p-3 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl md:rounded-[2rem] text-left transition-all duration-300 border shadow-sm transform active:scale-[0.98] ${state === "correct"
                                     ? "bg-emerald-50 border-emerald-400 shadow-xl ring-4 ring-emerald-50 z-20"
                                     : state === "wrong"
-                                        ? "bg-rose-50 border-rose-200 opacity-60"
+                                        ? "bg-rose-50 border-rose-200 opacity-60 animate-shake"
                                         : advancing
                                             ? "bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed"
                                             : "bg-white border-slate-100 hover:border-violet-200 hover:shadow-xl hover:-translate-y-0.5 sm:hover:-translate-y-1"

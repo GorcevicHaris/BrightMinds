@@ -25,19 +25,26 @@ export async function POST(req: NextRequest) {
         }
     }
 
-    console.log(`ElevenLabs Request: voice=${selectedVoiceId}, text=${text.substring(0, 30)}...`);
-
-    // Proveravamo da li API ključ postoji
-    if (!process.env.ELEVENLABS_API_KEY) {
-        throw new Error("Nedostaje ELEVENLABS_API_KEY u .env datoteci");
+    let processedText = text;
+    if (gender?.toLowerCase() === 'female') {
+        // Dodajemo pauze samo IZMEĐU rečenica/delova (gde postoji razmak)
+        // Ovo sprečava artefakte na samom kraju snimka
+        processedText = text
+            .replace(/([.?!,])\s+/g, '$1... ');
     }
 
     const audioStream = await elevenlabs.textToSpeech.convert(
       selectedVoiceId,
       {
-        text,
+        text: processedText,
         model_id: 'eleven_multilingual_v2',
         output_format: 'mp3_44100_128',
+        voice_settings: {
+            stability: gender?.toLowerCase() === 'female' ? 1.0 : 0.5,
+            similarity_boost: gender?.toLowerCase() === 'female' ? 0.5 : 0.8,
+            style: 0.0,
+            use_speaker_boost: true,
+        }
       }
     );
 

@@ -700,7 +700,7 @@ export default function ColoringGame({
               Fantastično! 🌟
             </h2>
             <p className="text-lg md:text-2xl text-slate-500 font-bold max-w-md">
-              Tvoja slika je završena i izgleda predivno! Dobio si <span className="text-emerald-600 underline decoration-4 underline-offset-8 decoration-emerald-200">{score} poena</span>.
+              Tvoja slika je završena i izgleda predivno! {gender?.toLowerCase() === 'female' ? 'Dobila si' : 'Dobio si'} <span className="text-emerald-600 underline decoration-4 underline-offset-8 decoration-emerald-200">{score} poena</span>.
             </p>
           </div>
 

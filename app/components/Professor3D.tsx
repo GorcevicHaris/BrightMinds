@@ -63,11 +63,14 @@ function ProfessorModel({ mouthOpen, isSpeaking, gender }: { mouthOpen: number; 
       // Proširena pretraga za bilo kakav pokret tokom govora
       const talk = names.find(n => /talk|speak|gesture|greet|hello|say|explain|body|move|action/i.test(n));
       if (talk) {
+        if (actions[talk]) actions[talk]!.timeScale = 1;
         playAnim(talk);
       } else {
         const anyAction = names.find(n => !/idle/i.test(n));
-        if (anyAction) playAnim(anyAction);
-        else {
+        if (anyAction) {
+           if (actions[anyAction]) actions[anyAction]!.timeScale = 1;
+           playAnim(anyAction);
+        } else {
           const idle = names.find(n => /idle/i.test(n)) ?? names[0];
           if (idle && actions[idle]) actions[idle]!.timeScale = 2.2;
         }
@@ -75,19 +78,20 @@ function ProfessorModel({ mouthOpen, isSpeaking, gender }: { mouthOpen: number; 
     } else {
       const idle = names.find(n => /idle/i.test(n)) ?? names[0];
       if (idle) {
-        if (actions[idle]) actions[idle]!.timeScale = 1;
+        // Kada ne priča, animacija stoji (zamrznuta)
+        if (actions[idle]) actions[idle]!.timeScale = 0;
         playAnim(idle);
       }
     }
   }, [isSpeaking, names, actions, playAnim]);
-
+ 
   // Single useFrame — mouth morph + float combined
   useFrame(({ clock }) => {
-    // Float animation
+    // Float animation — samo dok priča
     if (group.current) {
       group.current.position.y = isSpeaking
-        ? THREE.MathUtils.lerp(group.current.position.y, 0, 0.08)
-        : Math.sin(clock.elapsedTime * 0.5) * 0.012;
+        ? Math.sin(clock.elapsedTime * 1.5) * 0.02
+        : THREE.MathUtils.lerp(group.current.position.y, 0, 0.1);
     }
     // Mouth morph — uses pre-built cache, no traverse
     const val = isSpeaking ? mouthOpen * 0.9 : 0;
@@ -125,16 +129,19 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
   const { speak } = useSpeech();
 
   useEffect(() => {
+    const normalizedGender = gender?.toLowerCase();
     setTimeout(() => setVisible(true), 500);
     const t = setTimeout(() => {
       if (playedRef.current) return;
       playedRef.current = true;
       const name = childName || 'drugaru';
+      const welcomePhrase = normalizedGender === 'female' ? 'Dobro došla nazad!' : 'Dobro došao nazad!';
+      
       setBubbleText(`Zdravo ${name}! 👋`);
-      speak(`Zdravo ${name}! Dobrodošao nazad!`, () => setBubbleText(null), undefined, gender);
+      speak(`Zdravo, ${name}... ${welcomePhrase}`, () => setBubbleText(null), undefined, gender);
     }, 1500);
     return () => clearTimeout(t);
-  }, [childName, speak]);
+  }, [childName, speak, gender]);
 
   useEffect(() => {
     const handleSpeak = (e: any) => {
@@ -145,15 +152,20 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
     };
 
     const handleLogout = () => {
+      const normalizedGender = gender?.toLowerCase();
       try { stop(); } catch (e) { }
-      setBubbleText('Vidimo se uskoro! Bio si odličan danas!');
-
+      const logoutText = normalizedGender === 'female' 
+        ? 'Vidimo se uskoro... Bila si odlična danas!' 
+        : 'Vidimo se uskoro... Bio si odličan danas!';
+        
+      setBubbleText(logoutText);
+ 
       // Sigurnosni timeout: ako govor potraje predugo ili pukne, ipak uradi logout
       const logoutTimeout = setTimeout(() => {
         onLogoutConfirmed();
       }, 3500);
-
-      speak('Vidimo se uskoro! Bio si odličan danas!', () => {
+ 
+      speak(logoutText, () => {
         clearTimeout(logoutTimeout);
         setBubbleText(null);
         onLogoutConfirmed();
@@ -173,7 +185,7 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
       position: 'fixed',
       top: '-180px',
       right: '-60px',      /* DONJI DESNI ugao */
-      zIndex: 250,  /* Iznad igara (koje su obično z-100) */
+      zIndex: 500,  /* Topmost element */
       width: '320px',
       height: '450px',
       pointerEvents: 'none',
@@ -215,7 +227,7 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
           }} />
         </div>
       )}
-      <div style={{ width: '100%', height: '100%', pointerEvents: 'auto', cursor: 'grab' }}>
+      <div style={{ width: '100%', height: '100%', pointerEvents: 'none' }}>
         <Canvas
           camera={{ position: [0, 0.3, 2.8], fov: 40 }}
           gl={{ antialias: true, alpha: true }}
