@@ -204,15 +204,15 @@ export default function GameContainer({ childId, childName, gender }: GameContai
       let stars = 0;
       if (stats) {
         const ratio = stats.correct / stats.total;
-        if (ratio >= 0.95) stars = 3;
-        else if (ratio >= 0.8) stars = 2;
-        else if (ratio >= 0.4) stars = 1;
+        if (ratio >= 0.8) stars = 3;
+        else if (ratio >= 0.5) stars = 2;
+        else if (ratio >= 0.2) stars = 1;
         else stars = 0;
       } else {
         // Fallback for games without stats
-        if (score >= 900) stars = 3;
-        else if (score >= 700) stars = 2;
-        else if (score >= 500) stars = 1;
+        if (score >= 400) stars = 3;
+        else if (score >= 200) stars = 2;
+        else if (score >= 50) stars = 1;
         else stars = 0;
       }
       setLastStars(stars);
@@ -244,7 +244,8 @@ export default function GameContainer({ childId, childName, gender }: GameContai
         setLastScore(score);
         setShowNextLevel(true);
         if (stars > 0) {
-          speak(`Sjajno ${childName}! Nivo je završen! ${isFemale ? 'Osvojila si' : 'Osvojio si'} ${stars} ${stars === 1 ? 'zvezdicu' : 'zvezdice'}.`, undefined, undefined, gender);
+          const starText = stars === 1 ? "jednu zvezdicu" : stars === 2 ? "dve zvezdice" : "tri zvezdice";
+          speak(`Sjajno ${childName}! Nivo je završen! ${isFemale ? 'Osvojila si' : 'Osvojio si'} ${starText}.`, undefined, undefined, gender);
         } else {
           speak(`Skoro si ${isFemale ? 'uspela' : 'uspeo'}! Probaj ponovo, možeš ti to!`, undefined, undefined, gender);
         }
@@ -379,7 +380,12 @@ export default function GameContainer({ childId, childName, gender }: GameContai
                 </div>
                 <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4 ${lastStars > 0 ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>{lastStars > 0 ? "✨ Sjajno urađeno!" : "💪 Probaj ponovo!"}</div>
                 <h2 className="text-3xl sm:text-5xl font-black text-slate-900 mb-2">{lastStars > 0 ? "Nivo Završen!" : "Skoro si uspeo!"}</h2>
-                <p className="text-slate-500 text-lg md:text-xl font-bold mb-8">{lastStars > 0 ? `${isFemale ? 'Osvojila si' : 'Osvojio si'} ${lastScore} poena i ${lastStars} ${lastStars === 1 ? "zvezdicu" : "zvezdice"}!` : "Treba ti barem jedna zvezdica da pređeš na sledeći nivo."}</p>
+                <p className="text-slate-500 text-lg md:text-xl font-bold mb-8">
+                  {lastStars > 0 
+                    ? `${isFemale ? 'Osvojila si' : 'Osvojio si'} ${lastScore} poena i ${lastStars === 1 ? 'jednu zvezdicu' : lastStars === 2 ? 'dve zvezdice' : 'tri zvezdice'}!` 
+                    : "Treba ti barem jedna zvezdica da pređeš na sledeći nivo."
+                  }
+                </p>
                 <div className="flex flex-col gap-4">
                   {lastStars > 0 ? (
                     <button onClick={() => { setShowNextLevel(false); setCurrentLevel(prev => prev + 1); }} className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-[2rem] p-5 font-black text-xl shadow-xl">Sledeći nivo ➜</button>

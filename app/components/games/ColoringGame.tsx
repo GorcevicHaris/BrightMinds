@@ -585,7 +585,7 @@ export default function ColoringGame({
   const handleMoodAfterSelect = (mood: string) => {
     setShowMoodAfter(false);
     const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-    onComplete(score, duration, moodBefore, mood);
+    onComplete(score, duration, moodBefore, mood, { correct: completedZones, total: template.length });
   };
 
   const getLevelName = (lvl: number) => {
