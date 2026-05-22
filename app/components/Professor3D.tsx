@@ -41,7 +41,7 @@ function ProfessorModel({ mouthOpen, isSpeaking, gender }: { mouthOpen: number; 
   useEffect(() => {
     if (!names.length) return;
     console.log(`Dostupne animacije za ${gender}:`, names);
-    
+
     const idle = names.find(n => /idle/i.test(n)) ?? names[0];
     if (idle) { actions[idle]?.reset().fadeIn(0.5).play(); activeAnim.current = idle; }
 
@@ -68,8 +68,8 @@ function ProfessorModel({ mouthOpen, isSpeaking, gender }: { mouthOpen: number; 
       } else {
         const anyAction = names.find(n => !/idle/i.test(n));
         if (anyAction) {
-           if (actions[anyAction]) actions[anyAction]!.timeScale = 1;
-           playAnim(anyAction);
+          if (actions[anyAction]) actions[anyAction]!.timeScale = 1;
+          playAnim(anyAction);
         } else {
           const idle = names.find(n => /idle/i.test(n)) ?? names[0];
           if (idle && actions[idle]) actions[idle]!.timeScale = 2.2;
@@ -84,7 +84,7 @@ function ProfessorModel({ mouthOpen, isSpeaking, gender }: { mouthOpen: number; 
       }
     }
   }, [isSpeaking, names, actions, playAnim]);
- 
+
   // Single useFrame — mouth morph + float combined
   useFrame(({ clock }) => {
     // Float animation — samo dok priča
@@ -133,14 +133,14 @@ function getDeviceType(): DeviceType {
 // Konfiguracija veličina za svaki tip uređaja
 const DEVICE_CONFIG = {
   phone: {
-    width: '140px', height: '180px',
-    top: '4px', right: '4px',
-    bubbleTop: '185px', bubbleRight: '0px', bubbleMaxWidth: '180px',
-    bubbleFontSize: '11px', bubblePadding: '8px 12px', bubbleRadius: '12px',
+    width: '220px', height: '280px',
+    top: '-100px', right: '-30px',
+    bubbleTop: '230px', bubbleRight: '85px', bubbleMaxWidth: '200px',
+    bubbleFontSize: '14px', bubblePadding: '10px 14px', bubbleRadius: '14px',
     bubbleWhiteSpace: 'normal' as const,
     bubbleTailPos: 'top' as const,  // rep iznad oblačića
-    cameraPos: [0, 0.3, 2.5] as [number, number, number],
-    fov: 38, antialias: true, dpr: undefined,
+    cameraPos: [0, 0.3, 2.2] as [number, number, number],
+    fov: 50, antialias: true, dpr: undefined,
   },
   tablet: {
     width: '200px', height: '280px',
@@ -191,7 +191,7 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
       playedRef.current = true;
       const name = childName || 'drugaru';
       const welcomePhrase = normalizedGender === 'female' ? 'Dobro došla nazad!' : 'Dobro došao nazad!';
-      
+
       setBubbleText(`Zdravo ${name}! 👋`);
       // Izbačene tačkice i zapeta kako bi glasovna sinteza (ElevenLabs) to izgovorila prirodnije i bez čudnih pauza
       speak(`Zdravo ${name}! ${welcomePhrase}`, () => setBubbleText(null), undefined, gender);
@@ -210,17 +210,17 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
     const handleLogout = () => {
       const normalizedGender = gender?.toLowerCase();
       try { stop(); } catch (e) { }
-      const logoutText = normalizedGender === 'female' 
-        ? 'Vidimo se uskoro... Bila si odlična danas!' 
+      const logoutText = normalizedGender === 'female'
+        ? 'Vidimo se uskoro... Bila si odlična danas!'
         : 'Vidimo se uskoro... Bio si odličan danas!';
-        
+
       setBubbleText(logoutText);
- 
+
       // Sigurnosni timeout: ako govor potraje predugo ili pukne, ipak uradi logout
       const logoutTimeout = setTimeout(() => {
         onLogoutConfirmed();
       }, 3500);
- 
+
       speak(logoutText, () => {
         clearTimeout(logoutTimeout);
         setBubbleText(null);
@@ -239,30 +239,30 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
   // Stil za rep oblačića zavisi od pozicije
   const tailStyle: React.CSSProperties = cfg.bubbleTailPos === 'top'
     ? {
-        position: 'absolute',
-        top: '-7px',
-        right: '20px',
-        width: '10px',
-        height: '10px',
-        background: 'white',
-        transform: 'rotate(45deg)',
-        borderTop: '2.5px solid #7c3aed',
-        borderLeft: '2.5px solid #7c3aed',
-        borderBottom: 'none',
-        borderRight: 'none',
-      }
+      position: 'absolute',
+      top: '-7px',
+      right: '20px',
+      width: '10px',
+      height: '10px',
+      background: 'white',
+      transform: 'rotate(45deg)',
+      borderTop: '2.5px solid #7c3aed',
+      borderLeft: '2.5px solid #7c3aed',
+      borderBottom: 'none',
+      borderRight: 'none',
+    }
     : {
-        position: 'absolute',
-        right: '-8px',
-        top: '16px',
-        width: '12px',
-        height: '12px',
-        background: 'white',
-        transform: 'rotate(-45deg)',
-        border: '2.5px solid #7c3aed',
-        borderTop: 'none',
-        borderLeft: 'none',
-      };
+      position: 'absolute',
+      right: '-8px',
+      top: '16px',
+      width: '12px',
+      height: '12px',
+      background: 'white',
+      transform: 'rotate(-45deg)',
+      border: '2.5px solid #7c3aed',
+      borderTop: 'none',
+      borderLeft: 'none',
+    };
 
   return (
     <div style={{
@@ -277,30 +277,7 @@ export default function Professor3D({ childName, gender, onLogoutConfirmed }: { 
       transform: visible ? 'translateY(0)' : 'translateY(-20px)',
       transition: 'opacity 0.8s ease, transform 0.8s ease',
     }}>
-      {/* oblačić sa tekstom */}
-      {bubbleText && (
-        <div style={{
-          position: 'absolute',
-          top: cfg.bubbleTop,
-          right: cfg.bubbleRight,
-          maxWidth: cfg.bubbleMaxWidth,
-          whiteSpace: cfg.bubbleWhiteSpace,
-          fontSize: cfg.bubbleFontSize,
-          padding: cfg.bubblePadding,
-          background: 'white',
-          borderRadius: cfg.bubbleRadius,
-          border: '2.5px solid #7c3aed',
-          fontWeight: 'bold',
-          color: '#4c1d95',
-          boxShadow: '0 8px 24px rgba(109,40,217,0.15)',
-          zIndex: 1001,
-          animation: 'bubblePop 0.3s ease',
-        }}>
-          {bubbleText}
-          {/* rep oblačića */}
-          <div style={tailStyle} />
-        </div>
-      )}
+      {/* oblačić sa tekstom - uklonjen po zahtevu */}
       <div style={{ width: '100%', height: '100%', pointerEvents: 'none' }}>
         <Canvas
           camera={{

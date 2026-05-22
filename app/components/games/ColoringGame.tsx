@@ -350,15 +350,15 @@ const TEMPLATES = {
 };
 
 
-export default function ColoringGame({ 
-  childId, 
-  level, 
-  minLevel = 1, 
-  maxLevel = 15, 
-  onComplete, 
-  onClose, 
-  autoStart, 
-  isMonitor, 
+export default function ColoringGame({
+  childId,
+  level,
+  minLevel = 1,
+  maxLevel = 15,
+  onComplete,
+  onClose,
+  autoStart,
+  isMonitor,
   monitorState,
   gender,
 }: GameProps & { gender?: string }) {
@@ -590,21 +590,21 @@ export default function ColoringGame({
 
   const getLevelName = (lvl: number) => {
     const names = [
-      "", 
-      "Lopta ⚽", 
-      "Drvo 🌳", 
-      "Sladoled 🍦", 
-      "Brod ⛵", 
-      "Raketa 🚀", 
+      "",
+      "Lopta ⚽",
+      "Drvo 🌳",
+      "Sladoled 🍦",
+      "Brod ⛵",
+      "Raketa 🚀",
       "Kruna 👑",
-      "Sunce ☀️", 
-      "Cvijet 🌸", 
-      "Kućica 🏠", 
-      "Leptir 🦋", 
+      "Sunce ☀️",
+      "Cvijet 🌸",
+      "Kućica 🏠",
+      "Leptir 🦋",
       "Meda 🧸",
-      "Automobil 🚗", 
-      "Riba 🐟", 
-      "Slon 🐘", 
+      "Automobil 🚗",
+      "Riba 🐟",
+      "Slon 🐘",
       "Mačka 🐱"
     ];
     return names[lvl] || "Slika";
@@ -616,7 +616,7 @@ export default function ColoringGame({
       <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden">
         {/* Background Decor */}
         <div className="absolute inset-0 bg-slate-50">
-          <div 
+          <div
             className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
             style={{ backgroundImage: "url('/images/oboji.png')" }}
           />
@@ -625,7 +625,7 @@ export default function ColoringGame({
 
         <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
           {onClose && (
-            <button 
+            <button
               onClick={onClose}
               className="fixed top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-rose-600 font-black text-xs uppercase tracking-widest shadow-lg border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-[110]"
             >
@@ -634,10 +634,10 @@ export default function ColoringGame({
           )}
           <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-rose-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
-               ✨ Moja Bojanka
+              ✨ Moja Bojanka
             </div>
             <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
-               Kako si danas?
+              Kako si danas?
             </h2>
             <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
           </div>
@@ -658,7 +658,7 @@ export default function ColoringGame({
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
                 <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
-                   {mood.emoji}
+                  {mood.emoji}
                 </div>
                 <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-rose-600 transition-colors">{mood.label}</span>
               </button>
@@ -667,13 +667,13 @@ export default function ColoringGame({
 
           {isConnected && (
             <div className="mt-16 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-500">
-               <div className="flex items-center gap-3 px-6 py-3 bg-white/60 backdrop-blur-md rounded-2xl border-2 border-white shadow-xl">
-                  <span className="relative flex h-3 w-3">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-xs sm:text-sm font-black text-emerald-800 tracking-widest uppercase">Spremni za igru</span>
-                </div>
+              <div className="flex items-center gap-3 px-6 py-3 bg-white/60 backdrop-blur-md rounded-2xl border-2 border-white shadow-xl">
+                <span className="relative flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                </span>
+                <span className="text-xs sm:text-sm font-black text-emerald-800 tracking-widest uppercase">Spremni za igru</span>
+              </div>
             </div>
           )}
         </div>
@@ -686,7 +686,7 @@ export default function ColoringGame({
       <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-500" />
-        
+
         <div className="relative w-full max-w-2xl bg-white rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col items-center p-8 md:p-12 text-center border-4 border-emerald-100">
           {/* Top Celebration Icons */}
           <div className="absolute -top-6 -left-6 w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center text-4xl shadow-lg animate-bounce">🎨</div>

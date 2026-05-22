@@ -1,8 +1,10 @@
 'use client'
 import { useState } from 'react';
 import { Eye, EyeOff, User, Mail, Lock, Phone, UserCircle, CloudCog } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export default function RegisterPage() {
+    const router = useRouter();
     const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
         email: '',
@@ -39,9 +41,25 @@ export default function RegisterPage() {
         console.log("Response:", data); // LOG: Šta dobijaš nazad
 
         if (res.ok) {
-            alert("Registracija uspela");
+            // Auto-login after registration
+            try {
+                const loginRes = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email: formData.email, password: formData.password })
+                });
+                const loginData = await loginRes.json();
+                if (loginRes.ok) {
+                    localStorage.setItem("user", JSON.stringify(loginData.user));
+                    router.push("/dashboard");
+                } else {
+                    router.push("/login");
+                }
+            } catch (e) {
+                router.push("/login");
+            }
         } else {
-            alert(data.error || "Greška");
+            alert(data.error || "Greška pri registraciji");
         }
     };
 
@@ -54,10 +72,10 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 sm:py-8 overflow-y-auto">
+            <div className="w-full max-w-md my-auto">
                 {/* Logo/Header */}
-                <div className="text-center mb-8">
+                <div className="text-center mb-6">
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
                         <UserCircle className="w-10 h-10 text-white" />
                     </div>
@@ -163,12 +181,10 @@ export default function RegisterPage() {
                                 name="role"
                                 value={formData.role}
                                 onChange={handleInputChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white text-black"
                             >
                                 <option value="parent">Roditelj</option>
-                                <option value="therapist">Terapeut</option>
                                 <option value="teacher">Nastavnik</option>
-                                <option value="admin">Admin</option>
                             </select>
                         </div>
 

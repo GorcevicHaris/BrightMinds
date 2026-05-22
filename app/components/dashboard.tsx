@@ -317,8 +317,8 @@ export default function Dashboard() {
                             </button>
                         </div>
 
-                        <div className="p-8 space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
+                        <div className="p-6 sm:p-8 space-y-6 max-h-[75vh] overflow-y-auto">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Ime</label>
                                     <input
@@ -341,7 +341,7 @@ export default function Dashboard() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div className="space-y-1.5">
                                     <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Datum rođenja</label>
                                     <input
