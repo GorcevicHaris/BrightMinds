@@ -789,14 +789,18 @@ export default function SocialStoryGame({
 
   if (!isMonitor && showMoodAfter) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[3rem] p-12 shadow-2xl animate-in fade-in duration-500">
-        <div className="text-center mb-16">
-          <span className="px-6 py-2 rounded-full bg-emerald-100 text-emerald-600 text-sm font-black uppercase tracking-widest mb-4 inline-block">Sjajno urađeno!</span>
-          <h2 className="text-5xl font-black text-slate-900 tracking-tight mb-4 text-center">Kako se osećaš sada? 🌟</h2>
-          <p className="text-2xl text-slate-500 font-medium tracking-wide">Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span></p>
+      <div className="flex flex-col items-center justify-center min-h-[450px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl animate-in fade-in duration-500 overflow-hidden relative">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
+
+        <div className="text-center mb-6 md:mb-12 relative z-10">
+          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-sm font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Sjajno urađeno!</span>
+          <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-2 md:mb-4">Kako se osećaš sada? 🌟</h2>
+          <p className="text-sm sm:text-base md:text-xl text-slate-500 font-medium tracking-wide">
+            Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>
+          </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 w-full max-w-5xl">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
           {[
             { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
             { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
@@ -807,11 +811,11 @@ export default function SocialStoryGame({
             <button
               key={mood.value}
               onClick={() => handleMoodAfterSelect(mood.value)}
-              className="group relative flex flex-col items-center bg-white rounded-[2.5rem] p-10 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
+              className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[2.5rem] transition-opacity`} />
-              <span className="text-7xl mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-              <span className="text-lg font-black text-slate-700 uppercase tracking-wide">{mood.label}</span>
+              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-2xl md:rounded-[2.5rem] transition-opacity`} />
+              <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+              <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
             </button>
           ))}
         </div>

@@ -1,19 +1,12 @@
 // app/dashboard/monitor/[id]/page.tsx
 import { verifyToken } from '@/lib/auth';
-import pool from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 import LiveMonitor from '@/app/components/LiveMonitor';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { RowDataPacket } from 'mysql2';
 
-interface Child extends RowDataPacket {
-  id: number;
-  first_name: string;
-  last_name: string;
-}
-
-export default async function MonitorPage({ params }: { params: { id: string } }) {
+export default async function MonitorPage({ params }: { params: Promise<{ id: string }> }) {
   let user;
   try {
     user = await verifyToken();
@@ -21,29 +14,29 @@ export default async function MonitorPage({ params }: { params: { id: string } }
     redirect('/login');
   }
 
-  const childId = parseInt((await params).id);
+  const childId = parseInt((await params).id, 10);
 
   // Proveri da li korisnik ima pristup ovom detetu
-  const [accessRows] = await pool.query<RowDataPacket[]>(
-    'SELECT * FROM user_children WHERE user_id = ? AND child_id = ?',
-    [user.id, childId]
-  );
+  const { data: accessRows } = await supabaseAdmin
+    .from('user_children')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('child_id', childId);
 
-  if (accessRows.length === 0) {
+  if (!accessRows || accessRows.length === 0) {
     redirect('/dashboard');
   }
 
   // Uzmi podatke o detetu
-  const [children] = await pool.query<Child[]>(
-    'SELECT * FROM children WHERE id = ?',
-    [childId]
-  );
+  const { data: child } = await supabaseAdmin
+    .from('children')
+    .select('*')
+    .eq('id', childId)
+    .single();
 
-  if (children.length === 0) {
+  if (!child) {
     redirect('/dashboard');
   }
-
-  const child = children[0];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-6">

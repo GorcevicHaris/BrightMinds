@@ -397,7 +397,7 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-3 sm:gap-8 w-full max-w-6xl px-4 relative z-10">
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
           {[
             { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
             { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
@@ -408,13 +408,12 @@ export default function MemoryGame({ childId, level, onComplete, onClose, autoSt
             <button
               key={mood.value}
               onClick={() => handleMoodAfterSelect(mood.value)}
-              className="group relative flex flex-col items-center bg-white rounded-[2.5rem] p-6 sm:p-10 transition-all duration-500 hover:scale-[1.12] hover:-translate-y-4 cursor-pointer shadow-2xl border-4 border-transparent hover:border-white animate-in zoom-in-75 duration-700"
+              className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
               style={{ animationDelay: `${idx * 100}ms` }}
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-[2rem] transition-opacity duration-500`}></div>
-              <span className="text-5xl sm:text-7xl md:text-8xl mb-2 sm:mb-4 transform group-hover:rotate-12 transition-transform duration-500 select-none drop-shadow-xl">{mood.emoji}</span>
-              <span className="text-lg sm:text-2xl font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
-              <div className="absolute inset-0 rounded-[2rem] shadow-inner opacity-10 pointer-events-none" />
+              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-2xl md:rounded-[2.5rem] transition-opacity`} />
+              <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
+              <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
             </button>
           ))}
         </div>

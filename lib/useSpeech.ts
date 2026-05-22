@@ -28,11 +28,15 @@ export function useSpeech() {
                 const controller = new AbortController();
                 abortControllerRef.current = controller;
 
-                // Šaljemo tekst i pol, server će odabrati glas
+                // Umesto potpunog brisanja, menjamo tačke i upitnike u zareze (,), 
+                // jer zarez daje kratku, prirodnu pauzu, pa avatar ne zbrza rečenicu.
+                const cleanTextForSpeech = text.replace(/[.?!…]/g, ',');
+
+                // Šaljemo očišćen tekst za govor, ali zadržavamo original za oblačić
                 const response = await fetch("/api/tts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text, gender }),
+                    body: JSON.stringify({ text: cleanTextForSpeech, gender }),
                     signal: controller.signal,
                 });
 

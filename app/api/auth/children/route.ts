@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 import { authenticate, createAuthResponse } from '@/lib/middleware';
 import { CreateChildDTO, ChildWithRelationship } from '@/types';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 // GET /api/children - Dobavi svu decu
 export async function GET(request: NextRequest) {
@@ -13,16 +12,34 @@ export async function GET(request: NextRequest) {
             return createAuthResponse('Neautorizovan pristup');
         }
 
-        const [children] = await db.query<RowDataPacket[]>(`
-      SELECT 
-        c.id, c.first_name, c.last_name, c.date_of_birth, 
-        c.gender, c.profile_image, c.notes, c.created_at,
-        uc.relationship, uc.is_primary
-      FROM children c
-      INNER JOIN user_children uc ON c.id = uc.child_id
-      WHERE uc.user_id = ?
-      ORDER BY uc.is_primary DESC, c.first_name ASC
-    `, [user.id]);
+        const { data: ucData, error } = await supabaseAdmin
+            .from('user_children')
+            .select(`
+                relationship, 
+                is_primary,
+                child:children (
+                    id, first_name, last_name, date_of_birth, gender, profile_image, notes, created_at
+                )
+            `)
+            .eq('user_id', user.id);
+
+        if (error) {
+            throw error;
+        }
+
+        // Mapiramo podatke da odgovaraju starom formatu
+        const children = (ucData || []).map(uc => {
+            // Zbog potencijalno različitog tipiziranja relacija u Supabase
+            const childData = Array.isArray(uc.child) ? uc.child[0] : uc.child;
+            return {
+                ...childData,
+                relationship: uc.relationship,
+                is_primary: uc.is_primary
+            };
+        }).sort((a: any, b: any) => {
+            if (a.is_primary !== b.is_primary) return b.is_primary ? 1 : -1;
+            return a.first_name.localeCompare(b.first_name);
+        });
 
         return NextResponse.json({
             success: true,
@@ -67,18 +84,33 @@ export async function POST(request: NextRequest) {
         }
 
         // 1. Dodaj dete
-        const [result] = await db.query<ResultSetHeader>(`
-      INSERT INTO children (first_name, last_name, date_of_birth, gender, notes, profile_image)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [first_name, last_name, date_of_birth, gender || null, notes || null, profile_image || null]);
+        const { data: child, error: childError } = await supabaseAdmin
+            .from('children')
+            .insert([{
+                first_name,
+                last_name,
+                date_of_birth,
+                gender: gender || null,
+                notes: notes || null,
+                profile_image: profile_image || null
+            }])
+            .select('id')
+            .single();
 
-        const childId = result.insertId;
+        if (childError) throw childError;
+        const childId = child.id;
 
         // 2. Poveži sa userom
-        await db.query(`
-      INSERT INTO user_children (user_id, child_id, relationship, is_primary)
-      VALUES (?, ?, 'parent', TRUE)
-    `, [user.id, childId]);
+        const { error: linkError } = await supabaseAdmin
+            .from('user_children')
+            .insert([{
+                user_id: user.id,
+                child_id: childId,
+                relationship: 'parent',
+                is_primary: true
+            }]);
+
+        if (linkError) throw linkError;
 
         return NextResponse.json({
             success: true,

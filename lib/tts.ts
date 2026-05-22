@@ -15,15 +15,22 @@ export async function speak(text: string, voiceId?: string, gender?: string) {
     const audioBlob = await response.blob();
     const audioUrl = URL.createObjectURL(audioBlob);
 
-    // Dispatch event for the avatar if it exists
-    window.dispatchEvent(new CustomEvent('avatar:speak', {
-      detail: { url: audioUrl, text }
-    }));
+    // Pokušaj da avatar preuzme reprodukciju (cancelable event).
+    // Ako avatar postoji i pozove preventDefault(), on pušta zvuk — mi ne.
+    const event = new CustomEvent('avatar:speak', {
+      detail: { url: audioUrl, text },
+      cancelable: true,
+    });
+    const wasHandled = !window.dispatchEvent(event);
 
-    const audio = new Audio(audioUrl);
-    await audio.play();
+    // Samo ako avatar NIJE preuzeo zvuk, puštamo ga ovde kao fallback
+    if (!wasHandled) {
+      const audio = new Audio(audioUrl);
+      await audio.play();
+      return audio;
+    }
 
-    return audio;
+    return null;
   } catch (error) {
     console.error('Speak Error:', error);
     return null;

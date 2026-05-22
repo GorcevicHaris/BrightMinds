@@ -1,8 +1,7 @@
 // app/dashboard/child/[id]/page.tsx
 import ExitButton from "@/app/components/ExitButton";
 import { verifyToken } from "@/lib/auth";
-import pool from "@/lib/db";
-import { RowDataPacket } from "mysql2";
+import { supabaseAdmin } from "@/lib/supabase";
 import ChildPageClient from "./ChildPageClient";
 
 export interface Child {
@@ -25,14 +24,16 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
     // Try 1: Parent/teacher access via JWT — verify ownership
     try {
         const user = await verifyToken();
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `SELECT c.* FROM children c 
-             JOIN user_children uc ON uc.child_id = c.id 
-             WHERE uc.user_id = ? AND c.id = ?`,
-            [user.id, childId]
-        );
-        if (rows.length > 0) {
-            child = rows[0] as Child;
+        const { data: accessRows } = await supabaseAdmin
+            .from('user_children')
+            .select('child:children(*)')
+            .eq('user_id', user.id)
+            .eq('child_id', childId)
+            .limit(1)
+            .maybeSingle();
+
+        if (accessRows?.child) {
+            child = (Array.isArray(accessRows.child) ? accessRows.child[0] : accessRows.child) as Child;
         }
     } catch {
         // No valid JWT — this might be a child self-login via PIN
@@ -41,12 +42,15 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
     // Try 2: Child self-login — just fetch the child directly
     // (The child authenticated via PIN on /login and was redirected here)
     if (!child) {
-        const [rows] = await pool.query<RowDataPacket[]>(
-            `SELECT * FROM children WHERE id = ?`,
-            [childId]
-        );
-        if (rows.length > 0) {
-            child = rows[0] as Child;
+        const { data: childRow } = await supabaseAdmin
+            .from('children')
+            .select('*')
+            .eq('id', childId)
+            .limit(1)
+            .maybeSingle();
+
+        if (childRow) {
+            child = childRow as Child;
         }
     }
 

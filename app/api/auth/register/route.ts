@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
@@ -20,25 +20,37 @@ export async function POST(req: NextRequest) {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const [result] = await pool.query(
-            'INSERT INTO users (email, password_hash, full_name, role, phone, parental_pin) VALUES (?, ?, ?, ?, ?, ?)',
-            [email, hashedPassword, full_name, role, phone, '0000']
-        );
+        
+        const { data, error } = await supabaseAdmin
+            .from('users')
+            .insert([
+                { 
+                    email, 
+                    password_hash: hashedPassword, 
+                    full_name, 
+                    role, 
+                    phone, 
+                    parental_pin: '0000' 
+                }
+            ])
+            .select('id')
+            .single();
 
-        // @ts-ignore
-        const insertId = result.insertId;
-        return NextResponse.json({ id: insertId });
+        if (error) {
+            throw error;
+        }
+
+        return NextResponse.json({ id: data.id });
     } catch (error: any) {
         // LOG: Detaljnija greška
         console.error('Insert error:', {
             message: error.message,
             code: error.code,
-            errno: error.errno,
-            sql: error.sql
+            details: error.details
         });
 
         // Specifične greške
-        if (error.code === 'ER_DUP_ENTRY') {
+        if (error.code === '23505') { // Postgres unique violation code
             return NextResponse.json(
                 { error: 'email_exists' },
                 { status: 409 }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '../../../../lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 import jwt from 'jsonwebtoken';
 
 export async function POST(req: Request) {
@@ -14,31 +14,34 @@ export async function POST(req: Request) {
             );
         }
 
-        let rows: any[];
+        let childData;
 
         if (child_id) {
-            const [result]: any = await pool.query(
-                'SELECT * FROM children WHERE id = ? AND pin_code = ?',
-                [child_id, pin_code]
-            );
-            rows = result;
+            const { data, error } = await supabaseAdmin
+                .from('children')
+                .select('*')
+                .eq('id', child_id)
+                .eq('pin_code', pin_code)
+                .maybeSingle();
+            childData = data;
         } else {
-            const [result]: any = await pool.query(
-                'SELECT * FROM children WHERE pin_code = ?',
-                [pin_code]
-            );
-            rows = result;
+            const { data, error } = await supabaseAdmin
+                .from('children')
+                .select('*')
+                .eq('pin_code', pin_code)
+                .limit(1)
+                .maybeSingle();
+            childData = data;
         }
 
-        if (!rows || rows.length === 0) {
+        if (!childData) {
             return NextResponse.json(
                 { error: 'Netačan PIN kod' },
                 { status: 401 }
             );
         }
 
-        // If multiple children have the same PIN, return the first match
-        let child = rows[0];
+        let child = childData;
 
         // ─── STREAK & POINTS LOGIC ─────────────────────────────────────
         const now = new Date();
@@ -77,27 +80,35 @@ export async function POST(req: Request) {
             newPoints += 10;
 
             // Sačuvaj u bazi
-            await pool.query(
-                'UPDATE children SET streak = ?, experience_points = ?, last_login_at = NOW() WHERE id = ?',
-                [newStreak, newPoints, child.id]
-            );
+            await supabaseAdmin
+                .from('children')
+                .update({ 
+                    streak: newStreak, 
+                    experience_points: newPoints, 
+                    last_login_at: new Date().toISOString() 
+                })
+                .eq('id', child.id);
         }
 
         // ─── JWT & SESSION LOGIC ──────────────────────────────────────
         // Find the parent (user) associated with this child
-        const [parentRows]: any = await pool.query(
-            'SELECT u.id, u.email, u.role FROM users u JOIN user_children uc ON u.id = uc.user_id WHERE uc.child_id = ? LIMIT 1',
-            [child.id]
-        );
+        const { data: parentRows } = await supabaseAdmin
+            .from('user_children')
+            .select('user:users(id, email, role)')
+            .eq('child_id', child.id)
+            .limit(1)
+            .maybeSingle();
 
         let response: NextResponse;
-        if (parentRows && parentRows.length > 0) {
-            const parent = parentRows[0];
+        
+        let parent = parentRows?.user;
+        if (Array.isArray(parent)) parent = parent[0];
 
+        if (parent) {
             // Create JWT token for the parent session
             const token = jwt.sign(
                 { id: parent.id, email: parent.email, role: parent.role },
-                process.env.JWT_SECRET!,
+                process.env.JWT_SECRET || 'secret',
                 { expiresIn: '7d' }
             );
 

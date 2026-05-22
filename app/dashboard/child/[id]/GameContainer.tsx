@@ -85,7 +85,7 @@ function isDiffUnlocked(diff: Difficulty, maxUnlocked: number): boolean {
 }
 
 function completedInTier(diff: Difficulty, maxUnlocked: number): number {
-  const done = maxUnlocked - 1; 
+  const done = maxUnlocked - 1;
   const offset = DIFF_CONFIG[diff].min - 1;
   return Math.min(Math.max(done - offset, 0), 5);
 }
@@ -302,7 +302,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
   if (screen === "difficulty-select" && activeGame) {
     const maxUnlocked = getMaxUnlocked(selectedGame!);
     return (
-      <div className="fixed inset-0 z-[400] flex flex-col overflow-hidden bg-slate-50">
+      <div className="fixed inset-0 z-[6000] flex flex-col overflow-hidden bg-slate-50">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 opacity-30" style={{ backgroundImage: `url(${activeGame.bgImage})` }} />
           <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-white/90 backdrop-blur-3xl" />
@@ -353,7 +353,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
     const cfg = DIFF_CONFIG[selectedDifficulty];
     const levelInTier = currentLevel - cfg.min + 1;
     return (
-      <div className="fixed inset-0 z-[400] bg-slate-50 flex flex-col animate-in fade-in duration-300 overflow-hidden">
+      <div className="fixed inset-0 z-[6000] bg-slate-50 flex flex-col animate-in fade-in duration-300 overflow-hidden">
         <div className="bg-white/90 backdrop-blur-md px-6 py-3 border-b border-slate-100 flex items-center justify-between shadow-sm relative z-10">
           <div className="flex items-center gap-4 flex-1">
             <button onClick={() => setScreen("difficulty-select")} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500"><svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg></button>
@@ -363,8 +363,8 @@ export default function GameContainer({ childId, childName, gender }: GameContai
               <div className="flex items-center gap-2"><span className={`px-2 py-0.5 rounded-full text-[10px] font-black text-white ${cfg.badge}`}>{cfg.label}</span><span className="text-[10px] font-bold text-slate-400">{levelInTier}/5</span></div>
             </div>
           </div>
-          <button 
-            onClick={handleExit} 
+          <button
+            onClick={handleExit}
             className="fixed top-4 right-6 z-[500] px-4 py-2 rounded-xl bg-rose-50 text-rose-600 font-black text-sm border-2 border-rose-100 shadow-sm hover:bg-rose-100 transition-colors"
           >
             Zatvori ✕
@@ -381,8 +381,8 @@ export default function GameContainer({ childId, childName, gender }: GameContai
                 <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4 ${lastStars > 0 ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"}`}>{lastStars > 0 ? "✨ Sjajno urađeno!" : "💪 Probaj ponovo!"}</div>
                 <h2 className="text-3xl sm:text-5xl font-black text-slate-900 mb-2">{lastStars > 0 ? "Nivo Završen!" : "Skoro si uspeo!"}</h2>
                 <p className="text-slate-500 text-lg md:text-xl font-bold mb-8">
-                  {lastStars > 0 
-                    ? `${isFemale ? 'Osvojila si' : 'Osvojio si'} ${lastScore} poena i ${lastStars === 1 ? 'jednu zvezdicu' : lastStars === 2 ? 'dve zvezdice' : 'tri zvezdice'}!` 
+                  {lastStars > 0
+                    ? `${isFemale ? 'Osvojila si' : 'Osvojio si'} ${lastScore} poena i ${lastStars === 1 ? 'jednu zvezdicu' : lastStars === 2 ? 'dve zvezdice' : 'tri zvezdice'}!`
                     : "Treba ti barem jedna zvezdica da pređeš na sledeći nivo."
                   }
                 </p>
@@ -404,12 +404,12 @@ export default function GameContainer({ childId, childName, gender }: GameContai
               </div>
             }>
               {selectedGame === "shapes" ? <ShapeMatchingGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
-               selectedGame === "memory" ? <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
-               selectedGame === "sound-to-image" ? <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
-               selectedGame === "social" ? <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
-               selectedGame === "social-story" ? <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
-               selectedGame === "emotions" ? <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
-               <ColoringGame childId={childId} level={currentLevel} minLevel={cfg.min} maxLevel={cfg.max} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} />}
+                selectedGame === "memory" ? <MemoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+                  selectedGame === "sound-to-image" ? <SoundToImageGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+                    selectedGame === "social" ? <SocialCommunicationGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+                      selectedGame === "social-story" ? <SocialStoryGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+                        selectedGame === "emotions" ? <EmotionsGame childId={childId} level={currentLevel} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} /> :
+                          <ColoringGame childId={childId} level={currentLevel} minLevel={cfg.min} maxLevel={cfg.max} onComplete={handleGameComplete} onClose={handleExit} autoStart={autoStart} gender={gender} />}
             </Suspense>
           </div>
         </div>
@@ -422,7 +422,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
     const nextDiff = selectedDifficulty === "easy" ? "medium" : selectedDifficulty === "medium" ? "hard" : null;
     const nextCfg = nextDiff ? DIFF_CONFIG[nextDiff] : null;
     return (
-      <div className="fixed inset-0 z-[400] flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-slate-50">
+      <div className="fixed inset-0 z-[6000] flex flex-col items-center justify-center p-6 text-center overflow-hidden bg-slate-50">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${activeGame.bgImage})` }} />
           <div className="absolute inset-0 bg-gradient-to-br from-white/95 via-white/80 to-white/90 backdrop-blur-3xl" />
@@ -446,7 +446,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
 
   if (screen === "all-finished" && activeGame) {
     return (
-      <div className="fixed inset-0 z-[400] flex flex-col items-center justify-center p-4 sm:p-6 text-center overflow-hidden bg-slate-950">
+      <div className="fixed inset-0 z-[6000] flex flex-col items-center justify-center p-4 sm:p-6 text-center overflow-hidden bg-slate-950">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-cover bg-center opacity-20 blur-2xl" style={{ backgroundImage: `url(${activeGame.bgImage})` }} />
           <div className="absolute inset-0 bg-gradient-to-b from-slate-950/40 via-slate-950/80 to-slate-950/95 backdrop-blur-3xl" />

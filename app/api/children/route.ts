@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import pool from '../../../lib/db';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(req: Request) {
     try {
@@ -14,19 +14,33 @@ export async function POST(req: Request) {
         }
 
         // Prvo dodaj dete u children tabelu
-        const [result] = await pool.query(
-            'INSERT INTO children (first_name, last_name, date_of_birth, gender, notes, pin_code) VALUES (?, ?, ?, ?, ?, ?)',
-            [first_name, last_name, date_of_birth, gender, notes, pin_code || null]
-        );
+        const { data: child, error: childError } = await supabaseAdmin
+            .from('children')
+            .insert([{
+                first_name, 
+                last_name, 
+                date_of_birth, 
+                gender, 
+                notes, 
+                pin_code: pin_code || null
+            }])
+            .select('id')
+            .single();
 
-        // @ts-ignore
-        const childId = result.insertId;
+        if (childError) throw childError;
+        const childId = child.id;
 
         // Onda poveži dete sa roditeljem preko user_children tabele
-        await pool.query(
-            'INSERT INTO user_children (user_id, child_id, relationship, is_primary) VALUES (?, ?, ?, ?)',
-            [user_id, childId, 'parent', 1] // 1 umesto true
-        );
+        const { error: ucError } = await supabaseAdmin
+            .from('user_children')
+            .insert([{
+                user_id, 
+                child_id: childId, 
+                relationship: 'parent', 
+                is_primary: true
+            }]);
+
+        if (ucError) throw ucError;
 
         return NextResponse.json({
             id: childId,
@@ -45,6 +59,7 @@ export async function POST(req: Request) {
         );
     }
 }
+
 export async function GET(req: Request) {
     try {
         const url = new URL(req.url);
@@ -56,11 +71,16 @@ export async function GET(req: Request) {
                 { status: 400 }
             )
         }
-        const userIdNumber = parseInt(userId, 10);
-        const [rows] = await pool.query(
-            "SELECT c.* FROM children c INNER JOIN user_children uc ON c.id = uc.child_id WHERE uc.user_id = ?",
-            [userIdNumber]
-        );
+        
+        const { data: ucData, error } = await supabaseAdmin
+            .from('user_children')
+            .select('child:children(*)')
+            .eq('user_id', userId);
+
+        if (error) throw error;
+        
+        const rows = (ucData || []).map(uc => Array.isArray(uc.child) ? uc.child[0] : uc.child).filter(c => c !== null);
+
         return NextResponse.json(rows);
     } catch (error) {
         console.error('Error fetching children:', error);
@@ -75,10 +95,14 @@ export async function DELETE(req: Request) {
     try {
         const url = new URL(req.url)
         const childId = url.searchParams.get("child_id")
-        await pool.query(
-            "DELETE FROM children WHERE id = ?",
-            [childId]
-        )
+        
+        const { error } = await supabaseAdmin
+            .from('children')
+            .delete()
+            .eq('id', childId);
+            
+        if (error) throw error;
+        
         console.log(childId, "- childId")
         return NextResponse.json({
             message: "Child deleted successfully"
@@ -99,10 +123,21 @@ export async function PUT(req: Request) {
         console.log(childId, "childid")
         const body = await req.json()
         const { first_name, last_name, date_of_birth, gender, notes, pin_code } = body;
-        await pool.query(
-            "UPDATE children SET first_name = ?, last_name = ?, date_of_birth = ?, gender = ?, notes = ?, pin_code = ? WHERE id = ?",
-            [first_name, last_name, date_of_birth, gender, notes, pin_code || null, childId]
-        )
+        
+        const { error } = await supabaseAdmin
+            .from('children')
+            .update({
+                first_name, 
+                last_name, 
+                date_of_birth, 
+                gender, 
+                notes, 
+                pin_code: pin_code || null
+            })
+            .eq('id', childId);
+            
+        if (error) throw error;
+        
         return NextResponse.json({
             message: "Child updated successfully"
 

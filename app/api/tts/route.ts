@@ -37,13 +37,13 @@ export async function POST(req: NextRequest) {
       selectedVoiceId,
       {
         text: processedText,
-        model_id: 'eleven_multilingual_v2',
-        output_format: 'mp3_44100_128',
-        voice_settings: {
+        modelId: 'eleven_multilingual_v2',
+        outputFormat: 'mp3_44100_128',
+        voiceSettings: {
             stability: gender?.toLowerCase() === 'female' ? 1.0 : 0.5,
-            similarity_boost: gender?.toLowerCase() === 'female' ? 0.5 : 0.8,
+            similarityBoost: gender?.toLowerCase() === 'female' ? 0.5 : 0.8,
             style: 0.0,
-            use_speaker_boost: true,
+            useSpeakerBoost: true,
         }
       }
     );

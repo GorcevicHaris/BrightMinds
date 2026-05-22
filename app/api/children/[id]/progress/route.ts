@@ -1,22 +1,9 @@
 // app/api/children/[id]/progress/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
-import pool from "@/lib/db";
-import { RowDataPacket } from "mysql2";
+import { supabaseAdmin } from "@/lib/supabase";
 
 const ACTIVITY_IDS = [1, 3, 4, 5, 6, 7, 8];
-
-interface StatsRow extends RowDataPacket {
-  activity_id: number;
-  total_games: number;
-  avg_score: number;
-  best_score: number;
-  total_minutes: number;
-  excellent_count: number;
-  successful_count: number;
-  partial_count: number;
-  struggled_count: number;
-}
 
 export async function GET(
   req: NextRequest,
@@ -27,114 +14,185 @@ export async function GET(
     const { id: childId } = await params;
 
     // Access check
-    const [accessRows] = await pool.query<RowDataPacket[]>(
-      "SELECT id FROM user_children WHERE user_id = ? AND child_id = ?",
-      [user.id, childId]
-    );
-    if (accessRows.length === 0) {
+    const { data: accessRows, error: accessError } = await supabaseAdmin
+        .from('user_children')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('child_id', childId);
+
+    if (!accessRows || accessRows.length === 0) {
       return NextResponse.json({ error: "Nemate pristup ovom detetu" }, { status: 403 });
     }
 
-    // ── 1. Aggregate stats for ALL games in one query ─────────────────────────
-    const [allStats] = await pool.query<StatsRow[]>(
-      `SELECT
-         activity_id,
-         COUNT(*) AS total_games,
-         AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS avg_score,
-         MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS best_score,
-         SUM(duration_minutes) AS total_minutes,
-         SUM(CASE WHEN success_level = 'excellent'   THEN 1 ELSE 0 END) AS excellent_count,
-         SUM(CASE WHEN success_level = 'successful'  THEN 1 ELSE 0 END) AS successful_count,
-         SUM(CASE WHEN success_level = 'partial'     THEN 1 ELSE 0 END) AS partial_count,
-         SUM(CASE WHEN success_level = 'struggled'   THEN 1 ELSE 0 END) AS struggled_count
-       FROM progress_logs
-       WHERE child_id = ? AND activity_id IN (${ACTIVITY_IDS.join(",")})
-       GROUP BY activity_id`,
-      [childId]
-    );
+    // Fetch all logs and activities to do aggregations in memory
+    // Since this is per-child, the number of logs shouldn't exceed a few thousand
+    const { data: logsData, error: logsError } = await supabaseAdmin
+      .from('progress_logs')
+      .select('*, activity:activities(title)')
+      .eq('child_id', childId)
+      .in('activity_id', ACTIVITY_IDS)
+      .order('completed_at', { ascending: false });
 
-    // ── 2. Recent games per activity (last 10 each) ───────────────────────────
-    const [recentRaw] = await pool.query<RowDataPacket[]>(
-      `SELECT id, activity_id, completed_at, success_level, mood_before, mood_after,
-              duration_minutes, notes,
-              CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED) AS score,
-              ROW_NUMBER() OVER (PARTITION BY activity_id ORDER BY completed_at DESC) AS rn
-       FROM progress_logs
-       WHERE child_id = ? AND activity_id IN (${ACTIVITY_IDS.join(",")})
-       HAVING rn <= 10`,
-      [childId]
-    );
+    if (logsError) throw logsError;
 
-    // ── 3. Daily progress per activity (last 30 days each) ────────────────────
-    const [progressRaw] = await pool.query<RowDataPacket[]>(
-      `SELECT
-         activity_id,
-         DATE(completed_at) AS date,
-         COUNT(*) AS games_count,
-         AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS avg_score,
-         MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS max_score
-       FROM progress_logs
-       WHERE child_id = ? AND activity_id IN (${ACTIVITY_IDS.join(",")})
-         AND completed_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
-       GROUP BY activity_id, DATE(completed_at)
-       ORDER BY date DESC`,
-      [childId]
-    );
+    const logs = logsData || [];
 
-    // ── 4. Level stats per activity ───────────────────────────────────────────
-    const [levelsRaw] = await pool.query<RowDataPacket[]>(
-      `SELECT
-         activity_id,
-         SUBSTRING_INDEX(SUBSTRING_INDEX(notes, 'Nivo ', -1), ',', 1) AS level,
-         COUNT(*) AS games_count,
-         AVG(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS avg_score,
-         MAX(CAST(SUBSTRING_INDEX(notes, ' ', -2) AS UNSIGNED)) AS best_score
-       FROM progress_logs
-       WHERE child_id = ? AND activity_id IN (${ACTIVITY_IDS.join(",")}) AND notes LIKE '%Nivo%'
-       GROUP BY activity_id, level
-       ORDER BY activity_id, level`,
-      [childId]
-    );
+    // Helper: Parse score from notes like "Nivo 1, Zvezdice: 3, Rezultat: 150" ili "Nivo 1, Skup 1: 5 / 5"
+    const getScore = (notes: string | null) => {
+      if (!notes) return 0;
+      
+      const rezultatMatch = notes.match(/Rezultat:\s*(\d+)/i);
+      if (rezultatMatch) return parseInt(rezultatMatch[1], 10);
+
+      const match = notes.match(/(\d+)\s*\/\s*\d+$/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
+
+    // Helper: Parse level from notes
+    const getLevel = (notes: string | null) => {
+      if (!notes) return null;
+      const match = notes.match(/Nivo\s+(\d+)/);
+      return match ? match[1] : null;
+    };
+
+    // Prepare aggregations
+    const allStats: Record<number, any> = {};
+    const recentRaw: any[] = [];
+    const progressRaw: any[] = [];
+    const levelsRaw: any[] = [];
+    
+    ACTIVITY_IDS.forEach(id => {
+      allStats[id] = {
+        total_games: 0,
+        total_score: 0,
+        best_score: 0,
+        total_minutes: 0,
+        excellent_count: 0,
+        successful_count: 0,
+        partial_count: 0,
+        struggled_count: 0
+      };
+    });
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgoIso = thirtyDaysAgo.toISOString().substring(0, 10);
+
+    const activityCounts: Record<number, number> = {};
+    const progressMap: Record<string, any> = {};
+    const levelMap: Record<string, any> = {};
+
+    logs.forEach(log => {
+      const actId = log.activity_id;
+      const score = getScore(log.notes);
+      
+      // Update allStats
+      if (allStats[actId]) {
+        allStats[actId].total_games++;
+        allStats[actId].total_score += score;
+        if (score > allStats[actId].best_score) allStats[actId].best_score = score;
+        allStats[actId].total_minutes += (log.duration_minutes || 0);
+        
+        if (log.success_level === 'excellent') allStats[actId].excellent_count++;
+        if (log.success_level === 'successful') allStats[actId].successful_count++;
+        if (log.success_level === 'partial') allStats[actId].partial_count++;
+        if (log.success_level === 'struggled') allStats[actId].struggled_count++;
+      }
+
+      // Recent games (last 10)
+      if (!activityCounts[actId]) activityCounts[actId] = 0;
+      if (activityCounts[actId] < 10) {
+        recentRaw.push({
+          id: log.id,
+          activity_id: actId,
+          completed_at: log.completed_at,
+          success_level: log.success_level,
+          mood_before: log.mood_before,
+          mood_after: log.mood_after,
+          duration_minutes: log.duration_minutes,
+          notes: log.notes,
+          score
+        });
+        activityCounts[actId]++;
+      }
+
+      // Daily progress (last 30 days)
+      const dateStr = log.completed_at ? log.completed_at.substring(0, 10) : null;
+      if (dateStr && dateStr >= thirtyDaysAgoIso) {
+        const key = `${actId}_${dateStr}`;
+        if (!progressMap[key]) {
+          progressMap[key] = { activity_id: actId, date: dateStr, games_count: 0, total_score: 0, max_score: 0 };
+        }
+        progressMap[key].games_count++;
+        progressMap[key].total_score += score;
+        if (score > progressMap[key].max_score) progressMap[key].max_score = score;
+      }
+
+      // Level stats
+      const level = getLevel(log.notes);
+      if (level) {
+        const key = `${actId}_${level}`;
+        if (!levelMap[key]) {
+          levelMap[key] = { activity_id: actId, level, games_count: 0, total_score: 0, best_score: 0 };
+        }
+        levelMap[key].games_count++;
+        levelMap[key].total_score += score;
+        if (score > levelMap[key].best_score) levelMap[key].best_score = score;
+      }
+    });
+
+    // Finalize aggregations
+    Object.values(progressMap).forEach((p: any) => {
+      p.avg_score = p.games_count > 0 ? p.total_score / p.games_count : 0;
+      progressRaw.push(p);
+    });
+
+    Object.values(levelMap).forEach((l: any) => {
+      l.avg_score = l.games_count > 0 ? l.total_score / l.games_count : 0;
+      levelsRaw.push(l);
+    });
 
     // ── 5. Total stats + all recent games (for timeline) ─────────────────────
-    const [allGames] = await pool.query<RowDataPacket[]>(
-      `SELECT pl.id, pl.completed_at, pl.success_level, pl.mood_before, pl.mood_after,
-              pl.duration_minutes, pl.notes, a.title AS activity_title,
-              CAST(SUBSTRING_INDEX(pl.notes, ' ', -2) AS UNSIGNED) AS score
-       FROM progress_logs pl
-       JOIN activities a ON a.id = pl.activity_id
-       WHERE pl.child_id = ? AND pl.activity_id IN (${ACTIVITY_IDS.join(",")})
-       ORDER BY pl.completed_at DESC
-       LIMIT 30`,
-      [childId]
-    );
+    const allGames = logs.slice(0, 30).map(log => ({
+      id: log.id,
+      completed_at: log.completed_at,
+      success_level: log.success_level,
+      mood_before: log.mood_before,
+      mood_after: log.mood_after,
+      duration_minutes: log.duration_minutes,
+      notes: log.notes,
+      activity_title: log.activity && typeof log.activity === 'object' && !Array.isArray(log.activity) 
+        ? log.activity.title 
+        : null,
+      score: getScore(log.notes)
+    }));
 
     // ── Group results by activity_id ──────────────────────────────────────────
     function statsFor(actId: number) {
-      const s = allStats.find((r) => r.activity_id === actId);
+      const s = allStats[actId];
       return {
-        total_games:     Number(s?.total_games)     || 0,
-        avg_score:       Number(s?.avg_score)       || 0,
-        best_score:      Number(s?.best_score)      || 0,
-        total_minutes:   Number(s?.total_minutes)   || 0,
-        excellent_count: Number(s?.excellent_count) || 0,
-        successful_count:Number(s?.successful_count)|| 0,
-        partial_count:   Number(s?.partial_count)   || 0,
-        struggled_count: Number(s?.struggled_count) || 0,
+        total_games:     s.total_games || 0,
+        avg_score:       s.total_games > 0 ? s.total_score / s.total_games : 0,
+        best_score:      s.best_score || 0,
+        total_minutes:   s.total_minutes || 0,
+        excellent_count: s.excellent_count || 0,
+        successful_count:s.successful_count || 0,
+        partial_count:   s.partial_count || 0,
+        struggled_count: s.struggled_count || 0,
       };
     }
     const recentFor  = (actId: number) => recentRaw.filter((r) => r.activity_id === actId);
-    const progressFor= (actId: number) => progressRaw.filter((r) => r.activity_id === actId);
-    const levelsFor  = (actId: number) => levelsRaw.filter((r) => r.activity_id === actId);
+    const progressFor= (actId: number) => progressRaw.filter((r) => r.activity_id === actId).sort((a, b) => b.date.localeCompare(a.date));
+    const levelsFor  = (actId: number) => levelsRaw.filter((r) => r.activity_id === actId).sort((a, b) => a.level.localeCompare(b.level));
 
     // Total across all activities
     const safeTotal = {
-      total_games:     allStats.reduce((a, r) => a + (Number(r.total_games) || 0), 0),
-      total_minutes:   allStats.reduce((a, r) => a + (Number(r.total_minutes) || 0), 0),
-      excellent_count: allStats.reduce((a, r) => a + (Number(r.excellent_count) || 0), 0),
-      successful_count:allStats.reduce((a, r) => a + (Number(r.successful_count) || 0), 0),
-      partial_count:   allStats.reduce((a, r) => a + (Number(r.partial_count) || 0), 0),
-      struggled_count: allStats.reduce((a, r) => a + (Number(r.struggled_count) || 0), 0),
+      total_games:     Object.values(allStats).reduce((a, r: any) => a + (r.total_games || 0), 0),
+      total_minutes:   Object.values(allStats).reduce((a, r: any) => a + (r.total_minutes || 0), 0),
+      excellent_count: Object.values(allStats).reduce((a, r: any) => a + (r.excellent_count || 0), 0),
+      successful_count:Object.values(allStats).reduce((a, r: any) => a + (r.successful_count || 0), 0),
+      partial_count:   Object.values(allStats).reduce((a, r: any) => a + (r.partial_count || 0), 0),
+      struggled_count: Object.values(allStats).reduce((a, r: any) => a + (r.struggled_count || 0), 0),
     };
 
     return NextResponse.json({
@@ -149,6 +207,7 @@ export async function GET(
       emotions:    { stats: statsFor(8), recentGames: recentFor(8),  progress: progressFor(8),  levelStats: levelsFor(8)  },
     });
   } catch (error) {
+    console.error(error);
     return NextResponse.json(
       { error: "Greška pri dobavljanju statistike" },
       { status: 500 }

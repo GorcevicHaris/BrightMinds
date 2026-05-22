@@ -66,7 +66,7 @@ export default function ChildPageClient({ child, childId }: Props) {
 
             {/* ── TOP HEADER ────────────────────────────────────────────
                   Keep it VERY simple for kids — just name + exit + nav  */}
-            <header className="sticky top-0 z-[300] bg-white/80 backdrop-blur-xl border-b-2 border-purple-100/60 shadow-sm">
+            <header className="sticky top-0 z-[5000] bg-white/80 backdrop-blur-xl border-b-2 border-purple-100/60 shadow-sm">
                 <div className="max-w-none mx-auto px-6 sm:px-12 h-16 sm:h-20 flex items-center justify-between gap-3">
 
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -204,7 +204,7 @@ export default function ChildPageClient({ child, childId }: Props) {
 
             {/* ── BOTTOM NAV BAR (mobile only) ──────────────────────────
                 Large tap targets, very clear icons — critical for autism UX */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/95 backdrop-blur-xl border-t-2 border-slate-100 shadow-2xl">
+            <div className="fixed bottom-0 left-0 right-0 z-[5000] md:hidden bg-white/95 backdrop-blur-xl border-t-2 border-slate-100 shadow-2xl">
                 <div className="flex items-stretch max-w-md mx-auto">
                     <button
                         onClick={() => setActiveView("game")}
@@ -251,7 +251,7 @@ export default function ChildPageClient({ child, childId }: Props) {
                 Very big, clear, friendly — no complex text for young kids */}
             {showExitConfirm && (
                 <div
-                    className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+                    className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
                     style={{ background: "rgba(15,10,40,0.75)", backdropFilter: "blur(12px)" }}
                     onClick={() => setShowExitConfirm(false)}
                 >

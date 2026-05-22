@@ -1,8 +1,7 @@
 // app/api/activities/complete/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
-import pool from "@/lib/db";
-import { RowDataPacket, ResultSetHeader } from "mysql2";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
     try {
@@ -34,13 +33,15 @@ export async function POST(req: NextRequest) {
 
         // Proveri da li korisnik ima pristup detetu
         console.log("🔍 Proveravam pristup detetu...");
-        const [accessRows] = await pool.query<RowDataPacket[]>(
-            "SELECT id FROM user_children WHERE user_id = ? AND child_id = ?",
-            [user.id, childId]
-        );
+        const { data: accessRows, error: accessError } = await supabaseAdmin
+            .from('user_children')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('child_id', childId);
+            
         console.log("👨‍👧 Pristup rezultat:", accessRows);
 
-        if (accessRows.length === 0) {
+        if (!accessRows || accessRows.length === 0) {
             return NextResponse.json(
                 { error: "Nemate pristup ovom detetu" },
                 { status: 403 }
@@ -50,17 +51,30 @@ export async function POST(req: NextRequest) {
         // Unesi progress log (bez provere aktivnosti)
         console.log("💾 Upisujem u progress_logs: childId=" + childId + ", activityId=" + activityId);
 
-        const [result] = await pool.query<ResultSetHeader>(
-            `INSERT INTO progress_logs 
-       (child_id, activity_id, success_level, duration_minutes, notes, mood_before, mood_after, recorded_by) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [childId, activityId, successLevel, durationMinutes, notes, moodBefore, moodAfter, user.id]
-        );
-        console.log("✅ USPEŠNO UPISANO! Insert ID:", result.insertId);
+        const { data: result, error: insertError } = await supabaseAdmin
+            .from('progress_logs')
+            .insert([{
+                child_id: childId,
+                activity_id: activityId,
+                success_level: successLevel,
+                duration_minutes: durationMinutes,
+                notes,
+                mood_before: moodBefore,
+                mood_after: moodAfter,
+                recorded_by: user.id
+            }])
+            .select('id')
+            .single();
+            
+        if (insertError) {
+             throw insertError;
+        }
+
+        console.log("✅ USPEŠNO UPISANO! Insert ID:", result.id);
 
         return NextResponse.json({
             success: true,
-            logId: result.insertId,
+            logId: result.id,
             message: "Rezultat uspešno sačuvan!"
         });
 

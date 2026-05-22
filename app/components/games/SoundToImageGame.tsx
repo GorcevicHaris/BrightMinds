@@ -103,6 +103,7 @@ export default function SoundToImageGame({
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const initialRoundRef = useRef(false);
+    const lastSoundIdRef = useRef<string | null>(null);
     const cfg = getLevelConfig(level);
     const maxRounds = cfg.rounds;
 
@@ -171,7 +172,12 @@ export default function SoundToImageGame({
         const { poolSize, optionsCount } = getLevelConfig(level);
         const pool = SOUND_ITEMS.slice(0, Math.min(poolSize, SOUND_ITEMS.length));
 
-        const correctAnswer = pool[Math.floor(Math.random() * pool.length)];
+        // Filtriramo prethodni zvuk da se ne bi ponovio odmah u sledećoj rundi
+        const filteredPool = pool.filter(item => item.id !== lastSoundIdRef.current);
+        const activePool = filteredPool.length > 0 ? filteredPool : pool;
+
+        const correctAnswer = activePool[Math.floor(Math.random() * activePool.length)];
+        lastSoundIdRef.current = correctAnswer.id;
 
         const allOthers = SOUND_ITEMS.filter(item => item.id !== correctAnswer.id);
         const wrongOptions = allOthers
@@ -251,6 +257,7 @@ export default function SoundToImageGame({
         setCorrectCount(0);
         setIncorrectCount(0);
         setGameCompleted(false);
+        lastSoundIdRef.current = null; // Resetujemo istoriju zvukova za novu igru
 
         emitGameStart(childId, 5, 'sound-to-image', {
             level,

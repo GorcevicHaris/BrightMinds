@@ -1,17 +1,7 @@
 import { NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import pool from '../../../../lib/db';
-import { FieldPacket, RowDataPacket } from 'mysql2';
-
-// Definiši interfejs za korisnika
-interface User extends RowDataPacket {
-    id: number;
-    password_hash: string;
-    full_name: string;
-    role: string;
-    parental_pin: string;
-}
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: Request) {
     try {
@@ -26,13 +16,16 @@ export async function POST(request: Request) {
             );
         }
 
-        const [rows] = await pool.query<User[]>(
-            'SELECT id, password_hash, full_name, role, parental_pin FROM users WHERE email = ?',
-            [email]
-        );
+        const { data: rows, error } = await supabaseAdmin
+            .from('users')
+            .select('id, password_hash, full_name, role, parental_pin')
+            .eq('email', email);
 
         console.log("EMAIL IZ REQUESTA:", email);
         console.log("ROW IZ BAZE:", rows);
+        if (error) {
+             console.error("Supabase error:", error);
+        }
 
         if (!rows || rows.length === 0) {
             return NextResponse.json(
