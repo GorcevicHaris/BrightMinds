@@ -8,7 +8,7 @@ import { log } from "console";
 interface GameProps {
     childId: number;
     level: number;
-    onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+    onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null, stats?: any) => void;
     onClose?: () => void;
     autoStart?: boolean;
     isMonitor?: boolean;

@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
       throw new Error("ElevenLabs je vratio prazan audio fajl");
     }
 
-    return new Response(audioBuffer, {
+    return new Response(audioBuffer as any, {
       headers: {
         'Content-Type': 'audio/mpeg',
         'Content-Length': audioBuffer.length.toString(),

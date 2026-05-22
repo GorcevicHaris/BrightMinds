@@ -9,7 +9,7 @@ interface GameProps {
   level: number;
   minLevel?: number;
   maxLevel?: number;
-  onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null) => void;
+  onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null, stats?: any) => void;
   onClose?: () => void;
   autoStart?: boolean;
   isMonitor?: boolean;

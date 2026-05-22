@@ -14,7 +14,8 @@ interface GameProps {
     score: number,
     duration: number,
     moodBefore?: string | null,
-    moodAfter?: string | null
+    moodAfter?: string | null,
+    stats?: any
   ) => void;
   onClose?: () => void;
   autoStart?: boolean;
@@ -643,7 +644,7 @@ export default function SocialStoryGame({
     onComplete(score, dur, moodBefore, mood, { correct: correctCount, total: totalAttempts });
   };
 
-  const handleAnswer = (opt: StoryOption) => {
+  const handleAnswer = (opt: { emoji: string; label: string; correct: boolean; feedback: string }) => {
     if (isLocked) return;
     const { correct, feedback: feedbackText, label } = opt;
     stopSpeech();

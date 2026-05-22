@@ -287,7 +287,7 @@ export default function ShapeMatchingGame({ childId, level, onComplete, onClose,
     const [showMoodAfter, setShowMoodAfter] = useState(false);
     const [correctCount, setCorrectCount] = useState(0);
     const [incorrectCount, setIncorrectCount] = useState(0);
-    const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+    const [selectedShapeId, setSelectedShapeId] = useState<number | null>(null);
 
     // Sync with monitor state
     useEffect(() => {

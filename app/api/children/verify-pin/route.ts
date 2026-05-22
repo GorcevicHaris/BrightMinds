@@ -101,7 +101,7 @@ export async function POST(req: Request) {
 
         let response: NextResponse;
         
-        let parent = parentRows?.user;
+        let parent: any = parentRows?.user;
         if (Array.isArray(parent)) parent = parent[0];
 
         if (parent) {

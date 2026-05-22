@@ -19,7 +19,8 @@ interface GameProps {
         score: number,
         duration: number,
         moodBefore?: string | null,
-        moodAfter?: string | null
+        moodAfter?: string | null,
+        stats?: any
     ) => void;
     onClose?: () => void;
     autoStart?: boolean;
