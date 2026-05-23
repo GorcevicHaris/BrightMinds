@@ -131,13 +131,13 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
       },
     };
     return (
-      <div className="mt-6 border-t pt-6 bg-white rounded-xl p-4 shadow-inner">
-        <div className="flex items-center gap-2 mb-4 text-blue-600 font-semibold border-b pb-2">
+      <div className="mt-4 sm:mt-6 border-t pt-4 sm:pt-6 bg-white sm:rounded-xl p-0 sm:p-4 sm:shadow-inner -mx-2 sm:mx-0">
+        <div className="flex items-center gap-2 mb-4 text-blue-600 font-semibold border-b pb-2 px-2 sm:px-0">
           <Monitor size={20} className="animate-pulse" />
           <span>Live Ekran (Pogled deteta)</span>
         </div>
-        <div className="bg-gray-50 rounded-2xl overflow-hidden border-2 border-dashed border-blue-200 p-4 transform scale-90 origin-top">
-          <div className="pointer-events-none">
+        <div className="bg-gray-50 rounded-xl sm:rounded-2xl overflow-hidden border-y sm:border-2 border-dashed border-blue-200 p-0 sm:p-6 flex justify-center w-full min-h-[500px]">
+          <div className="pointer-events-none transform scale-100 origin-top w-full flex justify-center pt-2 sm:pt-0">
             {currentGame === 'shape_matching' && <ShapeMatchingGame {...gameProps} />}
             {currentGame === 'memory' && <MemoryGame {...gameProps} />}
             {currentGame === 'coloring' && <ColoringGame {...gameProps} />}
@@ -224,9 +224,9 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6 md:p-8 max-w-4xl mx-auto border border-slate-100">
+    <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-2 sm:p-6 md:p-8 max-w-4xl mx-auto border border-slate-100">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 pb-4 border-b border-slate-100 gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
             <Eye className="text-white" size={22} />
@@ -253,10 +253,10 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
 
       {/* Current Game Status */}
       {currentGame ? (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-2xl p-6 mb-6 border border-blue-100">
-          <div className="flex items-center gap-3 mb-5">
-            <Activity className="text-blue-600" size={24} />
-            <h3 className="text-xl font-black text-slate-800">
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl sm:rounded-2xl p-3 sm:p-6 mb-6 border border-blue-100">
+          <div className="flex items-center gap-3 mb-4 sm:mb-5">
+            <Activity className="text-blue-600 shrink-0" size={24} />
+            <h3 className="text-lg sm:text-xl font-black text-slate-800 leading-tight">
               Trenutno igra: {getGameName(currentGame)}
             </h3>
           </div>
@@ -299,7 +299,7 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
           Aktivnost uživo
         </h3>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto">
+        <div className="space-y-2 max-h-[50vh] sm:max-h-96 overflow-y-auto pr-1 sm:pr-2">
           {updates.length === 0 ? (
             <p className="text-slate-400 text-center py-8 font-medium">Nema aktivnosti</p>
           ) : (

@@ -39,9 +39,9 @@ export default async function MonitorPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-2 sm:p-6">
       {/* Back Button */}
-      <div className="max-w-4xl mx-auto mb-6">
+      <div className="max-w-4xl mx-auto mb-4 sm:mb-6 px-2 sm:px-0">
         <Link
           href="/dashboard"
           className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold"
