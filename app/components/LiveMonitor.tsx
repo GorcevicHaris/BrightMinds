@@ -224,7 +224,7 @@ export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-2 sm:p-6 md:p-8 max-w-4xl mx-auto border border-slate-100">
+    <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-2 sm:p-6 md:p-8 w-full border border-slate-100">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 pb-4 border-b border-slate-100 gap-4">
         <div className="flex items-center gap-4">
