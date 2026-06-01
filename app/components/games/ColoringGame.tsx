@@ -610,7 +610,6 @@ export default function ColoringGame({
     return names[lvl] || "Slika";
   };
 
-  // ─── Mood Before — Premium Immersive Design ────────────────
   if (!isMonitor && showMoodBefore) {
     return (
       <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden">
