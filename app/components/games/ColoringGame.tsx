@@ -450,7 +450,6 @@ export default function ColoringGame({
     });
   };
 
-  // Re-initialize when displayLevel changes manually via debug menu
   useEffect(() => {
     if (isPlaying) {
       initializeGame();
