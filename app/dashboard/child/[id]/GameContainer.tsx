@@ -199,7 +199,7 @@ export default function GameContainer({ childId, childName, gender }: GameContai
     isSavingRef.current = true;
     lastSaveTimeRef.current = now;
     setIsLoading(true);
-
+    // 
     try {
       let stars = 0;
       if (stats) {
