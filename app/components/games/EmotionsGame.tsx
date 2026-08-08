@@ -11,7 +11,7 @@ function playSound(filename: string) {
     audio.play().catch(() => { /* fajl jos nije ubacen, nema greske */ });
     return audio;
 }
-
+/
 interface GameProps {
     childId: number;
     level: number;
@@ -251,16 +251,16 @@ export default function EmotionsGame({
             <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
                 {/* Background Decor */}
                 <div className="absolute inset-0 bg-slate-50">
-                   <div 
-                     className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
-                     style={{ backgroundImage: "url('/images/emocije.png')" }}
-                   />
-                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-white/80 to-purple-600/10 backdrop-blur-3xl" />
+                    <div
+                        className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
+                        style={{ backgroundImage: "url('/images/emocije.png')" }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-white/80 to-purple-600/10 backdrop-blur-3xl" />
                 </div>
 
                 <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
                     {onClose && (
-                        <button 
+                        <button
                             onClick={onClose}
                             className="fixed top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-lg border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-[110]"
                         >
@@ -269,10 +269,10 @@ export default function EmotionsGame({
                     )}
                     <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
-                           ✨ Raspoloženje
+                            ✨ Raspoloženje
                         </div>
                         <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
-                           Kako si danas?
+                            Kako si danas?
                         </h2>
                         <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
                     </div>
@@ -293,7 +293,7 @@ export default function EmotionsGame({
                             >
                                 <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
                                 <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
-                                   {mood.emoji}
+                                    {mood.emoji}
                                 </div>
                                 <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
                             </button>
@@ -308,7 +308,7 @@ export default function EmotionsGame({
     if (!isPlaying) {
         return (
             <div className="relative flex-1 min-h-[350px] w-full flex items-center justify-center overflow-hidden rounded-[2rem] md:rounded-[2.5rem] shadow-lg py-10 md:py-6"
-                style={{ 
+                style={{
                     backgroundImage: "linear-gradient(rgba(255,255,255,0.7), rgba(255,255,255,0.7)), url('/images/emocije.png')",
                     backgroundSize: 'cover',
                     backgroundPosition: 'center'
