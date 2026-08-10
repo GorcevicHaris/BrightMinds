@@ -11,7 +11,7 @@ function playSound(filename: string) {
     audio.play().catch(() => { /* fajl jos nije ubacen, nema greske */ });
     return audio;
 }
-/
+//
 interface GameProps {
     childId: number;
     level: number;
