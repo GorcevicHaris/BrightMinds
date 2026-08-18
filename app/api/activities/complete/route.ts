@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
             moodAfter
         } = body;
 
-        // Validacija podataka
+       
         if (!childId || !activityId || !successLevel) {
             console.log("❌ Validacija neuspešna:", { childId, activityId, successLevel });
             return NextResponse.json(
