@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
-
+//
 export async function POST(req: NextRequest) {
     try {
         console.log("🎮 API POZVAN - Početak");
