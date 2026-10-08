@@ -1,6 +1,7 @@
 // app/api/children/[id]/progress/route.ts
 // GET — statistika napretka jednog deteta (za roditelja/terapeuta i za dečji "Napredak").
-// Oblik odgovora: `ProgressResponse` iz lib/progress.ts.
+// Oblik odgovora: `ProgressResponse` iz lib/progress.ts — pored aktivnosti i nivoa nosi
+// samostalno/uz pomoć rešene zadatke po partiji, udele za 30 dana, savladanost i trend po igri.
 import { NextResponse } from "next/server";
 import { requireChildAccess } from "@/lib/auth";
 import { ACTIVITY_IDS } from "@/lib/games";
@@ -14,7 +15,8 @@ const MAX_ROWS = 20_000;
 
 /**
  * Svi zapisi deteta za igre iz lib/games.ts. Namerno `select('*')` bez spajanja sa
- * tabelom `activities`: nove kolone (level, stars, score…) možda još ne postoje u bazi,
+ * tabelom `activities`: nove kolone (level, stars, score, correct_count, prompted_count…)
+ * možda još ne postoje u bazi — `buildProgress` tada koristi starije podatke ili `null` —
  * a nazivi igara dolaze iz lib/games.ts.
  */
 async function fetchLogs(childId: number): Promise<unknown[]> {

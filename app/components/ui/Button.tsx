@@ -28,11 +28,11 @@ const VARIANTS: Record<ButtonVariant, { flat: string; chunky: string }> = {
     },
     danger: {
         flat: "bg-rose-600 text-white hover:bg-rose-700 shadow-soft",
-        chunky: "bg-rose-500 text-white border-rose-700 hover:bg-rose-600",
+        chunky: "bg-rose-600 text-white border-rose-800 hover:bg-rose-700",
     },
     success: {
-        flat: "bg-emerald-600 text-white hover:bg-emerald-700 shadow-soft",
-        chunky: "bg-emerald-500 text-white border-emerald-700 hover:bg-emerald-600",
+        flat: "bg-emerald-700 text-white hover:bg-emerald-800 shadow-soft",
+        chunky: "bg-emerald-700 text-white border-emerald-900 hover:bg-emerald-800",
     },
     sun: {
         flat: "bg-sun-400 text-ink hover:bg-sun-300 shadow-soft",

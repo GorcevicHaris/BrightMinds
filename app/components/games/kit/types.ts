@@ -4,8 +4,11 @@
 export interface GameResult {
     score: number;
     durationSec: number;
+    /** Zadaci rešeni samostalno, iz prvog pokušaja */
     correct: number;
     total: number;
+    /** Zadaci rešeni tek pošto je tačan odgovor istaknut (uz pomoć) */
+    prompted?: number;
 }
 
 /**

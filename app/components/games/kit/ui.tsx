@@ -2,6 +2,7 @@
 
 import React from "react";
 import { cn } from "@/lib/cn";
+import { IDLE_HINT_MS, useIdle } from "./useIdle";
 import type { GameAccent } from "@/lib/games";
 
 // ── GameStage ─────────────────────────────────────────────────────────────────
@@ -42,6 +43,8 @@ interface GameHudProps {
 export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, extra, className }: GameHudProps) {
     const total = Math.max(totalRounds, 1);
     const current = Math.min(Math.max(round, 1), total);
+    // Ako dete dugo ništa ne dodirne, dugme „Ponovi” blago zasvetli — bez glasa i bez požurivanja
+    const idle = useIdle(IDLE_HINT_MS, round);
     return (
         <div className={cn("flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 shadow-soft sm:gap-4 sm:px-5 sm:py-3", className)}>
             <div className="min-w-0 flex-1">
@@ -74,7 +77,7 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
                     <span aria-label={`${score} poena`}>{score}</span>
                 </div>
             )}
-            {onSpeak && <SpeakButton onClick={onSpeak} />}
+            {onSpeak && <SpeakButton onClick={onSpeak} className={idle ? "animate-soft-pulse" : undefined} />}
         </div>
     );
 }
@@ -171,8 +174,8 @@ export function ChoiceCard({ state = "idle", children, className, disabled, ...p
             {...props}
         >
             {children}
-            {state === "correct" && <ChoiceBadge className="bg-emerald-500">✓</ChoiceBadge>}
-            {state === "wrong" && <ChoiceBadge className="bg-rose-400">↺</ChoiceBadge>}
+            {state === "correct" && <ChoiceBadge className="bg-emerald-600">✓</ChoiceBadge>}
+            {state === "wrong" && <ChoiceBadge className="bg-rose-500">↺</ChoiceBadge>}
         </button>
     );
 }
@@ -200,7 +203,7 @@ interface FeedbackProps {
     className?: string;
 }
 
-export function Feedback({ kind, correctText = "Tačno! Bravo!", wrongText = "Probaj još jednom", className }: FeedbackProps) {
+export function Feedback({ kind, correctText = "Tačno.", wrongText = "Probaj opet.", className }: FeedbackProps) {
     return (
         <div aria-live="polite" className={cn("pointer-events-none flex min-h-12 items-center justify-center", className)}>
             {kind && (
@@ -208,10 +211,10 @@ export function Feedback({ kind, correctText = "Tačno! Bravo!", wrongText = "Pr
                     key={kind}
                     className={cn(
                         "inline-flex animate-pop items-center gap-2 rounded-full px-5 py-2.5 text-base font-extrabold shadow-soft sm:text-lg",
-                        kind === "correct" ? "bg-emerald-500 text-white" : "bg-sun-100 text-sun-700 ring-1 ring-sun-300"
+                        kind === "correct" ? "bg-emerald-700 text-white" : "bg-sun-100 text-sun-700 ring-1 ring-sun-300"
                     )}
                 >
-                    <span aria-hidden="true">{kind === "correct" ? "🎉" : "💪"}</span>
+                    {kind === "correct" && <span aria-hidden="true">✓</span>}
                     {kind === "correct" ? correctText : wrongText}
                 </div>
             )}

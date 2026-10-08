@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthError, requireChildAccess } from "@/lib/auth";
+import { resolveSettings, type ResolvedSettings } from "@/lib/childSettings";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buttonClasses } from "@/app/components/ui/Button";
 import ChildPageClient from "./ChildPageClient";
@@ -14,8 +15,13 @@ export interface ChildProfile {
     first_name: string;
     last_name: string;
     gender: string | null;
-    streak: number | null;
     experience_points: number | null;
+}
+
+/** Red iz baze; `settings` postoji tek posle migracije 0002. */
+interface ChildRow extends ChildProfile {
+    date_of_birth?: string | null;
+    settings?: unknown;
 }
 
 function Problem({ title, text }: { title: string; text: string }) {
@@ -51,13 +57,21 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
     }
 
     let child: ChildProfile | null = null;
+    let settings: ResolvedSettings = resolveSettings(null, null);
     try {
-        const { data } = await supabaseAdmin
-            .from("children")
-            .select("id, first_name, last_name, gender, streak, experience_points")
-            .eq("id", childId)
-            .maybeSingle();
-        child = data as ChildProfile | null;
+        // select("*") da upit radi i pre migracije koja dodaje kolonu `settings`
+        const { data } = await supabaseAdmin.from("children").select("*").eq("id", childId).maybeSingle();
+        const row = data as ChildRow | null;
+        if (row) {
+            child = {
+                id: row.id,
+                first_name: row.first_name,
+                last_name: row.last_name,
+                gender: row.gender ?? null,
+                experience_points: row.experience_points ?? null,
+            };
+            settings = resolveSettings(row.settings, row.date_of_birth);
+        }
     } catch {
         child = null;
     }
@@ -66,5 +80,5 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
         return <Problem title="Profil nije pronađen" text="Ovaj profil ne postoji ili je obrisan." />;
     }
 
-    return <ChildPageClient child={child} viewer={viewer} />;
+    return <ChildPageClient child={child} viewer={viewer} settings={settings} />;
 }

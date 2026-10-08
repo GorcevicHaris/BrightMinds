@@ -6,6 +6,7 @@
 // Europe/Belgrade, bez obzira na zonu servera ili pregledača. Ranije su se datumi
 // poredili kao UTC ISO stringovi, pa je igra odigrana uveče mogla da "pređe" u pogrešan dan.
 import {
+    ADVANCE_RATIO,
     GAMES,
     LEVELS_PER_TIER,
     MAX_LEVEL,
@@ -27,6 +28,25 @@ export const RECENT_SESSIONS_LIMIT = 30;
 /** Za svaku igru posebno garantujemo bar ovoliko poslednjih sesija (zbog filtera po igri). */
 const RECENT_SESSIONS_PER_GAME = 10;
 
+// ── Savladanost ───────────────────────────────────────────────────────────────
+// Zvezdice su nagrada za dete; savladanost je pomoć odraslom pri odluci šta dalje.
+// Kriterijum ispod (bar 80% SAMOSTALNO tačnih odgovora u 3 uzastopne partije koje nisu
+// sve odigrane istog dana) je uobičajena klinička konvencija, a ne dokazani optimum:
+// služi kao orijentir, a odluku o sledećem koraku donosi odrasla osoba.
+
+/** Najmanji udeo samostalno tačnih odgovora u partiji da bi se računala u savladanost. */
+export const MASTERY_RATIO = 0.8;
+/** Koliko poslednjih partija (sa brojem odgovora, na trenutnoj težini) mora da ispuni `MASTERY_RATIO`. */
+export const MASTERY_SESSIONS = 3;
+/** Na koliko najmanje različitih kalendarskih dana (zona `PROGRESS_TIME_ZONE`) te partije moraju pasti. */
+export const MASTERY_MIN_DAYS = 2;
+/** `needsSupport`: toliko poslednjih partija zaredom je ispod `SUPPORT_RATIO`. */
+export const SUPPORT_SESSIONS = 3;
+/** Isti prag ispod kog igra ne predlaže sledeći nivo. */
+export const SUPPORT_RATIO = ADVANCE_RATIO;
+/** Koliko poslednjih partija (sa brojem odgovora) ulazi u `trend`. */
+export const TREND_SESSIONS = 10;
+
 // ── Tipovi odgovora ───────────────────────────────────────────────────────────
 
 export type Stars = 0 | 1 | 2 | 3;
@@ -43,16 +63,35 @@ export interface Tier {
 export type SuccessDistribution = Record<SuccessLevel, number>;
 export type MoodCounts = Record<Mood, number>;
 
-export interface MoodInsights {
-    /** Koliko puta je zabeleženo svako raspoloženje pre igre */
+/**
+ * Lica koja je dete samo izabralo pre i posle igre. Namerno samo raspodela izbora:
+ * kod male dece skala sa licima nije pouzdano merenje, pa se pre i posle ne porede
+ * i ništa se ne tumači kao ishod igre. Kraća skala (tri lica) koristi podskup istih vrednosti.
+ */
+export interface MoodChoices {
     before: MoodCounts;
-    /** Koliko puta je zabeleženo svako raspoloženje posle igre */
     after: MoodCounts;
-    /** Igre u kojima postoje oba podatka; `improved + same + dropped === paired` */
-    paired: number;
-    improved: number;
-    same: number;
-    dropped: number;
+}
+
+/**
+ * Savladanost trenutne težine igre (videti konstante `MASTERY_*`):
+ *  • "mastered"    — poslednjih `MASTERY_SESSIONS` partija sa brojem odgovora na trenutnoj težini
+ *                    palo je na bar `MASTERY_MIN_DAYS` različita dana i svaka ima bar
+ *                    `MASTERY_RATIO` samostalno tačnih;
+ *  • "progressing" — igra ima partije sa brojem odgovora, ali kriterijum (još) nije ispunjen;
+ *  • "not_started" — nema nijedne partije sa brojem odgovora.
+ */
+/** "ungraded": igra bez pogrešnih odgovora (osećanja) — savladanost se ne procenjuje */
+export type MasteryStatus = "mastered" | "progressing" | "not_started" | "ungraded";
+
+export interface TrendPoint {
+    /** Dan u zoni `PROGRESS_TIME_ZONE`, format YYYY-MM-DD */
+    date: string;
+    /** 0–1 */
+    independentRatio: number;
+    /** 0–1, `null` kada pomoć nije beležena */
+    promptedRatio: number | null;
+    level: number | null;
 }
 
 /** Zbirni brojevi — isti oblik za sve igre zajedno i za svaku igru posebno. */
@@ -64,8 +103,19 @@ export interface ProgressSummary {
     averageStars: number | null;
     /** Broj različitih dana sa bar jednom igrom (od početka) */
     activeDays: number;
-    /** Isto, ali samo u poslednjih `ACTIVITY_WINDOW_DAYS` dana */
-    activeDaysInWindow: number;
+    /** Isto, ali samo u poslednjih `ACTIVITY_WINDOW_DAYS` dana (neutralan broj dana, ne niz koji se „čuva”) */
+    daysPlayed30d: number;
+    /**
+     * Udeo zadataka rešenih samostalno iz prvog pokušaja (0–1) u partijama iz poslednjih
+     * `ACTIVITY_WINDOW_DAYS` dana koje imaju broj odgovora; `null` kada takvih partija nema.
+     */
+    independentRate30d: number | null;
+    /**
+     * Udeo zadataka rešenih tek uz pomoć, nad ISTIM zadacima kao `independentRate30d`
+     * (zato zbir nikad ne prelazi 1). `null` dok pomoć nije zabeležena ni u jednoj od tih
+     * partija; partije bez tog podatka ne doprinose brojiocu, pa je udeo tada donja granica.
+     */
+    promptedRate30d: number | null;
     /** ISO 8601 (UTC) */
     lastPlayedAt: string | null;
 }
@@ -83,14 +133,23 @@ export interface GameProgress extends ProgressSummary {
     gameId: GameId;
     activityId: number;
     bestScore: number | null;
-    /** 0–15; nivo se računa kao završen kada donese bar jednu zvezdicu */
+    /**
+     * 0–15; nivo je završen po istom pravilu po kom se otključava sledeći: bar `ADVANCE_RATIO`
+     * samostalno tačnih, a za starije zapise bez broja odgovora bar jedna zvezdica.
+     */
     highestLevelCompleted: number;
     /** Nivo na kome je dete sada (sledeći posle najvišeg završenog, najviše 15) */
     currentLevel: number;
     /** Težina kojoj pripada `currentLevel` */
     tier: TierId;
     success: SuccessDistribution;
-    mood: MoodInsights;
+    mood: MoodChoices;
+    /** Odnosi se na težinu `tier` */
+    mastery: MasteryStatus;
+    /** Poslednjih `SUPPORT_SESSIONS` partija sa brojem odgovora sve su ispod `SUPPORT_RATIO` samostalno tačnih */
+    needsSupport: boolean;
+    /** Do `TREND_SESSIONS` poslednjih partija sa brojem odgovora, od najstarije ka najnovijoj */
+    trend: TrendPoint[];
 }
 
 export interface DailyGameActivity {
@@ -112,8 +171,13 @@ export interface ProgressSession {
     level: number | null;
     stars: Stars;
     score: number | null;
-    correctCount: number | null;
+    /** Zadaci rešeni samostalno iz prvog pokušaja; `null` (kao i `totalCount`) za zapise bez broja odgovora */
+    independentCount: number | null;
+    /** Zadaci rešeni tek pošto je igra istakla odgovor; `null` kada to nije beleženo */
+    promptedCount: number | null;
     totalCount: number | null;
+    /** `independentCount / totalCount` (0–1) */
+    independentRatio: number | null;
     durationSeconds: number | null;
     moodBefore: Mood | null;
     moodAfter: Mood | null;
@@ -134,7 +198,7 @@ export interface ProgressResponse {
     daily: DailyActivity[];
     /** Najnovije prvo: poslednjih 30 igara ukupno + do 10 poslednjih za svaku igru */
     recentSessions: ProgressSession[];
-    mood: MoodInsights;
+    mood: MoodChoices;
 }
 
 // ── Težine ────────────────────────────────────────────────────────────────────
@@ -167,12 +231,23 @@ interface NormalizedLog {
     stars: Stars;
     successLevel: SuccessLevel;
     score: number | null;
-    correctCount: number | null;
-    totalCount: number | null;
+    /** `null` kada zapis nema upotrebljiv broj odgovora */
+    counts: RoundCounts | null;
+    /** Da li partija računa nivo kao završen */
+    passed: boolean;
     durationSeconds: number | null;
     moodBefore: Mood | null;
     moodAfter: Mood | null;
 }
+
+/** Zadaci jedne partije: uvek `independent + (prompted ?? 0) <= total` i `total > 0`. */
+interface RoundCounts {
+    independent: number;
+    prompted: number | null;
+    total: number;
+}
+
+type CountedLog = NormalizedLog & { counts: RoundCounts };
 
 const SUCCESS_STARS: Record<SuccessLevel, Stars> = { struggled: 0, partial: 1, successful: 2, excellent: 3 };
 
@@ -232,9 +307,24 @@ function parseTimestamp(value: unknown): number | null {
 }
 
 /**
+ * Broj odgovora iz kolona `correct_count` (samostalno, iz prvog pokušaja), `prompted_count`
+ * (tek uz pomoć; kolona može i da ne postoji) i `total_count`. Vrednosti se svode na
+ * moguće granice da jedan neispravan red ne bi dao udeo veći od 100%.
+ */
+function toRoundCounts(row: Record<string, unknown>): RoundCounts | null {
+    const correct = toCount(row.correct_count);
+    const total = toCount(row.total_count);
+    if (correct === null || total === null || total === 0) return null;
+
+    const independent = Math.min(correct, total);
+    const prompted = toCount(row.prompted_count);
+    return { independent, prompted: prompted === null ? null : Math.min(prompted, total - independent), total };
+}
+
+/**
  * Jedan red iz `progress_logs`. Nove kolone (level, stars, score, correct_count,
- * total_count, duration_seconds) imaju prednost; ako ih nema u bazi ili su prazne,
- * vrednosti se čitaju iz stare beleške, a zvezdice i iz `success_level`.
+ * total_count, prompted_count, duration_seconds) imaju prednost; ako ih nema u bazi ili
+ * su prazne, vrednosti se čitaju iz stare beleške, a zvezdice i iz `success_level`.
  * Vraća `null` za red koji ne pripada nijednoj igri ili nema upotrebljiv datum/rezultat.
  */
 function normalizeLog(row: unknown): NormalizedLog | null {
@@ -246,8 +336,7 @@ function normalizeLog(row: unknown): NormalizedLog | null {
     if (id === null || !game || completedAtMs === null) return null;
 
     const notes = typeof row.notes === "string" ? row.notes : null;
-    const correctCount = toCount(row.correct_count);
-    const totalCount = toCount(row.total_count);
+    const counts = toRoundCounts(row);
 
     const starsColumn = toCount(row.stars);
     const starsNote = fromNotes(notes, LEGACY_NOTES.stars);
@@ -255,7 +344,7 @@ function normalizeLog(row: unknown): NormalizedLog | null {
     if (isStars(starsColumn)) stars = starsColumn;
     else if (isStars(starsNote)) stars = starsNote;
     else if (isSuccessLevel(row.success_level)) stars = SUCCESS_STARS[row.success_level];
-    else if (correctCount !== null && totalCount !== null && totalCount > 0) stars = starsFor(correctCount, totalCount);
+    else if (counts) stars = starsFor(counts.independent, counts.total);
     else return null;
 
     const level = toLevel(toCount(row.level)) ?? toLevel(fromNotes(notes, LEGACY_NOTES.level));
@@ -271,8 +360,9 @@ function normalizeLog(row: unknown): NormalizedLog | null {
         stars,
         successLevel: isSuccessLevel(row.success_level) ? row.success_level : successLevelFor(stars),
         score: toCount(row.score) ?? fromNotes(notes, LEGACY_NOTES.score),
-        correctCount,
-        totalCount,
+        counts,
+        // Isto pravilo kao pri otključavanju sledećeg nivoa (`isLevelPassed` u app/api/_lib/children.ts)
+        passed: !game.graded || (counts ? counts.independent / counts.total >= ADVANCE_RATIO : stars > 0),
         durationSeconds:
             durationSeconds ?? (durationMinutes !== null && durationMinutes >= 0 ? Math.round(durationMinutes * 60) : null),
         moodBefore: toMood(row.mood_before),
@@ -286,11 +376,19 @@ function emptyMoodCounts(): MoodCounts {
     return { very_upset: 0, upset: 0, neutral: 0, happy: 0, very_happy: 0 };
 }
 
-function emptyMoodInsights(): MoodInsights {
-    return { before: emptyMoodCounts(), after: emptyMoodCounts(), paired: 0, improved: 0, same: 0, dropped: 0 };
+/** Udeo zaokružen na četiri decimale (za odgovor API-ja; pragovi se porede sa nezaokruženim vrednostima). */
+function toRatio(part: number, total: number): number {
+    return Math.round((part / total) * 10_000) / 10_000;
 }
 
-const MOOD_RANK: Record<Mood, number> = { very_upset: 0, upset: 1, neutral: 2, happy: 3, very_happy: 4 };
+/** Zbir zadataka u partijama sa brojem odgovora iz poslednjih `ACTIVITY_WINDOW_DAYS` dana. */
+interface WindowRounds {
+    independent: number;
+    prompted: number;
+    /** Da li je bar jedna od tih partija imala zabeleženu pomoć */
+    promptedKnown: boolean;
+    total: number;
+}
 
 interface Tally {
     plays: number;
@@ -298,14 +396,23 @@ interface Tally {
     stars: number;
     days: Set<string>;
     lastPlayedMs: number | null;
-    mood: MoodInsights;
+    mood: MoodChoices;
+    rounds: WindowRounds;
 }
 
 function emptyTally(): Tally {
-    return { plays: 0, seconds: 0, stars: 0, days: new Set(), lastPlayedMs: null, mood: emptyMoodInsights() };
+    return {
+        plays: 0,
+        seconds: 0,
+        stars: 0,
+        days: new Set(),
+        lastPlayedMs: null,
+        mood: { before: emptyMoodCounts(), after: emptyMoodCounts() },
+        rounds: { independent: 0, prompted: 0, promptedKnown: false, total: 0 },
+    };
 }
 
-function addToTally(tally: Tally, log: NormalizedLog): void {
+function addToTally(tally: Tally, log: NormalizedLog, inWindow: boolean): void {
     tally.plays += 1;
     tally.seconds += log.durationSeconds ?? 0;
     tally.stars += log.stars;
@@ -314,29 +421,69 @@ function addToTally(tally: Tally, log: NormalizedLog): void {
 
     if (log.moodBefore) tally.mood.before[log.moodBefore] += 1;
     if (log.moodAfter) tally.mood.after[log.moodAfter] += 1;
-    if (log.moodBefore && log.moodAfter) {
-        const change = MOOD_RANK[log.moodAfter] - MOOD_RANK[log.moodBefore];
-        tally.mood.paired += 1;
-        if (change > 0) tally.mood.improved += 1;
-        else if (change < 0) tally.mood.dropped += 1;
-        else tally.mood.same += 1;
+
+    if (inWindow && log.counts) {
+        tally.rounds.independent += log.counts.independent;
+        tally.rounds.total += log.counts.total;
+        if (log.counts.prompted !== null) {
+            tally.rounds.prompted += log.counts.prompted;
+            tally.rounds.promptedKnown = true;
+        }
     }
 }
 
 function summarize(tally: Tally, windowStart: string): ProgressSummary {
-    let activeDaysInWindow = 0;
+    let daysPlayed30d = 0;
     tally.days.forEach((day) => {
-        if (day >= windowStart) activeDaysInWindow += 1;
+        if (day >= windowStart) daysPlayed30d += 1;
     });
+    const { independent, prompted, promptedKnown, total } = tally.rounds;
     return {
         plays: tally.plays,
         totalMinutes: Math.round(tally.seconds / 60),
         totalStars: tally.stars,
         averageStars: tally.plays > 0 ? Math.round((tally.stars / tally.plays) * 100) / 100 : null,
         activeDays: tally.days.size,
-        activeDaysInWindow,
+        daysPlayed30d,
+        independentRate30d: total > 0 ? toRatio(independent, total) : null,
+        promptedRate30d: total > 0 && promptedKnown ? toRatio(prompted, total) : null,
         lastPlayedAt: tally.lastPlayedMs === null ? null : new Date(tally.lastPlayedMs).toISOString(),
     };
+}
+
+// ── Savladanost i trend ───────────────────────────────────────────────────────
+
+const independentRatio = (log: CountedLog) => log.counts.independent / log.counts.total;
+
+/** `counted`: partije igre sa brojem odgovora, najnovije prvo. */
+function masteryFor(counted: readonly CountedLog[], tier: Tier): MasteryStatus {
+    if (counted.length === 0) return "not_started";
+
+    const recent = counted
+        .filter((log) => log.level !== null && log.level >= tier.from && log.level <= tier.to)
+        .slice(0, MASTERY_SESSIONS);
+    const mastered =
+        recent.length === MASTERY_SESSIONS &&
+        recent.every((log) => independentRatio(log) >= MASTERY_RATIO) &&
+        new Set(recent.map((log) => log.day)).size >= MASTERY_MIN_DAYS;
+    return mastered ? "mastered" : "progressing";
+}
+
+function needsSupportFor(counted: readonly CountedLog[]): boolean {
+    const recent = counted.slice(0, SUPPORT_SESSIONS);
+    return recent.length === SUPPORT_SESSIONS && recent.every((log) => independentRatio(log) < SUPPORT_RATIO);
+}
+
+function trendFor(counted: readonly CountedLog[]): TrendPoint[] {
+    return counted
+        .slice(0, TREND_SESSIONS)
+        .reverse()
+        .map((log) => ({
+            date: log.day,
+            independentRatio: toRatio(log.counts.independent, log.counts.total),
+            promptedRatio: log.counts.prompted === null ? null : toRatio(log.counts.prompted, log.counts.total),
+            level: log.level,
+        }));
 }
 
 interface GameTally {
@@ -344,6 +491,8 @@ interface GameTally {
     bestScore: number | null;
     highestLevelCompleted: number;
     success: SuccessDistribution;
+    /** Partije sa brojem odgovora, najnovije prvo */
+    counted: CountedLog[];
     /** Koliko je sesija ove igre već obrađeno (za `recentSessions`) */
     seen: number;
 }
@@ -354,6 +503,7 @@ function emptyGameTally(): GameTally {
         bestScore: null,
         highestLevelCompleted: 0,
         success: { struggled: 0, partial: 0, successful: 0, excellent: 0 },
+        counted: [],
         seen: 0,
     };
 }
@@ -389,13 +539,16 @@ export function buildProgress(rows: readonly unknown[], now: Date = new Date()):
         const game = perGame.get(log.gameId);
         if (!game) return;
 
-        addToTally(overall, log);
-        addToTally(game.tally, log);
+        const inWindow = log.day >= windowStart && log.day <= today;
+        const { counts } = log;
+        addToTally(overall, log, inWindow);
+        addToTally(game.tally, log, inWindow);
         game.success[log.successLevel] += 1;
+        if (counts) game.counted.push({ ...log, counts });
         if (log.score !== null) game.bestScore = Math.max(game.bestScore ?? 0, log.score);
-        if (log.level !== null && log.stars > 0) game.highestLevelCompleted = Math.max(game.highestLevelCompleted, log.level);
+        if (log.level !== null && log.passed) game.highestLevelCompleted = Math.max(game.highestLevelCompleted, log.level);
 
-        if (log.day >= windowStart && log.day <= today) {
+        if (inWindow) {
             const day: DayTally = byDay.get(log.day) ?? { plays: 0, seconds: 0, games: new Map() };
             const dayGame = day.games.get(log.gameId) ?? { plays: 0, seconds: 0 };
             day.plays += 1;
@@ -413,8 +566,10 @@ export function buildProgress(rows: readonly unknown[], now: Date = new Date()):
                 level: log.level,
                 stars: log.stars,
                 score: log.score,
-                correctCount: log.correctCount,
-                totalCount: log.totalCount,
+                independentCount: counts?.independent ?? null,
+                promptedCount: counts?.prompted ?? null,
+                totalCount: counts?.total ?? null,
+                independentRatio: counts ? toRatio(counts.independent, counts.total) : null,
                 durationSeconds: log.durationSeconds,
                 moodBefore: log.moodBefore,
                 moodAfter: log.moodAfter,
@@ -427,6 +582,7 @@ export function buildProgress(rows: readonly unknown[], now: Date = new Date()):
     const games: GameProgress[] = GAMES.map((definition) => {
         const game = perGame.get(definition.id) ?? emptyGameTally();
         const currentLevel = Math.min(game.highestLevelCompleted + 1, MAX_LEVEL);
+        const tier = tierForLevel(currentLevel);
         return {
             ...summarize(game.tally, windowStart),
             gameId: definition.id,
@@ -434,9 +590,12 @@ export function buildProgress(rows: readonly unknown[], now: Date = new Date()):
             bestScore: game.bestScore,
             highestLevelCompleted: game.highestLevelCompleted,
             currentLevel,
-            tier: tierForLevel(currentLevel).id,
+            tier: tier.id,
             success: game.success,
             mood: game.tally.mood,
+            mastery: definition.graded ? masteryFor(game.counted, tier) : "ungraded",
+            needsSupport: definition.graded && needsSupportFor(game.counted),
+            trend: trendFor(game.counted),
         };
     });
 

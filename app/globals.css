@@ -15,7 +15,7 @@
   --color-line: #e6e3f4;
   --color-ink: #1f1b3a;
   --color-ink-soft: #57537a;
-  --color-ink-faint: #8f8bae;
+  --color-ink-faint: #6b678d;
 
   /* Brend (ljubičasto-indigo) */
   --color-brand-50: #f2f1ff;
@@ -37,7 +37,7 @@
   --color-sun-400: #ffb920;
   --color-sun-500: #f59e0b;
   --color-sun-600: #d97f06;
-  --color-sun-700: #b35f08;
+  --color-sun-700: #955005;
 
   --radius-card: 1.5rem;
   --radius-tile: 1.25rem;
@@ -126,6 +126,29 @@ button:not(:disabled), [role="button"] {
 .scroll-soft {
   scrollbar-width: thin;
   scrollbar-color: var(--color-brand-200) transparent;
+}
+
+/* Velika štampana slova za decu koja tek uče slova (bira roditelj) */
+[data-caps],
+[data-caps] button,
+[data-caps] select,
+[data-caps] input {
+  text-transform: uppercase;
+}
+
+/* Delovi namenjeni odraslima (napomene, saveti) ostaju u običnom pisanju */
+[data-caps] .normal-case,
+[data-caps] .normal-case button {
+  text-transform: none;
+}
+
+/* Smanjeno kretanje koje je izabrao roditelj — isto što i sistemsko podešavanje ispod */
+[data-motion="reduced"] *,
+[data-motion="reduced"] *::before,
+[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
 }
 
 /* Deca osetljiva na pokret: gasimo animacije kad sistem to traži */

@@ -3,6 +3,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { masterVolume } from "./sound";
 
 type AudioContextCtor = typeof AudioContext;
 
@@ -101,8 +102,11 @@ export function useAvatarAudio() {
                 analyser.fftSize = 256;
                 analyser.smoothingTimeConstant = 0.6;
                 source.buffer = decoded;
+                const gain = ctx.createGain();
+                gain.gain.value = masterVolume();
                 source.connect(analyser);
-                analyser.connect(ctx.destination);
+                analyser.connect(gain);
+                gain.connect(ctx.destination);
                 sourceRef.current = source;
                 analyserRef.current = analyser;
 

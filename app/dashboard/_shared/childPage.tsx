@@ -12,10 +12,10 @@ import { AuthError, requireChildOwner } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { supabaseAdmin } from "@/lib/supabase";
 
+/** Samo ime: prezime se na ovim stranicama ne prikazuje, pa se i ne učitava. */
 export interface OwnedChild {
     id: number;
     firstName: string;
-    fullName: string;
 }
 
 /**
@@ -34,12 +34,11 @@ export async function loadOwnedChild(idParam: string): Promise<OwnedChild> {
         throw error;
     }
 
-    const { data } = await supabaseAdmin.from("children").select("first_name, last_name").eq("id", childId).maybeSingle();
+    const { data } = await supabaseAdmin.from("children").select("first_name").eq("id", childId).maybeSingle();
     const firstName = typeof data?.first_name === "string" ? data.first_name.trim() : "";
-    const lastName = typeof data?.last_name === "string" ? data.last_name.trim() : "";
     if (!firstName) redirect("/dashboard");
 
-    return { id: childId, firstName, fullName: `${firstName} ${lastName}`.trim() };
+    return { id: childId, firstName };
 }
 
 type ChildView = "progress" | "monitor";
@@ -81,7 +80,7 @@ export function ChildPageShell({ child, view, title, description, children }: Ch
                     <div className="min-w-0">
                         <h1 className="break-words text-2xl font-extrabold text-ink sm:text-3xl">
                             <span className="mb-1 block font-sans text-sm font-bold tracking-normal text-brand-700">{title}</span>
-                            {child.fullName}
+                            {child.firstName}
                         </h1>
                         <p className="mt-1 text-sm text-ink-soft">{description}</p>
                     </div>

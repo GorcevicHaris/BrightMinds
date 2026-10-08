@@ -13,7 +13,7 @@ const WORD = { sm: "text-lg", md: "text-xl", lg: "text-3xl" };
 
 export function Logo({ size = "md", tagline = false, className }: LogoProps) {
     return (
-        <div className={cn("flex items-center gap-3", className)}>
+        <div className={cn("flex items-center gap-3", className)} data-no-translit>
             <span className={cn("grid shrink-0 place-items-center overflow-hidden rounded-2xl bg-white shadow-soft ring-1 ring-line", MARK[size])}>
                 <Image src="/logo.png" alt="" width={56} height={56} className="h-[82%] w-[82%] object-contain" />
             </span>

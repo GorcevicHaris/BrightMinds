@@ -41,7 +41,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
                     </ul>
                 </div>
 
-                <p className="relative text-xs font-semibold text-brand-200">© {new Date().getFullYear()} Bright Minds</p>
+                <p className="relative text-xs font-semibold text-brand-100">© {new Date().getFullYear()} Bright Minds</p>
             </aside>
 
             {/* Desna strana — sadržaj */}

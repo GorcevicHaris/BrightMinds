@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
-import { isMuted } from "./sound";
+import { masterVolume, voiceEnabled } from "./sound";
 
 export interface SpeakOptions {
     gender?: string;
@@ -110,6 +110,7 @@ function speakWithBrowser(text: string, done: () => void) {
     utterance.voice = voice;
     utterance.lang = voice.lang;
     utterance.rate = 0.9;
+    utterance.volume = masterVolume();
     const finish = () => {
         window.dispatchEvent(new Event("avatar:stop"));
         done();
@@ -134,7 +135,7 @@ export async function speak(text: string, options: SpeakOptions = {}): Promise<v
 
     stopSpeaking();
     // Zvuk je isključen: ništa ne puštamo (i ne trošimo TTS), ali tok igre ide dalje
-    if (isMuted()) {
+    if (!voiceEnabled()) {
         done();
         return;
     }
@@ -156,6 +157,7 @@ export async function speak(text: string, options: SpeakOptions = {}): Promise<v
     if (handledByAvatar) return;
 
     const audio = new Audio(url);
+    audio.volume = masterVolume();
     currentAudio = audio;
     audio.onended = done;
     audio.onerror = done;

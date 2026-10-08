@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart3, LogOut, Pencil, Play, Plus, Radio, Trash2 } from "lucide-react";
+import { BarChart3, LogOut, Pencil, Play, Plus, Radio, Settings2, Trash2 } from "lucide-react";
+import ChildSettingsModal from "./ChildSettingsModal";
 import VisualPinPad from "./VisualPinPad";
 import { Alert, Card } from "./ui/Card";
 import { Button, buttonClasses } from "./ui/Button";
@@ -12,6 +13,7 @@ import { Input, Select, Textarea } from "./ui/Field";
 import { Logo } from "./ui/Logo";
 import { Modal } from "./ui/Modal";
 import { cn } from "@/lib/cn";
+import { BAND_PRESETS, ageInYears, bandForAge, sanitizeSettings } from "@/lib/childSettings";
 import { PIN_LENGTH, pinToItems } from "@/lib/visualPinData";
 
 interface Child {
@@ -24,6 +26,8 @@ interface Child {
     pin_code: string | null;
     streak: number | null;
     experience_points: number | null;
+    /** Sirova podešavanja iz baze; {} dok ih roditelj ne promeni */
+    settings?: unknown;
 }
 
 interface CurrentUser {
@@ -64,6 +68,11 @@ function ageLabel(dateOfBirth: string): string {
     const lastTwo = years % 100;
     const word = lastDigit === 1 && lastTwo !== 11 ? "godina" : lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14) ? "godine" : "godina";
     return `${years} ${word}`;
+}
+
+function bandLabel(child: Child): string {
+    const band = sanitizeSettings(child.settings, bandForAge(ageInYears(child.date_of_birth))).band ?? bandForAge(ageInYears(child.date_of_birth));
+    return BAND_PRESETS[band].ages;
 }
 
 async function readError(res: Response, fallback: string): Promise<string> {
@@ -111,6 +120,7 @@ export default function Dashboard() {
     const [loadError, setLoadError] = useState("");
 
     const [editing, setEditing] = useState<Child | "new" | null>(null);
+    const [configuring, setConfiguring] = useState<Child | null>(null);
     const [deleting, setDeleting] = useState<Child | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState("");
@@ -249,12 +259,41 @@ export default function Dashboard() {
                     <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                         {children.map((child) => (
                             <li key={child.id}>
-                                <ChildCard child={child} onEdit={() => setEditing(child)} onDelete={() => { setDeleteError(""); setDeleting(child); }} />
+                                <ChildCard
+                                    child={child}
+                                    onEdit={() => setEditing(child)}
+                                    onConfigure={() => setConfiguring(child)}
+                                    onDelete={() => {
+                                        setDeleteError("");
+                                        setDeleting(child);
+                                    }}
+                                />
                             </li>
                         ))}
                     </ul>
                 )}
             </main>
+
+            <footer className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8">
+                <p className="max-w-3xl text-xs font-medium text-ink-faint">
+                    Bright Minds je vežbanka uz podršku odraslih. Nije terapija ni dijagnostički alat i ne zamenjuje logopeda,
+                    defektologa ili psihologa. Veštine se najbolje prenose u svakodnevni život kada ih dete vežba i van ekrana, sa vama.
+                </p>
+            </footer>
+
+            {configuring && (
+                <ChildSettingsModal
+                    childId={configuring.id}
+                    childName={configuring.first_name}
+                    dateOfBirth={configuring.date_of_birth}
+                    stored={configuring.settings}
+                    onClose={() => setConfiguring(null)}
+                    onSaved={(settings) => {
+                        setChildren((prev) => prev.map((c) => (c.id === configuring.id ? { ...c, settings } : c)));
+                        setConfiguring(null);
+                    }}
+                />
+            )}
 
             {editing && (
                 <ChildFormModal
@@ -292,7 +331,7 @@ export default function Dashboard() {
 
 // ── Kartica deteta ────────────────────────────────────────────────────────────
 
-function ChildCard({ child, onEdit, onDelete }: { child: Child; onEdit: () => void; onDelete: () => void }) {
+function ChildCard({ child, onEdit, onConfigure, onDelete }: { child: Child; onEdit: () => void; onConfigure: () => void; onDelete: () => void }) {
     const pinItems = pinToItems(child.pin_code);
     const hasPin = pinItems.length === PIN_LENGTH && pinItems.every(Boolean);
     const age = ageLabel(child.date_of_birth);
@@ -342,8 +381,8 @@ function ChildCard({ child, onEdit, onDelete }: { child: Child; onEdit: () => vo
                     <dd className="text-lg font-extrabold text-ink">⭐ {child.experience_points ?? 0}</dd>
                 </div>
                 <div className="rounded-xl bg-orange-50 px-3 py-2.5">
-                    <dt className="text-xs font-bold text-orange-700">Dana zaredom</dt>
-                    <dd className="text-lg font-extrabold text-ink">🔥 {child.streak ?? 0}</dd>
+                    <dt className="text-xs font-bold text-orange-700">Uzrast za igre</dt>
+                    <dd className="text-lg font-extrabold text-ink">{bandLabel(child)}</dd>
                 </div>
             </dl>
 
@@ -384,15 +423,19 @@ function ChildCard({ child, onEdit, onDelete }: { child: Child; onEdit: () => vo
                     <Play className="h-5 w-5" aria-hidden="true" />
                     Pokreni igre
                 </Link>
-                <div className="mt-2.5 grid grid-cols-2 gap-2.5">
-                    <Link href={`/dashboard/progress/${child.id}`} className={buttonClasses({ variant: "secondary" })}>
-                        <BarChart3 className="h-4 w-4" aria-hidden="true" />
+                <div className="mt-2.5 grid grid-cols-3 gap-2">
+                    <Link href={`/dashboard/progress/${child.id}`} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
+                        <BarChart3 className="h-4 w-4 shrink-0" aria-hidden="true" />
                         Statistika
                     </Link>
-                    <Link href={`/dashboard/monitor/${child.id}`} className={buttonClasses({ variant: "secondary" })}>
-                        <Radio className="h-4 w-4" aria-hidden="true" />
+                    <Link href={`/dashboard/monitor/${child.id}`} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
+                        <Radio className="h-4 w-4 shrink-0" aria-hidden="true" />
                         Uživo
                     </Link>
+                    <button type="button" onClick={onConfigure} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
+                        <Settings2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        Podesi
+                    </button>
                 </div>
             </div>
         </Card>

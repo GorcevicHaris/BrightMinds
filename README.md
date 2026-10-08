@@ -5,6 +5,10 @@ Edukativne igre za decu (posebno decu sa autizmom i razvojnim teškoćama), sa p
 - **Dete** se prijavljuje vizuelnim kodom (4 sličice) i igra sedam igara u tri težine.
 - **Roditelj / učitelj / terapeut** upravlja profilima dece, gleda statistiku i prati igru uživo.
 
+> Bright Minds je vežbanka uz podršku odraslih. Nije terapija ni dijagnostički alat i ne zamenjuje logopeda, defektologa ili psihologa.
+
+Dizajn se oslanja na istraživanja o razvoju dece od 3 do 8 godina i o podršci deci sa autizmom — odluke i izvori su u [docs/istrazivanje.md](docs/istrazivanje.md).
+
 ## Pokretanje
 
 ```bash
@@ -39,7 +43,9 @@ app/
   dashboard/child/[id]/      dečji ekran: izbor igre, težine, igra, rezultat
   dashboard/progress/[id]/   statistika napretka
   dashboard/monitor/[id]/    praćenje igre uživo
-  dev/games/                 probna stranica za igre bez baze (samo u razvoju)
+  dev/                       probne stranice bez baze, samo u razvoju:
+                             /dev/child (?age=4&script=cyrillic&caps=1&motion=reduced&limit=10),
+                             /dev/progress (?audience=child), /dev/monitor
   api/                       API rute (auth, children, activities, tts)
   components/
     ui/                      dugmad, polja, kartice, modal, logo
@@ -47,6 +53,8 @@ app/
     games/kit/               zajednički delovi igara (HUD, kartice odgovora, zvuk, sinhronizacija)
 lib/
   games.ts                   spisak igara, boje, zvezdice — jedini izvor istine
+  childSettings.ts           podešavanja po detetu i preporuke po uzrastu (3–4, 5–6, 7–8)
+  progress.ts                statistika: samostalno / uz pomoć, savladanost
   auth.ts                    sesije i provera pristupa (roditeljska i dečja sesija)
   realtime.ts                praćenje uživo preko Supabase Realtime Broadcast-a
   speech.ts                  govor (ElevenLabs + rezervni glas pregledača)
@@ -56,10 +64,14 @@ lib/
 
 Tokeni (boje, senke, animacije) su u [`app/globals.css`](app/globals.css). Principi: miran i predvidljiv interfejs, veliki ciljevi za dodir, jasan kontrast, bez vremenskog pritiska i bez kažnjavanja grešaka. Animacije se gase kada sistem traži smanjeno kretanje.
 
+### Podešavanja po detetu
+
+Roditelj ili terapeut na kartici deteta bira „Podesi”: uzrasnu grupu, broj ponuđenih odgovora, kada se nudi pomoć, pismo (latinica/ćirilica) i velika slova, zvuk po kanalima (glas, efekti, zvuci u igri, nagli zvuci, jačina), manje animacija, dnevno vreme igre i pitanje o raspoloženju. Čuvaju se u koloni `children.settings` (migracija `0002`).
+
 ### Dodavanje igre
 
 1. Dodajte unos u `lib/games.ts` (ID, `activityId`, naziv, boje).
-2. Napravite komponentu u `app/components/games/` koja prima `GameProps` iz `games/kit` i na kraju nivoa zove `onComplete({ score, durationSec, correct, total })`.
+2. Napravite komponentu u `app/components/games/` koja prima `GameProps` iz `games/kit` i na kraju nivoa zove `onComplete({ score, durationSec, correct, total, prompted })` — `correct` su zadaci rešeni samostalno iz prvog pokušaja, `prompted` oni rešeni tek uz istaknut odgovor. Poštujte `useChildSettings()` (broj izbora, pomoć, uzrast).
 3. Celo stanje za prikaz držite u jednom JSON objektu (`view`) i šaljite ga kroz `useGameSync` — isti objekat koristi roditelj za prikaz uživo.
 4. Registrujte komponentu u `GameContainer.tsx` i `LiveMonitor.tsx`.
 

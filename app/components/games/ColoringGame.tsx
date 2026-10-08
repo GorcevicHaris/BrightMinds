@@ -1,18 +1,27 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent, ReactNode } from "react";
+// Bojanka — dete bira boju i dodirom boji deo slike (dodir je jedini potreban pokret).
+// Nivoi 1–5: slobodno bojenje, bez pogrešnog ishoda. Nivoi 6–15: bojenje po uputstvu, jedan zadatak
+// odjednom; broj zadataka, broj ponuđenih boja i trenutak pomoći prate podešavanja deteta.
+
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
+import { useChildSettings } from "@/app/components/ChildSettingsProvider";
+import { Feedback, GameHud, GamePrompt, GameStage, playSfx, shuffle, useGameSync, useInputGuard, useTimers } from "@/app/components/games/kit";
+import type { BaseView, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
-import { isMuted } from "@/lib/sound";
-import { Feedback, GameHud, GamePrompt, GameStage, isFemale, playSfx, useGameSync } from "@/app/components/games/kit";
-import type { BaseView, FeedbackKind, GameProps } from "@/app/components/games/kit";
 
 // ── Boje ──────────────────────────────────────────────────────────────────────
 // Bele nema namerno: na belom papiru se ne vidi, pa dete ne bi dobilo potvrdu.
 
 type ColorId = "red" | "orange" | "yellow" | "green" | "lime" | "blue" | "sky" | "purple" | "pink" | "brown" | "gray" | "black";
+
+/** Rod i broj imenice (deo slike), od kojih zavisi oblik prideva: "krov je crven", "trava je zelena", "uši su roze" */
+type Gram = "m" | "f" | "n" | "mpl" | "fpl" | "npl";
+
+const VERB: Record<Gram, string> = { m: "je", f: "je", n: "je", mpl: "su", fpl: "su", npl: "su" };
 
 interface PaintColor {
     id: ColorId;
@@ -23,23 +32,112 @@ interface PaintColor {
     acc: string;
     /** "Oboji krov crvenom bojom" */
     inst: string;
+    /** "Krov je crven" — oblik za svaki rod i broj je zadat posebno, ne izvodi se iz imena boje */
+    adj: Record<Gram, string>;
     /** Svetla boja — kvačica izabrane boje je tamna */
     light?: boolean;
 }
 
 const COLORS: PaintColor[] = [
-    { id: "red", hex: "#EF4444", nom: "crvena", acc: "crvenu", inst: "crvenom" },
-    { id: "orange", hex: "#F97316", nom: "narandžasta", acc: "narandžastu", inst: "narandžastom" },
-    { id: "yellow", hex: "#FACC15", nom: "žuta", acc: "žutu", inst: "žutom", light: true },
-    { id: "green", hex: "#16A34A", nom: "zelena", acc: "zelenu", inst: "zelenom" },
-    { id: "blue", hex: "#2563EB", nom: "plava", acc: "plavu", inst: "plavom" },
-    { id: "purple", hex: "#9333EA", nom: "ljubičasta", acc: "ljubičastu", inst: "ljubičastom" },
-    { id: "pink", hex: "#F472B6", nom: "roze", acc: "roze", inst: "roze" },
-    { id: "brown", hex: "#92400E", nom: "braon", acc: "braon", inst: "braon" },
-    { id: "lime", hex: "#86EFAC", nom: "svetlozelena", acc: "svetlozelenu", inst: "svetlozelenom", light: true },
-    { id: "sky", hex: "#7DD3FC", nom: "svetloplava", acc: "svetloplavu", inst: "svetloplavom", light: true },
-    { id: "gray", hex: "#9CA3AF", nom: "siva", acc: "sivu", inst: "sivom" },
-    { id: "black", hex: "#1F2937", nom: "crna", acc: "crnu", inst: "crnom" },
+    {
+        id: "red",
+        hex: "#EF4444",
+        nom: "crvena",
+        acc: "crvenu",
+        inst: "crvenom",
+        adj: { m: "crven", f: "crvena", n: "crveno", mpl: "crveni", fpl: "crvene", npl: "crvena" },
+    },
+    {
+        id: "orange",
+        hex: "#F97316",
+        nom: "narandžasta",
+        acc: "narandžastu",
+        inst: "narandžastom",
+        adj: { m: "narandžast", f: "narandžasta", n: "narandžasto", mpl: "narandžasti", fpl: "narandžaste", npl: "narandžasta" },
+    },
+    {
+        id: "yellow",
+        hex: "#FACC15",
+        nom: "žuta",
+        acc: "žutu",
+        inst: "žutom",
+        adj: { m: "žut", f: "žuta", n: "žuto", mpl: "žuti", fpl: "žute", npl: "žuta" },
+        light: true,
+    },
+    {
+        id: "green",
+        hex: "#16A34A",
+        nom: "zelena",
+        acc: "zelenu",
+        inst: "zelenom",
+        adj: { m: "zelen", f: "zelena", n: "zeleno", mpl: "zeleni", fpl: "zelene", npl: "zelena" },
+    },
+    {
+        id: "blue",
+        hex: "#2563EB",
+        nom: "plava",
+        acc: "plavu",
+        inst: "plavom",
+        adj: { m: "plav", f: "plava", n: "plavo", mpl: "plavi", fpl: "plave", npl: "plava" },
+    },
+    {
+        id: "purple",
+        hex: "#9333EA",
+        nom: "ljubičasta",
+        acc: "ljubičastu",
+        inst: "ljubičastom",
+        adj: { m: "ljubičast", f: "ljubičasta", n: "ljubičasto", mpl: "ljubičasti", fpl: "ljubičaste", npl: "ljubičasta" },
+    },
+    {
+        id: "pink",
+        hex: "#F472B6",
+        nom: "roze",
+        acc: "roze",
+        inst: "roze",
+        adj: { m: "roze", f: "roze", n: "roze", mpl: "roze", fpl: "roze", npl: "roze" },
+    },
+    {
+        id: "brown",
+        hex: "#92400E",
+        nom: "braon",
+        acc: "braon",
+        inst: "braon",
+        adj: { m: "braon", f: "braon", n: "braon", mpl: "braon", fpl: "braon", npl: "braon" },
+    },
+    {
+        id: "lime",
+        hex: "#86EFAC",
+        nom: "svetlozelena",
+        acc: "svetlozelenu",
+        inst: "svetlozelenom",
+        adj: { m: "svetlozelen", f: "svetlozelena", n: "svetlozeleno", mpl: "svetlozeleni", fpl: "svetlozelene", npl: "svetlozelena" },
+        light: true,
+    },
+    {
+        id: "sky",
+        hex: "#7DD3FC",
+        nom: "svetloplava",
+        acc: "svetloplavu",
+        inst: "svetloplavom",
+        adj: { m: "svetloplav", f: "svetloplava", n: "svetloplavo", mpl: "svetloplavi", fpl: "svetloplave", npl: "svetloplava" },
+        light: true,
+    },
+    {
+        id: "gray",
+        hex: "#9CA3AF",
+        nom: "siva",
+        acc: "sivu",
+        inst: "sivom",
+        adj: { m: "siv", f: "siva", n: "sivo", mpl: "sivi", fpl: "sive", npl: "siva" },
+    },
+    {
+        id: "black",
+        hex: "#1F2937",
+        nom: "crna",
+        acc: "crnu",
+        inst: "crnom",
+        adj: { m: "crn", f: "crna", n: "crno", mpl: "crni", fpl: "crne", npl: "crna" },
+    },
 ];
 
 const COLOR_BY_ID: Record<string, PaintColor | undefined> = Object.fromEntries(COLORS.map((c) => [c.id, c]));
@@ -60,6 +158,8 @@ interface Zone {
     name: string;
     /** "Oboji krov" */
     acc: string;
+    /** Rod i broj imena, za rečenicu "Krov je crven." */
+    g: Gram;
     d: string;
     /** Širina nevidljive ivice koja malom delu daje veću površinu za dodir */
     hit?: number;
@@ -107,13 +207,13 @@ const PICTURES: Picture[] = [
         emoji: "⚽",
         viewBox: "42 67 316 316",
         zones: [
-            { id: "p1", name: "prvo polje", acc: "prvo polje", d: "M200,225 L200,75 A150,150 0 0,1 329.9,150 Z" },
-            { id: "p2", name: "drugo polje", acc: "drugo polje", d: "M200,225 L329.9,150 A150,150 0 0,1 329.9,300 Z" },
-            { id: "p3", name: "treće polje", acc: "treće polje", d: "M200,225 L329.9,300 A150,150 0 0,1 200,375 Z" },
-            { id: "p4", name: "četvrto polje", acc: "četvrto polje", d: "M200,225 L200,375 A150,150 0 0,1 70.1,300 Z" },
-            { id: "p5", name: "peto polje", acc: "peto polje", d: "M200,225 L70.1,300 A150,150 0 0,1 70.1,150 Z" },
-            { id: "p6", name: "šesto polje", acc: "šesto polje", d: "M200,225 L70.1,150 A150,150 0 0,1 200,75 Z" },
-            { id: "sredina", name: "sredina lopte", acc: "sredinu lopte", d: circle(200, 225, 38) },
+            { id: "p1", name: "prvo polje", acc: "prvo polje", g: "n", d: "M200,225 L200,75 A150,150 0 0,1 329.9,150 Z" },
+            { id: "p2", name: "drugo polje", acc: "drugo polje", g: "n", d: "M200,225 L329.9,150 A150,150 0 0,1 329.9,300 Z" },
+            { id: "p3", name: "treće polje", acc: "treće polje", g: "n", d: "M200,225 L329.9,300 A150,150 0 0,1 200,375 Z" },
+            { id: "p4", name: "četvrto polje", acc: "četvrto polje", g: "n", d: "M200,225 L200,375 A150,150 0 0,1 70.1,300 Z" },
+            { id: "p5", name: "peto polje", acc: "peto polje", g: "n", d: "M200,225 L70.1,300 A150,150 0 0,1 70.1,150 Z" },
+            { id: "p6", name: "šesto polje", acc: "šesto polje", g: "n", d: "M200,225 L70.1,150 A150,150 0 0,1 200,75 Z" },
+            { id: "sredina", name: "sredina lopte", acc: "sredinu lopte", g: "f", d: circle(200, 225, 38) },
         ],
     },
     {
@@ -122,17 +222,18 @@ const PICTURES: Picture[] = [
         emoji: "🌳",
         viewBox: "80 95 240 340",
         zones: [
-            { id: "trava", name: "trava", acc: "travu", d: "M88,402 Q200,380 312,402 L312,428 L88,428 Z" },
-            { id: "stablo", name: "stablo", acc: "stablo", d: "M176,412 L224,412 L214,285 L186,285 Z", hit: 14 },
+            { id: "trava", name: "trava", acc: "travu", g: "f", d: "M88,402 Q200,380 312,402 L312,428 L88,428 Z" },
+            { id: "stablo", name: "stablo", acc: "stablo", g: "n", d: "M176,412 L224,412 L214,285 L186,285 Z", hit: 14 },
             {
                 id: "krosnja",
                 name: "krošnja",
                 acc: "krošnju",
+                g: "f",
                 d: "M200,300 C150,305 118,270 135,232 C105,205 122,150 165,150 C172,110 228,110 235,150 C278,150 295,205 265,232 C282,270 250,305 200,300 Z",
             },
-            { id: "j1", name: "leva jabuka", acc: "levu jabuku", d: circle(162, 232, 16), hit: 14 },
-            { id: "j2", name: "desna jabuka", acc: "desnu jabuku", d: circle(238, 232, 16), hit: 14 },
-            { id: "j3", name: "gornja jabuka", acc: "gornju jabuku", d: circle(200, 172, 16), hit: 14 },
+            { id: "j1", name: "leva jabuka", acc: "levu jabuku", g: "f", d: circle(162, 232, 16), hit: 14 },
+            { id: "j2", name: "desna jabuka", acc: "desnu jabuku", g: "f", d: circle(238, 232, 16), hit: 14 },
+            { id: "j3", name: "gornja jabuka", acc: "gornju jabuku", g: "f", d: circle(200, 172, 16), hit: 14 },
         ],
     },
     {
@@ -141,10 +242,10 @@ const PICTURES: Picture[] = [
         emoji: "🍦",
         viewBox: "108 52 184 382",
         zones: [
-            { id: "gornja", name: "gornja kugla", acc: "gornju kuglu", d: circle(200, 180, 62) },
-            { id: "donja", name: "donja kugla", acc: "donju kuglu", d: "M122,270 A78,78 0 0,1 278,270 Z" },
-            { id: "kornet", name: "kornet", acc: "kornet", d: "M130,270 L270,270 L200,425 Z" },
-            { id: "tresnja", name: "trešnja", acc: "trešnju", d: circle(200, 108, 20), hit: 14 },
+            { id: "gornja", name: "gornja kugla", acc: "gornju kuglu", g: "f", d: circle(200, 180, 62) },
+            { id: "donja", name: "donja kugla", acc: "donju kuglu", g: "f", d: "M122,270 A78,78 0 0,1 278,270 Z" },
+            { id: "kornet", name: "kornet", acc: "kornet", g: "m", d: "M130,270 L270,270 L200,425 Z" },
+            { id: "tresnja", name: "trešnja", acc: "trešnju", g: "f", d: circle(200, 108, 20), hit: 14 },
         ],
         lines: "M200,90 Q212,66 228,64 M165,270 L217.5,386 M200,270 L235,347.5 M235,270 L252.5,309 M235,270 L182.5,386 M200,270 L165,347.5 M165,270 L147.5,309",
     },
@@ -154,12 +255,12 @@ const PICTURES: Picture[] = [
         emoji: "⛵",
         viewBox: "30 55 345 365",
         zones: [
-            { id: "sunce", name: "sunce", acc: "sunce", d: circle(322, 112, 34) },
-            { id: "jedro1", name: "levo jedro", acc: "levo jedro", d: "M192,100 L100,262 L192,262 Z" },
-            { id: "jedro2", name: "desno jedro", acc: "desno jedro", d: "M208,125 L280,262 L208,262 Z" },
-            { id: "zastava", name: "zastava", acc: "zastavu", d: "M205,62 L265,84 L205,106 Z", hit: 12 },
-            { id: "trup", name: "trup broda", acc: "trup broda", d: "M92,280 L308,280 L275,352 L125,352 Z" },
-            { id: "more", name: "more", acc: "more", d: "M36,345 Q82,322 128,345 T220,345 T312,345 T368,340 L368,412 L36,412 Z" },
+            { id: "sunce", name: "sunce", acc: "sunce", g: "n", d: circle(322, 112, 34) },
+            { id: "jedro1", name: "levo jedro", acc: "levo jedro", g: "n", d: "M192,100 L100,262 L192,262 Z" },
+            { id: "jedro2", name: "desno jedro", acc: "desno jedro", g: "n", d: "M208,125 L280,262 L208,262 Z" },
+            { id: "zastava", name: "zastava", acc: "zastavu", g: "f", d: "M205,62 L265,84 L205,106 Z", hit: 12 },
+            { id: "trup", name: "trup broda", acc: "trup broda", g: "m", d: "M92,280 L308,280 L275,352 L125,352 Z" },
+            { id: "more", name: "more", acc: "more", g: "n", d: "M36,345 Q82,322 128,345 T220,345 T312,345 T368,340 L368,412 L36,412 Z" },
         ],
         details: [{ d: "M195,62 L205,62 L205,280 L195,280 Z", fill: "#7C4A21" }],
     },
@@ -169,13 +270,13 @@ const PICTURES: Picture[] = [
         emoji: "🚀",
         viewBox: "80 40 240 362",
         zones: [
-            { id: "plamen", name: "plamen", acc: "plamen", d: "M178,283 L222,283 Q226,335 200,392 Q174,335 178,283 Z" },
-            { id: "krilo1", name: "levo krilo", acc: "levo krilo", d: "M152,195 L92,305 L152,255 Z" },
-            { id: "krilo2", name: "desno krilo", acc: "desno krilo", d: "M248,195 L308,305 L248,255 Z" },
-            { id: "motor", name: "motor", acc: "motor", d: "M168,250 L232,250 L218,286 L182,286 Z" },
-            { id: "telo", name: "telo rakete", acc: "telo rakete", d: "M200,50 Q250,150 250,250 L150,250 Q150,150 200,50 Z" },
-            { id: "vrh", name: "vrh rakete", acc: "vrh rakete", d: "M200,50 Q217.5,85 228.9,120 L171.1,120 Q182.5,85 200,50 Z" },
-            { id: "prozor", name: "prozor", acc: "prozor", d: circle(200, 180, 26) },
+            { id: "plamen", name: "plamen", acc: "plamen", g: "m", d: "M178,283 L222,283 Q226,335 200,392 Q174,335 178,283 Z" },
+            { id: "krilo1", name: "levo krilo", acc: "levo krilo", g: "n", d: "M152,195 L92,305 L152,255 Z" },
+            { id: "krilo2", name: "desno krilo", acc: "desno krilo", g: "n", d: "M248,195 L308,305 L248,255 Z" },
+            { id: "motor", name: "motor", acc: "motor", g: "m", d: "M168,250 L232,250 L218,286 L182,286 Z" },
+            { id: "telo", name: "telo rakete", acc: "telo rakete", g: "n", d: "M200,50 Q250,150 250,250 L150,250 Q150,150 200,50 Z" },
+            { id: "vrh", name: "vrh rakete", acc: "vrh rakete", g: "m", d: "M200,50 Q217.5,85 228.9,120 L171.1,120 Q182.5,85 200,50 Z" },
+            { id: "prozor", name: "prozor", acc: "prozor", g: "m", d: circle(200, 180, 26) },
         ],
     },
     {
@@ -184,11 +285,11 @@ const PICTURES: Picture[] = [
         emoji: "👑",
         viewBox: "55 85 290 280",
         zones: [
-            { id: "kruna", name: "kruna", acc: "krunu", d: "M120,300 L80,150 L160,250 L200,120 L240,250 L320,150 L280,300 Z" },
-            { id: "traka", name: "traka", acc: "traku", d: "M112,298 L288,298 L296,356 L104,356 Z" },
-            { id: "kuglice", name: "kuglice", acc: "kuglice", d: `${circle(200, 110, 18)} ${circle(80, 140, 15)} ${circle(320, 140, 15)}`, hit: 16 },
-            { id: "dragulj", name: "veliki dragulj", acc: "veliki dragulj", d: circle(200, 327, 18), hit: 10 },
-            { id: "dragulji", name: "mali dragulji", acc: "male dragulje", d: `${circle(148, 327, 12)} ${circle(252, 327, 12)}`, hit: 18 },
+            { id: "kruna", name: "kruna", acc: "krunu", g: "f", d: "M120,300 L80,150 L160,250 L200,120 L240,250 L320,150 L280,300 Z" },
+            { id: "traka", name: "traka", acc: "traku", g: "f", d: "M112,298 L288,298 L296,356 L104,356 Z" },
+            { id: "kuglice", name: "kuglice", acc: "kuglice", g: "fpl", d: `${circle(200, 110, 18)} ${circle(80, 140, 15)} ${circle(320, 140, 15)}`, hit: 16 },
+            { id: "dragulj", name: "veliki dragulj", acc: "veliki dragulj", g: "m", d: circle(200, 327, 18), hit: 10 },
+            { id: "dragulji", name: "mali dragulji", acc: "male dragulje", g: "mpl", d: `${circle(148, 327, 12)} ${circle(252, 327, 12)}`, hit: 18 },
         ],
         tasks: [
             ["kruna", "yellow"],
@@ -204,11 +305,12 @@ const PICTURES: Picture[] = [
         emoji: "☀️",
         viewBox: "50 20 300 382",
         zones: [
-            { id: "livada", name: "livada", acc: "livadu", d: "M52,345 Q200,300 348,345 L348,396 L52,396 Z" },
+            { id: "livada", name: "livada", acc: "livadu", g: "f", d: "M52,345 Q200,300 348,345 L348,396 L52,396 Z" },
             {
                 id: "duge",
                 name: "duge zrake",
                 acc: "duge zrake",
+                g: "fpl",
                 d: "M220,96 L200,30 L180,96 Z M274,190 L340,170 L274,150 Z M180,244 L200,310 L220,244 Z M126,150 L60,170 L126,190 Z",
                 hit: 10,
             },
@@ -216,14 +318,16 @@ const PICTURES: Picture[] = [
                 id: "kratke",
                 name: "kratke zrake",
                 acc: "kratke zrake",
+                g: "fpl",
                 d: "M265.1,130.4 L283.4,86.6 L239.6,104.9 Z M239.6,235.1 L283.4,253.4 L265.1,209.6 Z M134.9,209.6 L116.6,253.4 L160.4,235.1 Z M160.4,104.9 L116.6,86.6 L134.9,130.4 Z",
                 hit: 12,
             },
-            { id: "sunce", name: "sunce", acc: "sunce", d: circle(200, 170, 66) },
+            { id: "sunce", name: "sunce", acc: "sunce", g: "n", d: circle(200, 170, 66) },
             {
                 id: "oblak",
                 name: "oblak",
                 acc: "oblak",
+                g: "m",
                 d: "M262,292 C240,292 232,268 250,258 C250,236 282,230 292,248 C306,236 334,244 330,264 C348,268 346,292 326,292 Z",
             },
         ],
@@ -250,24 +354,27 @@ const PICTURES: Picture[] = [
                 id: "oblak",
                 name: "oblak",
                 acc: "oblak",
+                g: "m",
                 d: "M300,92 C280,92 272,70 288,60 C288,40 318,34 328,50 C342,40 366,48 362,66 C380,70 378,92 358,92 Z",
             },
-            { id: "stabljika", name: "stabljika", acc: "stabljiku", d: "M180,250 L200,250 L200,345 L180,345 Z", hit: 16 },
+            { id: "stabljika", name: "stabljika", acc: "stabljiku", g: "f", d: "M180,250 L200,250 L200,345 L180,345 Z", hit: 16 },
             {
                 id: "listovi",
                 name: "listovi",
                 acc: "listove",
+                g: "mpl",
                 d: "M182,315 Q140,285 112,312 Q146,340 182,326 Z M198,315 Q240,285 268,312 Q234,340 198,326 Z",
                 hit: 8,
             },
-            { id: "saksija", name: "saksija", acc: "saksiju", d: "M128,340 L252,340 L252,362 L240,362 L228,424 L152,424 L140,362 L128,362 Z" },
+            { id: "saksija", name: "saksija", acc: "saksiju", g: "f", d: "M128,340 L252,340 L252,362 L240,362 L228,424 L152,424 L140,362 L128,362 Z" },
             {
                 id: "latice",
                 name: "latice",
                 acc: "latice",
+                g: "fpl",
                 d: "M190,144 A48,30 -90 1,0 190,48 A48,30 -90 1,0 190,144 Z M203.9,152 A48,30 -30 1,0 287,104 A48,30 -30 1,0 203.9,152 Z M203.9,168 A48,30 30 1,0 287,216 A48,30 30 1,0 203.9,168 Z M190,176 A48,30 90 1,0 190,272 A48,30 90 1,0 190,176 Z M176.1,168 A48,30 150 1,0 93,216 A48,30 150 1,0 176.1,168 Z M176.1,152 A48,30 210 1,0 93,104 A48,30 210 1,0 176.1,152 Z",
             },
-            { id: "sredina", name: "sredina cveta", acc: "sredinu cveta", d: circle(190, 160, 34) },
+            { id: "sredina", name: "sredina cveta", acc: "sredinu cveta", g: "f", d: circle(190, 160, 34) },
         ],
         tasks: [
             ["latice", "pink"],
@@ -284,12 +391,12 @@ const PICTURES: Picture[] = [
         emoji: "🏠",
         viewBox: "40 15 320 372",
         zones: [
-            { id: "dimnjak", name: "dimnjak", acc: "dimnjak", d: "M245,85 L285,85 L285,180 L245,180 Z", hit: 10 },
-            { id: "zid", name: "zid", acc: "zid", d: "M75,224 L75,362 L325,362 L325,224 Z" },
-            { id: "krov", name: "krov", acc: "krov", d: "M50,235 L200,95 L350,235 Z" },
-            { id: "vrata", name: "vrata", acc: "vrata", d: "M168,284 L168,362 L232,362 L232,284 Q200,265 168,284 Z" },
-            { id: "prozori", name: "prozori", acc: "prozore", d: "M95,242 L155,242 L155,306 L95,306 Z M245,242 L305,242 L305,306 L245,306 Z" },
-            { id: "trava", name: "trava", acc: "travu", d: "M45,352 Q130,338 200,352 Q270,338 355,352 L355,380 L45,380 Z" },
+            { id: "dimnjak", name: "dimnjak", acc: "dimnjak", g: "m", d: "M245,85 L285,85 L285,180 L245,180 Z", hit: 10 },
+            { id: "zid", name: "zid", acc: "zid", g: "m", d: "M75,224 L75,362 L325,362 L325,224 Z" },
+            { id: "krov", name: "krov", acc: "krov", g: "m", d: "M50,235 L200,95 L350,235 Z" },
+            { id: "vrata", name: "vrata", acc: "vrata", g: "npl", d: "M168,284 L168,362 L232,362 L232,284 Q200,265 168,284 Z" },
+            { id: "prozori", name: "prozori", acc: "prozore", g: "mpl", d: "M95,242 L155,242 L155,306 L95,306 Z M245,242 L305,242 L305,306 L245,306 Z" },
+            { id: "trava", name: "trava", acc: "travu", g: "f", d: "M45,352 Q130,338 200,352 Q270,338 355,352 L355,380 L45,380 Z" },
         ],
         details: [
             { d: `${ellipse(262, 60, 14, 18)} ${ellipse(282, 36, 11, 14)}`, fill: "#E5E7EB" },
@@ -318,18 +425,20 @@ const PICTURES: Picture[] = [
                 id: "donja",
                 name: "donja krila",
                 acc: "donja krila",
+                g: "npl",
                 d: "M195,290 C140,300 90,350 120,410 C150,470 195,410 195,380 Z M205,290 C260,300 310,350 280,410 C250,470 205,410 205,380 Z",
             },
             {
                 id: "gornja",
                 name: "gornja krila",
                 acc: "gornja krila",
+                g: "npl",
                 d: "M195,210 C140,130 40,150 70,250 C100,350 190,290 195,280 Z M205,210 C260,130 360,150 330,250 C300,350 210,290 205,280 Z",
             },
-            { id: "velike", name: "velike tačke", acc: "velike tačke", d: `${circle(118, 238, 22)} ${circle(282, 238, 22)}`, hit: 10 },
-            { id: "male", name: "male tačke", acc: "male tačke", d: `${circle(150, 372, 15)} ${circle(250, 372, 15)}`, hit: 14 },
-            { id: "telo", name: "telo", acc: "telo", d: "M200,182 Q174,282 200,388 Q226,282 200,182 Z", hit: 12 },
-            { id: "glava", name: "glava", acc: "glavu", d: circle(200, 166, 22), hit: 10 },
+            { id: "velike", name: "velike tačke", acc: "velike tačke", g: "fpl", d: `${circle(118, 238, 22)} ${circle(282, 238, 22)}`, hit: 10 },
+            { id: "male", name: "male tačke", acc: "male tačke", g: "fpl", d: `${circle(150, 372, 15)} ${circle(250, 372, 15)}`, hit: 14 },
+            { id: "telo", name: "telo", acc: "telo", g: "n", d: "M200,182 Q174,282 200,388 Q226,282 200,182 Z", hit: 12 },
+            { id: "glava", name: "glava", acc: "glavu", g: "f", d: circle(200, 166, 22), hit: 10 },
         ],
         lines: "M190,148 Q168,118 152,124 M210,148 Q232,118 248,124",
         tasks: [
@@ -351,15 +460,16 @@ const PICTURES: Picture[] = [
                 id: "sape",
                 name: "šape",
                 acc: "šape",
+                g: "fpl",
                 d: `${ellipse(122, 305, 25, 40, -20)} ${ellipse(278, 305, 25, 40, 20)} ${ellipse(148, 418, 30, 36, -10)} ${ellipse(252, 418, 30, 36, 10)}`,
             },
-            { id: "telo", name: "telo", acc: "telo", d: ellipse(200, 345, 72, 88) },
-            { id: "stomak", name: "stomak", acc: "stomak", d: ellipse(200, 362, 42, 54) },
-            { id: "usi", name: "uši", acc: "uši", d: `${circle(148, 122, 34)} ${circle(252, 122, 34)}` },
-            { id: "glava", name: "glava", acc: "glavu", d: circle(200, 200, 80) },
-            { id: "njuska", name: "njuška", acc: "njušku", d: ellipse(200, 234, 42, 32) },
-            { id: "nos", name: "nos", acc: "nos", d: ellipse(200, 218, 16, 11), hit: 18 },
-            { id: "masna", name: "mašna", acc: "mašnu", d: `M200,280 L166,258 L166,302 Z M200,280 L234,258 L234,302 Z ${circle(200, 280, 10)}`, hit: 10 },
+            { id: "telo", name: "telo", acc: "telo", g: "n", d: ellipse(200, 345, 72, 88) },
+            { id: "stomak", name: "stomak", acc: "stomak", g: "m", d: ellipse(200, 362, 42, 54) },
+            { id: "usi", name: "uši", acc: "uši", g: "fpl", d: `${circle(148, 122, 34)} ${circle(252, 122, 34)}` },
+            { id: "glava", name: "glava", acc: "glavu", g: "f", d: circle(200, 200, 80) },
+            { id: "njuska", name: "njuška", acc: "njušku", g: "f", d: ellipse(200, 234, 42, 32) },
+            { id: "nos", name: "nos", acc: "nos", g: "m", d: ellipse(200, 218, 16, 11), hit: 18 },
+            { id: "masna", name: "mašna", acc: "mašnu", g: "f", d: `M200,280 L166,258 L166,302 Z M200,280 L234,258 L234,302 Z ${circle(200, 280, 10)}`, hit: 10 },
         ],
         details: [
             { d: `${circle(148, 122, 12)} ${circle(252, 122, 12)}`, fill: "#FBCFE8" },
@@ -383,19 +493,20 @@ const PICTURES: Picture[] = [
         emoji: "🚗",
         viewBox: "12 150 376 248",
         zones: [
-            { id: "trava", name: "trava", acc: "travu", d: "M20,340 L380,340 L380,388 L20,388 Z" },
-            { id: "branici", name: "branici", acc: "branike", d: "M26,284 L62,284 L62,314 L26,314 Z M338,284 L374,284 L374,314 L338,314 Z", hit: 14 },
+            { id: "trava", name: "trava", acc: "travu", g: "f", d: "M20,340 L380,340 L380,388 L20,388 Z" },
+            { id: "branici", name: "branici", acc: "branike", g: "mpl", d: "M26,284 L62,284 L62,314 L26,314 Z M338,284 L374,284 L374,314 L338,314 Z", hit: 14 },
             {
                 id: "karoserija",
                 name: "karoserija",
                 acc: "karoseriju",
+                g: "f",
                 d: "M50,250 Q50,235 65,235 L110,235 L135,170 L265,170 L290,235 L335,235 Q350,235 350,250 L350,312 L50,312 Z",
             },
-            { id: "prozori", name: "prozori", acc: "prozore", d: "M124,232 L143,180 L195,180 L195,232 Z M205,232 L205,180 L257,180 L276,232 Z" },
-            { id: "far", name: "far", acc: "far", d: "M50,246 L82,246 L82,276 L50,276 Z", hit: 14 },
-            { id: "svetlo", name: "zadnje svetlo", acc: "zadnje svetlo", d: "M318,246 L350,246 L350,276 L318,276 Z", hit: 14 },
-            { id: "gume", name: "gume", acc: "gume", d: `${circle(115, 312, 38)} ${circle(285, 312, 38)}` },
-            { id: "felne", name: "felne", acc: "felne", d: `${circle(115, 312, 21)} ${circle(285, 312, 21)}`, hit: 6 },
+            { id: "prozori", name: "prozori", acc: "prozore", g: "mpl", d: "M124,232 L143,180 L195,180 L195,232 Z M205,232 L205,180 L257,180 L276,232 Z" },
+            { id: "far", name: "far", acc: "far", g: "m", d: "M50,246 L82,246 L82,276 L50,276 Z", hit: 14 },
+            { id: "svetlo", name: "zadnje svetlo", acc: "zadnje svetlo", g: "n", d: "M318,246 L350,246 L350,276 L318,276 Z", hit: 14 },
+            { id: "gume", name: "gume", acc: "gume", g: "fpl", d: `${circle(115, 312, 38)} ${circle(285, 312, 38)}` },
+            { id: "felne", name: "felne", acc: "felne", g: "fpl", d: `${circle(115, 312, 21)} ${circle(285, 312, 21)}`, hit: 6 },
         ],
         details: [{ d: "M160,256 L182,256 L182,264 L160,264 Z M222,256 L244,256 L244,264 L222,264 Z", fill: "#D1D5DB" }],
         lines: "M200,235 L200,300",
@@ -420,16 +531,18 @@ const PICTURES: Picture[] = [
                 id: "alge",
                 name: "alge",
                 acc: "alge",
+                g: "fpl",
                 d: "M58,335 Q40,295 58,262 Q72,232 56,200 Q90,230 82,266 Q72,298 86,335 Z M350,335 Q338,305 352,282 Q360,268 350,252 Q378,270 372,292 Q366,310 376,335 Z",
                 hit: 12,
             },
-            { id: "pesak", name: "pesak", acc: "pesak", d: "M20,326 Q200,306 380,326 L380,364 L20,364 Z" },
-            { id: "kamen", name: "kamen", acc: "kamen", d: "M258,330 Q262,290 296,288 Q332,290 338,330 Z" },
-            { id: "rep", name: "rep", acc: "rep", d: "M300,190 L372,142 L388,203 L372,262 L300,222 Z" },
+            { id: "pesak", name: "pesak", acc: "pesak", g: "m", d: "M20,326 Q200,306 380,326 L380,364 L20,364 Z" },
+            { id: "kamen", name: "kamen", acc: "kamen", g: "m", d: "M258,330 Q262,290 296,288 Q332,290 338,330 Z" },
+            { id: "rep", name: "rep", acc: "rep", g: "m", d: "M300,190 L372,142 L388,203 L372,262 L300,222 Z" },
             {
                 id: "peraja",
                 name: "peraja",
                 acc: "peraja",
+                g: "npl",
                 d: "M170,142 Q185,95 220,88 Q255,95 272,140 Q240,126 200,127 Z M188,262 Q205,300 250,304 Q240,280 228,260 Z",
                 hit: 8,
             },
@@ -437,16 +550,18 @@ const PICTURES: Picture[] = [
                 id: "telo",
                 name: "telo ribe",
                 acc: "telo ribe",
+                g: "n",
                 d: "M95,210 Q110,155 185,140 Q260,128 305,185 Q330,205 305,225 Q260,272 185,270 Q110,258 95,210 Z",
             },
             {
                 id: "pruge",
                 name: "pruge",
                 acc: "pruge",
+                g: "fpl",
                 d: "M212,143 Q226,205 212,263 L240,261 Q254,205 240,141 Z M266,156 Q276,205 266,247 L288,236 Q296,205 288,172 Z",
                 hit: 8,
             },
-            { id: "mehurici", name: "mehurići", acc: "mehuriće", d: `${circle(70, 150, 14)} ${circle(50, 112, 11)} ${circle(82, 92, 9)}`, hit: 16 },
+            { id: "mehurici", name: "mehurići", acc: "mehuriće", g: "mpl", d: `${circle(70, 150, 14)} ${circle(50, 112, 11)} ${circle(82, 92, 9)}`, hit: 16 },
         ],
         details: [
             { d: circle(148, 180, 18), fill: PAPER },
@@ -470,25 +585,28 @@ const PICTURES: Picture[] = [
         emoji: "🐘",
         viewBox: "15 20 385 420",
         zones: [
-            { id: "trava", name: "trava", acc: "travu", d: "M20,402 Q200,386 395,402 L395,434 L20,434 Z" },
-            { id: "sunce", name: "sunce", acc: "sunce", d: circle(62, 64, 30) },
+            { id: "trava", name: "trava", acc: "travu", g: "f", d: "M20,402 Q200,386 395,402 L395,434 L20,434 Z" },
+            { id: "sunce", name: "sunce", acc: "sunce", g: "n", d: circle(62, 64, 30) },
             {
                 id: "usi",
                 name: "uši",
                 acc: "uši",
+                g: "fpl",
                 d: "M115,160 Q60,110 45,190 Q35,260 110,250 Q115,230 115,200 Z M285,160 Q340,110 355,190 Q365,260 290,250 Q285,230 285,200 Z",
             },
             {
                 id: "telo",
                 name: "telo",
                 acc: "telo",
+                g: "n",
                 d: "M110,240 Q92,330 104,418 L168,418 L168,392 L232,392 L232,418 L296,418 Q308,330 290,240 Q250,215 200,215 Q150,215 110,240 Z",
             },
-            { id: "glava", name: "glava", acc: "glavu", d: "M115,190 Q110,120 200,110 Q290,120 285,190 Q285,260 200,265 Q115,260 115,190 Z" },
+            { id: "glava", name: "glava", acc: "glavu", g: "f", d: "M115,190 Q110,120 200,110 Q290,120 285,190 Q285,260 200,265 Q115,260 115,190 Z" },
             {
                 id: "kljove",
                 name: "kljove",
                 acc: "kljove",
+                g: "fpl",
                 d: "M165,245 Q145,255 135,275 Q145,285 160,275 Q170,260 175,245 Z M235,245 Q255,255 265,275 Q255,285 240,275 Q230,260 225,245 Z",
                 hit: 12,
             },
@@ -496,10 +614,11 @@ const PICTURES: Picture[] = [
                 id: "surla",
                 name: "surla",
                 acc: "surlu",
+                g: "f",
                 d: "M178,215 C176,270 168,315 172,345 Q178,372 200,372 Q222,372 228,345 C232,315 224,270 222,215 Q200,205 178,215 Z",
             },
-            { id: "sesir", name: "šešir", acc: "šešir", d: "M164,120 L200,44 L236,120 Q200,106 164,120 Z" },
-            { id: "lopta", name: "lopta", acc: "loptu", d: circle(346, 388, 28) },
+            { id: "sesir", name: "šešir", acc: "šešir", g: "m", d: "M164,120 L200,44 L236,120 Q200,106 164,120 Z" },
+            { id: "lopta", name: "lopta", acc: "loptu", g: "f", d: circle(346, 388, 28) },
         ],
         details: [
             { d: `${circle(155, 178, 9)} ${circle(245, 178, 9)}`, fill: INK },
@@ -525,11 +644,12 @@ const PICTURES: Picture[] = [
         emoji: "🐱",
         viewBox: "25 105 350 332",
         zones: [
-            { id: "tepih", name: "tepih", acc: "tepih", d: ellipse(200, 410, 165, 22) },
+            { id: "tepih", name: "tepih", acc: "tepih", g: "m", d: ellipse(200, 410, 165, 22) },
             {
                 id: "rep",
                 name: "rep",
                 acc: "rep",
+                g: "m",
                 d: "M262,338 Q325,330 342,298 Q354,268 334,254 Q316,250 314,268 Q326,282 318,300 Q306,322 258,362 Z",
                 hit: 12,
             },
@@ -537,19 +657,21 @@ const PICTURES: Picture[] = [
                 id: "telo",
                 name: "telo",
                 acc: "telo",
+                g: "n",
                 d: "M128,244 Q118,314 133,374 L134,408 L172,408 L172,378 L228,378 L228,408 L266,408 L267,374 Q282,314 272,244 Q200,224 128,244 Z",
             },
-            { id: "usi", name: "uši", acc: "uši", d: "M113,188 L98,120 L155,162 Z M287,188 L302,120 L245,162 Z" },
+            { id: "usi", name: "uši", acc: "uši", g: "fpl", d: "M113,188 L98,120 L155,162 Z M287,188 L302,120 L245,162 Z" },
             {
                 id: "glava",
                 name: "glava",
                 acc: "glavu",
+                g: "f",
                 d: "M108,178 Q103,234 138,252 Q200,270 262,252 Q297,234 292,178 Q252,132 200,130 Q148,132 108,178 Z",
             },
-            { id: "ogrlica", name: "ogrlica", acc: "ogrlicu", d: "M140,250 Q200,272 260,250 L263,266 Q200,292 137,266 Z", hit: 12 },
-            { id: "oci", name: "oči", acc: "oči", d: `${ellipse(163, 190, 17, 15)} ${ellipse(237, 190, 17, 15)}`, hit: 10 },
-            { id: "nos", name: "nos", acc: "nos", d: "M200,230 L184,212 L216,212 Z", hit: 16 },
-            { id: "klupko", name: "klupko", acc: "klupko", d: circle(72, 388, 30) },
+            { id: "ogrlica", name: "ogrlica", acc: "ogrlicu", g: "f", d: "M140,250 Q200,272 260,250 L263,266 Q200,292 137,266 Z", hit: 12 },
+            { id: "oci", name: "oči", acc: "oči", g: "fpl", d: `${ellipse(163, 190, 17, 15)} ${ellipse(237, 190, 17, 15)}`, hit: 10 },
+            { id: "nos", name: "nos", acc: "nos", g: "m", d: "M200,230 L184,212 L216,212 Z", hit: 16 },
+            { id: "klupko", name: "klupko", acc: "klupko", g: "n", d: circle(72, 388, 30) },
         ],
         details: [
             { d: "M109,160 L104,133 L129,150 Z M291,160 L296,133 L271,150 Z", fill: "#FBCFE8" },
@@ -571,17 +693,6 @@ const PICTURES: Picture[] = [
     },
 ];
 
-// Mačka (nivo 15) se sama javi kad je dete boji bojom koju zadatak ne traži.
-const CAT_LEVEL = 15;
-/** Delovi slike koji nisu mačka — za njih se ona ne javlja */
-const CAT_SCENERY = new Set(["tepih", "klupko"]);
-const CAT_CLIPS: Record<string, string | undefined> = {
-    red: "/sounds/coloring/redCat.mp3",
-    blue: "/sounds/coloring/blueCat.mp3",
-    sky: "/sounds/coloring/blueCat.mp3",
-    green: "/sounds/coloring/greenCat.mp3",
-};
-
 // ── Nivoi ─────────────────────────────────────────────────────────────────────
 
 interface LevelPlan {
@@ -590,10 +701,8 @@ interface LevelPlan {
     guided: boolean;
     tasks: [string, ColorId][];
     palette: PaintColor[];
-    /** Traženi deo je od početka označen (srednji nivoi) */
+    /** Traženi deo je stalno označen (srednji nivoi); na teškim se samo kratko pokaže na početku zadatka */
     showZone: boolean;
-    /** Tražena boja je prikazana uz uputstvo (do 13. nivoa) */
-    showChip: boolean;
 }
 
 function planFor(level: number): LevelPlan {
@@ -606,8 +715,45 @@ function planFor(level: number): LevelPlan {
         tasks,
         palette: safe > 10 ? COLORS : COLORS.slice(0, BASIC_COLORS),
         showZone: safe <= 10,
-        showChip: safe <= 13,
     };
+}
+
+/** Jedan zadatak bojenja po uputstvu: deo, boja i boje koje se nude. */
+interface Round {
+    zone: Zone;
+    color: PaintColor;
+    /** Id-jevi ponuđenih boja, redom palete */
+    options: string[];
+}
+
+/** Granice iz podešavanja deteta (uzrast i izbor roditelja). */
+interface Limits {
+    rounds: number;
+    choices: number;
+}
+
+/**
+ * Zadaci nivoa. U igri (`limits`) broj zadataka i broj ponuđenih boja prate podešavanja deteta:
+ * uz traženu boju nude se nasumične druge boje iz palete. Monitor (`null`) nema podešavanja,
+ * pa dobija sve zadatke redom, a ponuđene boje mu stižu u stanju igre.
+ */
+function buildRounds(plan: LevelPlan, limits: Limits | null): Round[] {
+    const zones = new Map(plan.picture.zones.map((zone) => [zone.id, zone]));
+    const all = plan.palette.map((color) => color.id as string);
+    const rounds: Round[] = [];
+    for (const [zoneId, colorId] of plan.tasks) {
+        const zone = zones.get(zoneId);
+        const color = COLOR_BY_ID[colorId];
+        if (!zone || !color) continue;
+        if (!limits) {
+            rounds.push({ zone, color, options: all });
+            continue;
+        }
+        const others = shuffle(all.filter((id) => id !== color.id)).slice(0, Math.max(limits.choices - 1, 0));
+        const offered = new Set([color.id as string, ...others]);
+        rounds.push({ zone, color, options: all.filter((id) => offered.has(id)) });
+    }
+    return limits ? rounds.slice(0, limits.rounds) : rounds;
 }
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
@@ -615,27 +761,44 @@ function planFor(level: number): LevelPlan {
 type Fills = Record<string, string>;
 type ColoringFeedback = "correct" | "zone" | "color" | "pick" | null;
 
+/**
+ * Bojenje po uputstvu: `correctCount` = zadaci rešeni samostalno iz prvog pokušaja,
+ * `incorrectCount` = pogrešni pokušaji (isti pogrešan deo ili ista pogrešna boja broje se jednom).
+ * Slobodno bojenje: `correctCount` = obojeni delovi, a na "Gotovo" svi delovi — svaka slika je tačna.
+ */
 export interface ColoringView extends BaseView {
     /** id dela → id boje */
     fills: Fills;
     /** Izabrana boja (id), "eraser" ili null dok dete još nije izabralo */
     color: string | null;
-    /** Pogrešni pokušaji u tekućem zadatku (posle 2 stiže pomoć) */
-    wrong: number;
+    /** Ponuđene boje (id-jevi, redom palete) */
+    options: string[];
+    /** Boje probane pogrešno u tekućem zadatku (ostaju zatamnjene) */
+    wrongColors: string[];
+    /** Delovi probani pogrešno u tekućem zadatku (ostaju zatamnjeni) */
+    wrongZones: string[];
+    /** Traženi deo i boja su blago istaknuti (posle onoliko grešaka koliko je zadato u podešavanjima deteta) */
+    hint: boolean;
+    /** Zadaci rešeni tek pošto su traženi deo i boja istaknuti */
+    promptedCount: number;
     feedback: ColoringFeedback;
     done: boolean;
 }
 
-function initialView(plan: LevelPlan): ColoringView {
+function initialView(plan: LevelPlan, rounds: Round[]): ColoringView {
     return {
         score: 0,
         correctCount: 0,
         incorrectCount: 0,
         round: 1,
-        totalRounds: plan.guided ? plan.tasks.length : plan.picture.zones.length,
+        totalRounds: plan.guided ? rounds.length : plan.picture.zones.length,
         fills: {},
         color: plan.guided ? null : plan.palette[0].id,
-        wrong: 0,
+        options: plan.guided && rounds.length > 0 ? rounds[0].options : plan.palette.map((color) => color.id),
+        wrongColors: [],
+        wrongZones: [],
+        hint: false,
+        promptedCount: 0,
         feedback: null,
         done: false,
     };
@@ -661,6 +824,10 @@ function num(value: unknown, fallback: number): number {
     return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
+function strings(value: unknown): string[] {
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
 /** Monitor dobija delimično (ili prazno) stanje — sve što fali ili je pogrešnog tipa menja podrazumevana vrednost. */
 function mergeMonitor(base: ColoringView, incoming: Partial<ColoringView> | null | undefined): ColoringView {
     if (!incoming) return base;
@@ -671,6 +838,7 @@ function mergeMonitor(base: ColoringView, incoming: Partial<ColoringView> | null
         }
     }
     const feedback = incoming.feedback;
+    const options = strings(incoming.options).filter((id) => COLOR_BY_ID[id] !== undefined);
     return {
         score: num(incoming.score, base.score),
         correctCount: num(incoming.correctCount, base.correctCount),
@@ -679,41 +847,120 @@ function mergeMonitor(base: ColoringView, incoming: Partial<ColoringView> | null
         totalRounds: num(incoming.totalRounds, base.totalRounds),
         fills,
         color: typeof incoming.color === "string" ? incoming.color : base.color,
-        wrong: num(incoming.wrong, 0),
+        options: options.length > 0 ? options : base.options,
+        wrongColors: strings(incoming.wrongColors),
+        wrongZones: strings(incoming.wrongZones),
+        hint: incoming.hint === true,
+        promptedCount: num(incoming.promptedCount, base.promptedCount),
         feedback: feedback === "correct" || feedback === "zone" || feedback === "color" || feedback === "pick" ? feedback : null,
         done: incoming.done === true,
     };
 }
 
-const WRONG_TEXT: Record<"zone" | "color" | "pick", string> = {
-    zone: "Probaj drugi deo slike",
-    color: "Probaj drugu boju",
-    pick: "Prvo izaberi boju",
+// ── Tekstovi ──────────────────────────────────────────────────────────────────
+// Kratko, doslovno i mirno: jedna rečenica po poruci, bez pohvala ličnosti i bez roda.
+
+const TEXT_PICK = "Izaberi boju.";
+const TEXT_WRONG_FIRST = "Nije to. Probaj opet.";
+const TEXT_DONE = "Slika je gotova.";
+const TEXT_ALL_COLORED = "Sve je obojeno. Dodirni Gotovo.";
+const TEXT_FREE_STEPS = "Izaberi boju. Dodirni deo slike.";
+
+/** "Krov je crven." — imenuje šta je obojeno i kojom bojom */
+function colorSentence(zone: Zone, color: PaintColor): string {
+    return `${zone.name.charAt(0).toUpperCase()}${zone.name.slice(1)} ${VERB[zone.g]} ${color.adj[zone.g]}.`;
+}
+
+/** Tačno: imenuje se obojeni deo. Prva greška: poziv na novi pokušaj. Svaka sledeća: ponavlja se šta tražimo. */
+function feedbackText(view: ColoringView, round: Round | undefined): string {
+    if (view.feedback === "pick") return TEXT_PICK;
+    if (!round || view.done) return TEXT_DONE;
+    if (view.feedback === "correct") return colorSentence(round.zone, round.color);
+    if (view.wrongColors.length + view.wrongZones.length < 2) return TEXT_WRONG_FIRST;
+    return view.feedback === "color" ? `Tražimo ${round.color.acc} boju.` : `Tražimo ${round.zone.acc}.`;
+}
+
+// ── Pokazivanje ───────────────────────────────────────────────────────────────
+// Uz svako uputstvo kratko se istakne ono o čemu uputstvo govori (traženi deo slike i tražena boja):
+// jedan miran puls, pa mir. Zajednički kit ovo još nema, pa je kuka lokalna.
+
+const DEMO_MS = 1500;
+/** Uz `animate-soft-pulse`: jedan krug umesto beskonačnog ponavljanja */
+const PULSE_ONCE: CSSProperties = { animationDuration: `${DEMO_MS}ms`, animationIterationCount: 1 };
+/** Uz `animate-fade` (SVG nema senku): oznaka se jednom polako pojavi i nestane */
+const FADE_IN_OUT: CSSProperties = {
+    animationDuration: `${DEMO_MS / 2}ms`,
+    animationIterationCount: 2,
+    animationDirection: "alternate",
+    animationTimingFunction: "ease-in-out",
 };
 
-type Timer = ReturnType<typeof setTimeout>;
+function useDemo(enabled: boolean) {
+    const [demo, setDemo] = useState({ on: enabled, run: 0 });
+    const timer = useRef<TimerId | null>(null);
+
+    const arm = useCallback(() => {
+        if (timer.current !== null) clearTimeout(timer.current);
+        timer.current = setTimeout(() => {
+            timer.current = null;
+            setDemo((current) => ({ ...current, on: false }));
+        }, DEMO_MS);
+    }, []);
+
+    useEffect(() => {
+        if (enabled) arm();
+        return () => {
+            if (timer.current !== null) clearTimeout(timer.current);
+        };
+    }, [enabled, arm]);
+
+    /** Ponovo pokazuje (novi zadatak ili dugme „Ponovi”); `run` se menja da bi puls krenuo iz početka */
+    const show = useCallback(() => {
+        setDemo((current) => ({ on: true, run: current.run + 1 }));
+        arm();
+    }, [arm]);
+
+    return { on: demo.on, run: demo.run, show };
+}
 
 // ── Igra ──────────────────────────────────────────────────────────────────────
 
+const GAME = getGame("coloring");
+/** Dovoljno dugo da se čuje „Krov je crven.” pre sledećeg uputstva */
+const NEXT_TASK_MS = 1500;
+const FINISH_MS = 1400;
+const FEEDBACK_MS = 1600;
+const SPEAK_DELAY_MS = 600;
+
+/** Broj kolona palete na telefonu prema broju ponuđenih boja (od ≥sm su uvek dve kolone sa nazivima) */
+const PALETTE_COLS: Record<number, string> = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4", 6: "grid-cols-3" };
+
 /*
- * Zvezdice (correct / total):
- *  • Slobodno bojenje (nivoi 1–5): correct = obojeni delovi, total = svi delovi slike.
- *    "Gotovo" se otključava kad je obojena bar polovina, pa je najmanje 2★; cela slika = 3★.
- *  • Bojenje po uputstvu (nivoi 6–15): total = broj zadataka, correct = zadaci rešeni
- *    samostalno (najviše jedna greška, pre nego što se pojavi pomoć). Nivo se ne može
- *    "pasti" — dete uvek stigne do kraja — pa se za završenu sliku priznaje najmanje
- *    petina zadataka (1★), čak i kada je pomoć bila potrebna svaki put.
+ * Rezultat (correct / total / prompted):
+ *  • Slobodno bojenje (nivoi 1–5): svaka slika je tačna — total = delovi slike, correct = total, prompted = 0.
+ *    "Gotovo" se otključava kad je obojena bar polovina slike.
+ *  • Bojenje po uputstvu (nivoi 6–15): total = broj zadataka, correct = zadaci rešeni samostalno iz
+ *    prvog pokušaja, prompted = zadaci rešeni tek pošto su traženi deo i boja istaknuti. Ostatak
+ *    (total − correct − prompted) su zadaci rešeni posle više pokušaja, ali bez pomoći.
+ *    Nivo se ne može "pasti": dete uvek stigne do kraja, a završen nivo donosi bar jednu zvezdicu.
  */
 export default function ColoringGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<ColoringView>) {
     const plan = useMemo(() => planFor(level), [level]);
-    const { picture, guided, tasks, palette } = plan;
-    const accent = getGame("coloring").accent;
-    const female = isFemale(gender);
+    const { picture, guided } = plan;
+    const accent = GAME.accent;
+    const settings = useChildSettings();
 
-    const { say, stop } = useSpeech(gender);
+    const { say } = useSpeech(gender);
     const sync = useGameSync<ColoringView>({ childId, gameId: "coloring", level, isMonitor });
+    const { after, cancel } = useTimers();
+    const guard = useInputGuard();
+    const demo = useDemo(!isMonitor);
 
-    const [view, setView] = useState<ColoringView>(() => initialView(plan));
+    // Monitor nema podešavanja deteta: ponuđene boje i broj zadataka stižu u `monitorState`
+    const [rounds] = useState<Round[]>(() =>
+        buildRounds(plan, isMonitor ? null : { rounds: settings.preset.maxRounds, choices: settings.choiceLimit })
+    );
+    const [view, setView] = useState<ColoringView>(() => initialView(plan, rounds));
     const [history, setHistory] = useState<Fills[]>([]);
 
     const viewRef = useRef(view);
@@ -721,36 +968,26 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     const finishedRef = useRef(false);
     const lockedRef = useRef(false);
     const announcedRef = useRef(false);
-    const timersRef = useRef<Set<Timer>>(new Set());
-    const feedbackTimerRef = useRef<Timer | null>(null);
-    const clipRef = useRef<HTMLAudioElement | null>(null);
+    const feedbackTimerRef = useRef<TimerId | null>(null);
 
-    const shown = isMonitor ? mergeMonitor(initialView(plan), monitorState) : view;
+    const shown = isMonitor ? mergeMonitor(initialView(plan, rounds), monitorState) : view;
 
-    const zoneById = useMemo(() => new Map(picture.zones.map((zone) => [zone.id, zone])), [picture]);
-    const task = guided ? tasks[Math.min(Math.max(shown.round, 1), tasks.length) - 1] : undefined;
-    const targetZone = task ? zoneById.get(task[0]) : undefined;
-    const targetColor = task ? COLOR_BY_ID[task[1]] : undefined;
-    const instruction = targetZone && targetColor ? `Oboji ${targetZone.acc} ${targetColor.inst} bojom` : "";
+    const round = guided && rounds.length > 0 ? rounds[Math.min(Math.max(shown.round, 1), rounds.length) - 1] : undefined;
+    const instruction = round ? `Oboji ${round.zone.acc} ${round.color.inst} bojom` : `Oboji ${picture.acc} kako želiš`;
     /** Ono što se izgovara: zadatak ili poziv na slobodno bojenje */
-    const prompt = guided ? `${instruction}.` : `Oboji ${picture.acc} kako želiš. Izaberi boju i dodirni sliku.`;
+    const prompt = round ? `${instruction}.` : `${instruction}. ${TEXT_FREE_STEPS}`;
+    /** Jedan korak po korak: prvo boja, pa deo slike */
+    const step = round ? (shown.color ? `Dodirni ${round.zone.acc}.` : `Izaberi ${round.color.acc} boju.`) : TEXT_FREE_STEPS;
 
+    const swatches = shown.options.flatMap((id) => COLOR_BY_ID[id] ?? []);
     const colored = countColored(picture, shown.fills);
     const allColored = colored === picture.zones.length;
     const neededForDone = Math.ceil(picture.zones.length / 2);
-    const hinting = guided && !shown.done && shown.wrong >= 2;
     const interactive = !isMonitor && !shown.done;
+    // Poeni su broj: mlađoj deci se ne prikazuju (roditelj ih na monitoru vidi)
+    const score = isMonitor || settings.preset.showPoints ? shown.score : undefined;
 
     // ── Pomoćne funkcije ──────────────────────────────────────────────────────
-
-    const later = (fn: () => void, ms: number): Timer => {
-        const id = setTimeout(() => {
-            timersRef.current.delete(id);
-            fn();
-        }, ms);
-        timersRef.current.add(id);
-        return id;
-    };
 
     const commit = (next: ColoringView, log?: string) => {
         viewRef.current = next;
@@ -759,74 +996,35 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     };
 
     const cancelFeedbackTimer = () => {
-        if (!feedbackTimerRef.current) return;
-        clearTimeout(feedbackTimerRef.current);
-        timersRef.current.delete(feedbackTimerRef.current);
+        cancel(feedbackTimerRef.current);
         feedbackTimerRef.current = null;
     };
 
     const clearFeedbackSoon = () => {
         cancelFeedbackTimer();
-        feedbackTimerRef.current = later(() => {
+        feedbackTimerRef.current = after(FEEDBACK_MS, () => {
             feedbackTimerRef.current = null;
             const current = viewRef.current;
             if (current.done || !current.feedback) return;
             commit({ ...current, feedback: null });
-        }, 1600);
-    };
-
-    const stopClip = () => {
-        clipRef.current?.pause();
-        clipRef.current = null;
-    };
-
-    /** Mačka ima snimljen glas za crvenu, plavu i zelenu; ako snimak ne krene, uputstvo se izgovara. */
-    const playClip = (src: string, fallbackText: string) => {
-        stop();
-        stopClip();
-        const audio = new Audio(src);
-        audio.muted = isMuted();
-        clipRef.current = audio;
-        audio.play().catch(() => {
-            if (clipRef.current !== audio) return;
-            clipRef.current = null;
-            say(fallbackText);
         });
     };
 
-    const speak = (text: string) => {
-        stopClip();
-        say(text);
-    };
-
-    // ── Početak i čišćenje ────────────────────────────────────────────────────
+    // ── Početak ───────────────────────────────────────────────────────────────
 
     useEffect(() => {
         if (isMonitor || startedRef.current) return;
         startedRef.current = true;
+        guard.hold();
         sync.start(viewRef.current);
-    }, [isMonitor, sync]);
+    }, [isMonitor, sync, guard]);
 
     // Uputstvo se izgovara na početku nivoa i svaki put kada stigne novi zadatak.
     useEffect(() => {
         if (isMonitor) return;
-        const id = setTimeout(() => {
-            clipRef.current?.pause();
-            clipRef.current = null;
-            say(prompt);
-        }, 600);
+        const id = setTimeout(() => say(prompt), SPEAK_DELAY_MS);
         return () => clearTimeout(id);
     }, [isMonitor, say, prompt]);
-
-    useEffect(() => {
-        const timers = timersRef.current;
-        return () => {
-            timers.forEach(clearTimeout);
-            timers.clear();
-            clipRef.current?.pause();
-            clipRef.current = null;
-        };
-    }, []);
 
     // ── Potezi ────────────────────────────────────────────────────────────────
 
@@ -836,27 +1034,39 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         lockedRef.current = true;
         cancelFeedbackTimer();
 
-        const final: ColoringView = { ...current, feedback: "correct", done: true };
-        commit(final, `Slika je gotova: ${picture.name.toLowerCase()} 🎉`);
+        const final: ColoringView = guided
+            ? // Delovi čiji zadaci nisu došli na red (kraći nivo za mlađu decu) boje se sami, da slika bude cela
+              { ...current, fills: { ...Object.fromEntries(plan.tasks), ...current.fills }, hint: false, feedback: "correct", done: true }
+            : // Slobodno bojenje nema pogrešnog ishoda: svaka slika se računa kao potpuno tačna
+              { ...current, correctCount: current.totalRounds, feedback: "correct", done: true };
+        commit(final, `Slika je gotova: ${picture.name.toLowerCase()}`);
         playSfx("win");
+        say(TEXT_DONE);
 
-        const total = guided ? tasks.length : picture.zones.length;
-        const correct = guided ? Math.max(final.correctCount, Math.ceil(total / 5)) : countColored(picture, final.fills);
-        later(() => {
+        after(FINISH_MS, () => {
             sync.complete(final);
-            onComplete({ score: final.score, durationSec: sync.elapsedSec(), correct, total });
-        }, 1100);
+            onComplete({
+                score: final.score,
+                durationSec: sync.elapsedSec(),
+                correct: final.correctCount,
+                total: final.totalRounds,
+                prompted: final.promptedCount,
+            });
+        });
     };
 
     const pickColor = (id: string) => {
         if (!interactive) return;
         const current = viewRef.current;
+        const color = COLOR_BY_ID[id];
+        // Boja se uvek i izgovori: naziv ne zavisi od toga da li dete razlikuje nijanse
+        if (color) say(color.nom);
         if (current.color === id) return;
         playSfx("tap");
-        const color = COLOR_BY_ID[id];
-        const next: ColoringView = { ...current, color: id, feedback: current.feedback === "pick" ? null : current.feedback };
-        commit(next, color ? `Izabrana boja: ${color.nom}` : "Izabrana gumica");
-        if (!guided && color) speak(color.nom);
+        commit(
+            { ...current, color: id, feedback: current.feedback === "pick" ? null : current.feedback },
+            color ? `Izabrana boja: ${color.nom}` : "Izabrana gumica"
+        );
     };
 
     const paintFree = (zone: Zone) => {
@@ -879,43 +1089,47 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         const next = withFills(current, picture, { ...current.fills, [zone.id]: selected });
         setHistory((prev) => [...prev.slice(-29), current.fills]);
         playSfx("flip");
-        commit(next, `Obojeno: ${zone.name} – ${color.nom}`);
+        commit(next, `Obojeno: ${colorSentence(zone, color)}`);
 
         if (next.correctCount === picture.zones.length && !announcedRef.current) {
             announcedRef.current = true;
-            speak(`Bravo! Sve si ${female ? "obojila" : "obojio"}. Pritisni Gotovo.`);
+            say(TEXT_ALL_COLORED);
         }
     };
 
     const paintGuided = (zone: Zone) => {
-        if (lockedRef.current || !task || !targetZone || !targetColor) return;
+        if (lockedRef.current || !round) return;
         const current = viewRef.current;
         const picked = current.color ? COLOR_BY_ID[current.color] : undefined;
 
         if (!picked) {
             commit({ ...current, feedback: "pick" });
             clearFeedbackSoon();
-            speak("Prvo izaberi boju.");
+            say(TEXT_PICK);
             return;
         }
 
-        const rightZone = zone.id === targetZone.id;
-        const rightColor = picked.id === targetColor.id;
+        const rightZone = zone.id === round.zone.id;
 
-        if (rightZone && rightColor) {
+        if (rightZone && picked.id === round.color.id) {
             lockedRef.current = true;
             cancelFeedbackTimer();
-            const independent = current.wrong <= 1;
+            const firstTry = current.wrongColors.length + current.wrongZones.length === 0;
+            const prompted = current.hint;
             const solved: ColoringView = {
                 ...current,
                 fills: { ...current.fills, [zone.id]: picked.id },
-                correctCount: current.correctCount + (independent ? 1 : 0),
-                score: current.score + (current.wrong === 0 ? 10 : 5),
+                correctCount: current.correctCount + (firstTry ? 1 : 0),
+                promptedCount: current.promptedCount + (prompted ? 1 : 0),
+                score: current.score + (firstTry ? 10 : 5),
+                hint: false,
                 feedback: "correct",
             };
-            const log = `Tačno: ${zone.name} – ${picked.nom}${independent ? "" : " (uz pomoć)"}`;
+            const how = firstTry ? "iz prvog pokušaja" : prompted ? "uz pomoć" : "posle više pokušaja";
+            const log = `Tačno ${how}: ${colorSentence(zone, picked)}`;
+            const upcoming = rounds[current.round];
 
-            if (current.round >= tasks.length) {
+            if (!upcoming) {
                 viewRef.current = solved;
                 sync.update(solved, log);
                 finish(solved);
@@ -924,37 +1138,57 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
             commit(solved, log);
             playSfx("correct");
-            later(() => {
-                commit({ ...viewRef.current, round: current.round + 1, wrong: 0, feedback: null });
+            say(feedbackText(solved, round));
+            after(NEXT_TASK_MS, () => {
+                const latest = viewRef.current;
+                // Dodir koji je ostao od prethodnog zadatka ne sme da odgovori na novi
+                guard.hold();
+                commit({
+                    ...latest,
+                    round: current.round + 1,
+                    options: upcoming.options,
+                    color: latest.color !== null && upcoming.options.includes(latest.color) ? latest.color : null,
+                    wrongColors: [],
+                    wrongZones: [],
+                    feedback: null,
+                });
+                demo.show();
                 lockedRef.current = false;
-            }, 1000);
+            });
             return;
         }
 
-        const reason = rightZone ? "color" : "zone";
-        const next: ColoringView = {
+        // Deo koji je već bio pogrešan ostaje zatamnjen: ponovljeni dodir se ne broji kao nova greška
+        if (!rightZone && current.wrongZones.includes(zone.id)) return;
+
+        const wrongColors = rightZone ? [...current.wrongColors, picked.id] : current.wrongColors;
+        const wrongZones = rightZone ? current.wrongZones : [...current.wrongZones, zone.id];
+        const hint = settings.hintAfter > 0 && wrongColors.length + wrongZones.length >= settings.hintAfter;
+        const missed: ColoringView = {
             ...current,
-            wrong: current.wrong + 1,
+            // Pogrešna boja se odlaže (i ostaje zatamnjena), pa je sledeći korak jasan: izaberi drugu boju
+            color: rightZone ? null : current.color,
+            wrongColors,
+            wrongZones,
+            hint,
             incorrectCount: current.incorrectCount + 1,
-            feedback: reason,
+            feedback: rightZone ? "color" : "zone",
         };
         playSfx("wrong");
         commit(
-            next,
-            reason === "color"
-                ? `Pogrešna boja (${picked.nom}) — traži se ${targetColor.nom}`
-                : `Pogrešan deo (${zone.name}) — traži se ${targetZone.name}`
+            missed,
+            `${rightZone ? `Pogrešna boja (${picked.nom}) — traži se ${round.color.nom}` : `Pogrešan deo (${zone.name}) — traži se ${round.zone.name}`}${
+                hint && !current.hint ? " (prikazana pomoć)" : ""
+            }`
         );
         clearFeedbackSoon();
-
-        const colorHelp = `To je ${picked.nom} boja. Izaberi ${targetColor.acc} boju.`;
-        const clip = level === CAT_LEVEL && !rightColor && !CAT_SCENERY.has(zone.id) ? CAT_CLIPS[picked.id] : undefined;
-        if (clip) playClip(clip, colorHelp);
-        else speak(reason === "color" ? colorHelp : `Pronađi ${targetZone.acc}.`);
+        say(feedbackText(missed, round));
+        // Kratka pauza: nekoliko brzih dodira zaredom ne postaje nekoliko grešaka
+        guard.hold();
     };
 
     const tapZone = (zone: Zone) => {
-        if (!interactive) return;
+        if (!interactive || guard.blocked()) return;
         if (guided) paintGuided(zone);
         else paintFree(zone);
     };
@@ -967,7 +1201,10 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         commit(withFills(viewRef.current, picture, previous), "Vraćen poslednji potez");
     };
 
-    const repeatInstruction = () => speak(prompt);
+    const repeatInstruction = () => {
+        demo.show();
+        say(prompt);
+    };
 
     // ── Prikaz ────────────────────────────────────────────────────────────────
 
@@ -985,49 +1222,61 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
               }
             : {};
 
-    const highlighted = guided && !shown.done && (plan.showZone || hinting) ? targetZone : undefined;
-    const showChip = plan.showChip || hinting;
+    const playing = round !== undefined && !shown.done;
+    /** Stalna tačkasta oznaka traženog dela (srednji nivoi) ili pomoć posle grešaka */
+    const outlined = playing && (plan.showZone || shown.hint) ? round.zone : undefined;
+    /** Kratko pokazivanje traženog dela na početku zadatka i na dugme „Ponovi” */
+    const demoZone = playing && demo.on ? round.zone : undefined;
     const feedbackKind: FeedbackKind = shown.feedback === null ? null : shown.feedback === "correct" ? "correct" : "wrong";
-    const wrongText = shown.feedback && shown.feedback !== "correct" ? WRONG_TEXT[shown.feedback] : undefined;
+    const message = feedbackText(shown, round);
 
     return (
-        <GameStage width="wide">
+        <GameStage width="wide" className="pb-6">
             <GameHud
                 round={shown.round}
                 totalRounds={shown.totalRounds}
-                score={shown.score}
+                score={score}
                 unit={guided ? "Zadatak" : "Deo"}
                 onSpeak={isMonitor ? undefined : repeatInstruction}
             />
 
-            {guided ? (
-                <GamePrompt
-                    title={instruction}
-                    subtitle={hinting ? "Pogledaj šta svetli na slici i među bojama" : "Izaberi boju, pa dodirni taj deo slike"}
-                    visual={
-                        showChip && targetColor ? (
+            <GamePrompt
+                title={instruction}
+                subtitle={step}
+                visual={
+                    round ? (
+                        <span
+                            key={demo.run}
+                            className={cn(
+                                "flex h-full w-full flex-col items-center justify-center gap-1 rounded-2xl",
+                                demo.on && "animate-soft-pulse ring-4 ring-brand-300"
+                            )}
+                            style={demo.on ? PULSE_ONCE : undefined}
+                        >
                             <span
-                                role="img"
-                                aria-label={`${targetColor.nom} boja`}
-                                className="block h-12 w-12 rounded-full border-4 border-white shadow-soft ring-1 ring-line sm:h-16 sm:w-16"
-                                style={{ background: targetColor.hex }}
+                                aria-hidden="true"
+                                className="block h-10 w-10 rounded-full border-4 border-white shadow-soft ring-1 ring-line sm:h-14 sm:w-14"
+                                style={{ background: round.color.hex }}
                             />
-                        ) : (
-                            <span aria-hidden="true">🎨</span>
-                        )
-                    }
-                />
-            ) : (
-                <GamePrompt
-                    title={`Oboji ${picture.acc} kako želiš`}
-                    subtitle="Izaberi boju, pa dodirni deo slike"
-                    visual={<span aria-hidden="true">{picture.emoji}</span>}
-                />
-            )}
+                            <span className="whitespace-nowrap text-[0.6875rem] font-extrabold leading-none text-ink sm:text-sm">{round.color.nom}</span>
+                        </span>
+                    ) : (
+                        <span aria-hidden="true">{picture.emoji}</span>
+                    )
+                }
+            />
 
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
                 {/* Slika */}
                 <div className={cn("relative min-w-0 flex-1 rounded-card border-2 bg-surface p-3 shadow-soft sm:p-5", accent.border)}>
+                    {!guided && demo.on && (
+                        <span
+                            key={demo.run}
+                            aria-hidden="true"
+                            className="pointer-events-none absolute inset-0 animate-soft-pulse rounded-card ring-4 ring-brand-300"
+                            style={PULSE_ONCE}
+                        />
+                    )}
                     <svg
                         viewBox={picture.viewBox}
                         role="group"
@@ -1047,13 +1296,14 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                         stroke={OUTLINE}
                                         strokeWidth={3}
                                         strokeLinejoin="round"
-                                        aria-label={`${zone.name}: ${paint ? paint.nom : "nije obojeno"}`}
+                                        aria-label={paint ? colorSentence(zone, paint) : `${zone.name}: nije obojeno`}
                                         className={cn("transition-[fill] duration-200", interactive && "cursor-pointer")}
                                         {...zoneProps(zone)}
                                     />
-                                    {/* Oznaka traženog dela i nevidljiva šira ivica (mali deo se lakše pogađa prstom)
-                                        crtaju se odmah iznad svog dela, pa ih delovi koji ga prekrivaju i dalje prekrivaju. */}
-                                    {highlighted?.id === zone.id && (
+                                    {/* Oznake i nevidljiva šira ivica (mali deo se lakše pogađa prstom) crtaju se
+                                        odmah iznad svog dela, pa ih delovi koji ga prekrivaju i dalje prekrivaju. */}
+                                    {playing && shown.wrongZones.includes(zone.id) && <path d={zone.d} fill={OUTLINE} fillOpacity={0.16} pointerEvents="none" />}
+                                    {outlined?.id === zone.id && (
                                         <path
                                             d={zone.d}
                                             fill="none"
@@ -1063,7 +1313,22 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                             strokeLinejoin="round"
                                             strokeDasharray="1 13"
                                             pointerEvents="none"
-                                            className="animate-pulse"
+                                            // Stalna oznaka miruje; blago pulsira samo kad je pomoć
+                                            className={shown.hint ? "animate-pulse" : undefined}
+                                        />
+                                    )}
+                                    {demoZone?.id === zone.id && (
+                                        <path
+                                            key={demo.run}
+                                            d={zone.d}
+                                            fill={HIGHLIGHT}
+                                            fillOpacity={0.22}
+                                            stroke={HIGHLIGHT}
+                                            strokeWidth={8}
+                                            strokeLinejoin="round"
+                                            pointerEvents="none"
+                                            className="animate-fade"
+                                            style={FADE_IN_OUT}
                                         />
                                     )}
                                     {interactive && zone.hit && (
@@ -1088,54 +1353,59 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                         {picture.lines && (
                             <path d={picture.lines} fill="none" stroke={OUTLINE} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />
                         )}
-
                     </svg>
 
-                    <Feedback
-                        kind={feedbackKind}
-                        correctText={shown.done ? "Bravo! Slika je gotova!" : "Bravo!"}
-                        wrongText={wrongText}
-                        className="absolute inset-x-2 top-2"
-                    />
+                    <Feedback kind={feedbackKind} correctText={message} wrongText={message} className="absolute inset-x-2 top-2" />
                 </div>
 
                 {/* Boje i alat */}
-                <div className="flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-3 shadow-soft sm:w-52 lg:w-64">
+                <div className="flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-3 shadow-soft sm:w-60 lg:w-64">
                     <p className={cn("hidden px-1 font-display text-base font-extrabold sm:block", accent.text)}>Boje</p>
-                    <div className="grid grid-cols-4 gap-2 min-[480px]:grid-cols-6 sm:grid-cols-3">
-                        {palette.map((color) => {
+                    <div className={cn("grid gap-3 sm:grid-cols-2", PALETTE_COLS[swatches.length] ?? "grid-cols-4")}>
+                        {swatches.map((color) => {
                             const selected = shown.color === color.id;
-                            const hinted = hinting && targetColor?.id === color.id && !selected;
+                            const tried = playing && shown.wrongColors.includes(color.id);
+                            const hinted = playing && shown.hint && round.color.id === color.id && !selected;
                             return (
                                 <button
                                     key={color.id}
                                     type="button"
-                                    disabled={!interactive}
+                                    disabled={!interactive || tried}
                                     onClick={() => pickColor(color.id)}
                                     aria-label={`${color.nom} boja`}
                                     aria-pressed={selected}
                                     title={color.nom}
-                                    className={cn(
-                                        "relative grid h-14 w-full place-items-center rounded-2xl border-2 border-black/15 transition-transform duration-150 disabled:cursor-default sm:aspect-square sm:h-auto sm:min-h-14",
-                                        selected ? "z-[1] scale-105 ring-4 ring-ink ring-offset-2 ring-offset-surface" : interactive && "hover:scale-105 active:scale-95",
-                                        hinted && "animate-soft-pulse ring-4 ring-brand-400 ring-offset-2 ring-offset-surface"
-                                    )}
-                                    style={{ background: color.hex }}
+                                    className="flex flex-col items-center gap-2 rounded-2xl disabled:cursor-default"
                                 >
-                                    {selected && (
-                                        <svg
-                                            viewBox="0 0 24 24"
-                                            className={cn("h-7 w-7 animate-pop", color.light ? "text-ink" : "text-white")}
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth={3.5}
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            aria-hidden="true"
-                                        >
-                                            <path d="M5 12.5l4.5 4.5L19 7.5" />
-                                        </svg>
-                                    )}
+                                    <span
+                                        className={cn(
+                                            "relative grid w-full place-items-center rounded-2xl border-2 border-black/15 transition-opacity duration-150 sm:h-16",
+                                            swatches.length > 6 ? "h-16" : "h-19",
+                                            selected && "ring-4 ring-ink ring-offset-2 ring-offset-surface",
+                                            hinted && "animate-soft-pulse ring-4 ring-brand-400 ring-offset-2 ring-offset-surface",
+                                            tried && "opacity-30"
+                                        )}
+                                        style={{ background: color.hex }}
+                                    >
+                                        {selected && (
+                                            <svg
+                                                viewBox="0 0 24 24"
+                                                className={cn("h-7 w-7 animate-pop", color.light ? "text-ink" : "text-white")}
+                                                fill="none"
+                                                stroke="currentColor"
+                                                strokeWidth={3.5}
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                aria-hidden="true"
+                                            >
+                                                <path d="M5 12.5l4.5 4.5L19 7.5" />
+                                            </svg>
+                                        )}
+                                    </span>
+                                    {/* Naziv boje: boja nikad nije jedini znak (na telefonu naziv se čuje pri dodiru) */}
+                                    <span aria-hidden="true" className="hidden text-xs font-extrabold leading-tight text-ink-soft sm:block">
+                                        {color.nom}
+                                    </span>
                                 </button>
                             );
                         })}
@@ -1143,7 +1413,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
                     {!guided && (
                         <>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-2 gap-3">
                                 <ToolButton
                                     label="Gumica"
                                     selected={shown.color === ERASER}
@@ -1164,7 +1434,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                 disabled={!interactive || colored < neededForDone}
                                 onClick={() => finish(viewRef.current)}
                                 className={cn(
-                                    "min-h-16 w-full rounded-2xl border-2 border-b-[5px] border-emerald-700 bg-emerald-500 px-4 text-lg font-extrabold text-white transition-[transform,background-color,border-width,opacity] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 disabled:cursor-default disabled:opacity-45 disabled:hover:bg-emerald-500 sm:text-xl",
+                                    "min-h-16 w-full rounded-2xl border-2 border-b-[5px] border-emerald-900 bg-emerald-700 px-4 text-lg font-extrabold text-white transition-[transform,background-color,border-width,opacity] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 disabled:cursor-default disabled:opacity-45 disabled:hover:bg-emerald-500 sm:text-xl",
                                     interactive && allColored && "animate-soft-pulse"
                                 )}
                             >

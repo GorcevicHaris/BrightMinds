@@ -1,53 +1,55 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
+import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
     ExplainPanel,
-    Feedback,
     GameHud,
     GamePrompt,
     GameStage,
-    genderText,
-    isFemale,
     playSfx,
     shuffle,
     useGameSync,
+    useInputGuard,
+    useTimers,
     type BaseView,
     type ChoiceState,
-    type FeedbackKind,
     type GameProps,
 } from "@/app/components/games/kit";
 import {
     EMOTIONS,
-    EMOTION_ORDER,
-    distractorsFor,
     getEmotionLevel,
     getScenario,
     inEmotionOrder,
+    questionFor,
     type EmotionId,
+    type EmotionScenario,
 } from "./data/emotionScenarios";
+import { EmotionFace } from "./EmotionFace";
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
 // Sve što utiče na prikaz je u jednom JSON objektu koji se šalje live monitoru.
-// `correctCount` broji zadatke rešene iz PRVOG pokušaja (iz toga se računaju
-// zvezdice), a `incorrectCount` sve pogrešne pokušaje.
+//
+// U ovoj igri nema pogrešnih osećanja. Scenario govori o drugom detetu (treće lice),
+// a dete bira jedno osećanje i zadatak se time završava. `correctCount` broji zadatke
+// u kojima je izabrano osećanje koje većina ljudi tada ima (iz toga odrasli vide
+// napredak i računaju se zvezdice); drugačiji izbor se ne broji kao greška, pa
+// `incorrectCount` i `promptedCount` ostaju 0.
 
 export interface EmotionsView extends BaseView {
-    /** Scenario koji je na tabli */
+    /** Scenario koji je na tabli; 0 dok monitor ne dobije prvo stanje */
     scenarioId: number;
     /** Ponuđena osećanja, u redosledu prikaza */
     options: EmotionId[];
-    /** Pogrešni pokušaji u ovom zadatku */
-    tried: EmotionId[];
-    /** Poslednji pogrešan izbor dok traje blaga animacija */
-    lastWrong: EmotionId | null;
-    /** Tačan odgovor je pronađen; čeka se "Dalje" */
-    answered: boolean;
-    /** Nivo je završen (kratka proslava pre zvezdica) */
+    /** Osećanje koje je dete izabralo u ovom zadatku; null dok bira */
+    picked: EmotionId | null;
+    /** Zadaci rešeni uz pomoć — u ovoj igri uvek 0 */
+    promptedCount: number;
+    /** Nivo je završen (kratka pauza pre zvezdica) */
     finished: boolean;
 }
 
@@ -57,16 +59,13 @@ interface Round {
 }
 
 const ACCENT = getGame("emotions").accent;
-const ASK = "Kako se osećaš?";
-const RETRY_SPEECH = "Probaj još jednom.";
-const HINT_SPEECH = "Pogledaj karticu koja svetli.";
+const CLOSING = "Sva osećanja su u redu.";
 const SPEAK_DELAY_MS = 400;
-const WRONG_MS = 1100;
-const CELEBRATE_MS = 1000;
-/** Poeni prema broju pogrešnih pokušaja pre tačnog odgovora */
-const POINTS = [100, 60, 30];
+const FINISH_MS = 1000;
+/** Svaki odgovoren zadatak nosi iste poene, jer nijedno osećanje nije pogrešno */
+const POINTS_PER_ROUND = 10;
 
-/** Podloga iza emodžija — pune klase, bez sastavljanja naziva u hodu */
+/** Podloga iza lica — pune klase, bez sastavljanja naziva u hodu */
 const EMOTION_TINT: Record<EmotionId, string> = {
     happy: "bg-amber-100",
     sad: "bg-sky-100",
@@ -85,32 +84,45 @@ const OPTION_BASIS: Record<number, string> = {
     3: "basis-[calc(33.333%-0.52rem)]",
     4: "basis-[calc(50%-0.4rem)] sm:basis-[calc(25%-0.58rem)]",
     5: "basis-[calc(50%-0.4rem)] sm:basis-[calc(33.333%-0.52rem)]",
+    6: "basis-[calc(50%-0.4rem)] sm:basis-[calc(33.333%-0.52rem)]",
 };
 
-/** Zadaci nivoa. `randomize` meša redosled i bira pogrešne odgovore; bez njega je rezultat uvek isti. */
-function buildRounds(level: number, randomize: boolean): Round[] {
-    const { scenarios, choices, palette } = getEmotionLevel(level);
-    return (randomize ? shuffle(scenarios) : scenarios).map((scenario) => {
-        const pool = distractorsFor(scenario, palette);
-        const distractors = (randomize ? shuffle(pool) : pool).slice(0, choices - 1);
-        return { scenarioId: scenario.id, options: inEmotionOrder([scenario.correct, ...distractors]) };
+const EMPTY_VIEW: EmotionsView = {
+    score: 0,
+    correctCount: 0,
+    incorrectCount: 0,
+    round: 1,
+    totalRounds: 1,
+    scenarioId: 0,
+    options: [],
+    picked: null,
+    promptedCount: 0,
+    finished: false,
+};
+
+interface RoundLimits {
+    emotionCount: number;
+    maxRounds: number;
+    choiceLimit: number;
+}
+
+/**
+ * Zadaci nivoa za ovo dete. Nude se samo osećanja koja dete poznaje, najviše onoliko
+ * koliko dozvoljavaju nivo i podešavanja. Najčešća osećanja su uvek među ponuđenim;
+ * drugo najčešće se izostavlja samo kad bi inače sve ponuđeno bilo „najčešće”.
+ */
+function buildRounds(level: number, { emotionCount, maxRounds, choiceLimit }: RoundLimits): Round[] {
+    const { scenarios, choices, palette } = getEmotionLevel(level, { emotionCount, maxRounds });
+    const size = Math.min(choices, choiceLimit, palette.length);
+    return shuffle(scenarios).map((scenario) => {
+        const common = scenario.common.length < size ? scenario.common : scenario.common.slice(0, 1);
+        const others = shuffle(palette.filter((id) => !scenario.common.includes(id))).slice(0, size - common.length);
+        return { scenarioId: scenario.id, options: inEmotionOrder([...common, ...others]) };
     });
 }
 
 function initialView(rounds: Round[]): EmotionsView {
-    return {
-        score: 0,
-        correctCount: 0,
-        incorrectCount: 0,
-        round: 1,
-        totalRounds: rounds.length,
-        scenarioId: rounds[0].scenarioId,
-        options: rounds[0].options,
-        tried: [],
-        lastWrong: null,
-        answered: false,
-        finished: false,
-    };
+    return { ...EMPTY_VIEW, totalRounds: Math.max(rounds.length, 1), scenarioId: rounds[0]?.scenarioId ?? 0, options: rounds[0]?.options ?? [] };
 }
 
 function toCount(value: unknown, fallback: number): number {
@@ -118,64 +130,98 @@ function toCount(value: unknown, fallback: number): number {
 }
 
 /** Stanje sa monitora može biti prazno ili nepotpuno — sve što fali ili nema smisla menja se podrazumevanim. */
-function mergeMonitorView(fallback: EmotionsView, state: Partial<EmotionsView> | null | undefined): EmotionsView {
-    if (!state) return fallback;
+function mergeMonitorView(state: Partial<EmotionsView> | null | undefined): EmotionsView {
+    if (!state) return EMPTY_VIEW;
     const scenario = typeof state.scenarioId === "number" ? getScenario(state.scenarioId) : undefined;
     const options = Array.isArray(state.options) ? inEmotionOrder(state.options) : [];
-    const board = scenario && options.includes(scenario.correct) ? scenario : undefined;
-    const totalRounds = Math.max(toCount(state.totalRounds, fallback.totalRounds), 1);
+    const onBoard = scenario !== undefined && options.includes(scenario.common[0]);
+    const totalRounds = Math.max(toCount(state.totalRounds, 1), 1);
     return {
         score: toCount(state.score, 0),
         correctCount: toCount(state.correctCount, 0),
         incorrectCount: toCount(state.incorrectCount, 0),
         round: Math.min(Math.max(toCount(state.round, 1), 1), totalRounds),
         totalRounds,
-        scenarioId: board ? board.id : fallback.scenarioId,
-        options: board ? options : fallback.options,
-        tried: board && Array.isArray(state.tried) ? inEmotionOrder(state.tried) : [],
-        lastWrong: (board && EMOTION_ORDER.find((id) => id === state.lastWrong)) || null,
-        answered: Boolean(board) && state.answered === true,
+        scenarioId: onBoard ? scenario.id : 0,
+        options: onBoard ? options : [],
+        picked: (onBoard && options.find((id) => id === state.picked)) || null,
+        promptedCount: toCount(state.promptedCount, 0),
         finished: state.finished === true,
     };
 }
 
-/** Posle dva pogrešna pokušaja (ili jednog, kad su ponuđena samo dva odgovora) tačna kartica blago zasvetli. */
-function hintReady(wrongAttempts: number, optionCount: number): boolean {
-    return wrongAttempts >= Math.min(2, optionCount - 1);
+// ── Tekstovi ──────────────────────────────────────────────────────────────────
+
+function word(id: EmotionId): string {
+    return EMOTIONS[id].label.toLowerCase();
 }
 
-function choiceState(id: EmotionId, view: EmotionsView, correct: EmotionId, hint: boolean): ChoiceState {
-    if (view.answered) return id === correct ? "correct" : "dimmed";
-    if (id === view.lastWrong) return "wrong";
-    if (view.tried.includes(id)) return "dimmed";
-    return hint && id === correct ? "hint" : "idle";
+/** Najčešća osećanja scenarija koja su ponuđena na tabli. */
+function offeredCommon(scenario: EmotionScenario, options: readonly EmotionId[]): EmotionId[] {
+    return scenario.common.filter((id) => options.includes(id));
+}
+
+/**
+ * Osećanja koja se pominju posle izbora. Kad dete izabere najčešće osećanje, potvrđuje se samo ono.
+ * Inače se pominju sva ponuđena najčešća osećanja (izabrano prvo, ako je među njima),
+ * jer razlog koji sledi govori o najčešćem.
+ */
+function mentionedEmotions(scenario: EmotionScenario, options: readonly EmotionId[], picked: EmotionId): EmotionId[] {
+    if (picked === scenario.common[0]) return [picked];
+    const offered = offeredCommon(scenario, options);
+    return offered.includes(picked) ? [picked, ...offered.filter((id) => id !== picked)] : offered;
+}
+
+/**
+ * Rečenice posle izbora: mirna potvrda (bez „tačno/netačno”), doslovan razlog i,
+ * na kraju nivoa, podsetnik da su sva osećanja u redu.
+ */
+function explanation(scenario: EmotionScenario, options: readonly EmotionId[], picked: EmotionId, lastRound: boolean): string[] {
+    const words = mentionedEmotions(scenario, options, picked).map(word).join(" ili ");
+    const acknowledgement = scenario.common.includes(picked) ? `Da. Mnogi se tada osećaju ${words}.` : `Može i tako. Mnoga deca se tada osećaju ${words}.`;
+    return lastRound ? [acknowledgement, scenario.why, CLOSING] : [acknowledgement, scenario.why];
+}
+
+/** Izabrana kartica se samo označi; najčešće osećanje koje dete nije izabralo blago zasvetli. */
+function choiceState(id: EmotionId, picked: EmotionId | null, scenario: EmotionScenario, mentioned: readonly EmotionId[]): ChoiceState {
+    if (picked === null) return "idle";
+    if (id === picked) return scenario.common.includes(picked) ? "correct" : "selected";
+    return mentioned.includes(id) ? "hint" : "idle";
 }
 
 // ── Igra ──────────────────────────────────────────────────────────────────────
 
 export default function EmotionsGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<EmotionsView>) {
-    const female = isFemale(gender);
+    const settings = useChildSettings();
     const sync = useGameSync<EmotionsView>({ childId, gameId: "emotions", level, isMonitor });
     const { say, stop } = useSpeech(gender);
+    const guard = useInputGuard();
+    const { after } = useTimers();
 
-    // Komponenta se za svaki nivo pravi iznova, pa se zadaci mešaju samo jednom, ovde.
-    const [rounds] = useState(() => buildRounds(level, !isMonitor));
+    // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju i mešaju samo jednom, ovde.
+    // Monitor ne poznaje podešavanja deteta: crta isključivo ono što stigne u `monitorState`.
+    const [rounds] = useState<Round[]>(() =>
+        isMonitor
+            ? []
+            : buildRounds(level, {
+                  emotionCount: settings.preset.emotionCount,
+                  maxRounds: settings.preset.maxRounds,
+                  choiceLimit: settings.choiceLimit,
+              })
+    );
     const [view, setView] = useState(() => initialView(rounds));
     const viewRef = useRef(view);
-    const wrongTimer = useRef<number | null>(null);
-    const finishTimer = useRef<number | null>(null);
     const startedRef = useRef(false);
     const completedRef = useRef(false);
     const nextButtonRef = useRef<HTMLButtonElement>(null);
 
-    // Monitor se ne pravi iznova kad se nivo promeni, pa podrazumevano stanje prati `level`.
-    const fallbackView = useMemo(() => initialView(buildRounds(level, false)), [level]);
-    const shown = isMonitor ? mergeMonitorView(fallbackView, monitorState) : view;
-    const scenario = getScenario(shown.scenarioId) ?? getEmotionLevel(level).scenarios[0];
-    const sceneText = genderText(scenario.text, female);
-    const question = `${sceneText} ${ASK}`;
-    const hint = !shown.answered && hintReady(shown.tried.length, shown.options.length);
-    const feedback: FeedbackKind = shown.answered ? "correct" : shown.lastWrong || hint ? "wrong" : null;
+    const shown = isMonitor ? mergeMonitorView(monitorState) : view;
+    const scenario = getScenario(shown.scenarioId);
+    const question = scenario ? questionFor(scenario) : "";
+    // Glas čita situaciju pa pitanje; ponuđena osećanja se ne čitaju sama
+    const prompt = scenario ? `${scenario.text} ${question}` : "";
+    const lines = scenario && shown.picked ? explanation(scenario, shown.options, shown.picked, shown.round >= shown.totalRounds) : [];
+    const mentioned = scenario && shown.picked ? mentionedEmotions(scenario, shown.options, shown.picked) : [];
 
     const commit = useCallback(
         (next: EmotionsView, log?: string) => {
@@ -189,84 +235,67 @@ export default function EmotionsGame({ childId, level, gender, onComplete, isMon
     useEffect(() => {
         if (isMonitor || startedRef.current) return;
         startedRef.current = true;
+        guard.hold();
         sync.start(viewRef.current);
-    }, [isMonitor, sync]);
+    }, [isMonitor, guard, sync]);
 
-    useEffect(
-        () => () => {
-            if (wrongTimer.current !== null) window.clearTimeout(wrongTimer.current);
-            if (finishTimer.current !== null) window.clearTimeout(finishTimer.current);
-        },
-        []
-    );
-
-    // Pitanje se čita naglas na početku svakog zadatka
     useEffect(() => {
-        if (isMonitor) return;
-        const timer = window.setTimeout(() => void say(question), SPEAK_DELAY_MS);
+        if (isMonitor || !prompt) return;
+        const timer = window.setTimeout(() => void say(prompt), SPEAK_DELAY_MS);
         return () => window.clearTimeout(timer);
-    }, [isMonitor, say, question, view.round]);
+    }, [isMonitor, say, prompt]);
 
-    // Posle tačnog odgovora fokus ide na "Dalje" (tastatura, čitači ekrana, mali ekrani)
+    // Posle izbora fokus ide na "Dalje" (tastatura, čitači ekrana, mali ekrani)
     useEffect(() => {
-        if (!isMonitor && view.answered && !view.finished) nextButtonRef.current?.focus();
-    }, [isMonitor, view.answered, view.finished]);
+        if (!isMonitor && view.picked !== null && !view.finished) nextButtonRef.current?.focus();
+    }, [isMonitor, view.picked, view.finished]);
 
     const handlePick = (id: EmotionId) => {
         const current = viewRef.current;
-        if (isMonitor || current.answered || current.finished || current.tried.includes(id)) return;
+        if (isMonitor || guard.blocked() || current.picked !== null || current.finished) return;
         const target = getScenario(current.scenarioId);
-        if (!target) return;
-        const label = EMOTIONS[id].label;
-        if (wrongTimer.current !== null) window.clearTimeout(wrongTimer.current);
-        wrongTimer.current = null;
+        if (!target || !current.options.includes(id)) return;
 
-        if (id === target.correct) {
-            const attempt = current.tried.length + 1;
-            const next: EmotionsView = {
-                ...current,
-                answered: true,
-                lastWrong: null,
-                score: current.score + POINTS[Math.min(current.tried.length, POINTS.length - 1)],
-                correctCount: current.correctCount + (attempt === 1 ? 1 : 0),
-            };
-            commit(next, attempt === 1 ? `Tačan odgovor: „${label}”` : `Tačan odgovor iz ${attempt}. pokušaja: „${label}”`);
-            playSfx("correct");
-            void say(`Bravo! ${genderText(target.why, female)}`);
-            return;
-        }
-
-        const tried = [...current.tried, id];
-        const showsHint = hintReady(tried.length, current.options.length);
-        const next: EmotionsView = { ...current, tried, lastWrong: id, incorrectCount: current.incorrectCount + 1 };
-        commit(next, `Pogrešan pokušaj: „${label}”${showsHint ? " (prikazana pomoć)" : ""}`);
-        playSfx("wrong");
-        void say(showsHint ? HINT_SPEECH : RETRY_SPEECH);
-        // Pogrešna kartica se kratko zatrese, pa ostaje zatamnjena
-        wrongTimer.current = window.setTimeout(() => {
-            wrongTimer.current = null;
-            const latest = viewRef.current;
-            if (latest.lastWrong === id && !latest.answered) commit({ ...latest, lastWrong: null });
-        }, WRONG_MS);
+        const pickedCommon = target.common.includes(id);
+        const next: EmotionsView = {
+            ...current,
+            picked: id,
+            score: current.score + POINTS_PER_ROUND,
+            correctCount: current.correctCount + (pickedCommon ? 1 : 0),
+        };
+        commit(
+            next,
+            pickedCommon
+                ? `Izabrano: „${word(id)}” — često osećanje u ovoj situaciji`
+                : `Izabrano: „${word(id)}” — najčešće: ${offeredCommon(target, current.options).map(word).join(" ili ")}`
+        );
+        // Kratka pauza da uzastopni dodiri (ili držanje tastera) ne preskoče objašnjenje
+        guard.hold();
+        playSfx(pickedCommon ? "correct" : "tap");
+        void say(explanation(target, current.options, id, current.round >= current.totalRounds).join(" "));
     };
 
     const handleNext = () => {
         const current = viewRef.current;
-        if (isMonitor || !current.answered || current.finished || completedRef.current) return;
+        if (isMonitor || guard.blocked() || current.picked === null || current.finished || completedRef.current) return;
         stop();
 
         if (current.round >= rounds.length) {
-            // Kraj nivoa: kratka proslava, pa rezultat ide roditeljskom okviru tačno jednom.
-            // Zvezdice: total = broj zadataka, correct = zadaci rešeni iz prvog pokušaja.
+            // Kraj nivoa: kratka pauza, pa rezultat ide roditeljskom okviru tačno jednom.
             completedRef.current = true;
             const done: EmotionsView = { ...current, finished: true };
-            commit(done, `Nivo završen: ${done.correctCount} od ${done.totalRounds} iz prvog pokušaja`);
-            playSfx("win");
-            finishTimer.current = window.setTimeout(() => {
-                finishTimer.current = null;
+            commit(done, `Nivo završen: ${done.correctCount} od ${done.totalRounds} sa najčešćim osećanjem`);
+            playSfx("tap");
+            after(FINISH_MS, () => {
                 sync.complete(done);
-                onComplete({ score: done.score, durationSec: sync.elapsedSec(), correct: done.correctCount, total: done.totalRounds });
-            }, CELEBRATE_MS);
+                onComplete({
+                    score: done.score,
+                    durationSec: sync.elapsedSec(),
+                    correct: done.correctCount,
+                    total: done.totalRounds,
+                    prompted: done.promptedCount,
+                });
+            });
             return;
         }
 
@@ -276,10 +305,9 @@ export default function EmotionsGame({ childId, level, gender, onComplete, isMon
             round: current.round + 1,
             scenarioId: upcoming.scenarioId,
             options: upcoming.options,
-            tried: [],
-            lastWrong: null,
-            answered: false,
+            picked: null,
         };
+        guard.hold();
         commit(next, `Zadatak ${next.round} od ${next.totalRounds}`);
         playSfx("tap");
     };
@@ -289,68 +317,79 @@ export default function EmotionsGame({ childId, level, gender, onComplete, isMon
             <GameHud
                 round={shown.round}
                 totalRounds={shown.totalRounds}
-                score={shown.score}
-                onSpeak={isMonitor ? undefined : () => void say(question)}
+                score={isMonitor || settings.preset.showPoints ? shown.score : undefined}
+                onSpeak={isMonitor || !prompt ? undefined : () => void say(prompt)}
             />
 
-            <GamePrompt
-                key={scenario.id}
-                className="animate-fade-up"
-                visual={<span aria-hidden="true">{scenario.scene}</span>}
-                title={sceneText}
-                subtitle={ASK}
-            />
+            {scenario ? (
+                <>
+                    <GamePrompt
+                        key={scenario.id}
+                        className="animate-fade-up"
+                        visual={<span aria-hidden="true">{scenario.scene}</span>}
+                        title={scenario.text}
+                        subtitle={<span className="text-ink">{question}</span>}
+                    />
 
-            <div
-                key={shown.round}
-                role="group"
-                aria-label="Izaberi osećanje"
-                className={cn("flex animate-fade flex-wrap justify-center gap-3", isMonitor && "pointer-events-none")}
-            >
-                {shown.options.map((id) => {
-                    const emotion = EMOTIONS[id];
-                    const state = choiceState(id, shown, scenario.correct, hint);
-                    const inactive = shown.answered || shown.finished || shown.tried.includes(id);
-                    return (
-                        <ChoiceCard
-                            key={id}
-                            state={state}
-                            disabled={isMonitor}
-                            aria-disabled={inactive || undefined}
-                            aria-label={state === "correct" ? `${emotion.label}, tačan odgovor` : emotion.label}
-                            onClick={() => handlePick(id)}
-                            className={cn(
-                                "grow-0 flex-col gap-1.5 px-1.5",
-                                OPTION_BASIS[shown.options.length] ?? OPTION_BASIS[4],
-                                inactive && "cursor-default"
-                            )}
-                        >
-                            <span
-                                aria-hidden="true"
-                                className={cn(
-                                    "grid h-14 w-14 place-items-center rounded-full text-4xl sm:h-16 sm:w-16 sm:text-5xl",
-                                    EMOTION_TINT[id]
-                                )}
-                            >
-                                {emotion.emoji}
-                            </span>
-                            <span className="text-base leading-tight sm:text-lg">{emotion.label}</span>
-                        </ChoiceCard>
-                    );
-                })}
-            </div>
+                    <div
+                        key={shown.round}
+                        role="group"
+                        aria-label="Izaberi osećanje"
+                        className={cn("flex animate-fade flex-wrap justify-center gap-3", (isMonitor || shown.picked !== null) && "pointer-events-none")}
+                    >
+                        {shown.options.map((id) => {
+                            const emotion = EMOTIONS[id];
+                            const state = choiceState(id, shown.picked, scenario, mentioned);
+                            return (
+                                <ChoiceCard
+                                    key={id}
+                                    state={state}
+                                    disabled={isMonitor}
+                                    aria-disabled={shown.picked !== null || undefined}
+                                    aria-label={state === "correct" || state === "selected" ? `${emotion.label}, izabrano` : emotion.label}
+                                    onClick={() => handlePick(id)}
+                                    className={cn("grow-0 flex-col gap-1.5 px-1.5", OPTION_BASIS[shown.options.length] ?? OPTION_BASIS[4])}
+                                >
+                                    <span className={cn("block h-16 w-16 rounded-2xl p-1 sm:h-20 sm:w-20", EMOTION_TINT[id])}>
+                                        <EmotionFace emotion={id} className="h-full w-full" />
+                                    </span>
+                                    <span className="text-base leading-tight sm:text-lg">{emotion.label}</span>
+                                    {/* Neutralna oznaka „ovo je tvoj izbor” — bez znaka za tačno ili netačno */}
+                                    {state === "selected" && (
+                                        <span
+                                            aria-hidden="true"
+                                            className="absolute -right-2 -top-2 grid h-8 w-8 animate-pop place-items-center rounded-full bg-brand-500 shadow-soft ring-2 ring-white"
+                                        >
+                                            <span className="h-3 w-3 rounded-full bg-white" />
+                                        </span>
+                                    )}
+                                </ChoiceCard>
+                            );
+                        })}
+                    </div>
 
-            <Feedback kind={feedback} wrongText={hint ? "Pogledaj karticu koja svetli" : "Probaj još jednom"} />
-
-            {shown.answered && (
-                <ExplainPanel
-                    accent={ACCENT}
-                    icon={EMOTIONS[scenario.correct].emoji}
-                    text={genderText(scenario.why, female)}
-                    done={shown.finished}
-                    onNext={isMonitor ? undefined : handleNext}
-                    nextRef={nextButtonRef}
-                />
+                    <div aria-live="polite">
+                        {shown.picked !== null && (
+                            <ExplainPanel
+                                accent={ACCENT}
+                                icon={<EmotionFace emotion={scenario.common[0]} className="block h-14 w-14 shrink-0" />}
+                                text={
+                                    <span className="flex flex-col gap-1">
+                                        {lines.map((line) => (
+                                            <span key={line}>{line}</span>
+                                        ))}
+                                    </span>
+                                }
+                                done={shown.finished}
+                                doneText="Nivo je završen."
+                                onNext={isMonitor ? undefined : handleNext}
+                                nextRef={nextButtonRef}
+                            />
+                        )}
+                    </div>
+                </>
+            ) : (
+                <p className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-base font-bold text-ink-soft">Čekamo sledeći zadatak…</p>
             )}
         </GameStage>
     );

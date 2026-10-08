@@ -1,6 +1,6 @@
 // Kratki, tihi zvučni efekti sintetisani u pregledaču — bez fajlova i bez naglih zvukova.
 
-import { isMuted } from "@/lib/sound";
+import { effectsEnabled, masterVolume } from "@/lib/sound";
 
 export type Sfx = "tap" | "flip" | "correct" | "wrong" | "win";
 
@@ -28,7 +28,7 @@ function tone(audio: AudioContext, freq: number, offset: number, duration: numbe
     osc.type = type;
     osc.frequency.setValueAtTime(freq, start);
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(volume, start + 0.015);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, volume * masterVolume()), start + 0.015);
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     osc.connect(gain).connect(audio.destination);
     osc.start(start);
@@ -36,7 +36,7 @@ function tone(audio: AudioContext, freq: number, offset: number, duration: numbe
 }
 
 export function playSfx(name: Sfx) {
-    if (isMuted()) return;
+    if (!effectsEnabled()) return;
     const audio = getContext();
     if (!audio) return;
     switch (name) {

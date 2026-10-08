@@ -14,7 +14,7 @@ export default async function ProgressPage({ params }: { params: Promise<{ id: s
             child={child}
             view="progress"
             title="Statistika"
-            description="Aktivnost po danima, napredak po igrama i raspoloženje pre i posle igre."
+            description="Aktivnost po danima, samostalnost i savladanost po igrama i predlozi za vežbu van ekrana."
         >
             <ProgressDashboard childId={child.id} childName={child.firstName} />
         </ChildPageShell>

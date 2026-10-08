@@ -50,6 +50,13 @@ export interface GameDefinition {
     icon: string;
     image: string;
     accent: GameAccent;
+    /** Predlog odraslom kako da istu veštinu vežba sa detetom van ekrana */
+    offscreenTip: string;
+    /**
+     * false = u igri nema pogrešnih odgovora (npr. osećanja), pa se nivo ne „polaže”:
+     * svaki završen nivo otključava sledeći, a broj `correct` znači „najčešći odgovor”.
+     */
+    graded: boolean;
 }
 
 export const GAMES: GameDefinition[] = [
@@ -71,6 +78,8 @@ export const GAMES: GameDefinition[] = [
             ring: "ring-emerald-200",
             gradient: "from-emerald-400 to-teal-500",
         },
+        offscreenTip: "Potražite zajedno iste oblike po kući: tanjir je krug, prozor je kvadrat.",
+        graded: true,
     },
     {
         id: "memory",
@@ -90,6 +99,8 @@ export const GAMES: GameDefinition[] = [
             ring: "ring-violet-200",
             gradient: "from-violet-400 to-indigo-500",
         },
+        offscreenTip: "Sakrijte dve-tri igračke pod čaše, pa neka dete pogodi gde je koja.",
+        graded: true,
     },
     {
         id: "coloring",
@@ -109,6 +120,8 @@ export const GAMES: GameDefinition[] = [
             ring: "ring-orange-200",
             gradient: "from-orange-400 to-pink-500",
         },
+        offscreenTip: "Bojite zajedno na papiru i imenujte boje predmeta oko sebe.",
+        graded: true,
     },
     {
         id: "sound-to-image",
@@ -128,6 +141,8 @@ export const GAMES: GameDefinition[] = [
             ring: "ring-sky-200",
             gradient: "from-cyan-400 to-blue-500",
         },
+        offscreenTip: "Zastanite u šetnji i pitajte: „Šta čuješ?” — ptica, auto, vetar.",
+        graded: true,
     },
     {
         id: "social",
@@ -147,13 +162,15 @@ export const GAMES: GameDefinition[] = [
             ring: "ring-indigo-200",
             gradient: "from-indigo-400 to-purple-600",
         },
+        offscreenTip: "Odigrajte kratku scenu sa igračkama: ko šta kaže kad dobije poklon ili traži pomoć.",
+        graded: true,
     },
     {
         id: "social-story",
         gameType: "social-story",
         activityId: 7,
-        title: "Socijalne priče",
-        description: "Škola, doktor, park i još mnogo",
+        title: "Priče iz života",
+        description: "Šta se dešava u školi, kod zubara, u parku",
         skill: "Svakodnevne situacije",
         icon: "📖",
         image: "/images/socijalneprice.webp",
@@ -166,13 +183,15 @@ export const GAMES: GameDefinition[] = [
             ring: "ring-teal-200",
             gradient: "from-teal-400 to-emerald-600",
         },
+        offscreenTip: "Pre odlaska kod zubara ili u prodavnicu, ispričajte redom šta će se dešavati.",
+        graded: true,
     },
     {
         id: "emotions",
         gameType: "emotions",
         activityId: 8,
         title: "Emocije",
-        description: "Kako se ko oseća?",
+        description: "Kako se oseća dete u priči?",
         skill: "Prepoznavanje emocija",
         icon: "😊",
         image: "/images/emocije.webp",
@@ -185,6 +204,8 @@ export const GAMES: GameDefinition[] = [
             ring: "ring-pink-200",
             gradient: "from-pink-400 to-rose-500",
         },
+        offscreenTip: "Dok čitate slikovnicu, pitajte: „Kako se oseća ovaj lik? Po čemu to vidiš?”",
+        graded: false,
     },
 ];
 
@@ -217,6 +238,13 @@ export const MOODS: { value: Mood; emoji: string; label: string }[] = [
     { value: "very_happy", emoji: "😄", label: "Super" },
 ];
 
+/** Kraća skala za decu: tri lica umesto pet (mlađa deca ne razlikuju pouzdano više stupnjeva). */
+export const MOODS_THREE: { value: Mood; emoji: string; label: string }[] = [
+    { value: "upset", emoji: "🙁", label: "Loše" },
+    { value: "neutral", emoji: "😐", label: "Onako" },
+    { value: "happy", emoji: "🙂", label: "Dobro" },
+];
+
 export function getMood(value: string | null | undefined) {
     return MOODS.find((m) => m.value === value);
 }
@@ -225,15 +253,27 @@ export function getMood(value: string | null | undefined) {
 
 export type SuccessLevel = "struggled" | "partial" | "successful" | "excellent";
 
-/** 0–3 zvezdice na osnovu udela tačnih odgovora. */
+/**
+ * Zvezdice za završen nivo, na osnovu udela samostalno tačnih odgovora.
+ * Završen nivo uvek donosi bar jednu zvezdicu: nema ishoda „nisi uspeo” —
+ * kazna za grešku obeshrabruje, a ne uči (videti docs/istrazivanje.md).
+ * 0 se vraća samo kada nivo nije ni odigran.
+ */
 export function starsFor(correct: number, total: number): 0 | 1 | 2 | 3 {
     if (total <= 0) return 0;
     const ratio = correct / total;
     if (ratio >= 0.8) return 3;
     if (ratio >= 0.5) return 2;
-    if (ratio >= 0.2) return 1;
-    return 0;
+    return 1;
 }
+
+/** Da li se u igri sa ovim ID-jem aktivnosti nivoi „polažu” (nepoznata aktivnost: da). */
+export function isGradedActivity(activityId: number): boolean {
+    return GAMES.find((g) => g.activityId === activityId)?.graded ?? true;
+}
+
+/** Udeo samostalno tačnih odgovora posle kog se predlaže sledeći nivo (ispod toga: „probaj još jednom”). */
+export const ADVANCE_RATIO = 0.5;
 
 export function successLevelFor(stars: number): SuccessLevel {
     if (stars >= 3) return "excellent";

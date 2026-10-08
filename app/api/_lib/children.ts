@@ -1,10 +1,13 @@
 // app/api/_lib/children.ts
-// Zajednički deo ruta za decu: oblik odgovora, provera ulaza i jedinstvenost PIN-a.
+// Zajednički deo ruta za decu: oblik odgovora, provera ulaza, jedinstvenost PIN-a
+// i čitanje zapisa partija (progress_logs) koje dele rute za nivoe i izvoz.
+import { ADVANCE_RATIO } from "@/lib/games";
 import { isUniqueViolation, supabaseAdmin } from "@/lib/supabase";
 import {
     asTrimmedString,
     dateOnlyInTimeZone,
     isBlank,
+    isRecord,
     normalizeVisualPin,
     oneOf,
     parseDateOnly,
@@ -32,6 +35,11 @@ export interface Child {
     streak: number;
     experience_points: number;
     created_at: string | null;
+    /**
+     * Sirova podešavanja kako su sačuvana (ili `{}`). Klijent ih tumači preko
+     * `resolveSettings` iz lib/childSettings.ts, koji popunjava ono što nedostaje.
+     */
+    settings: unknown;
 }
 
 /** Red tabele `children` (kolone dodate migracijom mogu da nedostaju u starijoj bazi). */
@@ -47,6 +55,13 @@ export interface ChildRow {
     experience_points?: number | null;
     last_login_at?: string | null;
     created_at?: string | null;
+    /** jsonb; kolonu dodaje migracija 0002 */
+    settings?: unknown;
+}
+
+/** Sačuvana podešavanja kao objekat; `{}` ako kolona ne postoji ili vrednost nije objekat. */
+export function storedSettings(row: Pick<ChildRow, "settings">): Record<string, unknown> {
+    return isRecord(row.settings) ? row.settings : {};
 }
 
 /** Eksplicitno mapiranje — interne kolone (npr. last_login_at) ne izlaze iz API-ja. */
@@ -62,6 +77,7 @@ export function toChild(row: ChildRow): Child {
         streak: row.streak ?? 0,
         experience_points: row.experience_points ?? 0,
         created_at: row.created_at ?? null,
+        settings: storedSettings(row),
     };
 }
 
@@ -131,4 +147,64 @@ export async function assertPinAvailable(pinCode: string, exceptChildId?: number
  */
 export function childWriteError(error: unknown, pinCode: string | null | undefined): unknown {
     return pinCode && isUniqueViolation(error) ? new HttpError(409, PIN_TAKEN) : error;
+}
+
+// ── Zapisi partija (progress_logs) ─────────────────────────────────────────────
+
+/**
+ * Red tabele `progress_logs` kako ga vraća `select('*')`. Kolone iz migracija
+ * (0001: level … duration_seconds, 0002: prompted_count) mogu da nedostaju.
+ */
+export interface ProgressLogRow {
+    id: number;
+    activity_id: number;
+    success_level?: string | null;
+    duration_minutes?: number | null;
+    notes?: string | null;
+    mood_before?: string | null;
+    mood_after?: string | null;
+    completed_at?: string | null;
+    level?: number | null;
+    stars?: number | null;
+    score?: number | null;
+    correct_count?: number | null;
+    total_count?: number | null;
+    duration_seconds?: number | null;
+    prompted_count?: number | null;
+}
+
+/** Nivo i zvezdice iz stare beleške "Nivo 3, Zvezdice: 2, Rezultat: 150". */
+export function parseLegacyNotes(notes: string | null | undefined): { level: number | null; stars: number | null } {
+    const level = notes?.match(/Nivo\s+(\d{1,3})/);
+    const stars = notes?.match(/Zvezdice:\s*(\d+)/);
+    return { level: level ? Number(level[1]) : null, stars: stars ? Number(stars[1]) : null };
+}
+
+/**
+ * Da li partija otključava sledeći nivo.
+ *  • Zapis sa brojem odgovora: dete je bar polovinu zadataka (`ADVANCE_RATIO`)
+ *    rešilo SAMOSTALNO. Odgovori uz pomoć se ne računaju.
+ *  • Stariji zapis bez tih kolona: staro pravilo — bar jedna zvezdica (iz kolone
+ *    ili beleške), a bez zvezdica sve osim uspešnosti "struggled".
+ * Nema ishoda "nisi uspeo": partija koja nije položena samo ne otključava dalje.
+ */
+export function isLevelPassed(
+    row: Pick<ProgressLogRow, "correct_count" | "total_count" | "stars" | "success_level" | "notes">,
+    /** false za igre bez pogrešnih odgovora: svaki završen nivo je položen */
+    graded = true
+): boolean {
+    if (!graded) return true;
+    if (typeof row.correct_count === "number" && typeof row.total_count === "number") {
+        return row.total_count > 0 && row.correct_count / row.total_count >= ADVANCE_RATIO;
+    }
+    const stars = typeof row.stars === "number" ? row.stars : parseLegacyNotes(row.notes).stars;
+    return stars !== null ? stars >= 1 : row.success_level !== "struggled";
+}
+
+/** Vreme iz baze kao Date; vrednost bez vremenske zone tumači se kao UTC. */
+export function parseDbTimestamp(value: string | null | undefined): Date | null {
+    if (!value) return null;
+    const hasZone = /(Z|[+-]\d{2}(:?\d{2})?)$/i.test(value);
+    const date = new Date(hasZone ? value : `${value.replace(" ", "T")}Z`);
+    return Number.isNaN(date.getTime()) ? null : date;
 }

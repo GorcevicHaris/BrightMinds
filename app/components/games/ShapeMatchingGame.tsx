@@ -1,19 +1,22 @@
 "use client";
 
 // Pogodi oblik — dete vidi uzorak i dodiruje isti oblik među ponuđenima.
-// Nema vremena ni neuspeha: posle greške se pokušava ponovo, posle dve greške tačan oblik blago svetli.
+// Nema vremena ni neuspeha: posle greške se pokušava ponovo, a posle onoliko grešaka koliko je
+// zadato u podešavanjima deteta tačan oblik blago svetli. Broj ponuđenih oblika i zadataka
+// takođe prati podešavanja (uzrast i izbor roditelja).
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
     Feedback,
     GameHud,
     GamePrompt,
     GameStage,
-    isFemale,
     playSfx,
     shuffle,
     useGameSync,
+    useInputGuard,
     useTimers,
     type BaseView,
     type ChoiceState,
@@ -21,8 +24,9 @@ import {
     type GameProps,
     type TimerId,
 } from "@/app/components/games/kit";
+import type { ResolvedSettings } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
-import { getGame } from "@/lib/games";
+import { getGame, LEVELS_PER_TIER } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
 
 // ── Boje ──────────────────────────────────────────────────────────────────────
@@ -67,7 +71,7 @@ type ShapeId =
 
 interface ShapeDefinition {
     name: string;
-    /** Akuzativ za rečenicu "Pronađi …" */
+    /** Akuzativ za rečenice "Pronađi …" i "Tražimo …" (zadat za svaki oblik posebno, ne izvodi se iz imena) */
     acc: string;
     color: ColorId;
     /** Oblici slične siluete — koriste se kao teži ometači */
@@ -357,12 +361,14 @@ interface ShapeArtProps {
     look?: Look;
     /** Ugao u stepenima (teži nivoi) */
     rot?: number;
+    /** Veličina u odnosu na okvir (1 = ceo okvir) */
+    scale?: number;
     /** Kada je zadat, crtež se čita kao slika; inače je ukras unutar dugmeta */
     label?: string;
     className?: string;
 }
 
-function ShapeArt({ shape, color, look = "color", rot = 0, label, className }: ShapeArtProps) {
+function ShapeArt({ shape, color, look = "color", rot = 0, scale = 1, label, className }: ShapeArtProps) {
     const def = SHAPES[shape];
     const paint = PALETTE[color];
     // Dva sloja istog tela: širi daje ivicu oko celog oblika, uži ispunu — bez linija na spojevima delova.
@@ -372,7 +378,7 @@ function ShapeArt({ shape, color, look = "color", rot = 0, label, className }: S
         <svg
             viewBox="-6 -6 112 112"
             className={cn("text-ink", className)}
-            style={rot ? { transform: `rotate(${rot}deg)` } : undefined}
+            style={rot || scale !== 1 ? { transform: `rotate(${rot}deg) scale(${scale})` } : undefined}
             role={label ? "img" : undefined}
             aria-label={label}
             aria-hidden={label ? undefined : true}
@@ -427,10 +433,30 @@ const LEVELS: LevelConfig[] = [
 ];
 
 const TURNS = [-135, -90, -45, 45, 90, 135, 180];
+/** Veličine primerka u pločici: isti oblik nije uvek iste veličine, pa se traži oblik, a ne istovetna sličica */
+const SIZES = [1, 0.86, 0.72];
+/** Mlađa deca svaki laki nivo počinju zadatkom sa samo dva ponuđena oblika */
+const WARM_UP_OPTIONS = 2;
 
-function configFor(level: number): LevelConfig {
-    const index = Math.min(Math.max(Math.round(level) || 1, 1), LEVELS.length) - 1;
-    return LEVELS[index];
+function levelIndex(level: number): number {
+    return Math.min(Math.max(Math.round(level) || 1, 1), LEVELS.length) - 1;
+}
+
+/** Granice nivoa posle primene podešavanja deteta (uzrast i izbor roditelja). */
+interface PlanLimits {
+    rounds: number;
+    options: number;
+    /** Prvi zadatak nudi samo dva oblika */
+    warmUp: boolean;
+}
+
+function limitsFor(level: number, settings: ResolvedSettings): PlanLimits {
+    const index = levelIndex(level);
+    return {
+        rounds: Math.min(LEVELS[index].rounds, settings.preset.maxRounds),
+        options: Math.min(LEVELS[index].options, settings.choiceLimit),
+        warmUp: settings.activeBand === "young" && index < LEVELS_PER_TIER,
+    };
 }
 
 // ── View ──────────────────────────────────────────────────────────────────────
@@ -439,8 +465,14 @@ interface ShapeOption {
     shape: ShapeId;
     color: ColorId;
     rot: number;
+    /** Veličina primerka u pločici (1 = cela pločica) */
+    scale: number;
 }
 
+/**
+ * `correctCount` = zadaci rešeni samostalno iz prvog pokušaja, `incorrectCount` = pogrešni dodiri
+ * (svaka pogrešna opcija se broji jednom, jer posle greške ostaje isključena).
+ */
 export interface ShapesView extends BaseView {
     /** Traženi oblik i način na koji je uzorak nacrtan */
     target: ShapeId;
@@ -452,10 +484,10 @@ export interface ShapesView extends BaseView {
     /** Poslednja dodirnuta opcija dok traje povratna poruka */
     picked: number | null;
     feedback: FeedbackKind;
-    /** Tačan oblik blago svetli (posle dve greške) */
+    /** Tačan oblik je blago istaknut (posle onoliko grešaka koliko je zadato u podešavanjima deteta) */
     hint: boolean;
-    /** Zadaci rešeni iz prvog pokušaja — osnova za zvezdice */
-    firstTry: number;
+    /** Zadaci rešeni tek pošto je tačan oblik istaknut */
+    promptedCount: number;
 }
 
 type RoundPlan = Pick<ShapesView, "target" | "targetColor" | "options">;
@@ -465,38 +497,40 @@ function pickOne<T>(items: readonly T[]): T {
 }
 
 /** Svi zadaci nivoa unapred. Traženi oblici su različiti, pa se isti nikad ne ponavlja dva puta zaredom. */
-function buildPlan(cfg: LevelConfig): RoundPlan[] {
+function buildPlan(cfg: LevelConfig, limits: PlanLimits): RoundPlan[] {
     const pool = POOL.slice(0, cfg.pool);
     return shuffle(pool)
-        .slice(0, cfg.rounds)
-        .map((target) => {
+        .slice(0, limits.rounds)
+        .map((target, round) => {
+            const count = limits.warmUp && round === 0 ? Math.min(limits.options, WARM_UP_OPTIONS) : limits.options;
             const similar = shuffle(SHAPES[target].similar.filter((shape) => pool.includes(shape))).slice(0, cfg.similar);
             const others = shuffle(pool.filter((shape) => shape !== target && !similar.includes(shape)));
-            const distractors = [...similar, ...others].slice(0, cfg.options - 1);
+            const distractors = [...similar, ...others].slice(0, count - 1);
 
             const shared = pickOne(COLOR_IDS);
             const targetColor = cfg.coloring === "uniform" ? shared : SHAPES[target].color;
             const spare = shuffle(COLOR_IDS.filter((color) => color !== targetColor));
+            const sizes = shuffle(SIZES);
 
             const options = [target, ...distractors].map((shape, i): ShapeOption => {
                 let color = SHAPES[shape].color;
                 if (cfg.coloring === "uniform") color = shared;
                 // Tačan oblik (i = 0) dobija drugu boju, a prvi ometač (i = 1) je mamac u boji uzorka
                 if (cfg.coloring === "mixed") color = i === 1 ? targetColor : spare[i % spare.length];
-                return { shape, color, rot: cfg.rotate ? pickOne(TURNS) : 0 };
+                return { shape, color, rot: cfg.rotate ? pickOne(TURNS) : 0, scale: sizes[i % sizes.length] };
             });
 
             return { target, targetColor, options: shuffle(options) };
         });
 }
 
-function emptyView(cfg: LevelConfig): ShapesView {
+function emptyView(cfg: LevelConfig, rounds: number): ShapesView {
     return {
         score: 0,
         correctCount: 0,
         incorrectCount: 0,
         round: 1,
-        totalRounds: cfg.rounds,
+        totalRounds: rounds,
         target: POOL[0],
         targetColor: SHAPES[POOL[0]].color,
         look: cfg.look,
@@ -505,34 +539,41 @@ function emptyView(cfg: LevelConfig): ShapesView {
         picked: null,
         feedback: null,
         hint: false,
-        firstTry: 0,
+        promptedCount: 0,
     };
 }
 
-function hasKey(record: object, key: unknown): boolean {
+function hasKey<T extends object>(record: T, key: unknown): key is keyof T {
     return typeof key === "string" && Object.prototype.hasOwnProperty.call(record, key);
 }
 
-function isOption(value: unknown): value is ShapeOption {
-    if (typeof value !== "object" || value === null) return false;
-    const option = value as Partial<ShapeOption>;
-    return hasKey(SHAPES, option.shape) && hasKey(PALETTE, option.color);
+function numberOr(value: unknown, fallback: number): number {
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function toOption(value: unknown): ShapeOption | null {
+    if (typeof value !== "object" || value === null) return null;
+    const { shape, color, rot, scale } = value as Partial<ShapeOption>;
+    if (!hasKey(SHAPES, shape) || !hasKey(PALETTE, color)) return null;
+    return { shape, color, rot: numberOr(rot, 0), scale: numberOr(scale, 1) };
 }
 
 /** Stanje za monitor: podrazumevane vrednosti + ono što je stiglo, uz proveru polja od kojih zavisi crtanje. */
 function toShown(fallback: ShapesView, state: Partial<ShapesView> | null | undefined): ShapesView {
     const merged = { ...fallback, ...state };
+    const options: unknown[] = Array.isArray(merged.options) ? merged.options : [];
     return {
         ...merged,
         target: hasKey(SHAPES, merged.target) ? merged.target : fallback.target,
         targetColor: hasKey(PALETTE, merged.targetColor) ? merged.targetColor : fallback.targetColor,
         look: merged.look === "shadow" || merged.look === "outline" ? merged.look : "color",
-        options: Array.isArray(merged.options) ? merged.options.filter(isOption) : [],
+        options: options.map(toOption).filter((option): option is ShapeOption => option !== null),
         wrong: Array.isArray(merged.wrong) ? merged.wrong : [],
     };
 }
 
 // ── Tekstovi ──────────────────────────────────────────────────────────────────
+// Kratko, doslovno i mirno: jedna rečenica po poruci, bez pohvala ličnosti i bez roda.
 
 function promptFor(view: ShapesView): { title: string; subtitle: string } {
     const correct = view.options.find((option) => option.shape === view.target);
@@ -540,15 +581,16 @@ function promptFor(view: ShapesView): { title: string; subtitle: string } {
     const rotated = view.options.some((option) => option.rot);
 
     let title = `Pronađi ${SHAPES[view.target].acc}`;
-    let subtitle = recolored ? "Gledaj oblik, ne boju" : "Dodirni isti oblik";
+    const steps = ["Dodirni isti oblik."];
     if (view.look === "shadow") {
         title = "Čija je ovo senka?";
-        subtitle = "Dodirni oblik sa ovom senkom";
+        steps[0] = "Dodirni oblik sa ovom senkom.";
     } else if (view.look === "outline") {
         title = "Koji je ovo oblik?";
-        subtitle = "Dodirni oblik koji se uklapa";
     }
-    return { title, subtitle: rotated ? `${subtitle}. Može biti okrenut.` : subtitle };
+    if (recolored) steps.push("Boja može biti druga.");
+    if (rotated) steps.push("Oblik može biti okrenut.");
+    return { title, subtitle: steps.join(" ") };
 }
 
 /** Na početku nivoa i na dugme "Ponovi" izgovara se celo uputstvo, u narednim zadacima samo pitanje. */
@@ -556,6 +598,15 @@ function speechFor(view: ShapesView, full: boolean): string {
     const { title, subtitle } = promptFor(view);
     const question = title.endsWith("?") ? title : `${title}.`;
     return full ? `${question} ${subtitle}` : question;
+}
+
+const WRONG_FIRST = "Nije to. Probaj opet.";
+
+/** Tačno: imenuje se pronađeni oblik. Prva greška: poziv na novi pokušaj. Svaka sledeća: ponavlja se šta tražimo. */
+function feedbackText(view: ShapesView): string {
+    const target = SHAPES[view.target];
+    if (view.feedback === "correct") return `To je ${target.name.toLowerCase()}.`;
+    return view.wrong.length >= 2 ? `Tražimo ${target.acc}.` : WRONG_FIRST;
 }
 
 const TARGET_LABEL: Record<Look, (name: string) => string> = {
@@ -568,11 +619,13 @@ function choiceState(view: ShapesView, index: number): ChoiceState {
     if (view.feedback === "correct") return index === view.picked ? "correct" : "dimmed";
     if (view.feedback === "wrong" && index === view.picked) return "wrong";
     if (view.wrong.includes(index)) return "dimmed";
+    if (view.hint && view.options[index]?.shape === view.target) return "hint";
     return "idle";
 }
 
 // ── Raspored ──────────────────────────────────────────────────────────────────
-// Broj kolona prati broj opcija i položaj ekrana; pločica se smanjuje da tabla stane u visinu ekrana.
+// Broj kolona prati broj opcija i položaj ekrana; pločica se smanjuje da tabla stane u visinu ekrana,
+// ali nikad ispod 5rem (80 px), sa razmakom od najmanje 12 px.
 
 const DEFAULT_LAYOUT = "[--cols:3] [--rows:2]";
 const LAYOUT: Record<number, string> = {
@@ -590,24 +643,63 @@ const BOARD_STYLE = {
     maxWidth: "calc(var(--cols) * var(--tile) + (var(--cols) - 1) * var(--gap))",
 } as CSSProperties;
 
+// ── Pokazivanje ───────────────────────────────────────────────────────────────
+// Uz svako uputstvo kratko se istakne ono o čemu uputstvo govori: jedan miran puls, pa mir.
+// Zajednički kit ovo još nema, pa je kuka lokalna.
+
+const DEMO_MS = 1500;
+/** Uz `animate-soft-pulse`: jedan krug umesto beskonačnog ponavljanja */
+const PULSE_ONCE: CSSProperties = { animationDuration: `${DEMO_MS}ms`, animationIterationCount: 1 };
+
+function useDemo(enabled: boolean) {
+    const [demo, setDemo] = useState({ on: enabled, run: 0 });
+    const timer = useRef<TimerId | null>(null);
+
+    const arm = useCallback(() => {
+        if (timer.current !== null) clearTimeout(timer.current);
+        timer.current = setTimeout(() => {
+            timer.current = null;
+            setDemo((current) => ({ ...current, on: false }));
+        }, DEMO_MS);
+    }, []);
+
+    useEffect(() => {
+        if (enabled) arm();
+        return () => {
+            if (timer.current !== null) clearTimeout(timer.current);
+        };
+    }, [enabled, arm]);
+
+    /** Ponovo pokazuje (novi zadatak ili dugme „Ponovi”); `run` se menja da bi puls krenuo iz početka */
+    const show = useCallback(() => {
+        setDemo((current) => ({ on: true, run: current.run + 1 }));
+        arm();
+    }, [arm]);
+
+    return { on: demo.on, run: demo.run, show };
+}
+
 // ── Igra ──────────────────────────────────────────────────────────────────────
 
 const GAME = getGame("shapes");
-const NEXT_ROUND_MS = 1100;
-const CELEBRATE_MS = 1000;
-const WRONG_FEEDBACK_MS = 900;
-const HINT_AFTER_WRONG = 2;
+/** Dovoljno dugo da se čuje „To je …” pre sledećeg pitanja */
+const NEXT_ROUND_MS = 1700;
+const CELEBRATE_MS = 1400;
+const WRONG_FEEDBACK_MS = 1400;
 
 export default function ShapeMatchingGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<ShapesView>) {
-    const cfg = configFor(level);
-    const female = isFemale(gender);
+    const cfg = LEVELS[levelIndex(level)];
+    const settings = useChildSettings();
 
     const sync = useGameSync<ShapesView>({ childId, gameId: "shapes", level, isMonitor });
     const { say } = useSpeech(gender);
     const { after, cancel } = useTimers();
+    const guard = useInputGuard();
+    const demo = useDemo(!isMonitor);
 
-    const [plan] = useState<RoundPlan[]>(() => (isMonitor ? [] : buildPlan(cfg)));
-    const [view, setView] = useState<ShapesView>(() => ({ ...emptyView(cfg), ...plan[0] }));
+    // Monitor nema podešavanja deteta: sve što crta stiže u `monitorState`
+    const [plan] = useState<RoundPlan[]>(() => (isMonitor ? [] : buildPlan(cfg, limitsFor(level, settings))));
+    const [view, setView] = useState<ShapesView>(() => ({ ...emptyView(cfg, plan.length || cfg.rounds), ...plan[0] }));
 
     // Poslednje stanje za rukovaoce i tajmere (dva brza dodira ne vide zastarelo stanje)
     const viewRef = useRef(view);
@@ -629,8 +721,10 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
     );
 
     useEffect(() => {
-        if (!isMonitor) sync.start(viewRef.current);
-    }, [isMonitor, sync]);
+        if (isMonitor) return;
+        guard.hold();
+        sync.start(viewRef.current);
+    }, [isMonitor, sync, guard]);
 
     useEffect(() => {
         if (!isMonitor) say(speechFor(viewRef.current, true));
@@ -641,12 +735,16 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
         finishedRef.current = true;
         const final = viewRef.current;
         sync.complete(final);
-        // Zvezdice: total = broj zadataka, correct = zadaci rešeni iz prvog pokušaja.
+        // total    = broj zadataka
+        // correct  = zadaci rešeni samostalno iz prvog pokušaja (osnova za zvezdice)
+        // prompted = zadaci rešeni tek pošto je tačan oblik istaknut
+        // Ostatak (total − correct − prompted) su zadaci rešeni posle više pokušaja, ali bez pomoći.
         onCompleteRef.current({
             score: final.score,
             durationSec: sync.elapsedSec(),
-            correct: final.firstTry,
+            correct: final.correctCount,
             total: final.totalRounds,
+            prompted: final.promptedCount,
         });
     };
 
@@ -662,14 +760,18 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
             feedback: null,
             hint: false,
         };
+        // Dodir koji je ostao od prethodnog zadatka ne sme da odgovori na novi
+        guard.hold();
         commit(next, `Zadatak ${index + 1}: traži se ${SHAPES[round.target].name.toLowerCase()}`);
+        demo.show();
         say(speechFor(next, false));
     };
 
     const handlePick = (index: number) => {
-        if (isMonitor || finishedRef.current) return;
+        if (isMonitor || finishedRef.current || guard.blocked()) return;
         const current = viewRef.current;
         const option = current.options[index];
+        // Već rešen zadatak ili opcija koja je već bila pogrešna: ponovljeni dodir se ne broji
         if (!option || current.feedback === "correct" || current.wrong.includes(index)) return;
 
         cancel(feedbackTimer.current);
@@ -678,60 +780,67 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
 
         if (option.shape === current.target) {
             const firstTry = current.wrong.length === 0;
+            const prompted = current.hint;
             const isLast = current.round >= current.totalRounds;
-            commit(
-                {
-                    ...current,
-                    picked: index,
-                    feedback: "correct",
-                    hint: false,
-                    score: current.score + (firstTry ? 10 : 5),
-                    correctCount: current.correctCount + 1,
-                    firstTry: current.firstTry + (firstTry ? 1 : 0),
-                },
-                `Tačno iz ${current.wrong.length + 1}. pokušaja: ${targetName}`
-            );
+            const solved: ShapesView = {
+                ...current,
+                picked: index,
+                feedback: "correct",
+                hint: false,
+                score: current.score + (firstTry ? 10 : 5),
+                correctCount: current.correctCount + (firstTry ? 1 : 0),
+                promptedCount: current.promptedCount + (prompted ? 1 : 0),
+            };
+            const how = firstTry ? "iz prvog pokušaja" : prompted ? "uz pomoć" : `iz ${current.wrong.length + 1}. pokušaja`;
+            commit(solved, `Tačno ${how}: ${targetName}`);
             playSfx(isLast ? "win" : "correct");
+            say(feedbackText(solved));
             if (isLast) after(CELEBRATE_MS, finish);
             else after(NEXT_ROUND_MS, () => startRound(current.round));
             return;
         }
 
         const wrong = [...current.wrong, index];
-        const hint = wrong.length >= HINT_AFTER_WRONG;
+        const hint = settings.hintAfter > 0 && wrong.length >= settings.hintAfter;
+        const missed: ShapesView = { ...current, picked: index, feedback: "wrong", wrong, hint, incorrectCount: current.incorrectCount + 1 };
         commit(
-            { ...current, picked: index, feedback: "wrong", wrong, hint, incorrectCount: current.incorrectCount + 1 },
-            `Greška: izabrano ${SHAPES[option.shape].name.toLowerCase()}, traži se ${targetName}${hint ? " (prikazana pomoć)" : ""}`
+            missed,
+            `Greška: izabrano ${SHAPES[option.shape].name.toLowerCase()}, traži se ${targetName}${hint && !current.hint ? " (prikazana pomoć)" : ""}`
         );
         playSfx("wrong");
+        say(feedbackText(missed));
+        // Kratka pauza: nekoliko brzih dodira zaredom ne postaje nekoliko grešaka
+        guard.hold();
         feedbackTimer.current = after(WRONG_FEEDBACK_MS, () => {
             feedbackTimer.current = null;
             commit({ ...viewRef.current, picked: null, feedback: null });
         });
     };
 
-    const shown = isMonitor ? toShown(emptyView(cfg), monitorState) : view;
+    const repeatInstruction = () => {
+        demo.show();
+        say(speechFor(viewRef.current, true));
+    };
+
+    const shown = isMonitor ? toShown(emptyView(cfg, cfg.rounds), monitorState) : view;
+    // Poeni su broj: mlađoj deci se ne prikazuju (roditelj ih na monitoru vidi)
+    const score = isMonitor || settings.preset.showPoints ? shown.score : undefined;
 
     if (shown.options.length === 0) {
         return (
             <GameStage>
-                <GameHud round={shown.round} totalRounds={shown.totalRounds} score={shown.score} />
+                <GameHud round={shown.round} totalRounds={shown.totalRounds} score={score} />
                 <GamePrompt title="Igra uskoro počinje" subtitle="Čekamo prvi zadatak" />
             </GameStage>
         );
     }
 
     const prompt = promptFor(shown);
-    const isLastRound = shown.round >= shown.totalRounds;
+    const message = feedbackText(shown);
 
     return (
         <GameStage>
-            <GameHud
-                round={shown.round}
-                totalRounds={shown.totalRounds}
-                score={shown.score}
-                onSpeak={isMonitor ? undefined : () => say(speechFor(view, true))}
-            />
+            <GameHud round={shown.round} totalRounds={shown.totalRounds} score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
             <GamePrompt
                 key={`prompt-${shown.round}`}
@@ -739,13 +848,19 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                 title={prompt.title}
                 subtitle={prompt.subtitle}
                 visual={
-                    <ShapeArt
-                        shape={shown.target}
-                        color={shown.targetColor}
-                        look={shown.look}
-                        label={TARGET_LABEL[shown.look](SHAPES[shown.target].name)}
-                        className="h-16 w-16 sm:h-24 sm:w-24"
-                    />
+                    <span
+                        key={demo.run}
+                        className={cn("grid h-full w-full place-items-center rounded-2xl", demo.on && "animate-soft-pulse ring-4 ring-brand-300")}
+                        style={demo.on ? PULSE_ONCE : undefined}
+                    >
+                        <ShapeArt
+                            shape={shown.target}
+                            color={shown.targetColor}
+                            look={shown.look}
+                            label={TARGET_LABEL[shown.look](SHAPES[shown.target].name)}
+                            className="h-16 w-16 sm:h-24 sm:w-24"
+                        />
+                    </span>
                 }
             />
 
@@ -755,7 +870,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                     role="group"
                     aria-label="Ponuđeni oblici"
                     className={cn(
-                        "mx-auto grid w-full animate-fade-up [--gap:0.5rem] sm:[--gap:0.875rem]",
+                        "mx-auto grid w-full animate-fade-up [--gap:0.75rem] sm:[--gap:0.875rem]",
                         LAYOUT[shown.options.length] ?? DEFAULT_LAYOUT,
                         isMonitor && "pointer-events-none"
                     )}
@@ -763,18 +878,17 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                 >
                     {shown.options.map((option, index) => {
                         const state = choiceState(shown, index);
-                        const hinted = shown.hint && state === "idle" && option.shape === shown.target;
                         return (
                             <ChoiceCard
                                 key={index}
                                 state={state}
-                                disabled={isMonitor || state !== "idle"}
+                                disabled={isMonitor || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(index)}
                                 aria-label={SHAPES[option.shape].name}
-                                className={cn("aspect-square", hinted && "animate-soft-pulse outline-4 outline-offset-2 outline-brand-300")}
+                                className="aspect-square"
                             >
                                 <span className={cn("absolute grid place-items-center", option.rot ? "inset-[17%]" : "inset-[11%]")}>
-                                    <ShapeArt shape={option.shape} color={option.color} rot={option.rot} className="h-full w-full" />
+                                    <ShapeArt shape={option.shape} color={option.color} rot={option.rot} scale={option.scale} className="h-full w-full" />
                                 </span>
                             </ChoiceCard>
                         );
@@ -782,11 +896,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                 </div>
             </div>
 
-            <Feedback
-                kind={shown.feedback}
-                correctText={isLastRound ? (female ? "Sve si pogodila! Bravo!" : "Sve si pogodio! Bravo!") : "Tačno! Bravo!"}
-                wrongText={shown.hint ? "Probaj oblik koji svetli" : "Probaj još jednom"}
-            />
+            <Feedback kind={shown.feedback} correctText={message} wrongText={message} />
         </GameStage>
     );
 }

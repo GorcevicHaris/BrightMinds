@@ -3,6 +3,8 @@
 // Praćenje uživo: roditelj/terapeut vidi isti ekran koji dete trenutno igra.
 // Igra šalje svoje stanje (view) preko lib/realtime.ts, a ovde se ista komponenta
 // igre iscrtava u režimu `isMonitor` sa tim stanjem.
+// Praćenje je zajednička pažnja, a ne nadzor: dete na svom ekranu vidi znak da ga
+// odrasli gleda, ništa se ne snima i odavde se igrom ne upravlja.
 import { useCallback, useReducer, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import type { BaseView, GameProps } from "@/app/components/games/kit/types";
@@ -47,7 +49,11 @@ const noop = () => {};
 
 // ── Stanje monitora ───────────────────────────────────────────────────────────
 
-/** Stanje igre kako ga šalje dete: polja iz BaseView + nivo + sve što je specifično za igru. */
+/**
+ * Stanje igre kako ga šalje dete: polja iz BaseView + nivo + sve što je specifično za igru.
+ * `correctCount` su zadaci rešeni samostalno iz prvog pokušaja, `promptedCount` zadaci rešeni
+ * tek uz pomoć (igra ga možda ne šalje), a `incorrectCount` pogrešni pokušaji.
+ */
 interface MonitorView extends Partial<BaseView> {
     level?: number;
     [key: string]: unknown;
@@ -175,11 +181,14 @@ function MonitorSession({ childId, childName }: LiveMonitorProps) {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <ConnectionStatus isConnected={isConnected} isConfigured={isConfigured} />
-                {isConfigured && (
-                    <p className="text-sm text-ink-soft">Prikaz se osvežava sam, čim {childName} napravi potez u igri.</p>
-                )}
+            <div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <ConnectionStatus isConnected={isConnected} isConfigured={isConfigured} />
+                    {isConfigured && (
+                        <p className="text-sm text-ink-soft">Prikaz se osvežava sam, čim {childName} napravi potez u igri.</p>
+                    )}
+                </div>
+                <p className="mt-2 text-sm text-ink-soft">Dete na svom ekranu vidi znak da ga odrasli gleda.</p>
             </div>
 
             {!isConfigured && (
@@ -257,12 +266,13 @@ function NowPlaying({ active }: { active: ActiveGame }) {
                 </span>
             </div>
 
-            <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <Stat label="Nivo" value={`${level} / ${MAX_LEVEL}`} />
                 <Stat label="Zadatak" value={round === null || totalRounds === null ? "—" : `${round} / ${totalRounds}`} />
-                <Stat label="Tačno" value={show(view.correctCount)} />
-                <Stat label="Netačno" value={show(view.incorrectCount)} />
                 <Stat label="Poeni" value={show(view.score)} />
+                <Stat label="Samostalno" value={show(view.correctCount)} />
+                <Stat label="Uz pomoć" value={show(view.promptedCount)} />
+                <Stat label="Pokušaji" value={show(view.incorrectCount)} />
             </dl>
 
             <p className="mt-4 text-xs font-semibold text-ink-soft">

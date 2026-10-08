@@ -1,64 +1,81 @@
 // app/api/children/[id]/unlocked-levels/route.ts
 // Za svaku igru vraća (najviši POLOŽEN nivo + 1), u opsegu 1..MAX_LEVEL + 1.
 // Vrednost MAX_LEVEL + 1 znači da su svi nivoi položeni. Podrazumevano 1.
+//
+// Nivo je položen kada je dete bar polovinu zadataka rešilo samostalno (videti
+// `isLevelPassed`). Za dete nema neuspeha: nivo koji još nije savladan ostaje
+// dostupan za novi pokušaj, samo ne otključava sledeći.
 import { NextResponse } from "next/server";
 import { requireChildAccess } from "@/lib/auth";
-import { GAMES, MAX_LEVEL, type GameId } from "@/lib/games";
+import { GAMES, MAX_LEVEL, type GameId, isGradedActivity } from "@/lib/games";
 import { isMissingColumnError, supabaseAdmin } from "@/lib/supabase";
+import { isLevelPassed, parseLegacyNotes, type ProgressLogRow } from "../../../_lib/children";
 import { errorResponse, parseIdParam, requireSession } from "../../../_lib/http";
 
 interface RouteContext {
     params: Promise<{ id: string }>;
 }
 
-interface LegacyLogRow {
-    id: number;
-    activity_id: number;
-    notes: string | null;
-    success_level: string | null;
-}
+type LevelRow = Pick<ProgressLogRow, "id" | "level" | "stars" | "success_level" | "correct_count" | "total_count">;
+type LegacyLogRow = Pick<ProgressLogRow, "id" | "activity_id" | "notes" | "success_level">;
 
 const PAGE_SIZE = 1000;
 const MAX_LEGACY_PAGES = 50;
+/** Strana pri traženju najvišeg položenog nivoa jedne igre (odgovor je skoro uvek na prvoj). */
+const LEVEL_PAGE_SIZE = 200;
+const MAX_LEVEL_PAGES = 100;
 
 /**
- * Partija je položena ako ima bar jednu zvezdicu. Stariji zapisi bez zvezdica
- * računaju se kao položeni osim ako je uspešnost "struggled".
+ * Najviši položen nivo jedne igre. Odnos tačnih i ukupnih odgovora ne može da
+ * se izrazi PostgREST filterom (poređenje dve kolone), pa se partije čitaju od
+ * najvišeg nivoa naniže i staje se kod prve položene. Čitanje ide po ključu
+ * (level, id), pa strane ostaju ispravne i kad PostgREST vrati manje redova od
+ * traženih ili se u međuvremenu upiše nova partija.
  */
-const PASSED_FILTER = [
-    "stars.gte.1",
-    "and(stars.is.null,success_level.neq.struggled)",
-    "and(stars.is.null,success_level.is.null)",
-].join(",");
+async function highestPassedLevel(childId: number, activityId: number): Promise<number> {
+    let cursor: { level: number; id: number } | null = null;
 
-/** Baza sa kolonama `level`/`stars`: jedan mali upit po igri. */
-async function highestPassedFromColumns(childId: number): Promise<Map<number, number>> {
-    const results = await Promise.all(
-        GAMES.map((game) =>
-            supabaseAdmin
-                .from("progress_logs")
-                .select("level")
-                .eq("child_id", childId)
-                .eq("activity_id", game.activityId)
-                .not("level", "is", null)
-                .or(PASSED_FILTER)
-                .order("level", { ascending: false })
-                .limit(1)
-        )
-    );
-
-    const highest = new Map<number, number>();
-    results.forEach(({ data, error }, index) => {
+    for (let page = 0; page < MAX_LEVEL_PAGES; page++) {
+        let query = supabaseAdmin
+            .from("progress_logs")
+            .select("id, level, stars, success_level, correct_count, total_count")
+            .eq("child_id", childId)
+            .eq("activity_id", activityId)
+            .not("level", "is", null);
+        if (cursor) {
+            query = query.or(`level.lt.${cursor.level},and(level.eq.${cursor.level},id.lt.${cursor.id})`);
+        }
+        const { data, error } = await query
+            .order("level", { ascending: false })
+            .order("id", { ascending: false })
+            .limit(LEVEL_PAGE_SIZE);
         if (error) throw error;
-        const level = ((data ?? []) as { level: number | null }[])[0]?.level;
-        if (typeof level === "number") highest.set(GAMES[index].activityId, level);
-    });
-    return highest;
+
+        const rows = (data ?? []) as LevelRow[];
+        for (const row of rows) {
+            if (typeof row.level === "number" && isLevelPassed(row, isGradedActivity(activityId))) return row.level;
+        }
+
+        const last = rows[rows.length - 1];
+        if (!last || typeof last.level !== "number") break;
+        cursor = { level: last.level, id: last.id };
+    }
+    return 0;
 }
 
-/** Baza pre migracije: nivo i zvezdice se čitaju iz beleške "Nivo N, Zvezdice: S, …". */
+/** Baza sa kolonama iz migracije 0001: po jedan mali upit za svaku igru. */
+async function highestPassedFromColumns(childId: number): Promise<Map<number, number>> {
+    const levels = await Promise.all(GAMES.map((game) => highestPassedLevel(childId, game.activityId)));
+    return new Map(GAMES.map((game, index) => [game.activityId, levels[index]]));
+}
+
+/**
+ * Baza pre migracije: nivo i zvezdice se čitaju iz beleške "Nivo N, Zvezdice: S, …".
+ * Bez broja odgovora važi staro pravilo (bar jedna zvezdica).
+ */
 async function highestPassedFromNotes(childId: number): Promise<Map<number, number>> {
     const highest = new Map<number, number>();
+    let lastId = 0;
 
     for (let page = 0; page < MAX_LEGACY_PAGES; page++) {
         const { data, error } = await supabaseAdmin
@@ -66,22 +83,21 @@ async function highestPassedFromNotes(childId: number): Promise<Map<number, numb
             .select("id, activity_id, notes, success_level")
             .eq("child_id", childId)
             .like("notes", "%Nivo%")
+            .gt("id", lastId)
             .order("id", { ascending: true })
-            .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+            .limit(PAGE_SIZE);
         if (error) throw error;
 
         const rows = (data ?? []) as LegacyLogRow[];
         for (const row of rows) {
-            const levelMatch = row.notes?.match(/Nivo\s+(\d{1,3})/);
-            if (!levelMatch) continue;
-            const starsMatch = row.notes?.match(/Zvezdice:\s*(\d+)/);
-            const passed = starsMatch ? Number(starsMatch[1]) >= 1 : row.success_level !== "struggled";
-            if (!passed) continue;
-
-            const level = Number(levelMatch[1]);
+            const { level } = parseLegacyNotes(row.notes);
+            if (level === null || !isLevelPassed(row, isGradedActivity(row.activity_id))) continue;
             if (level > (highest.get(row.activity_id) ?? 0)) highest.set(row.activity_id, level);
         }
-        if (rows.length < PAGE_SIZE) break;
+
+        const last = rows[rows.length - 1];
+        if (!last) break;
+        lastId = last.id;
     }
     return highest;
 }

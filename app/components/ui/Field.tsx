@@ -139,3 +139,52 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
     }
 );
 Textarea.displayName = "Textarea";
+
+interface SwitchProps {
+    label: string;
+    description?: string;
+    checked: boolean;
+    onChange: (checked: boolean) => void;
+    disabled?: boolean;
+}
+
+/** Prekidač sa nazivom i kratkim objašnjenjem. */
+export function Switch({ label, description, checked, onChange, disabled }: SwitchProps) {
+    const id = useId();
+    return (
+        <div className="flex items-start gap-4 py-2.5">
+            <div className="min-w-0 flex-1">
+                <label htmlFor={id} className="block text-sm font-extrabold text-ink">
+                    {label}
+                </label>
+                {description && (
+                    <p id={`${id}-desc`} className="mt-0.5 text-sm font-medium text-ink-soft">
+                        {description}
+                    </p>
+                )}
+            </div>
+            <button
+                id={id}
+                type="button"
+                role="switch"
+                aria-checked={checked}
+                aria-describedby={description ? `${id}-desc` : undefined}
+                disabled={disabled}
+                onClick={() => onChange(!checked)}
+                className={cn(
+                    "relative mt-0.5 inline-flex h-8 w-14 shrink-0 items-center rounded-full border-2 transition-colors disabled:opacity-50",
+                    checked ? "border-brand-600 bg-brand-600" : "border-line bg-brand-100"
+                )}
+            >
+                <span
+                    className={cn(
+                        "inline-block h-6 w-6 rounded-full bg-white shadow-soft transition-transform",
+                        checked ? "translate-x-6" : "translate-x-0.5"
+                    )}
+                    aria-hidden="true"
+                />
+                <span className="sr-only">{checked ? "Uključeno" : "Isključeno"}</span>
+            </button>
+        </div>
+    );
+}

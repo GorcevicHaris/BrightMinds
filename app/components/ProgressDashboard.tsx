@@ -1,28 +1,37 @@
 "use client";
 
 // Statistika napretka. Dva prikaza istih podataka:
-//  • "parent" — puna analitika za roditelja/terapeuta
-//  • "child"  — kratak, ohrabrujući pregled za dete (bez raspoloženja i bez neuspeha)
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Minus, RefreshCw, TrendingDown, TrendingUp } from "lucide-react";
-import { Button } from "@/app/components/ui/Button";
+//  • "parent" — analitika za roditelja/terapeuta: samostalno naspram „uz pomoć”, savladanost
+//    po igri, trend i predlog za vežbu van ekrana. Zvezdice su ovde sporedne (nagrada za dete),
+//    a raspoloženje se prikazuje isključivo kao detetov izbor, nikad kao ishod igre.
+//  • "child"  — kratak, ohrabrujući pregled za dete: samo zvezdice i nivoi.
+// Aplikacija je vežbanka, ne terapija: nijedan tekst ovde ne sme da tvrdi suprotno.
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Circle, CircleCheck, CircleDashed, Download, Info, Lightbulb, RefreshCw, type LucideIcon } from "lucide-react";
+import { Button, buttonClasses } from "@/app/components/ui/Button";
 import { Alert, Card } from "@/app/components/ui/Card";
 import { Select } from "@/app/components/ui/Field";
 import { cn } from "@/lib/cn";
-import { GAMES, MAX_LEVEL, MOODS, getGame, getMood, type GameDefinition, type GameId, type Mood, type SuccessLevel } from "@/lib/games";
+import { GAMES, MAX_LEVEL, MOODS, MOODS_THREE, getGame, getMood, type GameDefinition, type GameId, type Mood, type SuccessLevel } from "@/lib/games";
 import {
+    MASTERY_MIN_DAYS,
+    MASTERY_RATIO,
+    MASTERY_SESSIONS,
     RECENT_SESSIONS_LIMIT,
     TIERS,
     dayKeyToDate,
     tierForLevel,
     type DailyActivity,
     type GameProgress,
-    type MoodInsights,
+    type MasteryStatus,
+    type MoodChoices,
+    type MoodCounts,
     type ProgressResponse,
     type ProgressSession,
     type ProgressSummary,
     type SuccessDistribution,
+    type TrendPoint,
 } from "@/lib/progress";
 
 interface ProgressDashboardProps {
@@ -53,6 +62,9 @@ const gamesWord = (count: number) => plural(count, "igra", "igre", "igara");
 function percent(part: number, total: number): number {
     return total > 0 ? Math.round((part / total) * 100) : 0;
 }
+
+/** Udeo 0–1 kao ceo procenat. */
+const toPercent = (ratio: number) => Math.round(ratio * 100);
 
 function formatDate(iso: string, timeZone: string): string {
     return new Date(iso).toLocaleDateString(LOCALE, { day: "numeric", month: "short", year: "numeric", timeZone });
@@ -100,17 +112,19 @@ const GAME_SERIES: Record<GameId, Series> = {
     emotions: { swatch: "bg-pink-600", color: "var(--color-pink-600)" },
 };
 
-const MOOD_SERIES: Record<"before" | "after", Series & { label: string }> = {
-    before: { label: "Pre igre", swatch: "bg-brand-300", color: "var(--color-brand-300)" },
-    after: { label: "Posle igre", swatch: "bg-brand-700", color: "var(--color-brand-700)" },
-};
+/** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */
+const SUPPORT_SERIES = {
+    independent: { label: "Samostalno", swatch: "bg-brand-700" },
+    prompted: { label: "Uz pomoć", swatch: "bg-brand-400" },
+    other: { label: "Ostalo", swatch: "bg-slate-300" },
+} as const;
 
-/** Uspešnost je uređena skala, pa koristi jednu nijansu od svetle ka tamnoj. */
-const SUCCESS_LEVELS: { id: SuccessLevel; label: string; stars: number; swatch: string }[] = [
-    { id: "excellent", label: "Odlično", stars: 3, swatch: "bg-brand-900" },
-    { id: "successful", label: "Uspešno", stars: 2, swatch: "bg-brand-700" },
-    { id: "partial", label: "Delimično", stars: 1, swatch: "bg-brand-500" },
-    { id: "struggled", label: "Uz teškoće", stars: 0, swatch: "bg-brand-300" },
+/** Zvezdice su uređena skala u boji zvezdice (nagrada za dete, ne mera savladanosti). */
+const STAR_LEVELS: { id: SuccessLevel; label: string; swatch: string }[] = [
+    { id: "excellent", label: "3 zvezdice", swatch: "bg-sun-600" },
+    { id: "successful", label: "2 zvezdice", swatch: "bg-sun-400" },
+    { id: "partial", label: "1 zvezdica", swatch: "bg-sun-200" },
+    { id: "struggled", label: "Bez zvezdica", swatch: "bg-slate-300" },
 ];
 
 const AXIS_TICK = { fill: "var(--color-ink-soft)", fontSize: 12 };
@@ -212,9 +226,15 @@ export default function ProgressDashboard({ childId, childName, audience = "pare
                 ) : isChild ? (
                     <ChildView data={data} childName={childName} />
                 ) : (
-                    <ParentView data={data} childName={childName} onRefresh={reload} isRefreshing={isLoading} />
+                    <ParentView data={data} childId={childId} onRefresh={reload} isRefreshing={isLoading} />
                 )}
             </div>
+            {!isChild && (
+                <p className="text-xs font-semibold text-ink-soft">
+                    Bright Minds je vežbanka uz podršku odraslih. Nije terapija ni dijagnostički alat i ne zamenjuje logopeda, defektologa ili
+                    psihologa.
+                </p>
+            )}
         </div>
     );
 }
@@ -256,8 +276,8 @@ function EmptyState({ childName, isChild, onRefresh, isRefreshing }: EmptyStateP
         <Card className="mx-auto max-w-xl text-center">
             <h2 className="text-xl font-extrabold text-ink">Još nema odigranih igara</h2>
             <p className="mt-2 text-sm text-ink-soft">
-                Kada {childName} završi prvi nivo neke igre, ovde će se pojaviti aktivnost po danima, napredak po igrama i
-                raspoloženje pre i posle igre.
+                Kada {childName} završi prvi nivo neke igre, ovde će se pojaviti aktivnost po danima, napredak po igrama i predlozi za
+                vežbu van ekrana.
             </p>
             <Button className="mt-5" variant="secondary" onClick={onRefresh} isLoading={isRefreshing}>
                 Osveži
@@ -283,7 +303,7 @@ function ParentSkeleton() {
             <SkeletonBlock className="h-80" />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {Array.from({ length: 6 }, (_, i) => (
-                    <SkeletonBlock key={i} className="h-52" />
+                    <SkeletonBlock key={i} className="h-80" />
                 ))}
             </div>
         </div>
@@ -295,8 +315,8 @@ function ChildSkeleton() {
         <div role="status" className="space-y-5">
             <span className="sr-only">Učitavanje…</span>
             <SkeletonBlock className="h-9 max-w-xs rounded-xl" />
-            <div className="grid grid-cols-3 gap-3">
-                {Array.from({ length: 3 }, (_, i) => (
+            <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 2 }, (_, i) => (
                     <SkeletonBlock key={i} className="h-28" />
                 ))}
             </div>
@@ -416,33 +436,55 @@ function ChartNote({ children }: { children: ReactNode }) {
 
 // ── Prikaz za roditelja ───────────────────────────────────────────────────────
 
+type MoodOption = (typeof MOODS)[number];
+
+/**
+ * Skala lica za prikaz: baza čuva samo vrednost, a kraća skala (tri lica) koristi podskup
+ * istih vrednosti. Pet lica prikazujemo tek kada je zabeležen bar jedan krajnji izbor.
+ */
+function moodScaleFor(mood: MoodChoices): MoodOption[] {
+    const extremes = mood.before.very_upset + mood.before.very_happy + mood.after.very_upset + mood.after.very_happy;
+    return extremes > 0 ? MOODS : MOODS_THREE;
+}
+
+const countChoices = (counts: MoodCounts) => MOODS.reduce((sum, mood) => sum + counts[mood.value], 0);
+
 interface ParentViewProps {
     data: ProgressResponse;
-    childName: string;
+    childId: number;
     onRefresh: () => void;
     isRefreshing: boolean;
 }
 
-function ParentView({ data, childName, onRefresh, isRefreshing }: ParentViewProps) {
+function ParentView({ data, childId, onRefresh, isRefreshing }: ParentViewProps) {
     const [filter, setFilter] = useState<GameFilter>("all");
     const selected = filter === "all" ? undefined : data.games.find((game) => game.gameId === filter);
     const sessions =
         filter === "all"
             ? data.recentSessions.slice(0, RECENT_SESSIONS_LIMIT)
             : data.recentSessions.filter((session) => session.gameId === filter);
+    // Ista skala u svim delovima prikaza, bez obzira na izabranu igru
+    const moodScale = moodScaleFor(data.mood);
+    const mood = selected ? selected.mood : data.mood;
 
     return (
         <div className="space-y-8">
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <GameFilterControl value={filter} onChange={setFilter} />
-                <div className="flex shrink-0 items-center justify-between gap-3 md:justify-end">
+                <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 md:justify-end">
                     <p className="text-xs font-semibold text-ink-soft">
                         Ažurirano u {new Date(data.generatedAt).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" })}
                     </p>
-                    <Button variant="secondary" size="sm" onClick={onRefresh} isLoading={isRefreshing}>
-                        {!isRefreshing && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-                        Osveži
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                        <a href={`/api/children/${childId}/export`} download className={buttonClasses({ variant: "secondary", size: "sm" })}>
+                            <Download className="h-4 w-4" aria-hidden="true" />
+                            Preuzmi podatke (CSV)
+                        </a>
+                        <Button variant="secondary" size="sm" onClick={onRefresh} isLoading={isRefreshing}>
+                            {!isRefreshing && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+                            Osveži
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -451,21 +493,31 @@ function ParentView({ data, childName, onRefresh, isRefreshing }: ParentViewProp
             <ActivityChart daily={data.daily} filter={filter} windowDays={data.windowDays} />
 
             {selected ? (
-                <GameDetail game={selected} timeZone={data.timeZone} onShowAll={() => setFilter("all")} />
+                <GameDetail game={selected} timeZone={data.timeZone} windowDays={data.windowDays} onShowAll={() => setFilter("all")} />
             ) : (
                 <section aria-labelledby="progress-games" className="space-y-4">
-                    <SectionHeading id="progress-games" title="Napredak po igrama" description={`Svaka igra ima ${MAX_LEVEL} nivoa u tri težine.`} />
+                    <SectionHeading
+                        id="progress-games"
+                        title="Napredak po igrama"
+                        description="Samostalno: tačno iz prvog pokušaja. Uz pomoć: tačno tek kada igra istakne odgovor."
+                    />
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         {data.games.map((game) => (
-                            <GameCard key={game.gameId} game={game} timeZone={data.timeZone} onSelect={() => setFilter(game.gameId)} />
+                            <GameCard
+                                key={game.gameId}
+                                game={game}
+                                timeZone={data.timeZone}
+                                windowDays={data.windowDays}
+                                onSelect={() => setFilter(game.gameId)}
+                            />
                         ))}
                     </div>
                 </section>
             )}
 
-            <MoodSection mood={selected ? selected.mood : data.mood} childName={childName} />
+            <SessionsSection sessions={sessions} timeZone={data.timeZone} moodScale={moodScale} />
 
-            <SessionsSection sessions={sessions} timeZone={data.timeZone} />
+            {countChoices(mood.before) + countChoices(mood.after) > 0 && <MoodSection mood={mood} scale={moodScale} />}
         </div>
     );
 }
@@ -553,8 +605,17 @@ function minutesParts(totalMinutes: number): StatPart[] {
 
 function Overview({ summary, data, selected }: { summary: ProgressSummary; data: ProgressResponse; selected?: GameProgress }) {
     const averageMinutes = summary.plays > 0 ? summary.totalMinutes / summary.plays : 0;
+    const { independentRate30d: independent, promptedRate30d: prompted } = summary;
+    const period = `poslednjih ${data.windowDays} dana`;
+    const independentDetail =
+        independent === null
+            ? `Nema partija sa brojem odgovora u ${period}`
+            : prompted === null
+              ? `Iz prvog pokušaja, ${period}`
+              : `Uz pomoć: ${toPercent(prompted)}% · ${period}`;
+
     return (
-        <section aria-label="Pregled">
+        <section aria-label="Pregled" className="space-y-3">
             <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 <StatTile
                     label="Odigrane igre"
@@ -571,16 +632,24 @@ function Overview({ summary, data, selected }: { summary: ProgressSummary; data:
                     detail={summary.plays > 0 ? `Prosečno ${formatNumber(averageMinutes)} min po igri` : "Još nije igrano"}
                 />
                 <StatTile
-                    label="Prosek zvezdica"
-                    parts={[{ value: summary.averageStars === null ? "—" : formatNumber(summary.averageStars), unit: "od 3" }]}
-                    detail={`Ukupno osvojeno: ${formatNumber(summary.totalStars)}`}
+                    label="Samostalno tačno"
+                    parts={[{ value: independent === null ? "—" : `${toPercent(independent)}%` }]}
+                    detail={independentDetail}
                 />
                 <StatTile
-                    label="Aktivni dani"
-                    parts={[{ value: formatNumber(summary.activeDaysInWindow), unit: `od ${data.windowDays}` }]}
+                    label={`Dana igranja (${data.windowDays} dana)`}
+                    parts={[{ value: formatNumber(summary.daysPlayed30d), unit: `od ${data.windowDays}` }]}
                     detail={`Od početka: ${formatNumber(summary.activeDays)} ${plural(summary.activeDays, "dan", "dana", "dana")}`}
                 />
             </dl>
+            <p className="text-sm text-ink-soft">
+                <span aria-hidden="true" className="text-sun-500">
+                    ★
+                </span>{" "}
+                Zvezdice: <strong className="font-extrabold text-ink">{formatNumber(summary.totalStars)}</strong>
+                {summary.averageStars !== null && <> (prosečno {formatNumber(summary.averageStars)} po igri)</>}. Zvezdice su nagrada za dete,
+                a ne mera savladanosti.
+            </p>
         </section>
     );
 }
@@ -722,11 +791,245 @@ function DayTooltip({ day, filter }: { day: DailyActivity; filter: GameFilter })
 
 // ── Igre ──────────────────────────────────────────────────────────────────────
 
-function TierBadge({ game, progress }: { game: GameDefinition; progress: GameProgress }) {
+const MASTERY_PERCENT = toPercent(MASTERY_RATIO);
+
+const MASTERY_BADGES: Record<MasteryStatus, { label: string; badge: string; Icon: LucideIcon }> = {
+    mastered: { label: "Savladano", badge: "border-emerald-200 bg-emerald-50 text-emerald-800", Icon: CircleCheck },
+    progressing: { label: "U toku", badge: "border-brand-200 bg-brand-50 text-brand-800", Icon: CircleDashed },
+    not_started: { label: "Nije započeto", badge: "border-line bg-canvas text-ink-soft", Icon: Circle },
+    ungraded: { label: "Bez ocene", badge: "border-line bg-canvas text-ink-soft", Icon: Circle },
+};
+
+const UNGRADED_NOTE =
+    "U ovoj igri nema pogrešnih odgovora — sva osećanja su u redu. „Samostalno” ovde znači da je dete izabralo osećanje koje u toj situaciji ima većina dece.";
+
+/** Kriterijum iz lib/progress.ts rečima; brojevi dolaze iz istih konstanti. */
+const MASTERY_CRITERION =
+    `„Savladano” znači: poslednje ${MASTERY_SESSIONS} ${plural(MASTERY_SESSIONS, "partija", "partije", "partija")} na trenutnoj težini, ` +
+    `odigrane u najmanje ${MASTERY_MIN_DAYS} različita dana, i u svakoj bar ${MASTERY_PERCENT}% zadataka rešeno samostalno. ` +
+    "To je uobičajen dogovor iz prakse, a ne strogo pravilo — o sledećem koraku odlučujete vi.";
+
+/** Oznaka savladanosti trenutne težine, sa objašnjenjem kriterijuma na dugme „i”. */
+function MasteryStatusLine({ game, progress }: { game: GameDefinition; progress: GameProgress }) {
+    const [isExplained, setIsExplained] = useState(false);
+    const noteId = useId();
+    const { label, badge, Icon } = MASTERY_BADGES[progress.mastery];
+
     return (
-        <span className={cn("shrink-0 rounded-full border px-2.5 py-1 text-xs font-extrabold", game.accent.soft, game.accent.text, game.accent.border)}>
-            {tierForLevel(progress.currentLevel).label}
-        </span>
+        <div>
+            <div className="flex items-center gap-2">
+                <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-extrabold", badge)}>
+                        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        {label}
+                    </span>
+                    <span className="text-xs font-bold text-ink-soft">Težina: {tierForLevel(progress.currentLevel).label}</span>
+                </p>
+                <button
+                    type="button"
+                    aria-expanded={isExplained}
+                    aria-controls={noteId}
+                    aria-label={`${game.title}: šta znači oznaka „Savladano”?`}
+                    onClick={() => setIsExplained((value) => !value)}
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-brand-50 hover:text-ink"
+                >
+                    <Info className="h-4 w-4" aria-hidden="true" />
+                </button>
+            </div>
+            <p id={noteId} hidden={!isExplained} className="mt-2 rounded-xl bg-canvas px-3 py-2.5 text-xs font-semibold text-ink-soft">
+                {progress.mastery === "ungraded" ? UNGRADED_NOTE : MASTERY_CRITERION}
+            </p>
+        </div>
+    );
+}
+
+interface SupportSplitProps {
+    /** Udeli 0–1 nad istim zadacima; `prompted` je `null` kada pomoć nije beležena */
+    independent: number | null;
+    prompted: number | null;
+    windowDays: number;
+}
+
+/** Samostalno / uz pomoć / ostalo kao traka od 100%, sa brojevima ispisanim ispod. */
+function SupportSplit({ independent, prompted, windowDays }: SupportSplitProps) {
+    const heading = <p className="text-sm font-bold text-ink">Samostalnost ({windowDays} dana)</p>;
+    if (independent === null) {
+        return (
+            <div>
+                {heading}
+                <p className="mt-1 text-xs font-semibold text-ink-soft">Nema partija sa brojem odgovora u ovom periodu.</p>
+            </div>
+        );
+    }
+
+    const independentPercent = toPercent(independent);
+    const promptedPercent = prompted === null ? null : Math.min(toPercent(prompted), 100 - independentPercent);
+    const parts = [
+        { ...SUPPORT_SERIES.independent, value: independentPercent },
+        ...(promptedPercent === null ? [] : [{ ...SUPPORT_SERIES.prompted, value: promptedPercent }]),
+        { ...SUPPORT_SERIES.other, value: 100 - independentPercent - (promptedPercent ?? 0) },
+    ];
+
+    return (
+        <div>
+            {heading}
+            <div aria-hidden="true" className="mt-2 flex h-3 gap-0.5">
+                {parts
+                    .filter((part) => part.value > 0)
+                    .map((part) => (
+                        <span
+                            key={part.label}
+                            className={cn("min-w-1 rounded-sm first:rounded-l-full last:rounded-r-full", part.swatch)}
+                            style={{ flexGrow: part.value, flexBasis: 0 }}
+                        />
+                    ))}
+            </div>
+            <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                {parts.map((part) => (
+                    <div key={part.label} className="flex items-center gap-1.5">
+                        <span aria-hidden="true" className={cn("h-2.5 w-2.5 shrink-0 rounded-sm", part.swatch)} />
+                        <dt className="font-semibold text-ink-soft">{part.label}</dt>
+                        <dd className="font-extrabold text-ink">{part.value}%</dd>
+                    </div>
+                ))}
+            </dl>
+        </div>
+    );
+}
+
+function TrendTooltip({ point }: { point: TrendPoint }) {
+    return (
+        <div className="rounded-xl border border-line bg-surface px-3 py-2 text-xs shadow-lift">
+            <p className="font-bold text-ink-soft">
+                {formatDay(point.date, "short")}
+                {point.level !== null && ` · nivo ${point.level}`}
+            </p>
+            <p className="mt-1 whitespace-nowrap font-extrabold text-ink">Samostalno {toPercent(point.independentRatio)}%</p>
+            {point.promptedRatio !== null && (
+                <p className="whitespace-nowrap font-semibold text-ink-soft">Uz pomoć {toPercent(point.promptedRatio)}%</p>
+            )}
+        </div>
+    );
+}
+
+interface TrendChartProps {
+    game: GameDefinition;
+    /** Od najstarije ka najnovijoj partiji */
+    trend: TrendPoint[];
+    /** Veći grafikon sa osama (detalji igre) umesto male linije u kartici */
+    detailed?: boolean;
+}
+
+/** Udeo samostalno tačnih odgovora po partijama; isprekidana linija je prag savladanosti. */
+function TrendChart({ game, trend, detailed = false }: TrendChartProps) {
+    const points = useMemo(() => trend.map((point, index) => ({ index, independent: toPercent(point.independentRatio) })), [trend]);
+    if (trend.length === 0) return null;
+
+    const color = GAME_SERIES[game.id].color;
+    const title = `${game.title}: udeo samostalno tačnih odgovora po partijama`;
+
+    return (
+        <figure className="min-w-0">
+            <figcaption className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm font-bold text-ink">
+                Samostalno po partijama
+                <span className="text-xs font-semibold text-ink-soft">
+                    {trend.length === 1 ? "poslednja partija" : `poslednjih ${trend.length}`} · crta: {MASTERY_PERCENT}%
+                </span>
+            </figcaption>
+            <div className={cn("mt-2 w-full", detailed ? "h-52" : "h-16")}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_INITIAL_SIZE}>
+                    <LineChart data={points} margin={{ top: 8, right: 12, bottom: detailed ? 0 : 6, left: detailed ? 0 : 12 }} title={title}>
+                        {detailed && <CartesianGrid vertical={false} stroke={GRID_STROKE} />}
+                        <XAxis
+                            dataKey="index"
+                            hide={!detailed}
+                            tickFormatter={(value: number) => (trend[value] ? formatDay(trend[value].date, "short") : "")}
+                            tick={AXIS_TICK}
+                            tickLine={false}
+                            axisLine={{ stroke: GRID_STROKE }}
+                            tickMargin={8}
+                            minTickGap={16}
+                            interval="preserveStartEnd"
+                            padding={{ left: 8, right: 8 }}
+                        />
+                        <YAxis
+                            hide={!detailed}
+                            width={44}
+                            domain={[0, 100]}
+                            ticks={[0, 50, 100]}
+                            tickFormatter={(value: number) => `${value}%`}
+                            tick={AXIS_TICK}
+                            tickLine={false}
+                            axisLine={false}
+                        />
+                        <ReferenceLine y={MASTERY_PERCENT} stroke="var(--color-ink-faint)" strokeDasharray="4 4" />
+                        <Tooltip
+                            cursor={{ stroke: GRID_STROKE }}
+                            wrapperStyle={{ outline: "none", zIndex: 10 }}
+                            allowEscapeViewBox={{ x: false, y: true }}
+                            content={({ active, label }) => {
+                                const point = active ? trend[Number(label)] : undefined;
+                                return point ? <TrendTooltip point={point} /> : null;
+                            }}
+                        />
+                        <Line
+                            type="linear"
+                            dataKey="independent"
+                            stroke={color}
+                            strokeWidth={2}
+                            dot={{ r: 3.5, fill: color, stroke: "var(--color-surface)", strokeWidth: 1.5 }}
+                            activeDot={{ r: 5, fill: color, stroke: "var(--color-surface)", strokeWidth: 2 }}
+                            isAnimationActive={false}
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
+            <div className="sr-only">
+                <table>
+                    <caption>{title} (od najstarije ka najnovijoj)</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Dan</th>
+                            <th scope="col">Nivo</th>
+                            <th scope="col">Samostalno</th>
+                            <th scope="col">Uz pomoć</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {trend.map((point, index) => (
+                            <tr key={index}>
+                                <th scope="row">{formatDay(point.date, "long")}</th>
+                                <td>{point.level ?? "nije zabeležen"}</td>
+                                <td>{toPercent(point.independentRatio)}%</td>
+                                <td>{point.promptedRatio === null ? "nije zabeleženo" : `${toPercent(point.promptedRatio)}%`}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </figure>
+    );
+}
+
+function SupportSuggestion() {
+    return (
+        <p className="flex gap-2 rounded-xl border border-sun-200 bg-sun-50 px-3 py-2.5 text-sm text-ink">
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-sun-700" aria-hidden="true" />
+            <span>
+                <strong className="font-extrabold">Predlog:</strong> Poslednje tri partije su bile teške. Probajte lakši uzrast u podešavanjima ili
+                igrajte zajedno.
+            </span>
+        </p>
+    );
+}
+
+/** Veštine iz aplikacije slabo se prenose same od sebe — zato uz svaku igru ide vežba van ekrana. */
+function OffscreenTip({ game, heading: Heading }: { game: GameDefinition; heading: "h3" | "h4" }) {
+    return (
+        <div>
+            <Heading className="font-sans text-xs font-extrabold tracking-normal text-ink-soft">Vežbajte i van ekrana</Heading>
+            <p className="mt-0.5 text-sm text-ink">{game.offscreenTip}</p>
+        </div>
     );
 }
 
@@ -739,19 +1042,25 @@ function Fact({ label, children }: { label: string; children: ReactNode }) {
     );
 }
 
-function AverageStars({ value }: { value: number | null }) {
-    if (value === null) return <>—</>;
+function LevelSummary({ game, progress }: { game: GameDefinition; progress: GameProgress }) {
     return (
-        <span className="inline-flex items-center gap-1">
-            {formatNumber(value)}
-            <span aria-hidden="true" className="text-sun-400">
-                ★
-            </span>
-        </span>
+        <div>
+            <p className="mb-2 text-sm font-bold text-ink">
+                Završeno {progress.highestLevelCompleted} od {MAX_LEVEL} nivoa
+            </p>
+            <LevelProgress game={game} completed={progress.highestLevelCompleted} />
+        </div>
     );
 }
 
-function GameCard({ game: progress, timeZone, onSelect }: { game: GameProgress; timeZone: string; onSelect: () => void }) {
+interface GameCardProps {
+    game: GameProgress;
+    timeZone: string;
+    windowDays: number;
+    onSelect: () => void;
+}
+
+function GameCard({ game: progress, timeZone, windowDays, onSelect }: GameCardProps) {
     const game = getGame(progress.gameId);
     const played = progress.plays > 0;
     return (
@@ -762,34 +1071,31 @@ function GameCard({ game: progress, timeZone, onSelect }: { game: GameProgress; 
                     <h3 className="text-base font-extrabold text-ink">{game.title}</h3>
                     <p className="text-sm text-ink-soft">{game.skill}</p>
                 </div>
-                {played && <TierBadge game={game} progress={progress} />}
             </div>
 
-            <div>
-                <p className="mb-2 text-sm font-bold text-ink">
-                    Završeno {progress.highestLevelCompleted} od {MAX_LEVEL} nivoa
-                </p>
-                <LevelProgress game={game} completed={progress.highestLevelCompleted} />
-            </div>
+            <MasteryStatusLine game={game} progress={progress} />
+            <LevelSummary game={game} progress={progress} />
+
+            {played && (
+                <>
+                    <SupportSplit independent={progress.independentRate30d} prompted={progress.promptedRate30d} windowDays={windowDays} />
+                    <TrendChart game={game} trend={progress.trend} />
+                    {progress.needsSupport && <SupportSuggestion />}
+                </>
+            )}
+
+            <OffscreenTip game={game} heading="h4" />
 
             {played ? (
-                <>
-                    <dl className="grid grid-cols-3 gap-3">
-                        <Fact label="Odigrano">{formatNumber(progress.plays)}</Fact>
-                        <Fact label="Prosek">
-                            <AverageStars value={progress.averageStars} />
-                        </Fact>
-                        <Fact label="Rekord">{progress.bestScore === null ? "—" : formatNumber(progress.bestScore)}</Fact>
-                    </dl>
-                    <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
-                        <p className="text-xs font-semibold text-ink-soft">
-                            Poslednji put: {progress.lastPlayedAt ? formatDate(progress.lastPlayedAt, timeZone) : "—"}
-                        </p>
-                        <Button variant="ghost" size="sm" onClick={onSelect} aria-label={`Detalji za igru ${game.title}`}>
-                            Detalji
-                        </Button>
-                    </div>
-                </>
+                <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
+                    <p className="text-xs font-semibold text-ink-soft">
+                        {formatNumber(progress.plays)} {gamesWord(progress.plays)} · poslednji put{" "}
+                        {progress.lastPlayedAt ? formatDate(progress.lastPlayedAt, timeZone) : "—"}
+                    </p>
+                    <Button variant="ghost" size="sm" onClick={onSelect} aria-label={`Detalji za igru ${game.title}`}>
+                        Detalji
+                    </Button>
+                </div>
             ) : (
                 <p className="mt-auto border-t border-line pt-3 text-sm font-semibold text-ink-soft">Još nije igrano.</p>
             )}
@@ -797,7 +1103,14 @@ function GameCard({ game: progress, timeZone, onSelect }: { game: GameProgress; 
     );
 }
 
-function GameDetail({ game: progress, timeZone, onShowAll }: { game: GameProgress; timeZone: string; onShowAll: () => void }) {
+interface GameDetailProps {
+    game: GameProgress;
+    timeZone: string;
+    windowDays: number;
+    onShowAll: () => void;
+}
+
+function GameDetail({ game: progress, timeZone, windowDays, onShowAll }: GameDetailProps) {
     const game = getGame(progress.gameId);
     return (
         <Card aria-labelledby="progress-game-detail" role="region" className="space-y-6">
@@ -815,223 +1128,76 @@ function GameDetail({ game: progress, timeZone, onShowAll }: { game: GameProgres
             </div>
 
             {progress.plays === 0 ? (
-                <ChartNote>Ova igra još nije igrana.</ChartNote>
+                <>
+                    <ChartNote>Ova igra još nije igrana.</ChartNote>
+                    <OffscreenTip game={game} heading="h3" />
+                </>
             ) : (
-                <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between gap-3">
-                            <p className="text-sm font-bold text-ink">
-                                Završeno {progress.highestLevelCompleted} od {MAX_LEVEL} nivoa
-                            </p>
-                            <TierBadge game={game} progress={progress} />
+                <>
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                        <div className="min-w-0 space-y-5">
+                            <MasteryStatusLine game={game} progress={progress} />
+                            <LevelSummary game={game} progress={progress} />
+                            <SupportSplit independent={progress.independentRate30d} prompted={progress.promptedRate30d} windowDays={windowDays} />
+                            <dl className="grid grid-cols-2 gap-3 border-t border-line pt-4">
+                                <Fact label="Trenutni nivo">{progress.currentLevel}</Fact>
+                                <Fact label="Poslednji put">
+                                    <span className="text-sm">{progress.lastPlayedAt ? formatDate(progress.lastPlayedAt, timeZone) : "—"}</span>
+                                </Fact>
+                            </dl>
                         </div>
-                        <LevelProgress game={game} completed={progress.highestLevelCompleted} />
-                        <dl className="grid grid-cols-3 gap-3 border-t border-line pt-4">
-                            <Fact label="Trenutni nivo">{progress.currentLevel}</Fact>
-                            <Fact label="Rekord">{progress.bestScore === null ? "—" : formatNumber(progress.bestScore)}</Fact>
-                            <Fact label="Poslednji put">
-                                <span className="text-sm">{progress.lastPlayedAt ? formatDate(progress.lastPlayedAt, timeZone) : "—"}</span>
-                            </Fact>
-                        </dl>
+                        <div className="min-w-0 space-y-5">
+                            <TrendChart game={game} trend={progress.trend} detailed />
+                            {progress.needsSupport && <SupportSuggestion />}
+                            <OffscreenTip game={game} heading="h3" />
+                        </div>
                     </div>
-                    <SuccessBreakdown success={progress.success} total={progress.plays} />
-                </div>
+                    <RewardBreakdown progress={progress} />
+                </>
             )}
         </Card>
     );
 }
 
-function SuccessBreakdown({ success, total }: { success: SuccessDistribution; total: number }) {
+/** Zvezdice i poeni: sporedan prikaz, jer su nagrada za dete, a ne podatak o savladanosti. */
+function RewardBreakdown({ progress }: { progress: GameProgress }) {
+    const success: SuccessDistribution = progress.success;
+    const levels = STAR_LEVELS.filter((level) => level.id !== "struggled" || success[level.id] > 0);
     return (
-        <div>
-            <h3 className="text-sm font-bold text-ink">Raspodela uspešnosti</h3>
-            <div aria-hidden="true" className="mt-3 flex h-3 gap-0.5">
-                {SUCCESS_LEVELS.filter((level) => success[level.id] > 0).map((level) => (
-                    <span
-                        key={level.id}
-                        className={cn("min-w-1 rounded-sm first:rounded-l-full last:rounded-r-full", level.swatch)}
-                        style={{ flexGrow: success[level.id], flexBasis: 0 }}
-                    />
-                ))}
+        <div className="border-t border-line pt-5">
+            <h3 className="text-sm font-bold text-ink">Zvezdice i poeni</h3>
+            <p className="mt-0.5 text-xs font-semibold text-ink-soft">Nagrada za dete — ne pokazuju koliko je veština savladana.</p>
+            <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-4 lg:grid-cols-2">
+                <div>
+                    <div aria-hidden="true" className="flex h-3 gap-0.5">
+                        {levels
+                            .filter((level) => success[level.id] > 0)
+                            .map((level) => (
+                                <span
+                                    key={level.id}
+                                    className={cn("min-w-1 rounded-sm first:rounded-l-full last:rounded-r-full", level.swatch)}
+                                    style={{ flexGrow: success[level.id], flexBasis: 0 }}
+                                />
+                            ))}
+                    </div>
+                    <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                        {levels.map((level) => (
+                            <div key={level.id} className="flex items-center gap-1.5">
+                                <span aria-hidden="true" className={cn("h-2.5 w-2.5 shrink-0 rounded-sm", level.swatch)} />
+                                <dt className="font-semibold text-ink-soft">{level.label}</dt>
+                                <dd className="font-extrabold text-ink">
+                                    {success[level.id]} <span className="font-semibold text-ink-soft">({percent(success[level.id], progress.plays)}%)</span>
+                                </dd>
+                            </div>
+                        ))}
+                    </dl>
+                </div>
+                <dl className="grid grid-cols-3 gap-3">
+                    <Fact label="Zvezdica ukupno">{formatNumber(progress.totalStars)}</Fact>
+                    <Fact label="Prosek po igri">{progress.averageStars === null ? "—" : formatNumber(progress.averageStars)}</Fact>
+                    <Fact label="Najviše poena">{progress.bestScore === null ? "—" : formatNumber(progress.bestScore)}</Fact>
+                </dl>
             </div>
-            <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-                {SUCCESS_LEVELS.map((level) => (
-                    <div key={level.id} className="flex items-center gap-2 text-sm">
-                        <span aria-hidden="true" className={cn("h-2.5 w-2.5 shrink-0 rounded-sm", level.swatch)} />
-                        <dt className="min-w-0 flex-1 text-ink-soft">
-                            {level.label} <span className="text-xs">({level.stars}★)</span>
-                        </dt>
-                        <dd className="font-extrabold text-ink">
-                            {success[level.id]} <span className="text-xs font-semibold text-ink-soft">· {percent(success[level.id], total)}%</span>
-                        </dd>
-                    </div>
-                ))}
-            </dl>
-        </div>
-    );
-}
-
-// ── Raspoloženje ──────────────────────────────────────────────────────────────
-
-const MOOD_CHANGES = [
-    { id: "improved", label: "Bolje", swatch: "bg-teal-600", Icon: TrendingUp },
-    { id: "same", label: "Isto", swatch: "bg-slate-300", Icon: Minus },
-    { id: "dropped", label: "Slabije", swatch: "bg-sun-600", Icon: TrendingDown },
-] as const;
-
-interface MoodTickProps {
-    x?: number;
-    y?: number;
-    payload?: { value?: string };
-}
-
-function renderMoodTick({ x = 0, y = 0, payload }: MoodTickProps) {
-    const mood = getMood(payload?.value);
-    return (
-        <g transform={`translate(${x},${y})`}>
-            <text textAnchor="middle" dy={16} fontSize={16}>
-                {mood?.emoji}
-            </text>
-            {/* Na najužim ekranima (ispod 360px) nazivi se preklapaju — ostaju u oblačiću i tabeli */}
-            <text textAnchor="middle" dy={34} fontSize={12} fontWeight={700} fill="var(--color-ink-soft)" className="hidden min-[360px]:inline">
-                {mood?.label}
-            </text>
-        </g>
-    );
-}
-
-function MoodSection({ mood, childName }: { mood: MoodInsights; childName: string }) {
-    const points = MOODS.map((item) => ({ mood: item.value, before: mood.before[item.value], after: mood.after[item.value] }));
-    const hasData = points.some((point) => point.before > 0 || point.after > 0);
-    const chartTitle = "Raspoloženje pre i posle igre, broj igara po raspoloženju";
-
-    return (
-        <Card aria-labelledby="progress-mood" role="region">
-            <SectionHeading
-                id="progress-mood"
-                title="Raspoloženje pre i posle igre"
-                description={`Kako se ${childName} oseća kada počne i kada završi igru.`}
-            />
-
-            {!hasData ? (
-                <div className="mt-5">
-                    <ChartNote>Raspoloženje još nije zabeleženo.</ChartNote>
-                </div>
-            ) : (
-                <div className="mt-5 grid grid-cols-1 gap-8 lg:grid-cols-2">
-                    <div className="min-w-0">
-                        <h3 className="text-sm font-bold text-ink">Promena tokom igre</h3>
-                        {mood.paired === 0 ? (
-                            <p className="mt-2 text-sm text-ink-soft">Još nema igara u kojima je raspoloženje zabeleženo i pre i posle.</p>
-                        ) : (
-                            <>
-                                <p className="mt-1 text-sm text-ink-soft">
-                                    Na osnovu {mood.paired} {gamesWord(mood.paired)} sa oba podatka. Posle igre raspoloženje je bilo isto ili bolje u{" "}
-                                    <strong className="font-extrabold text-ink">{percent(mood.improved + mood.same, mood.paired)}%</strong> slučajeva.
-                                </p>
-                                <div aria-hidden="true" className="mt-4 flex h-3 gap-0.5">
-                                    {MOOD_CHANGES.filter((change) => mood[change.id] > 0).map((change) => (
-                                        <span
-                                            key={change.id}
-                                            className={cn("min-w-1 rounded-sm first:rounded-l-full last:rounded-r-full", change.swatch)}
-                                            style={{ flexGrow: mood[change.id], flexBasis: 0 }}
-                                        />
-                                    ))}
-                                </div>
-                                <dl className="mt-4 grid grid-cols-3 gap-3">
-                                    {MOOD_CHANGES.map(({ id, label, swatch, Icon }) => (
-                                        <div key={id} className="min-w-0">
-                                            <dt className="flex items-center gap-1.5 text-xs font-bold text-ink-soft">
-                                                <span aria-hidden="true" className={cn("h-2.5 w-2.5 shrink-0 rounded-sm", swatch)} />
-                                                {label}
-                                                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                                            </dt>
-                                            <dd className="mt-1 text-2xl font-extrabold leading-none text-ink">
-                                                {mood[id]}
-                                                <span className="ml-1.5 text-xs font-semibold text-ink-soft">{percent(mood[id], mood.paired)}%</span>
-                                            </dd>
-                                        </div>
-                                    ))}
-                                </dl>
-                            </>
-                        )}
-                    </div>
-
-                    <figure className="min-w-0">
-                        <figcaption className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                            <span className="text-sm font-bold text-ink">Zabeležena raspoloženja</span>
-                            <span className="flex gap-4 text-xs font-bold text-ink-soft">
-                                {(["before", "after"] as const).map((key) => (
-                                    <span key={key} className="inline-flex items-center gap-1.5">
-                                        <span aria-hidden="true" className={cn("h-2.5 w-2.5 rounded-sm", MOOD_SERIES[key].swatch)} />
-                                        {MOOD_SERIES[key].label}
-                                    </span>
-                                ))}
-                            </span>
-                        </figcaption>
-                        <div className="mt-3 h-56 w-full">
-                            <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_INITIAL_SIZE}>
-                                <BarChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} barGap={2} title={chartTitle}>
-                                    <CartesianGrid vertical={false} stroke={GRID_STROKE} />
-                                    <XAxis dataKey="mood" tick={renderMoodTick} tickLine={false} axisLine={{ stroke: GRID_STROKE }} interval={0} height={48} />
-                                    <YAxis width={36} allowDecimals={false} tickFormatter={formatNumber} tick={AXIS_TICK} tickLine={false} axisLine={false} />
-                                    <Tooltip
-                                        cursor={{ fill: "var(--color-canvas)" }}
-                                        wrapperStyle={{ outline: "none" }}
-                                        content={({ active, label }) => {
-                                            const value = active && typeof label === "string" ? getMood(label)?.value : undefined;
-                                            return value ? <MoodTooltip mood={value} insights={mood} /> : null;
-                                        }}
-                                    />
-                                    <Bar dataKey="before" name={MOOD_SERIES.before.label} fill={MOOD_SERIES.before.color} radius={[4, 4, 0, 0]} maxBarSize={20} isAnimationActive={false} />
-                                    <Bar dataKey="after" name={MOOD_SERIES.after.label} fill={MOOD_SERIES.after.color} radius={[4, 4, 0, 0]} maxBarSize={20} isAnimationActive={false} />
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
-                        <div className="sr-only">
-                            <table>
-                                <caption>{chartTitle}</caption>
-                                <thead>
-                                    <tr>
-                                        <th scope="col">Raspoloženje</th>
-                                        <th scope="col">{MOOD_SERIES.before.label}</th>
-                                        <th scope="col">{MOOD_SERIES.after.label}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {points.map((point) => (
-                                        <tr key={point.mood}>
-                                            <th scope="row">{getMood(point.mood)?.label}</th>
-                                            <td>{point.before}</td>
-                                            <td>{point.after}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </figure>
-                </div>
-            )}
-        </Card>
-    );
-}
-
-function MoodTooltip({ mood, insights }: { mood: Mood; insights: MoodInsights }) {
-    const item = getMood(mood);
-    return (
-        <div className="rounded-xl border border-line bg-surface px-3 py-2.5 text-sm shadow-lift">
-            <p className="text-xs font-bold text-ink-soft">
-                {item?.emoji} {item?.label}
-            </p>
-            <ul className="mt-1.5 space-y-1">
-                {(["before", "after"] as const).map((key) => (
-                    <li key={key} className="flex items-center gap-2 text-xs text-ink-soft">
-                        <span aria-hidden="true" className={cn("h-2 w-2 shrink-0 rounded-full", MOOD_SERIES[key].swatch)} />
-                        <span className="flex-1 font-semibold">{MOOD_SERIES[key].label}</span>
-                        <span className="text-sm font-extrabold text-ink">{insights[key][mood]}</span>
-                    </li>
-                ))}
-            </ul>
         </div>
     );
 }
@@ -1040,20 +1206,25 @@ function MoodTooltip({ mood, insights }: { mood: Mood; insights: MoodInsights })
 
 const SESSIONS_COLLAPSED = 8;
 
-function MoodChange({ session }: { session: ProgressSession }) {
-    const before = getMood(session.moodBefore);
-    const after = getMood(session.moodAfter);
+function findMood(scale: MoodOption[], value: Mood | null): MoodOption | undefined {
+    return scale.find((mood) => mood.value === value) ?? getMood(value);
+}
+
+/** Lica koja je dete izabralo pre i posle partije — samo zapis izbora, bez poređenja. */
+function MoodChoice({ session, scale }: { session: ProgressSession; scale: MoodOption[] }) {
+    const before = findMood(scale, session.moodBefore);
+    const after = findMood(scale, session.moodAfter);
     if (!before && !after) return <span className="text-ink-faint">—</span>;
     return (
         <span className="inline-flex items-center gap-1 whitespace-nowrap">
             <span className="sr-only">
-                Pre: {before?.label ?? "nije zabeleženo"}, posle: {after?.label ?? "nije zabeleženo"}
+                Pre: {before?.label ?? "nije izabrano"}, posle: {after?.label ?? "nije izabrano"}
             </span>
             <span aria-hidden="true" title={before ? `Pre: ${before.label}` : undefined}>
                 {before?.emoji ?? "–"}
             </span>
             <span aria-hidden="true" className="text-ink-faint">
-                →
+                ·
             </span>
             <span aria-hidden="true" title={after ? `Posle: ${after.label}` : undefined}>
                 {after?.emoji ?? "–"}
@@ -1062,17 +1233,29 @@ function MoodChange({ session }: { session: ProgressSession }) {
     );
 }
 
-function correctText(session: ProgressSession): string {
-    return session.correctCount !== null && session.totalCount !== null ? `${session.correctCount}/${session.totalCount}` : "—";
+function independentText(session: ProgressSession): string {
+    return session.independentCount !== null && session.totalCount !== null ? `${session.independentCount}/${session.totalCount}` : "—";
 }
 
-function SessionsSection({ sessions, timeZone }: { sessions: ProgressSession[]; timeZone: string }) {
+const promptedText = (session: ProgressSession) => (session.promptedCount === null ? "—" : String(session.promptedCount));
+
+interface SessionsSectionProps {
+    sessions: ProgressSession[];
+    timeZone: string;
+    moodScale: MoodOption[];
+}
+
+function SessionsSection({ sessions, timeZone, moodScale }: SessionsSectionProps) {
     const [expanded, setExpanded] = useState(false);
     const visible = expanded ? sessions : sessions.slice(0, SESSIONS_COLLAPSED);
 
     return (
         <section aria-labelledby="progress-sessions" className="space-y-4">
-            <SectionHeading id="progress-sessions" title="Poslednje igre" description="Svaka odigrana partija, od najnovije." />
+            <SectionHeading
+                id="progress-sessions"
+                title="Poslednje igre"
+                description="Svaka odigrana partija, od najnovije. „Samostalno” je broj zadataka rešenih iz prvog pokušaja od ukupnog broja."
+            />
 
             {sessions.length === 0 ? (
                 <Card>
@@ -1097,19 +1280,23 @@ function SessionsSection({ sessions, timeZone }: { sessions: ProgressSession[]; 
                                             </div>
                                             <Stars value={session.stars} className="text-lg" />
                                         </div>
-                                        <dl className="mt-3 grid grid-cols-3 gap-2 border-t border-line pt-3 text-sm">
+                                        <dl className="mt-3 grid grid-cols-2 gap-x-2 gap-y-3 border-t border-line pt-3 text-sm min-[480px]:grid-cols-4">
                                             <div>
-                                                <dt className="text-xs font-semibold text-ink-soft">Rezultat</dt>
-                                                <dd className="font-extrabold text-ink">{session.score === null ? "—" : formatNumber(session.score)}</dd>
+                                                <dt className="text-xs font-semibold text-ink-soft">Samostalno</dt>
+                                                <dd className="font-extrabold tabular-nums text-ink">{independentText(session)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-xs font-semibold text-ink-soft">Uz pomoć</dt>
+                                                <dd className="font-extrabold tabular-nums text-ink">{promptedText(session)}</dd>
                                             </div>
                                             <div>
                                                 <dt className="text-xs font-semibold text-ink-soft">Trajanje</dt>
                                                 <dd className="font-extrabold text-ink">{formatDuration(session.durationSeconds)}</dd>
                                             </div>
                                             <div>
-                                                <dt className="text-xs font-semibold text-ink-soft">Raspoloženje</dt>
+                                                <dt className="text-xs font-semibold text-ink-soft">Raspoloženje (izbor deteta)</dt>
                                                 <dd className="text-base">
-                                                    <MoodChange session={session} />
+                                                    <MoodChoice session={session} scale={moodScale} />
                                                 </dd>
                                             </div>
                                         </dl>
@@ -1121,18 +1308,20 @@ function SessionsSection({ sessions, timeZone }: { sessions: ProgressSession[]; 
 
                     <Card padded={false} className="hidden overflow-hidden md:block">
                         <div className="scroll-soft overflow-x-auto">
-                            <table className="w-full min-w-[44rem] text-left text-sm">
+                            <table className="w-full min-w-[46rem] text-left text-sm">
                                 <caption className="sr-only">Poslednje odigrane igre</caption>
                                 <thead className="border-b border-line bg-canvas text-xs font-bold text-ink-soft">
                                     <tr>
                                         <th scope="col" className="px-5 py-3">Datum</th>
                                         <th scope="col" className="px-3 py-3">Igra</th>
                                         <th scope="col" className="px-3 py-3 text-right">Nivo</th>
-                                        <th scope="col" className="px-3 py-3">Zvezdice</th>
-                                        <th scope="col" className="px-3 py-3 text-right">Tačno</th>
-                                        <th scope="col" className="px-3 py-3 text-right">Rezultat</th>
+                                        <th scope="col" className="px-3 py-3 text-right">Samostalno</th>
+                                        <th scope="col" className="px-3 py-3 text-right">Uz pomoć</th>
                                         <th scope="col" className="px-3 py-3 text-right">Trajanje</th>
-                                        <th scope="col" className="px-5 py-3">Raspoloženje</th>
+                                        <th scope="col" className="px-3 py-3">Zvezdice</th>
+                                        <th scope="col" className="px-5 py-3">
+                                            Raspoloženje <span className="font-semibold">(izbor deteta)</span>
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-line">
@@ -1151,18 +1340,16 @@ function SessionsSection({ sessions, timeZone }: { sessions: ProgressSession[]; 
                                                     </span>
                                                 </td>
                                                 <td className="px-3 py-3 text-right tabular-nums text-ink">{session.level ?? "—"}</td>
-                                                <td className="px-3 py-3">
-                                                    <Stars value={session.stars} className="text-base" />
-                                                </td>
-                                                <td className="px-3 py-3 text-right tabular-nums text-ink">{correctText(session)}</td>
-                                                <td className="px-3 py-3 text-right font-bold tabular-nums text-ink">
-                                                    {session.score === null ? "—" : formatNumber(session.score)}
-                                                </td>
+                                                <td className="px-3 py-3 text-right font-bold tabular-nums text-ink">{independentText(session)}</td>
+                                                <td className="px-3 py-3 text-right tabular-nums text-ink">{promptedText(session)}</td>
                                                 <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-ink">
                                                     {formatDuration(session.durationSeconds)}
                                                 </td>
+                                                <td className="px-3 py-3">
+                                                    <Stars value={session.stars} className="text-base" />
+                                                </td>
                                                 <td className="px-5 py-3 text-base">
-                                                    <MoodChange session={session} />
+                                                    <MoodChoice session={session} scale={moodScale} />
                                                 </td>
                                             </tr>
                                         );
@@ -1185,15 +1372,66 @@ function SessionsSection({ sessions, timeZone }: { sessions: ProgressSession[]; 
     );
 }
 
+// ── Raspoloženje (izbor deteta) ───────────────────────────────────────────────
+
+/** Koliko puta je dete izabralo svako lice; traka pokazuje udeo u toj koloni (pre ili posle). */
+function MoodDistribution({ id, title, counts, scale }: { id: string; title: string; counts: MoodCounts; scale: MoodOption[] }) {
+    const total = countChoices(counts);
+    return (
+        <div className="min-w-0">
+            <h3 id={id} className="flex items-baseline justify-between gap-2 text-sm font-bold text-ink">
+                {title}
+                <span className="font-sans text-xs font-semibold tracking-normal text-ink-soft">
+                    {total} {plural(total, "izbor", "izbora", "izbora")}
+                </span>
+            </h3>
+            {total === 0 ? (
+                <p className="mt-2 text-sm text-ink-soft">Nije zabeleženo.</p>
+            ) : (
+                <ul aria-labelledby={id} className="mt-3 space-y-2">
+                    {scale.map((mood) => (
+                        <li key={mood.value} className="flex items-center gap-2 text-sm">
+                            <span aria-hidden="true" className="w-6 shrink-0 text-center text-base">
+                                {mood.emoji}
+                            </span>
+                            <span className="w-16 shrink-0 font-semibold text-ink-soft">{mood.label}</span>
+                            <span aria-hidden="true" className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-line">
+                                <span className="block h-full rounded-full bg-brand-500" style={{ width: `${percent(counts[mood.value], total)}%` }} />
+                            </span>
+                            <span className="w-8 shrink-0 text-right font-extrabold tabular-nums text-ink">{counts[mood.value]}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
+function MoodSection({ mood, scale }: { mood: MoodChoices; scale: MoodOption[] }) {
+    return (
+        <Card aria-labelledby="progress-mood" role="region">
+            <SectionHeading id="progress-mood" title="Raspoloženje (izbor deteta)" />
+            <p className="mt-2 max-w-3xl rounded-xl bg-canvas px-4 py-3 text-sm text-ink-soft">
+                Ovo je detetov izbor lica pre i posle igre. Kod male dece to nije pouzdano merenje i ne pokazuje da li igra „popravlja”
+                raspoloženje.
+            </p>
+            <div className="mt-5 grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-2">
+                <MoodDistribution id="progress-mood-before" title="Pre igre" counts={mood.before} scale={scale} />
+                <MoodDistribution id="progress-mood-after" title="Posle igre" counts={mood.after} scale={scale} />
+            </div>
+        </Card>
+    );
+}
+
 // ── Prikaz za dete ────────────────────────────────────────────────────────────
 
 const CHILD_WINS = 5;
 
 function ChildView({ data, childName }: { data: ProgressResponse; childName: string }) {
     const wins = data.recentSessions.filter((session) => session.stars > 0).slice(0, CHILD_WINS);
+    // Samo ono što dete može da skuplja: zvezdice i nivoi. Bez procenata, ocena i poređenja.
     const tiles = [
         { emoji: "⭐", value: data.totals.totalStars, label: "Zvezdice", tone: "bg-sun-50 border-sun-200" },
-        { emoji: "🎮", value: data.totals.plays, label: "Igre", tone: "bg-brand-50 border-brand-200" },
         { emoji: "🏆", value: data.totals.levelsCompleted, label: "Nivoi", tone: "bg-emerald-50 border-emerald-200" },
     ];
 
@@ -1204,7 +1442,7 @@ function ChildView({ data, childName }: { data: ProgressResponse; childName: str
                 <p className="mt-1 text-base font-semibold text-ink-soft">Ovo je tvoj napredak.</p>
             </div>
 
-            <dl className="grid grid-cols-3 gap-3 sm:gap-4">
+            <dl className="grid grid-cols-2 gap-3 sm:gap-4">
                 {tiles.map((tile) => (
                     <div key={tile.label} className={cn("flex flex-col-reverse items-center rounded-card border-2 px-2 py-4 text-center sm:py-6", tile.tone)}>
                         <dt className="mt-1 text-sm font-extrabold text-ink-soft sm:text-base">{tile.label}</dt>
@@ -1228,8 +1466,8 @@ function ChildView({ data, childName }: { data: ProgressResponse; childName: str
                             <li key={progress.gameId} className="flex items-center gap-3 sm:gap-4">
                                 <GameIcon game={game} size="lg" />
                                 <div className="min-w-0 flex-1">
-                                    <div className="flex items-baseline justify-between gap-2">
-                                        <p className="truncate text-base font-extrabold text-ink sm:text-lg">{game.title}</p>
+                                    <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                                        <p className="min-w-0 break-words text-base font-extrabold text-ink sm:text-lg">{game.title}</p>
                                         <p className="shrink-0 text-sm font-extrabold text-ink-soft">
                                             {completed > 0 ? `Nivo ${completed} od ${MAX_LEVEL}` : "Probaj!"}
                                         </p>

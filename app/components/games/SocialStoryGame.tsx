@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
     Feedback,
@@ -8,10 +9,11 @@ import {
     GamePrompt,
     GameStage,
     genderText,
-    isFemale,
     playSfx,
     shuffle,
     useGameSync,
+    useInputGuard,
+    useTimers,
     type BaseView,
     type ChoiceState,
     type FeedbackKind,
@@ -20,52 +22,80 @@ import {
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
-import { decisionCount, optionsOf, storyForLevel, type SceneTone, type Story } from "./data/socialStories";
+import { decisionCount, offeredOptions, storyForLevel, type SceneTone, type Story, type StoryDecision, type StoryStep } from "./data/socialStories";
 
 // ── Stanje igre ───────────────────────────────────────────────────────────────
 // Sve što utiče na prikaz je u jednom JSON objektu koji se šalje live monitoru.
 // Sadržaj priče se ne šalje: monitor ga nalazi lokalno po nivou, a view nosi samo indekse.
 //
-// Ocena nivoa: total = broj koraka sa odlukom, correct = odluke pogođene iz PRVOG pokušaja.
-// Pripovedni koraci (bez izbora) se ne računaju. Zvezdice iz toga računa kontejner.
+// Priča se može samo čitati („Čitaj priču”) ili čitati uz izbore („Čitaj i biraj”).
+// Izbori nisu „tačno i pogrešno”: korak obično ima više izbora koji pomažu.
+//
+// Ocena nivoa:
+//  • „Čitaj i biraj”: total = broj koraka sa izborom, correct = koraci u kojima je PRVI izbor
+//    bio jedan od onih koji pomažu, prompted = koraci rešeni tek pošto je kartica zasvetlela.
+//  • „Čitaj priču”: pročitana priča je uspeh — correct = total = broj koraka, bez poena.
 
 type StoryPhase = "cover" | "story" | "done";
+export type StoryMode = "read" | "choose";
+
+/** Šta je dete izabralo na jednom koraku. „Nazad” i „Dalje” ovo ne menjaju. */
+export interface StepRecord {
+    /** Ponuđeni izbori u redosledu prikaza (indeksi iz `decision.options`); prazno za korak bez izbora */
+    order: number[];
+    /** Izbori koji manje pomažu, redom kojim su probani */
+    tried: number[];
+    /** Izabran izbor koji pomaže */
+    picked: number | null;
+    /** Jedna kartica koja pomaže blago svetli */
+    hint: boolean;
+}
 
 export interface StoryView extends BaseView {
-    // score: 100 poena za odluku iz prvog pokušaja, 50 ako je bio potreban još neki pokušaj
-    // correctCount: odluke pogođene iz prvog pokušaja; incorrectCount: ukupno slabijih izbora
+    // score: 100 poena kad prvi izbor pomaže, 50 ako je bio potreban još neki izbor
+    // correctCount: koraci u kojima je prvi izbor pomogao; incorrectCount: ukupno izbora koji manje pomažu
     // round / totalRounds: trenutni korak priče (od 1) i broj koraka
     phase: StoryPhase;
+    mode: StoryMode;
     /** Indeks koraka priče, od 0 */
     stepIndex: number;
-    /** Redosled prikaza izbora na trenutnom koraku (indeksi iz `optionsOf`, 0 = najbolji izbor) */
-    order: number[];
-    /** Slabiji izbori koje je dete već probalo na ovom koraku, redom kojim ih je biralo */
-    tried: number[];
-    /** Najbolji izbor je pronađen — sledi „Dalje” */
-    answered: boolean;
+    /** Zabeleženi izbori, po jedan zapis za svaki korak */
+    records: StepRecord[];
+    /** Korak se još čita naglas: izbori su zaključani */
+    listening: boolean;
+    /** Koraci rešeni tek uz pomoć */
+    promptedCount: number;
 }
 
 const ACCENT = getGame("social-story").accent;
+const MODES: readonly { id: StoryMode; icon: string; label: string }[] = [
+    { id: "read", icon: "📖", label: "Čitaj priču" },
+    { id: "choose", icon: "👆", label: "Čitaj i biraj" },
+];
+const IDEAS_HEADING = "Ovo može da pomogne:";
+const ALSO_HEADING = "I ovo može da pomogne:";
+const AFFIRM_LABEL = "To već znam";
+const LISTENING_TEXT = "Slušamo…";
+const HELPS_TEXT = "To pomaže.";
+const RETRY_TEXT = "Probajmo drugi način.";
+const HINT_TEXT = "Pogledaj karticu koja svetli.";
 const SPEAK_DELAY_MS = 400;
+/** Ako se kraj čitanja ne javi, izbori se ipak otključaju posle ovoliko vremena */
+const LISTEN_MAX_MS = 6000;
+const SCROLL_DELAY_MS = 60;
 const CELEBRATION_MS = 1100;
-const POINTS_FIRST_TRY = 100;
-const POINTS_LATER_TRY = 50;
+const POINTS_FIRST_PICK = 100;
+const POINTS_LATER_PICK = 50;
 
-function identityOrder(count: number): number[] {
-    return Array.from({ length: count }, (_, i) => i);
+/** Zapisi za sve korake. `randomize` meša redosled ponuđenih izbora. */
+function createRecords(story: Story, choiceLimit: number, randomize: boolean): StepRecord[] {
+    return story.steps.map((step) => {
+        const offered = step.decision ? offeredOptions(step.decision, choiceLimit) : [];
+        return { order: randomize ? shuffle(offered) : offered, tried: [], picked: null, hint: false };
+    });
 }
 
-function shuffledOrder(count: number): number[] {
-    return shuffle(identityOrder(count));
-}
-
-function optionCount(story: Story, stepIndex: number): number {
-    const decision = story.steps[stepIndex]?.decision;
-    return decision ? optionsOf(decision).length : 0;
-}
-
-function createView(story: Story, order: number[]): StoryView {
+function createView(story: Story, records: StepRecord[]): StoryView {
     return {
         score: 0,
         correctCount: 0,
@@ -73,10 +103,11 @@ function createView(story: Story, order: number[]): StoryView {
         round: 1,
         totalRounds: story.steps.length,
         phase: "cover",
+        mode: "choose",
         stepIndex: 0,
-        order,
-        tried: [],
-        answered: false,
+        records,
+        listening: false,
+        promptedCount: 0,
     };
 }
 
@@ -84,17 +115,31 @@ function toCount(value: unknown): number {
     return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
 }
 
-function isPermutation(value: unknown, count: number): value is number[] {
-    return Array.isArray(value) && value.length === count && identityOrder(count).every((i) => value.includes(i));
+function toIndexList(value: unknown, size: number): number[] {
+    if (!Array.isArray(value)) return [];
+    const valid = value.filter((v): v is number => Number.isInteger(v) && v >= 0 && v < size);
+    return Array.from(new Set(valid));
+}
+
+function resolveRecord(raw: unknown, decision: StoryDecision | undefined, fallback: StepRecord): StepRecord {
+    if (!decision || typeof raw !== "object" || raw === null) return fallback;
+    const source = raw as Partial<Record<keyof StepRecord, unknown>>;
+    const order = toIndexList(source.order, decision.options.length);
+    if (!order.some((i) => decision.acceptable.includes(i))) return fallback;
+    const picked = typeof source.picked === "number" && order.includes(source.picked) && decision.acceptable.includes(source.picked) ? source.picked : null;
+    return {
+        order,
+        tried: toIndexList(source.tried, decision.options.length).filter((i) => order.includes(i) && !decision.acceptable.includes(i)),
+        picked,
+        hint: source.hint === true,
+    };
 }
 
 /** Monitor dobija delimično ili zastarelo stanje, pa svaku vrednost svodimo na ono što priča zaista ima. */
-function resolveView(raw: Partial<StoryView>, story: Story): StoryView {
+function resolveView(raw: Partial<StoryView> | null | undefined, story: Story, fallback: StoryView): StoryView {
+    if (!raw) return fallback;
     const stepIndex = Math.min(toCount(raw.stepIndex), story.steps.length - 1);
-    const count = optionCount(story, stepIndex);
-    const tried = Array.isArray(raw.tried)
-        ? raw.tried.filter((value, i, all) => Number.isInteger(value) && value > 0 && value < count && all.indexOf(value) === i)
-        : [];
+    const rawRecords: unknown[] = Array.isArray(raw.records) ? raw.records : [];
     return {
         score: toCount(raw.score),
         correctCount: toCount(raw.correctCount),
@@ -102,11 +147,57 @@ function resolveView(raw: Partial<StoryView>, story: Story): StoryView {
         round: stepIndex + 1,
         totalRounds: story.steps.length,
         phase: raw.phase === "story" || raw.phase === "done" ? raw.phase : "cover",
+        mode: raw.mode === "read" ? "read" : "choose",
         stepIndex,
-        order: isPermutation(raw.order, count) ? raw.order : identityOrder(count),
-        tried,
-        answered: count > 0 && raw.answered === true,
+        records: story.steps.map((step, i) => resolveRecord(rawRecords[i], step.decision, fallback.records[i])),
+        listening: raw.listening === true,
+        promptedCount: toCount(raw.promptedCount),
     };
+}
+
+/** Izbori su zaključani dok se korak čita — samo ako na njemu još treba birati. */
+function awaitsChoice(story: Story, mode: StoryMode, stepIndex: number, records: StepRecord[]): boolean {
+    return mode === "choose" && story.steps[stepIndex].decision !== undefined && records[stepIndex].picked === null;
+}
+
+/**
+ * Kartica zasvetli posle onoliko izbora koji manje pomažu koliko je roditelj podesio
+ * (0 = nikad), a najkasnije kad su svi takvi izbori već probani.
+ */
+function hintDue(hintAfter: number, triedCount: number, lessHelpfulOffered: number): boolean {
+    return hintAfter > 0 && triedCount >= Math.min(hintAfter, lessHelpfulOffered);
+}
+
+/** Nijedna kartica se ne boji kao „pogrešna”: probani izbori se samo utišaju. */
+function optionState(index: number, record: StepRecord, decision: StoryDecision, listening: boolean): ChoiceState {
+    if (record.picked !== null) {
+        if (index === record.picked) return "correct";
+        return decision.acceptable.includes(index) ? "idle" : "dimmed";
+    }
+    if (listening || record.tried.includes(index)) return "dimmed";
+    // Svetli samo jedna kartica: prvi prikazani izbor koji pomaže
+    return record.hint && index === record.order.find((i) => decision.acceptable.includes(i)) ? "hint" : "idle";
+}
+
+/** Tekst koji se čita na koraku: priča, pa pitanje ili (u režimu čitanja) ideje koje pomažu. */
+function narrationOf(step: StoryStep, mode: StoryMode, female: boolean): string {
+    const text = genderText(step.text, female);
+    const decision = step.decision;
+    if (!decision) return text;
+    if (mode === "choose") return `${text} ${genderText(decision.question, female)}`;
+    const ideas = decision.acceptable.map((i) => genderText(decision.options[i].label, female));
+    return `${text} ${IDEAS_HEADING} ${ideas.join(". ")}.`;
+}
+
+/** Drugi ponuđeni izbori koji isto pomažu. */
+function otherHelpful(decision: StoryDecision, record: StepRecord): number[] {
+    return record.order.filter((i) => i !== record.picked && decision.acceptable.includes(i));
+}
+
+function explanationSpeech(decision: StoryDecision, record: StepRecord, picked: number, female: boolean): string {
+    const why = genderText(decision.options[picked].why, female);
+    const others = otherHelpful(decision, record).map((i) => genderText(decision.options[i].label, female));
+    return others.length > 0 ? `${why} ${ALSO_HEADING} ${others.join(". ")}.` : why;
 }
 
 /** Naziv izbora za dnevnik roditelja — bez navodnika iz samog teksta izbora. */
@@ -123,148 +214,268 @@ function scrollIntoViewGently(element: HTMLElement | null) {
 // ── Igra ──────────────────────────────────────────────────────────────────────
 
 export default function SocialStoryGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<StoryView>) {
-    const story = storyForLevel(level);
-    const female = isFemale(gender);
+    // Namerno bez `isFemale` iz kita: `female` je zavisnost `useCallback` funkcija, a React Compiler lint
+    // (preserve-manual-memoization) samo za poređenje napisano ovde zna da je vrednost primitivna.
+    const female = gender?.toLowerCase() === "female";
     const t = (text: string) => genderText(text, female);
-
-    const [view, setView] = useState<StoryView>(() => createView(story, shuffledOrder(optionCount(story, 0))));
+    const story = storyForLevel(level);
+    const settings = useChildSettings();
+    const hintAfter = settings.hintAfter;
+    // Najmlađima se izbori pročitaju sami, jednom; ostali ih čuju na dodir zvučnika
+    const readOptionsAloud = settings.activeBand === "young";
+    const guard = useInputGuard();
+    const { after } = useTimers();
     const sync = useGameSync<StoryView>({ childId, gameId: "social-story", level, isMonitor });
     const { say, stop } = useSpeech(gender);
 
-    const initialView = useRef(view);
+    // Komponenta se za svaki nivo pravi iznova, pa se izbori biraju i mešaju samo jednom, ovde.
+    const [view, setView] = useState<StoryView>(() => createView(story, createRecords(story, settings.choiceLimit, !isMonitor)));
+    const viewRef = useRef(view);
+    const speechRun = useRef(0);
     const started = useRef(false);
     const finished = useRef(false);
-    const finishTimer = useRef<number | null>(null);
     const topRef = useRef<HTMLSpanElement>(null);
-    const feedbackRef = useRef<HTMLDivElement>(null);
+    const bottomRef = useRef<HTMLDivElement>(null);
 
-    const shown = isMonitor ? resolveView({ ...createView(story, []), ...monitorState }, story) : view;
+    // Monitor se ne pravi iznova kad se nivo promeni, pa podrazumevano stanje prati priču.
+    const fallbackView = useMemo(() => createView(story, createRecords(story, Infinity, false)), [story]);
+    const shown = isMonitor ? resolveView(monitorState, story, fallbackView) : view;
     const step = story.steps[shown.stepIndex];
     const decision = step.decision;
-    const options = decision ? optionsOf(decision) : [];
+    const record = shown.records[shown.stepIndex];
+    const choosing = shown.mode === "choose" && decision !== undefined;
     const isLastStep = shown.stepIndex === story.steps.length - 1;
-    const stepLabel = `Korak ${shown.round}/${shown.totalRounds}`;
+    const canAdvance = !choosing || record.picked !== null;
+    const lastTried = record.tried.length > 0 ? record.tried[record.tried.length - 1] : null;
+    const feedbackKind: FeedbackKind = record.picked !== null ? "correct" : lastTried !== null ? "wrong" : null;
+    const alsoHelpful = decision && record.picked !== null ? otherHelpful(decision, record) : [];
 
-    // Izbor čije se objašnjenje vidi: najbolji kad je pronađen, inače poslednji probani
-    const lastTried = shown.tried.length > 0 ? shown.tried[shown.tried.length - 1] : null;
-    const explainedIndex = decision ? (shown.answered ? 0 : lastTried) : null;
-    const feedbackKind: FeedbackKind = shown.answered ? "correct" : lastTried !== null ? "wrong" : null;
-    // Posle dva slabija izbora (ili kad ostane samo jedan izbor) najbolji izbor blago pulsira
-    const hintBest = !shown.answered && shown.tried.length >= Math.min(2, Math.max(options.length - 1, 1));
+    const commit = useCallback(
+        (next: StoryView, log?: string) => {
+            viewRef.current = next;
+            setView(next);
+            sync.update(next, log);
+        },
+        [sync]
+    );
 
-    const explanationSpeech = (optionIndex: number) =>
-        optionIndex === 0 ? `Tako je! ${t(options[0].why)}` : `${t(options[optionIndex].why)} Probaj drugi izbor.`;
+    /** Izgovara delove jedan za drugim; svaki novi govor ili prekid poništava započeti niz. */
+    const sayAll = useCallback(
+        (parts: string[], onDone?: () => void) => {
+            speechRun.current += 1;
+            const run = speechRun.current;
+            const next = (i: number) => {
+                if (run !== speechRun.current) return;
+                if (i >= parts.length) {
+                    onDone?.();
+                    return;
+                }
+                void say(parts[i], () => next(i + 1));
+            };
+            next(0);
+        },
+        [say]
+    );
 
-    const pageSpeech =
-        shown.phase === "cover"
-            ? `Priča: ${story.title}. ${t(story.intro)}`
-            : shown.phase === "story"
-              ? [t(step.text), decision ? t(decision.question) : ""].filter(Boolean).join(" ")
-              : "";
+    const unlock = useCallback(() => {
+        const current = viewRef.current;
+        if (!current.listening) return;
+        guard.hold();
+        commit({ ...current, listening: false });
+    }, [commit, guard]);
+
+    /** Čita trenutnu stranicu. Kad se korak sa izborom pročita, izbori se otključaju. */
+    const narrate = useCallback(() => {
+        const current = viewRef.current;
+        if (current.phase === "cover") {
+            sayAll([`Priča: ${story.title}. ${genderText(story.intro, female)}`]);
+            return;
+        }
+        if (current.phase !== "story") return;
+        const currentStep = story.steps[current.stepIndex];
+        const currentDecision = currentStep.decision;
+        sayAll([narrationOf(currentStep, current.mode, female)], () => {
+            unlock();
+            const latest = viewRef.current;
+            if (!readOptionsAloud || !currentDecision || latest.stepIndex !== current.stepIndex) return;
+            if (!awaitsChoice(story, latest.mode, latest.stepIndex, latest.records)) return;
+            sayAll(latest.records[latest.stepIndex].order.map((i) => genderText(currentDecision.options[i].label, female)));
+        });
+    }, [sayAll, unlock, story, female, readOptionsAloud]);
 
     useEffect(() => {
         if (isMonitor || started.current) return;
         started.current = true;
-        sync.start(initialView.current);
+        sync.start(viewRef.current);
     }, [isMonitor, sync]);
-
-    // Svaka nova stranica se pročita naglas
-    useEffect(() => {
-        if (isMonitor || !pageSpeech) return;
-        const timer = window.setTimeout(() => void say(pageSpeech), SPEAK_DELAY_MS);
-        return () => window.clearTimeout(timer);
-    }, [isMonitor, pageSpeech, say]);
-
-    // Na telefonu: nova stranica se čita od vrha, a objašnjenje i „Dalje” ne ostaju ispod ivice ekrana
-    useEffect(() => {
-        if (!isMonitor) scrollIntoViewGently(topRef.current);
-    }, [isMonitor, view.phase, view.stepIndex]);
-
-    useEffect(() => {
-        if (!isMonitor && (view.answered || view.tried.length > 0)) scrollIntoViewGently(feedbackRef.current);
-    }, [isMonitor, view.answered, view.tried.length]);
 
     useEffect(
         () => () => {
-            if (finishTimer.current !== null) window.clearTimeout(finishTimer.current);
+            speechRun.current += 1;
         },
         []
     );
 
-    const begin = () => {
-        if (isMonitor || view.phase !== "cover") return;
-        const next: StoryView = { ...view, phase: "story" };
+    // Svaka nova stranica se pročita naglas; izbori čekaju kraj čitanja, ali ne duže od LISTEN_MAX_MS
+    useEffect(() => {
+        if (isMonitor || view.phase === "done") return;
+        const speakTimer = window.setTimeout(narrate, SPEAK_DELAY_MS);
+        const unlockTimer = window.setTimeout(unlock, LISTEN_MAX_MS);
+        return () => {
+            window.clearTimeout(speakTimer);
+            window.clearTimeout(unlockTimer);
+        };
+    }, [isMonitor, narrate, unlock, view.phase, view.stepIndex]);
+
+    // Na telefonu: nova stranica se čita od vrha
+    useEffect(() => {
+        if (!isMonitor) scrollIntoViewGently(topRef.current);
+    }, [isMonitor, view.phase, view.stepIndex]);
+
+    const silence = () => {
+        speechRun.current += 1;
+        stop();
+    };
+
+    const selectMode = (mode: StoryMode) => {
+        const current = viewRef.current;
+        if (isMonitor || current.phase !== "cover") return;
+        const label = MODES.find((item) => item.id === mode)?.label ?? "";
         playSfx("tap");
-        setView(next);
-        sync.update(next, `Priča „${story.title}” je počela`);
+        sayAll([label]);
+        if (current.mode !== mode) commit({ ...current, mode }, `Izabran način: ${label}`);
+    };
+
+    const begin = () => {
+        if (isMonitor || guard.blocked()) return;
+        const current = viewRef.current;
+        if (current.phase !== "cover") return;
+        const label = MODES.find((item) => item.id === current.mode)?.label ?? "";
+        silence();
+        guard.hold();
+        playSfx("tap");
+        commit(
+            { ...current, phase: "story", listening: awaitsChoice(story, current.mode, 0, current.records) },
+            `Priča „${story.title}” je počela (${label})`
+        );
     };
 
     const choose = (optionIndex: number) => {
-        if (isMonitor || view.phase !== "story" || !decision || view.answered || view.tried.includes(optionIndex)) return;
-        const label = quoted(t(options[optionIndex].label));
-        void say(explanationSpeech(optionIndex));
+        if (isMonitor || guard.blocked()) return;
+        const current = viewRef.current;
+        if (current.phase !== "story" || current.mode !== "choose" || current.listening) return;
+        const currentDecision = story.steps[current.stepIndex].decision;
+        const currentRecord = current.records[current.stepIndex];
+        if (!currentDecision || currentRecord.picked !== null) return;
+        if (!currentRecord.order.includes(optionIndex) || currentRecord.tried.includes(optionIndex)) return;
+        const option = currentDecision.options[optionIndex];
+        const label = quoted(t(option.label));
+        const place = `Korak ${current.round}/${current.totalRounds}`;
+        const withRecord = (next: StepRecord) => current.records.map((item, i) => (i === current.stepIndex ? next : item));
 
-        if (optionIndex !== 0) {
-            const next: StoryView = { ...view, tried: [...view.tried, optionIndex], incorrectCount: view.incorrectCount + 1 };
-            playSfx("wrong");
-            setView(next);
-            sync.update(next, `${stepLabel}: izbor ${label} nije najbolji, bira ponovo`);
-            return;
+        if (currentDecision.acceptable.includes(optionIndex)) {
+            const attempt = currentRecord.tried.length + 1;
+            const picked: StepRecord = { ...currentRecord, picked: optionIndex };
+            const next: StoryView = {
+                ...current,
+                records: withRecord(picked),
+                score: current.score + (attempt === 1 ? POINTS_FIRST_PICK : POINTS_LATER_PICK),
+                correctCount: current.correctCount + (attempt === 1 ? 1 : 0),
+                promptedCount: current.promptedCount + (attempt > 1 && currentRecord.hint ? 1 : 0),
+            };
+            const how = attempt === 1 ? "" : ` iz ${attempt}. pokušaja${currentRecord.hint ? ", uz pomoć" : ""}`;
+            playSfx("correct");
+            commit(next, `${place}: izbor koji pomaže${how}: ${label}`);
+            sayAll([explanationSpeech(currentDecision, picked, optionIndex, female)]);
+        } else {
+            const tried = [...currentRecord.tried, optionIndex];
+            const lessHelpfulOffered = currentRecord.order.filter((i) => !currentDecision.acceptable.includes(i)).length;
+            const hint = currentRecord.hint || hintDue(hintAfter, tried.length, lessHelpfulOffered);
+            const next: StoryView = {
+                ...current,
+                records: withRecord({ ...currentRecord, tried, hint }),
+                incorrectCount: current.incorrectCount + 1,
+            };
+            playSfx("tap");
+            commit(next, `${place}: izbor koji manje pomaže: ${label}${hint && !currentRecord.hint ? " (prikazana pomoć)" : ""}`);
+            sayAll([`${t(option.why)} ${hint ? HINT_TEXT : RETRY_TEXT}`]);
         }
+        // Na telefonu: objašnjenje i dugmad ne ostaju ispod ivice ekrana
+        after(SCROLL_DELAY_MS, () => scrollIntoViewGently(bottomRef.current));
+    };
 
-        const attempt = view.tried.length + 1;
-        const firstTry = attempt === 1;
-        const next: StoryView = {
-            ...view,
-            answered: true,
-            score: view.score + (firstTry ? POINTS_FIRST_TRY : POINTS_LATER_TRY),
-            correctCount: view.correctCount + (firstTry ? 1 : 0),
-        };
-        playSfx("correct");
-        setView(next);
-        sync.update(next, `${stepLabel}: tačan izbor ${label} iz ${firstTry ? "prvog" : `${attempt}.`} pokušaja`);
+    const speakOption = (optionIndex: number) => {
+        if (viewRef.current.listening || !decision) return;
+        sayAll([t(decision.options[optionIndex].label)]);
+    };
+
+    const repeat = () => {
+        const current = viewRef.current;
+        const currentDecision = story.steps[current.stepIndex].decision;
+        const currentRecord = current.records[current.stepIndex];
+        const picked = current.phase === "story" && current.mode === "choose" ? currentRecord.picked : null;
+        if (currentDecision && picked !== null) sayAll([explanationSpeech(currentDecision, currentRecord, picked, female)]);
+        else narrate();
+    };
+
+    /** Prelazak na drugi korak. Zabeleženi izbori ostaju kakvi jesu. */
+    const goTo = (stepIndex: number, log: string) => {
+        const current = viewRef.current;
+        silence();
+        guard.hold();
+        playSfx("tap");
+        commit(
+            { ...current, stepIndex, round: stepIndex + 1, listening: awaitsChoice(story, current.mode, stepIndex, current.records) },
+            `Korak ${stepIndex + 1}/${current.totalRounds}: ${log}`
+        );
     };
 
     const finish = () => {
         if (finished.current) return;
         finished.current = true;
-        const total = decisionCount(story);
-        const next: StoryView = { ...view, phase: "done" };
+        const current = viewRef.current;
+        const reading = current.mode === "read";
+        const total = reading ? story.steps.length : decisionCount(story);
+        const correct = reading ? total : current.correctCount;
+        const done: StoryView = { ...current, phase: "done", listening: false };
+        silence();
         playSfx("win");
-        setView(next);
-        sync.update(next, `Priča „${story.title}” je pročitana: ${next.correctCount}/${total} odluka iz prvog pokušaja`);
-        finishTimer.current = window.setTimeout(() => {
-            sync.complete(next);
-            onComplete({ score: next.score, durationSec: sync.elapsedSec(), correct: next.correctCount, total });
-        }, CELEBRATION_MS);
+        commit(
+            done,
+            reading
+                ? `Priča „${story.title}” je pročitana (samo čitanje)`
+                : `Priča „${story.title}” je pročitana: ${correct}/${total} iz prvog izbora, ${done.promptedCount} uz pomoć`
+        );
+        // Kratka pauza, pa rezultat ide roditeljskom okviru tačno jednom
+        after(CELEBRATION_MS, () => {
+            sync.complete(done);
+            onComplete({
+                score: reading ? 0 : done.score,
+                durationSec: sync.elapsedSec(),
+                correct,
+                total,
+                prompted: reading ? 0 : done.promptedCount,
+            });
+        });
     };
 
     const advance = () => {
-        if (isMonitor || view.phase !== "story" || (decision && !view.answered)) return;
-        stop();
-        if (isLastStep) {
-            finish();
-            return;
-        }
-        const stepIndex = view.stepIndex + 1;
-        const next: StoryView = {
-            ...view,
-            stepIndex,
-            round: stepIndex + 1,
-            order: shuffledOrder(optionCount(story, stepIndex)),
-            tried: [],
-            answered: false,
-        };
-        playSfx("tap");
-        setView(next);
-        sync.update(next, `Korak ${next.round}/${next.totalRounds}: nova stranica priče`);
+        if (isMonitor || guard.blocked()) return;
+        const current = viewRef.current;
+        if (current.phase !== "story" || awaitsChoice(story, current.mode, current.stepIndex, current.records)) return;
+        if (current.stepIndex >= story.steps.length - 1) finish();
+        else goTo(current.stepIndex + 1, "sledeća stranica");
     };
 
-    const nextButton = (
-        <PrimaryButton onClick={isMonitor ? undefined : advance} disabled={isMonitor}>
-            {isLastStep ? "Završi priču" : "Dalje"}
-        </PrimaryButton>
-    );
+    const back = () => {
+        if (isMonitor || guard.blocked()) return;
+        const current = viewRef.current;
+        if (current.phase !== "story" || current.stepIndex === 0) return;
+        goTo(current.stepIndex - 1, "nazad na prethodnu stranicu");
+    };
+
+    const modeLabel = MODES.find((item) => item.id === shown.mode)?.label;
+    const showScore = shown.mode === "choose" && (isMonitor || settings.preset.showPoints);
 
     return (
         <GameStage>
@@ -274,11 +485,14 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                 unit="Korak"
                 round={shown.round}
                 totalRounds={shown.totalRounds}
-                score={shown.score}
-                onSpeak={
-                    isMonitor || !pageSpeech
-                        ? undefined
-                        : () => void say(explainedIndex !== null ? explanationSpeech(explainedIndex) : pageSpeech)
+                score={showScore ? shown.score : undefined}
+                onSpeak={isMonitor || shown.phase === "done" ? undefined : repeat}
+                extra={
+                    isMonitor && shown.phase !== "cover" ? (
+                        <span className={cn("shrink-0 rounded-xl border px-3 py-2 text-xs font-extrabold sm:text-sm", ACCENT.soft, ACCENT.text, ACCENT.border)}>
+                            {modeLabel}
+                        </span>
+                    ) : undefined
                 }
             />
 
@@ -295,7 +509,33 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                         </p>
                         <h2 className="text-3xl font-extrabold leading-tight text-ink sm:text-5xl">{story.title}</h2>
                         <p className="max-w-md text-lg font-bold leading-snug text-ink-soft sm:text-xl">{t(story.intro)}</p>
-                        <PrimaryButton onClick={isMonitor ? undefined : begin} disabled={isMonitor} className="mt-2">
+
+                        <div role="radiogroup" aria-label="Način čitanja" className="mt-1 grid w-full max-w-md grid-cols-2 gap-3">
+                            {MODES.map((item) => {
+                                const selected = shown.mode === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={selected}
+                                        disabled={isMonitor}
+                                        onClick={() => selectMode(item.id)}
+                                        className={cn(
+                                            "flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-2 py-2 text-base font-extrabold leading-tight transition-colors disabled:cursor-default sm:text-lg",
+                                            selected ? "border-brand-500 bg-brand-50 text-brand-800" : "border-line bg-surface text-ink-soft"
+                                        )}
+                                    >
+                                        <span aria-hidden="true" className="text-3xl leading-none">
+                                            {item.icon}
+                                        </span>
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <PrimaryButton onClick={begin} disabled={isMonitor} className="mt-2 w-full sm:w-auto sm:min-w-56">
                             Počni priču
                         </PrimaryButton>
                     </div>
@@ -303,94 +543,139 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
             )}
 
             {shown.phase === "story" && (
-                <div
-                    key={`${level}-${shown.stepIndex}`}
-                    className={cn("grid animate-fade-up gap-4 sm:gap-5", decision ? "lg:grid-cols-2 lg:items-start" : "mx-auto w-full max-w-2xl")}
-                >
-                    <article className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
-                        <Scene emojis={step.scene} tone={story.tone} label={`${story.icon} ${story.title}`} />
-                        <p className="px-4 py-4 text-xl font-bold leading-snug text-ink sm:px-6 sm:py-5 sm:text-2xl sm:leading-relaxed">
-                            {t(step.text)}
-                        </p>
-                        {!decision && <div className="flex justify-center px-4 pb-5 sm:px-6 sm:pb-6">{nextButton}</div>}
-                    </article>
-
-                    {decision && (
-                        <section aria-label="Pitanje i izbori" className="flex min-w-0 flex-col gap-3">
-                            <GamePrompt title={t(decision.question)} />
-
-                            <ul className="grid gap-3">
-                                {shown.order.map((optionIndex) => {
-                                    const option = options[optionIndex];
-                                    const label = t(option.label);
-                                    const isBest = optionIndex === 0;
-                                    const wasTried = shown.tried.includes(optionIndex);
-                                    const state: ChoiceState = shown.answered ? (isBest ? "correct" : "dimmed") : wasTried ? "dimmed" : "idle";
-                                    const locked = isMonitor || shown.answered || wasTried;
-                                    const status = state === "correct" ? ", najbolji izbor" : wasTried ? ", već probano" : "";
-                                    return (
-                                        <li key={optionIndex}>
-                                            <ChoiceCard
-                                                state={state}
-                                                disabled={locked}
-                                                onClick={locked ? undefined : () => choose(optionIndex)}
-                                                aria-label={`${label}${status}`}
-                                                className={cn(
-                                                    !shown.answered && optionIndex === lastTried && "animate-shake",
-                                                    hintBest && isBest && "animate-soft-pulse outline-2 outline-offset-2 outline-brand-300"
-                                                )}
-                                            >
-                                                <span className="flex w-full items-center gap-3 text-left sm:gap-4">
-                                                    <span
-                                                        aria-hidden="true"
-                                                        className="grid h-12 min-w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 px-1.5 text-3xl leading-none sm:h-14 sm:min-w-14 sm:text-4xl"
-                                                    >
-                                                        {option.emoji}
+                <>
+                    <div
+                        key={`${level}-${shown.stepIndex}`}
+                        className={cn("grid animate-fade-up gap-4 sm:gap-5", choosing ? "lg:grid-cols-2 lg:items-start" : "mx-auto w-full max-w-2xl")}
+                    >
+                        <article className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+                            <Scene emojis={step.scene} tone={story.tone} label={`${story.icon} ${story.title}`} />
+                            <div className="flex flex-col gap-3 px-4 py-4 sm:px-6 sm:py-5">
+                                {step.affirm && (
+                                    <p className={cn("self-start rounded-full border px-3 py-1 text-sm font-extrabold", ACCENT.soft, ACCENT.text, ACCENT.border)}>
+                                        <span aria-hidden="true">⭐ </span>
+                                        {AFFIRM_LABEL}
+                                    </p>
+                                )}
+                                <p className="text-xl font-bold leading-snug text-ink sm:text-2xl sm:leading-relaxed">{t(step.text)}</p>
+                                {decision && shown.mode === "read" && (
+                                    <div className={cn("rounded-2xl border p-4", ACCENT.soft, ACCENT.border)}>
+                                        <p className={cn("text-base font-extrabold sm:text-lg", ACCENT.text)}>{IDEAS_HEADING}</p>
+                                        <ul className="mt-2 grid gap-2">
+                                            {decision.acceptable.map((optionIndex) => (
+                                                <li key={optionIndex} className="flex items-center gap-3 text-lg font-bold leading-snug text-ink sm:text-xl">
+                                                    <span aria-hidden="true" className="grid h-11 min-w-11 shrink-0 place-items-center rounded-xl bg-surface text-2xl leading-none">
+                                                        {decision.options[optionIndex].emoji}
                                                     </span>
-                                                    <span className="min-w-0 flex-1 text-base leading-snug sm:text-lg">{label}</span>
-                                                </span>
-                                            </ChoiceCard>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
+                                                    {t(decision.options[optionIndex].label)}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        </article>
 
-                            <div ref={feedbackRef} className="flex scroll-mb-4 flex-col gap-2">
-                                <Feedback kind={feedbackKind} correctText="Tako je!" wrongText="Probajmo drugačije" />
+                        {choosing && decision && (
+                            <section aria-label="Pitanje i izbori" className="flex min-w-0 flex-col gap-3">
+                                <GamePrompt title={t(decision.question)} />
+
+                                <p role="status" className="flex min-h-8 items-center gap-2 text-lg font-extrabold text-ink-soft">
+                                    {shown.listening && (
+                                        <>
+                                            <span aria-hidden="true">👂</span>
+                                            {LISTENING_TEXT}
+                                        </>
+                                    )}
+                                </p>
+
+                                <ul className="grid gap-3">
+                                    {record.order.map((optionIndex) => {
+                                        const option = decision.options[optionIndex];
+                                        const label = t(option.label);
+                                        const state = optionState(optionIndex, record, decision, shown.listening);
+                                        const wasTried = record.tried.includes(optionIndex);
+                                        const locked = isMonitor || shown.listening || record.picked !== null || wasTried;
+                                        const status = state === "correct" ? ", to pomaže" : wasTried ? ", već probano" : "";
+                                        return (
+                                            <li key={optionIndex} className="flex items-stretch gap-2">
+                                                <ChoiceCard
+                                                    state={state}
+                                                    disabled={locked}
+                                                    onClick={() => choose(optionIndex)}
+                                                    aria-label={`${label}${status}`}
+                                                    className="min-w-0 flex-1"
+                                                >
+                                                    <span className="flex w-full items-center gap-3 text-left sm:gap-4">
+                                                        <span
+                                                            aria-hidden="true"
+                                                            className="grid h-12 min-w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 px-1.5 text-3xl leading-none sm:h-14 sm:min-w-14 sm:text-4xl"
+                                                        >
+                                                            {option.emoji}
+                                                        </span>
+                                                        <span className="min-w-0 flex-1 text-base leading-snug sm:text-lg">{label}</span>
+                                                    </span>
+                                                </ChoiceCard>
+                                                {!isMonitor && (
+                                                    <OptionSpeaker label={`Pročitaj: ${label}`} disabled={shown.listening} onClick={() => speakOption(optionIndex)} />
+                                                )}
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+
+                                <Feedback kind={feedbackKind} correctText={HELPS_TEXT} wrongText={record.hint ? HINT_TEXT : RETRY_TEXT} />
+
                                 <div aria-live="polite">
-                                    {explainedIndex !== null && (
-                                        <div
-                                            key={explainedIndex}
-                                            className={cn(
-                                                "animate-fade-up rounded-card border-2 p-4 sm:p-5",
-                                                shown.answered ? "border-emerald-200 bg-emerald-50" : "border-sun-200 bg-sun-50"
-                                            )}
-                                        >
-                                            {!shown.answered && (
-                                                <p className="mb-1 text-sm font-extrabold text-ink-soft sm:text-base">
-                                                    <span aria-hidden="true">{options[explainedIndex].emoji} </span>
-                                                    {t(options[explainedIndex].label)}
+                                    {record.picked !== null && (
+                                        <div className="animate-fade-up rounded-card border-2 border-emerald-200 bg-emerald-50 p-4 sm:p-5">
+                                            <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{t(decision.options[record.picked].why)}</p>
+                                            {alsoHelpful.length > 0 && (
+                                                <p className="mt-2 text-base font-bold leading-snug text-ink-soft sm:text-lg">
+                                                    {ALSO_HEADING}{" "}
+                                                    {alsoHelpful.map((optionIndex) => (
+                                                        <span key={optionIndex} className="mr-2 inline-block">
+                                                            <span aria-hidden="true">{decision.options[optionIndex].emoji} </span>
+                                                            {t(decision.options[optionIndex].label)}
+                                                        </span>
+                                                    ))}
                                                 </p>
                                             )}
-                                            <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{t(options[explainedIndex].why)}</p>
-                                            {shown.answered && <div className="mt-4 flex justify-end">{nextButton}</div>}
+                                        </div>
+                                    )}
+                                    {record.picked === null && lastTried !== null && (
+                                        <div key={lastTried} className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 p-4 sm:p-5">
+                                            <p className="mb-1 text-sm font-extrabold text-ink-soft sm:text-base">
+                                                <span aria-hidden="true">{decision.options[lastTried].emoji} </span>
+                                                {t(decision.options[lastTried].label)}
+                                            </p>
+                                            <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{t(decision.options[lastTried].why)}</p>
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        </section>
-                    )}
-                </div>
+                            </section>
+                        )}
+                    </div>
+
+                    <div ref={bottomRef} className={cn("flex scroll-mb-4 items-stretch gap-3", !choosing && "mx-auto w-full max-w-2xl")}>
+                        {shown.stepIndex > 0 && <BackButton onClick={back} disabled={isMonitor} />}
+                        {canAdvance && (
+                            <PrimaryButton onClick={advance} disabled={isMonitor} className="ml-auto min-w-0 flex-1 sm:min-w-56 sm:flex-none">
+                                {isLastStep ? "Završi priču" : "Dalje"}
+                            </PrimaryButton>
+                        )}
+                    </div>
+                </>
             )}
 
             {shown.phase === "done" && (
                 <div className="grid flex-1 place-items-center">
                     <div role="status" className="w-full max-w-md animate-pop rounded-card border border-line bg-surface px-6 py-8 text-center shadow-lift">
                         <p aria-hidden="true" className="text-7xl leading-none">
-                            🎉
+                            {story.icon}
                         </p>
-                        <p className="mt-4 font-display text-3xl font-extrabold text-ink sm:text-4xl">Kraj priče!</p>
-                        <p className="mt-2 text-lg font-bold text-ink-soft sm:text-xl">{t("Bravo! {Pročitao|Pročitala} si celu priču.")}</p>
+                        <p className="mt-4 font-display text-3xl font-extrabold text-ink sm:text-4xl">Kraj priče</p>
+                        <p className="mt-2 text-lg font-bold text-ink-soft sm:text-xl">{t("{Pročitao|Pročitala} si celu priču.")}</p>
                     </div>
                 </div>
             )}
@@ -449,10 +734,13 @@ function Scene({ emojis, tone, size = "page", label }: SceneProps) {
     );
 }
 
-interface PrimaryButtonProps {
-    children: ReactNode;
-    onClick?: () => void;
+interface NavButtonProps {
+    onClick: () => void;
     disabled?: boolean;
+}
+
+interface PrimaryButtonProps extends NavButtonProps {
+    children: ReactNode;
     className?: string;
 }
 
@@ -464,13 +752,52 @@ function PrimaryButton({ children, onClick, disabled, className }: PrimaryButton
             onClick={onClick}
             disabled={disabled}
             className={cn(
-                "inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] border-brand-700 bg-brand-500 px-8 font-display text-xl font-extrabold text-white shadow-soft transition-[transform,background-color,border-width] enabled:hover:bg-brand-600 enabled:active:translate-y-[3px] enabled:active:border-b-2 disabled:cursor-default sm:w-auto sm:min-w-56 sm:text-2xl",
+                "inline-flex min-h-16 items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] border-brand-700 bg-brand-500 px-8 font-display text-xl font-extrabold text-white shadow-soft transition-[transform,background-color,border-width] enabled:hover:bg-brand-600 enabled:active:translate-y-[3px] enabled:active:border-b-2 disabled:cursor-default sm:text-2xl",
                 className
             )}
         >
             {children}
             <svg className="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
                 <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        </button>
+    );
+}
+
+/** Povratak na prethodnu stranicu priče. */
+function BackButton({ onClick, disabled }: NavButtonProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className="inline-flex min-h-16 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] border-line bg-surface px-5 font-display text-lg font-extrabold text-ink-soft shadow-soft transition-[transform,background-color,border-width] enabled:hover:bg-brand-50 enabled:active:translate-y-[3px] enabled:active:border-b-2 disabled:cursor-default sm:px-6 sm:text-xl"
+        >
+            <svg className="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+                <path d="M19 12H5M11 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Nazad
+        </button>
+    );
+}
+
+interface OptionSpeakerProps extends NavButtonProps {
+    label: string;
+}
+
+/** Mali zvučnik uz izbor: čita taj izbor naglas, bez biranja. */
+function OptionSpeaker({ label, onClick, disabled }: OptionSpeakerProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={label}
+            className="grid min-h-14 w-14 shrink-0 place-items-center rounded-tile border-2 border-line bg-surface text-brand-600 shadow-soft transition-colors enabled:hover:border-brand-300 enabled:hover:bg-brand-50 disabled:cursor-default disabled:opacity-45"
+        >
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+                <path d="M11 5 6 9H3v6h3l5 4V5z" strokeLinejoin="round" />
+                <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" strokeLinecap="round" />
             </svg>
         </button>
     );

@@ -1,12 +1,15 @@
 // app/api/children/verify-pin/route.ts
 // Prijava deteta vizuelnim PIN-om. Izdaje DEČJU sesiju (sa childId), koja sme
 // samo da igra i čuva rezultate za to dete — nikada punu roditeljsku sesiju.
+//
+// Niz dana (`streak`) se i dalje vodi u bazi za roditeljski panel, ali se detetu
+// NE vraća: bez "dođi i sutra" pritiska na dečjem ekranu.
 import { NextResponse } from "next/server";
 import { setSessionCookie } from "@/lib/auth";
 import { getClientIp, takeAttempt, type RateLimitRule } from "@/lib/rateLimit";
 import { assertDbConfigured, supabaseAdmin } from "@/lib/supabase";
 import { asTrimmedString, dateOnlyInTimeZone, shiftDateOnly } from "@/lib/validation";
-import type { ChildRow } from "../../_lib/children";
+import { parseDbTimestamp, type ChildRow } from "../../_lib/children";
 import { enforceRateLimit, errorResponse, HttpError, readJsonObject } from "../../_lib/http";
 
 /** Neuspešni pokušaji po IP adresi. */
@@ -22,9 +25,7 @@ interface Owner {
 }
 
 interface LoginAward {
-    streak: number;
     experiencePoints: number;
-    streakAdded: boolean;
 }
 
 /** PIN bez razmaka oko zareza: " dog, pizza ,car,pepsi" → "dog,pizza,car,pepsi". */
@@ -35,14 +36,6 @@ function readPin(value: unknown): string | null {
         .split(",")
         .map((part) => part.trim())
         .join(",");
-}
-
-/** Vreme iz baze kao Date; vrednost bez vremenske zone tumači se kao UTC. */
-function parseDbTimestamp(value: string | null | undefined): Date | null {
-    if (!value) return null;
-    const hasZone = /(Z|[+-]\d{2}(:?\d{2})?)$/i.test(value);
-    const date = new Date(hasZone ? value : `${value.replace(" ", "T")}Z`);
-    return Number.isNaN(date.getTime()) ? null : date;
 }
 
 async function findOwner(childId: number): Promise<Owner | null> {
@@ -91,7 +84,7 @@ async function applyDailyLogin(initial: ChildRow): Promise<LoginAward> {
         const lastLogin = parseDbTimestamp(child.last_login_at);
         const lastDay = lastLogin ? dateOnlyInTimeZone(lastLogin) : null;
 
-        if (lastDay === today) return { streak, experiencePoints: points, streakAdded: false };
+        if (lastDay === today) return { experiencePoints: points };
 
         const next = {
             streak: lastDay === shiftDateOnly(today, { days: -1 }) ? streak + 1 : 1,
@@ -110,9 +103,7 @@ async function applyDailyLogin(initial: ChildRow): Promise<LoginAward> {
 
         const { data, error } = await update.select("id");
         if (error) throw error;
-        if (data && data.length > 0) {
-            return { streak: next.streak, experiencePoints: next.experience_points, streakAdded: true };
-        }
+        if (data && data.length > 0) return { experiencePoints: next.experience_points };
 
         // Neko drugi je u međuvremenu izmenio red — učitaj ponovo i probaj još jednom.
         const reloaded = await loadChild(child.id);
@@ -120,7 +111,7 @@ async function applyDailyLogin(initial: ChildRow): Promise<LoginAward> {
         child = reloaded;
     }
 
-    return { streak: child.streak ?? 0, experiencePoints: child.experience_points ?? 0, streakAdded: false };
+    return { experiencePoints: child.experience_points ?? 0 };
 }
 
 export async function POST(request: Request) {
@@ -168,9 +159,7 @@ export async function POST(request: Request) {
                 first_name: child.first_name,
                 last_name: child.last_name,
                 gender: child.gender ?? null,
-                streak: award.streak,
                 experiencePoints: award.experiencePoints,
-                streakAdded: award.streakAdded,
             },
         });
         setSessionCookie(response, {

@@ -5,15 +5,23 @@ import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
-import { isMuted } from "@/lib/sound";
-import { ChoiceCard, Feedback, GameHud, GameStage, SpeakButton, playSfx, shuffle, useGameSync } from "@/app/components/games/kit";
-import type { BaseView, ChoiceState, FeedbackKind, GameProps } from "@/app/components/games/kit";
+import { gameSoundsEnabled, playWithFade } from "@/lib/sound";
+import { useChildSettings } from "@/app/components/ChildSettingsProvider";
+import { ChoiceCard, Feedback, GameHud, GameStage, playSfx, shuffle, useGameSync, useInputGuard, useTimers } from "@/app/components/games/kit";
+import type { BaseView, ChoiceState, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
 
 // ── Zvukovi ───────────────────────────────────────────────────────────────────
-// Redosled je od najpoznatijih ka težim: viši nivoi dodaju zvukove s kraja liste.
-// Svaki unos ima i zvuk u /public/sounds i sliku u /public/soundImage.
+// Svaki unos ima zvuk u /public/sounds i sliku u /public/soundImage.
+//
+// Redosled je od tihih i poznatih ka naglim: viši nivoi dodaju zvukove s kraja liste,
+// a prva četiri su tiha, pa svaki nivo ima šta da pusti i kad su glasni zvuci isključeni.
+//
+// `loud` označava nagle ili oštre zvuke (lavež, sirena, grmljavina, zvono…). Oni se puštaju
+// samo ako je roditelj to dozvolio; njihove slike i dalje mogu biti ponuđene kao odgovor.
+// `level` ujednačava jačinu snimaka (izmereno na fajlovima: najglasnija sekunda svakog
+// snimka svedena je na oko −20 dBFS), da nijedan zvuk ne bude mnogo glasniji od ostalih.
 
-type Category = "animal" | "nature" | "thing";
+type Category = "animals" | "vehicles" | "weather" | "home";
 
 interface SoundItem {
     id: string;
@@ -21,35 +29,64 @@ interface SoundItem {
     image: string;
     sound: string;
     category: Category;
+    loud: boolean;
+    /** Udeo izabrane jačine kojim se pušta ovaj snimak (0–1) */
+    level: number;
 }
 
 const ITEMS: SoundItem[] = [
-    { id: "dog", label: "Pas", image: "/soundImage/dog.webp", sound: "/sounds/pas.mp3", category: "animal" },
-    { id: "cat", label: "Mačka", image: "/soundImage/cat.webp", sound: "/sounds/macka.mp3", category: "animal" },
-    { id: "cow", label: "Krava", image: "/soundImage/cow.webp", sound: "/sounds/krava.wav", category: "animal" },
-    { id: "rooster", label: "Petao", image: "/soundImage/cock.webp", sound: "/sounds/petao.wav", category: "animal" },
-    { id: "pig", label: "Svinja", image: "/soundImage/pigg.webp", sound: "/sounds/svinja.mp3", category: "animal" },
-    { id: "horse", label: "Konj", image: "/soundImage/horsee.webp", sound: "/sounds/konj.mp3", category: "animal" },
-    { id: "bird", label: "Ptica", image: "/soundImage/bird.webp", sound: "/sounds/ptica.mp3", category: "animal" },
-    { id: "car", label: "Auto", image: "/soundImage/car.webp", sound: "/sounds/sirenaAuta.mp3", category: "thing" },
-    { id: "bell", label: "Zvono", image: "/soundImage/bell.webp", sound: "/sounds/zvonoKucno.mp3", category: "thing" },
-    { id: "bear", label: "Medved", image: "/soundImage/bear.webp", sound: "/sounds/medved.mp3", category: "animal" },
-    { id: "monkey", label: "Majmun", image: "/soundImage/monkey.webp", sound: "/sounds/majmun.mp3", category: "animal" },
-    { id: "rain", label: "Kiša", image: "/soundImage/rain.webp", sound: "/sounds/kisa.mp3", category: "nature" },
-    { id: "police", label: "Policija", image: "/soundImage/policeCar.webp", sound: "/sounds/policija.mp3", category: "thing" },
-    { id: "thunder", label: "Grmljavina", image: "/soundImage/thunder.webp", sound: "/sounds/grmljavina.mp3", category: "nature" },
+    { id: "cat", label: "Mačka", image: "/soundImage/cat.webp", sound: "/sounds/macka.mp3", category: "animals", loud: false, level: 0.3 },
+    { id: "cow", label: "Krava", image: "/soundImage/cow.webp", sound: "/sounds/krava.wav", category: "animals", loud: false, level: 0.4 },
+    { id: "pig", label: "Svinja", image: "/soundImage/pigg.webp", sound: "/sounds/svinja.mp3", category: "animals", loud: false, level: 1 },
+    { id: "bird", label: "Ptica", image: "/soundImage/bird.webp", sound: "/sounds/ptica.mp3", category: "animals", loud: false, level: 1 },
+    { id: "dog", label: "Pas", image: "/soundImage/dog.webp", sound: "/sounds/pas.mp3", category: "animals", loud: true, level: 0.65 },
+    { id: "rain", label: "Kiša", image: "/soundImage/rain.webp", sound: "/sounds/kisa.mp3", category: "weather", loud: false, level: 1 },
+    { id: "horse", label: "Konj", image: "/soundImage/horsee.webp", sound: "/sounds/konj.mp3", category: "animals", loud: true, level: 0.5 },
+    { id: "rooster", label: "Petao", image: "/soundImage/cock.webp", sound: "/sounds/petao.wav", category: "animals", loud: true, level: 0.7 },
+    { id: "car", label: "Auto", image: "/soundImage/car.webp", sound: "/sounds/sirenaAuta.mp3", category: "vehicles", loud: true, level: 0.55 },
+    { id: "bell", label: "Zvono", image: "/soundImage/bell.webp", sound: "/sounds/zvonoKucno.mp3", category: "home", loud: true, level: 0.85 },
+    { id: "bear", label: "Medved", image: "/soundImage/bear.webp", sound: "/sounds/medved.mp3", category: "animals", loud: true, level: 1 },
+    { id: "monkey", label: "Majmun", image: "/soundImage/monkey.webp", sound: "/sounds/majmun.mp3", category: "animals", loud: true, level: 1 },
+    { id: "police", label: "Policija", image: "/soundImage/policeCar.webp", sound: "/sounds/policija.mp3", category: "vehicles", loud: true, level: 1 },
+    { id: "thunder", label: "Grmljavina", image: "/soundImage/thunder.webp", sound: "/sounds/grmljavina.mp3", category: "weather", loud: true, level: 0.7 },
 ];
 
 const ITEM_BY_ID: Record<string, SoundItem | undefined> = Object.fromEntries(ITEMS.map((item) => [item.id, item]));
 
 /** Kiša, grmljavina i sirena traju dugo — zvuk se sam utiša posle ovoliko. */
 const MAX_PLAY_MS = 6000;
+/** Posle tačnog odgovora: najkraća pauza i najduže čekanje da glas završi rečenicu */
+const MIN_FEEDBACK_MS = 1300;
+const MAX_FEEDBACK_MS = 4000;
+const SPEAK_DELAY_MS = 450;
+/** Na uskim telefonima staju najviše četiri dovoljno velike slike */
+const NARROW_SCREEN = "(max-width: 639px)";
+const NARROW_MAX_OPTIONS = 4;
+
+function isNarrowScreen(): boolean {
+    return typeof window !== "undefined" && window.matchMedia(NARROW_SCREEN).matches;
+}
+
+// ── Tekstovi ──────────────────────────────────────────────────────────────────
+// Jedno uputstvo u jednom trenutku, kratko i doslovno.
+
+const SAY_LISTEN = "Dodirni dugme i poslušaj zvuk.";
+const SAY_CHOOSE = "Šta čuješ? Dodirni sliku.";
+const SAY_LISTEN_FIRST = "Prvo pusti zvuk.";
+const WRONG_TEXT = "Nije to. Poslušaj još jednom.";
+const WRONG_HINT_TEXT = "Nije to. Pogledaj sliku koja svetli.";
+const SOUND_OFF_TEXT = "Zvuk je isključen. Za ovu igru treba zvuk.";
+const SOUND_OFF_ADULT_TEXT = "Odrasli: uključite zvuk dugmetom sa zvučnikom gore desno ili u podešavanjima deteta.";
+
+function correctText(item: SoundItem): string {
+    return `To je ${item.label.toLowerCase()}.`;
+}
 
 // ── Nivoi ─────────────────────────────────────────────────────────────────────
 
 interface LevelConfig {
     rounds: number;
-    /** Broj ponuđenih slika: lako 2–3, srednje 4, teško 6 */
+    /** Broj ponuđenih slika: lako 2–3, srednje 4, teško 6 (pre ograničenja iz podešavanja) */
     options: number;
     /** Koliko prvih zvukova sa liste učestvuje */
     pool: number;
@@ -84,27 +121,54 @@ interface Round {
     optionIds: string[];
 }
 
+interface RoundLimits {
+    /** Roditelj je dozvolio nagle i glasne zvuke */
+    loudSounds: boolean;
+    maxRounds: number;
+    /** Najviše ponuđenih slika (podešavanja deteta i širina ekrana) */
+    maxOptions: number;
+}
+
 /**
- * Sve runde nivoa unapred. Svaki zvuk se traži najviše jednom po nivou (pa se nikad
- * ne ponavlja u uzastopnim rundama), a zvukovi koji su novi na ovom nivou sigurno dolaze na red.
+ * Sve runde nivoa unapred. Traže se samo zvuci koji smeju da se puste. Zvuci koji su novi
+ * na ovom nivou sigurno dolaze na red. Kad dozvoljenih zvukova ima manje nego rundi,
+ * zvuci se ponavljaju, ali nikad dva puta zaredom.
  */
-function buildRounds(level: number): Round[] {
+function buildRounds(level: number, { loudSounds, maxRounds, maxOptions }: RoundLimits): Round[] {
     const index = levelIndex(level);
     const config = LEVELS[index];
     const previousPool = index > 0 ? LEVELS[index - 1].pool : 0;
     const pool = ITEMS.slice(0, config.pool);
-    const fresh = pool.slice(previousPool);
-    const known = pool.slice(0, previousPool);
-    const targets = shuffle([...shuffle(fresh), ...shuffle(known)].slice(0, config.rounds));
+    const playable = (item: SoundItem) => loudSounds || !item.loud;
 
+    // Ako bi nivo ostao sa manje od dva zvuka, uzimaju se dozvoljeni zvuci sa cele liste
+    const inPool = pool.filter(playable);
+    const candidates = inPool.length >= 2 ? inPool : ITEMS.filter(playable);
+    const roundCount = candidates.length >= 2 ? Math.max(1, Math.min(config.rounds, maxRounds)) : candidates.length;
+
+    const fresh = candidates.filter((item) => ITEMS.indexOf(item) >= previousPool);
+    const known = candidates.filter((item) => ITEMS.indexOf(item) < previousPool);
+    const targets = shuffle([...shuffle(fresh), ...shuffle(known)].slice(0, roundCount));
+    while (targets.length < roundCount) {
+        const again = shuffle(candidates);
+        const next = again[0] === targets[targets.length - 1] ? [...again.slice(1), again[0]] : again;
+        targets.push(...next.slice(0, roundCount - targets.length));
+    }
+
+    const optionCount = Math.min(config.options, maxOptions, pool.length);
     return targets.map((target) => {
         let others = shuffle(pool.filter((item) => item.id !== target.id));
         if (config.similar) {
             others = [...others.filter((item) => item.category === target.category), ...others.filter((item) => item.category !== target.category)];
         }
-        const options = shuffle([target, ...others.slice(0, config.options - 1)]);
+        const options = shuffle([target, ...others.slice(0, optionCount - 1)]);
         return { targetId: target.id, optionIds: options.map((item) => item.id) };
     });
+}
+
+/** Tačna slika se ističe posle `hintAfter` grešaka (0 = nikad), a najkasnije kad ostane samo ona. */
+function hintReady(wrongPicks: number, optionCount: number, hintAfter: number): boolean {
+    return hintAfter > 0 && wrongPicks >= Math.min(hintAfter, optionCount - 1);
 }
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
@@ -113,28 +177,38 @@ export interface SoundToImageView extends BaseView {
     /** Zvuk koji se traži u ovoj rundi */
     targetId: string;
     optionIds: string[];
-    /** Pogrešno izabrane slike u ovoj rundi (posle 2 stiže pomoć) */
+    /** Pogrešno izabrane slike u ovoj rundi */
     wrongIds: string[];
     pickedId: string | null;
     feedback: FeedbackKind;
+    /** Dete je u ovoj rundi bar jednom pustilo zvuk */
+    heard: boolean;
+    /** Tačna slika je istaknuta (pomoć posle grešaka) */
+    hint: boolean;
+    /** Runde rešene tek pošto je tačna slika istaknuta */
+    promptedCount: number;
+    /** Zvuk je isključen: umesto runde stoji obaveštenje i ništa se ne broji */
+    soundOff: boolean;
     done: boolean;
 }
 
-function emptyView(level: number): SoundToImageView {
-    return {
-        score: 0,
-        correctCount: 0,
-        incorrectCount: 0,
-        round: 1,
-        totalRounds: LEVELS[levelIndex(level)].rounds,
-        targetId: "",
-        optionIds: [],
-        wrongIds: [],
-        pickedId: null,
-        feedback: null,
-        done: false,
-    };
-}
+const EMPTY_VIEW: SoundToImageView = {
+    score: 0,
+    correctCount: 0,
+    incorrectCount: 0,
+    round: 1,
+    totalRounds: 1,
+    targetId: "",
+    optionIds: [],
+    wrongIds: [],
+    pickedId: null,
+    feedback: null,
+    heard: false,
+    hint: false,
+    promptedCount: 0,
+    soundOff: false,
+    done: false,
+};
 
 function num(value: unknown, fallback: number): number {
     return typeof value === "number" && Number.isFinite(value) ? value : fallback;
@@ -145,19 +219,23 @@ function knownIds(value: unknown): string[] {
 }
 
 /** Monitor dobija delimično (ili prazno) stanje — sve što fali ili je pogrešnog tipa menja podrazumevana vrednost. */
-function mergeMonitor(base: SoundToImageView, incoming: Partial<SoundToImageView> | null | undefined): SoundToImageView {
-    if (!incoming) return base;
+function mergeMonitor(incoming: Partial<SoundToImageView> | null | undefined): SoundToImageView {
+    if (!incoming) return EMPTY_VIEW;
     return {
-        score: num(incoming.score, base.score),
-        correctCount: num(incoming.correctCount, base.correctCount),
-        incorrectCount: num(incoming.incorrectCount, base.incorrectCount),
-        round: num(incoming.round, base.round),
-        totalRounds: num(incoming.totalRounds, base.totalRounds),
-        targetId: typeof incoming.targetId === "string" ? incoming.targetId : base.targetId,
+        score: num(incoming.score, 0),
+        correctCount: num(incoming.correctCount, 0),
+        incorrectCount: num(incoming.incorrectCount, 0),
+        round: num(incoming.round, 1),
+        totalRounds: num(incoming.totalRounds, 1),
+        targetId: typeof incoming.targetId === "string" ? incoming.targetId : "",
         optionIds: knownIds(incoming.optionIds),
         wrongIds: knownIds(incoming.wrongIds),
         pickedId: typeof incoming.pickedId === "string" ? incoming.pickedId : null,
         feedback: incoming.feedback === "correct" || incoming.feedback === "wrong" ? incoming.feedback : null,
+        heard: incoming.heard === true,
+        hint: incoming.hint === true,
+        promptedCount: num(incoming.promptedCount, 0),
+        soundOff: incoming.soundOff === true,
         done: incoming.done === true,
     };
 }
@@ -177,56 +255,109 @@ const IMAGE_SIZES: Record<number, string> = {
     6: "(min-width: 1024px) 130px, (min-width: 640px) 230px, 45vw",
 };
 
-type Timer = ReturnType<typeof setTimeout>;
+// ── Dugme „Pusti zvuk” ────────────────────────────────────────────────────────
+
+interface PlayButtonProps {
+    playing: boolean;
+    /** Kratko (tri mirna talasa) skreće pažnju na dugme: na početku runde i posle pogrešnog izbora */
+    cue: boolean;
+    onClick: () => void;
+}
+
+const BAR_DELAYS = ["[animation-delay:0ms]", "[animation-delay:300ms]", "[animation-delay:600ms]", "[animation-delay:900ms]"];
+const BAR_HEIGHTS = ["h-3", "h-6", "h-4", "h-7"];
+
+/** Jedino mesto odakle kreće zvuk. Dok zvuk traje, umesto trougla stoje stubići koji mirno trepere. */
+function PlayButton({ playing, cue, onClick }: PlayButtonProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            className={cn(
+                "inline-flex min-h-20 w-full min-w-48 shrink-0 items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] px-7 font-display text-xl font-extrabold text-white transition-[transform,background-color,border-width] active:translate-y-[3px] active:border-b-2 sm:w-auto sm:text-2xl",
+                playing ? "border-emerald-800 bg-emerald-600" : "border-brand-700 bg-brand-500 hover:bg-brand-600",
+                cue && !playing && "animate-[soft-pulse_1.8s_ease-in-out_3]"
+            )}
+        >
+            {playing ? (
+                <span aria-hidden="true" className="flex h-8 w-8 items-center justify-center gap-1">
+                    {BAR_DELAYS.map((delay, i) => (
+                        <span key={delay} className={cn("w-1.5 animate-pulse rounded-full bg-white", BAR_HEIGHTS[i], delay)} />
+                    ))}
+                </span>
+            ) : (
+                <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <path d="M8 5.5v13a1 1 0 0 0 1.5.86l11-6.5a1 1 0 0 0 0-1.72l-11-6.5A1 1 0 0 0 8 5.5z" />
+                </svg>
+            )}
+            {playing ? "Zvuk se čuje" : "Pusti zvuk"}
+        </button>
+    );
+}
 
 // ── Igra ──────────────────────────────────────────────────────────────────────
 
 /*
- * Zvezdice (correct / total): total = broj rundi (zvukova) na nivou, correct = runde u kojima
- * je dete izabralo pravu sliku iz prvog pokušaja. Pogrešan izbor ne prekida rundu — dete
- * pokušava ponovo (uz pomoć posle 2 greške), ali ta runda se tada ne broji kao samostalno tačna.
- * Jedna pogođena runda od pet već donosi 1★.
+ * Rezultat: total = broj rundi (zvukova) na nivou, correct = runde u kojima je dete izabralo
+ * pravu sliku iz prvog pokušaja, prompted = runde rešene tek pošto je prava slika istaknuta.
+ * Pogrešan izbor ne prekida rundu — dete pokušava ponovo.
+ *
+ * Zvuk nikad ne kreće sam: pušta ga samo dete dugmetom „Pusti zvuk”, uvek uz postepeno
+ * pojačavanje i jačinu iz podešavanja. Dok zvuk nije pušten, slike se ne broje kao odgovor.
  */
 export default function SoundToImageGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<SoundToImageView>) {
     const accent = getGame("sound-to-image").accent;
+    const settings = useChildSettings();
     const { say, stop: stopSpeech } = useSpeech(gender);
     const sync = useGameSync<SoundToImageView>({ childId, gameId: "sound-to-image", level, isMonitor });
+    const guard = useInputGuard();
+    const { after, cancel } = useTimers();
 
-    const [rounds] = useState<Round[]>(() => buildRounds(level));
-    const [view, setView] = useState<SoundToImageView>(() => ({ ...emptyView(level), ...rounds[0] }));
+    // Monitor ne poznaje podešavanja deteta: crta isključivo ono što stigne u `monitorState`.
+    const [rounds] = useState<Round[]>(() =>
+        isMonitor
+            ? []
+            : buildRounds(level, {
+                  loudSounds: settings.loudSounds,
+                  maxRounds: settings.preset.maxRounds,
+                  maxOptions: isNarrowScreen() ? Math.min(settings.choiceLimit, NARROW_MAX_OPTIONS) : settings.choiceLimit,
+              })
+    );
+    const [view, setView] = useState<SoundToImageView>(() => ({
+        ...EMPTY_VIEW,
+        ...rounds[0],
+        totalRounds: Math.max(rounds.length, 1),
+        soundOff: !isMonitor && !gameSoundsEnabled(),
+    }));
     const [playing, setPlaying] = useState(false);
-    /** Pregledač je odbio automatsko puštanje — dugme tada blago pulsira dok ga dete ne dodirne */
-    const [needsTap, setNeedsTap] = useState(false);
+    /** Raste svaki put kad dete proveri zvuk, a on je i dalje isključen — obaveštenje tada kratko „odgovori” */
+    const [soundChecks, setSoundChecks] = useState(0);
 
     const viewRef = useRef(view);
+    const aliveRef = useRef(true);
     const startedRef = useRef(false);
     const finishedRef = useRef(false);
     const lockedRef = useRef(false);
-    /** Runda u kojoj je zvuk već pušten (da ga automatika ne pusti dvaput) */
-    const playedRoundRef = useRef(0);
-    const timersRef = useRef<Set<Timer>>(new Set());
-    const retryTimerRef = useRef<Timer | null>(null);
-    const cutTimerRef = useRef<Timer | null>(null);
+    /** Posle prvog odslušanog zvuka glas jednom kaže šta je sledeći korak */
+    const chooseSaidRef = useRef(false);
+    const cutTimerRef = useRef<TimerId | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     /** Raste pri svakom puštanju/gašenju, da zakasneli događaji starog puštanja ne diraju novo */
     const playIdRef = useRef(0);
     const cacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
-    const shown = isMonitor ? mergeMonitor(emptyView(level), monitorState) : view;
+    const shown = isMonitor ? mergeMonitor(monitorState) : view;
     const target = ITEM_BY_ID[shown.targetId];
     const options = shown.optionIds.flatMap((id) => ITEM_BY_ID[id] ?? []);
     const solved = shown.feedback === "correct";
-    const hinting = !solved && shown.wrongIds.length >= 2;
     const interactive = !isMonitor && !shown.done;
 
     // ── Zvuk ──────────────────────────────────────────────────────────────────
 
     const haltSound = useCallback(() => {
         playIdRef.current += 1;
-        if (cutTimerRef.current) {
-            clearTimeout(cutTimerRef.current);
-            cutTimerRef.current = null;
-        }
+        cancel(cutTimerRef.current);
+        cutTimerRef.current = null;
         const audio = audioRef.current;
         if (audio) {
             audio.onended = null;
@@ -235,19 +366,17 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
             audioRef.current = null;
         }
         setPlaying(false);
-    }, []);
+    }, [cancel]);
 
     const playSound = useCallback(
-        (id: string) => {
-            const item = ITEM_BY_ID[id];
-            if (!item) return;
+        (item: SoundItem) => {
             stopSpeech();
             haltSound();
 
-            let audio = cacheRef.current.get(id);
+            let audio = cacheRef.current.get(item.id);
             if (!audio) {
                 audio = new Audio(item.sound);
-                cacheRef.current.set(id, audio);
+                cacheRef.current.set(item.id, audio);
             }
             const current = audio;
             const playId = playIdRef.current;
@@ -257,33 +386,35 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                 haltSound();
                 return true;
             };
+            /** Zvuk je odslušan do kraja: prvi put glas kaže sledeći korak */
+            const finish = () => {
+                if (!release() || chooseSaidRef.current) return;
+                chooseSaidRef.current = true;
+                void say(SAY_CHOOSE);
+            };
 
             audioRef.current = current;
-            current.muted = isMuted();
             current.currentTime = 0;
-            current.onended = release;
+            current.onended = finish;
             // Fajl ne može da se učita: umesto zvuka dete čuje reč, pa i dalje može da nađe sliku
             current.onerror = () => {
-                if (release()) say(item.label);
+                if (release()) void say(item.label);
             };
-            cutTimerRef.current = setTimeout(release, MAX_PLAY_MS);
+            cutTimerRef.current = after(MAX_PLAY_MS, finish);
             setPlaying(true);
-            setNeedsTap(false);
 
-            current.play().catch((error: unknown) => {
-                if (!release()) return;
-                // Automatsko puštanje bez dodira nije dozvoljeno — čekamo da dete pritisne dugme
-                if (error instanceof DOMException && error.name === "NotAllowedError") setNeedsTap(true);
+            // Bez naglog početka: zvuk kreće tiho i pojačava se do jačine koju je izabrao roditelj
+            playWithFade(current, item.level).catch(() => {
+                release();
             });
         },
-        [haltSound, say, stopSpeech]
+        [after, haltSound, say, stopSpeech]
     );
 
     // Učitavanje zvukova nivoa unapred + gašenje svega kad igra nestane
     useEffect(() => {
         if (isMonitor) return;
         const cache = cacheRef.current;
-        const timers = timersRef.current;
         for (const round of rounds) {
             const item = ITEM_BY_ID[round.targetId];
             if (!item || cache.has(item.id)) continue;
@@ -292,11 +423,9 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
             audio.src = item.sound;
             cache.set(item.id, audio);
         }
+        aliveRef.current = true;
         return () => {
-            timers.forEach(clearTimeout);
-            timers.clear();
-            if (cutTimerRef.current) clearTimeout(cutTimerRef.current);
-            cutTimerRef.current = null;
+            aliveRef.current = false;
             audioRef.current = null;
             cache.forEach((audio) => {
                 audio.onended = null;
@@ -312,48 +441,21 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     useEffect(() => {
         if (isMonitor || startedRef.current) return;
         startedRef.current = true;
+        guard.hold();
         sync.start(viewRef.current);
-    }, [isMonitor, sync]);
+    }, [isMonitor, guard, sync]);
 
-    // Svaka runda sama pusti zvuk posle kratke pauze; pre prve se izgovori uputstvo.
+    // Runda počinje izgovorenim uputstvom; zvuk čeka da ga dete samo pusti.
     const round = view.round;
-    const roundTargetId = view.targetId;
-    const roundOver = view.done || view.feedback === "correct";
+    const soundOff = view.soundOff;
+    const levelDone = view.done;
     useEffect(() => {
-        if (isMonitor || roundOver) return;
-        const pending: Timer[] = [];
-        let cancelled = false;
-        const autoPlay = () => {
-            if (cancelled || playedRoundRef.current === round) return;
-            playedRoundRef.current = round;
-            playSound(roundTargetId);
-        };
-        if (round === 1) {
-            const afterSpeech = () => {
-                if (!cancelled) pending.push(setTimeout(autoPlay, 300));
-            };
-            pending.push(setTimeout(() => say("Poslušaj zvuk i dodirni pravu sliku.", afterSpeech), 500));
-            // Ako kraj govora iz bilo kog razloga ne stigne, zvuk ipak krene
-            pending.push(setTimeout(autoPlay, 5500));
-        } else {
-            pending.push(setTimeout(autoPlay, 700));
-        }
-        return () => {
-            cancelled = true;
-            pending.forEach(clearTimeout);
-        };
-    }, [isMonitor, round, roundTargetId, roundOver, playSound, say]);
+        if (isMonitor || levelDone) return;
+        const id = after(SPEAK_DELAY_MS, () => void say(soundOff ? SOUND_OFF_TEXT : SAY_LISTEN));
+        return () => cancel(id);
+    }, [isMonitor, round, soundOff, levelDone, after, cancel, say]);
 
     // ── Potezi ────────────────────────────────────────────────────────────────
-
-    const later = (fn: () => void, ms: number): Timer => {
-        const id = setTimeout(() => {
-            timersRef.current.delete(id);
-            fn();
-        }, ms);
-        timersRef.current.add(id);
-        return id;
-    };
 
     const commit = (next: SoundToImageView, log?: string) => {
         viewRef.current = next;
@@ -361,52 +463,82 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         sync.update(next, log);
     };
 
-    const cancelRetry = () => {
-        if (!retryTimerRef.current) return;
-        clearTimeout(retryTimerRef.current);
-        timersRef.current.delete(retryTimerRef.current);
-        retryTimerRef.current = null;
+    /** Nastavlja kad prođe najkraća pauza i kad glas završi rečenicu (ili posle najdužeg čekanja). */
+    const sayThen = (text: string, proceed: () => void) => {
+        let waiting = 2;
+        let finished = false;
+        const finish = () => {
+            if (finished || !aliveRef.current) return;
+            finished = true;
+            proceed();
+        };
+        const step = () => {
+            waiting -= 1;
+            if (waiting === 0) finish();
+        };
+        after(MIN_FEEDBACK_MS, step);
+        after(MAX_FEEDBACK_MS, finish);
+        void say(text, step);
     };
 
-    const replay = () => {
-        if (!interactive || lockedRef.current) return;
+    const play = () => {
+        // Uzastopni dodiri ne pokreću zvuk više puta
+        if (!interactive || lockedRef.current || guard.blocked()) return;
         const current = viewRef.current;
-        playedRoundRef.current = current.round;
-        playSfx("tap");
-        playSound(current.targetId);
-        sync.update(current, "Ponovo pušta zvuk");
+        const item = ITEM_BY_ID[current.targetId];
+        if (!item || current.soundOff) return;
+
+        if (!gameSoundsEnabled()) {
+            haltSound();
+            commit({ ...current, soundOff: true, pickedId: null, feedback: null }, "Zvuk je isključen — igra čeka");
+            return;
+        }
+        // Kratka pauza unosa: slučajan drugi dodir ne sme da izabere sliku pre nego što se zvuk čuje
+        guard.hold();
+        playSound(item);
+        commit({ ...current, heard: true, pickedId: null, feedback: null }, current.heard ? "Ponovo pušta zvuk" : "Pušta zvuk");
+    };
+
+    const retrySound = () => {
+        const current = viewRef.current;
+        if (!interactive || !current.soundOff) return;
+        if (!gameSoundsEnabled()) {
+            setSoundChecks((count) => count + 1);
+            return;
+        }
+        guard.hold();
+        commit({ ...current, soundOff: false }, "Zvuk je uključen — igra se nastavlja");
     };
 
     const pick = (id: string) => {
-        if (!interactive || lockedRef.current) return;
+        if (!interactive || lockedRef.current || guard.blocked()) return;
         const current = viewRef.current;
         const picked = ITEM_BY_ID[id];
         const wanted = ITEM_BY_ID[current.targetId];
-        if (!picked || !wanted || current.wrongIds.includes(id)) return;
+        if (!picked || !wanted || current.soundOff || current.wrongIds.includes(id)) return;
 
-        cancelRetry();
+        // Slika dodirnuta pre zvuka nije odgovor: ništa se ne broji, glas samo podseti na prvi korak
+        if (!current.heard) {
+            guard.hold();
+            void say(SAY_LISTEN_FIRST);
+            return;
+        }
+
         haltSound();
         stopSpeech();
-        playedRoundRef.current = current.round;
 
         if (id !== current.targetId) {
-            const next: SoundToImageView = {
-                ...current,
-                pickedId: id,
-                feedback: "wrong",
-                wrongIds: [...current.wrongIds, id],
-                incorrectCount: current.incorrectCount + 1,
-            };
+            const wrongIds = [...current.wrongIds, id];
+            const hint = hintReady(wrongIds.length, current.optionIds.length, settings.hintAfter);
+            // Uzastopni brzi dodiri posle greške ne broje se kao nove greške
+            guard.hold();
             playSfx("wrong");
-            commit(next, `Pogrešno: ${picked.label.toLowerCase()} (traži se ${wanted.label.toLowerCase()})`);
-            // Poruka se skloni, a zvuk se sam ponovi da dete može da pokuša opet
-            retryTimerRef.current = later(() => {
-                retryTimerRef.current = null;
-                const latest = viewRef.current;
-                if (latest.done || latest.feedback !== "wrong") return;
-                commit({ ...latest, pickedId: null, feedback: null });
-                playSound(latest.targetId);
-            }, 1200);
+            commit(
+                { ...current, pickedId: id, feedback: "wrong", wrongIds, hint, incorrectCount: current.incorrectCount + 1 },
+                `Pogrešno: ${picked.label.toLowerCase()} (traži se ${wanted.label.toLowerCase()})${hint && !current.hint ? " — prikazana pomoć" : ""}`
+            );
+            // Zvuk se ne ponavlja sam: dugme „Pusti zvuk” kratko zasvetli, a dete odlučuje
+            void say(hint ? WRONG_HINT_TEXT : WRONG_TEXT);
             return;
         }
 
@@ -417,30 +549,38 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
             pickedId: id,
             feedback: "correct",
             correctCount: current.correctCount + (firstTry ? 1 : 0),
+            promptedCount: current.promptedCount + (current.hint ? 1 : 0),
             score: current.score + (firstTry ? 10 : 5),
         };
-        const log = `Tačno: ${wanted.label.toLowerCase()}${firstTry ? " iz prve" : ` (pogrešnih pokušaja: ${current.wrongIds.length})`}`;
+        const how = firstTry ? " iz prve" : current.hint ? " uz pomoć" : ` (pogrešnih pokušaja: ${current.wrongIds.length})`;
+        const log = `Tačno: ${wanted.label.toLowerCase()}${how}`;
+        playSfx("correct");
 
         if (current.round >= rounds.length) {
             if (finishedRef.current) return;
             finishedRef.current = true;
             const final: SoundToImageView = { ...answered, done: true };
-            commit(final, `${log} — nivo je završen 🎉`);
-            playSfx("win");
-            later(() => {
+            commit(final, `${log} — nivo je završen`);
+            sayThen(correctText(wanted), () => {
                 sync.complete(final);
-                onComplete({ score: final.score, durationSec: sync.elapsedSec(), correct: final.correctCount, total: rounds.length });
-            }, 1100);
+                onComplete({
+                    score: final.score,
+                    durationSec: sync.elapsedSec(),
+                    correct: final.correctCount,
+                    total: rounds.length,
+                    prompted: final.promptedCount,
+                });
+            });
             return;
         }
 
-        playSfx("correct");
         commit(answered, log);
-        later(() => {
+        sayThen(correctText(wanted), () => {
             const upcoming = rounds[current.round];
-            commit({ ...viewRef.current, ...upcoming, round: current.round + 1, wrongIds: [], pickedId: null, feedback: null });
+            guard.hold();
+            commit({ ...viewRef.current, ...upcoming, round: current.round + 1, wrongIds: [], pickedId: null, feedback: null, heard: false, hint: false });
             lockedRef.current = false;
-        }, 1300);
+        });
     };
 
     // ── Prikaz ────────────────────────────────────────────────────────────────
@@ -449,65 +589,90 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         if (solved) return id === shown.targetId ? "correct" : "dimmed";
         if (shown.feedback === "wrong" && id === shown.pickedId) return "wrong";
         if (shown.wrongIds.includes(id)) return "dimmed";
-        return "idle";
+        return shown.hint && id === shown.targetId ? "hint" : "idle";
     };
 
     const columns = options.length <= 2 ? 2 : options.length === 3 ? 3 : options.length === 4 ? 4 : 6;
+    const instruction = shown.heard ? SAY_CHOOSE : SAY_LISTEN;
+    // Dugme zasvetli na početku runde i posle pogrešnog izbora; kad svetli tačna slika, dugme miruje
+    const cue = interactive && !solved && !shown.hint && (!shown.heard || shown.feedback === "wrong");
 
     return (
         <GameStage>
-            <GameHud round={shown.round} totalRounds={shown.totalRounds} score={shown.score} unit="Zvuk" />
-
-            <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-card border-2 bg-surface p-3 shadow-soft sm:gap-6 sm:p-6", accent.border)}>
-                <div className="min-w-0 flex-1">
-                    <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">Šta čuješ?</p>
-                    <p className="mt-1 hidden text-base font-bold text-ink-soft min-[420px]:block sm:text-lg">Poslušaj zvuk i dodirni pravu sliku</p>
-                </div>
-                {isMonitor ? (
-                    <p className={cn("rounded-2xl px-4 py-3 text-base font-extrabold", accent.soft, accent.text)}>
-                        <span aria-hidden="true">🔊 </span>
-                        Traženi zvuk: {target ? target.label.toLowerCase() : "…"}
-                    </p>
-                ) : (
-                    <SpeakButton
-                        large
-                        onClick={replay}
-                        label={playing ? "Slušaj…" : "Pusti zvuk"}
-                        className={cn("min-w-44", needsTap && !playing && interactive && "animate-soft-pulse")}
-                    />
-                )}
-            </div>
-
-            {options.length === 0 ? (
-                <p className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-base font-bold text-ink-soft">Čekamo sledeći zvuk…</p>
-            ) : (
-                <div className={cn("grid w-full gap-2 sm:gap-4", GRID[columns])}>
-                    {options.map((item) => {
-                        const state = stateOf(item.id);
-                        const hinted = hinting && item.id === shown.targetId;
-                        return (
-                            <ChoiceCard
-                                key={item.id}
-                                state={state}
-                                disabled={!interactive || solved || state === "dimmed"}
-                                onClick={() => pick(item.id)}
-                                className={cn("flex-col gap-2", hinted && "animate-soft-pulse ring-4 ring-brand-300")}
-                            >
-                                <span className="relative block aspect-[5/4] w-full overflow-hidden rounded-xl bg-brand-50 sm:aspect-square">
-                                    <Image src={item.image} alt="" fill sizes={IMAGE_SIZES[columns]} className="object-cover" draggable={false} />
-                                </span>
-                                <span className="text-base leading-tight sm:text-lg">{item.label}</span>
-                            </ChoiceCard>
-                        );
-                    })}
-                </div>
-            )}
-
-            <Feedback
-                kind={shown.feedback}
-                correctText={target ? `Tačno! To je ${target.label.toLowerCase()}.` : undefined}
-                wrongText={hinting ? "Pogledaj sliku koja svetli" : "Poslušaj još jednom"}
+            <GameHud
+                round={shown.round}
+                totalRounds={shown.totalRounds}
+                score={isMonitor || settings.preset.showPoints ? shown.score : undefined}
+                unit="Zvuk"
+                onSpeak={isMonitor || shown.soundOff ? undefined : () => void say(instruction)}
             />
+
+            {shown.soundOff ? (
+                <section
+                    key={soundChecks}
+                    aria-live="polite"
+                    className={cn("flex animate-pop flex-col items-center gap-4 rounded-card border-2 bg-surface p-6 text-center shadow-soft sm:p-8", accent.border)}
+                >
+                    <svg className={cn("h-16 w-16", accent.text)} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M11 5 6 9H3v6h3l5 4V5z" strokeLinejoin="round" />
+                        <path d="m16 9.5 5 5M21 9.5l-5 5" strokeLinecap="round" />
+                    </svg>
+                    <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{SOUND_OFF_TEXT}</p>
+                    <p className="max-w-md text-base font-bold text-ink-soft">{SOUND_OFF_ADULT_TEXT}</p>
+                    {!isMonitor && (
+                        <button
+                            type="button"
+                            onClick={retrySound}
+                            className="inline-flex min-h-20 items-center justify-center rounded-2xl border-2 border-b-[5px] border-brand-700 bg-brand-500 px-8 font-display text-xl font-extrabold text-white transition-[transform,background-color,border-width] hover:bg-brand-600 active:translate-y-[3px] active:border-b-2 sm:text-2xl"
+                        >
+                            Probaj ponovo
+                        </button>
+                    )}
+                </section>
+            ) : (
+                <>
+                    <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-card border-2 bg-surface p-3 shadow-soft sm:gap-6 sm:p-6", accent.border)}>
+                        <p className="min-w-0 flex-1 basis-40 font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{instruction}</p>
+                        {isMonitor ? (
+                            <p className={cn("rounded-2xl px-4 py-3 text-base font-extrabold", accent.soft, accent.text)}>
+                                Traženi zvuk: {target ? target.label.toLowerCase() : "…"}
+                            </p>
+                        ) : (
+                            <PlayButton key={`${shown.round}-${shown.wrongIds.length}`} playing={playing} cue={cue} onClick={play} />
+                        )}
+                    </div>
+
+                    {options.length === 0 ? (
+                        <p className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-base font-bold text-ink-soft">Čekamo sledeći zvuk…</p>
+                    ) : (
+                        <div className={cn("grid w-full gap-2 sm:gap-4", GRID[columns])}>
+                            {options.map((item) => {
+                                const state = stateOf(item.id);
+                                return (
+                                    <ChoiceCard
+                                        key={item.id}
+                                        state={state}
+                                        disabled={!interactive || solved || state === "dimmed" || state === "wrong"}
+                                        onClick={() => pick(item.id)}
+                                        className="flex-col gap-2"
+                                    >
+                                        <span className="relative block aspect-[5/4] w-full overflow-hidden rounded-xl bg-brand-50 sm:aspect-square">
+                                            <Image src={item.image} alt="" fill sizes={IMAGE_SIZES[columns]} className="object-cover" draggable={false} />
+                                        </span>
+                                        <span className="text-base leading-tight sm:text-lg">{item.label}</span>
+                                    </ChoiceCard>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    <Feedback
+                        kind={shown.feedback}
+                        correctText={target ? correctText(target) : undefined}
+                        wrongText={shown.hint ? WRONG_HINT_TEXT : WRONG_TEXT}
+                    />
+                </>
+            )}
         </GameStage>
     );
 }

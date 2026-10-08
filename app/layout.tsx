@@ -4,7 +4,8 @@ import "./globals.css";
 
 const nunito = Nunito({
   variable: "--font-nunito",
-  subsets: ["latin", "latin-ext"],
+  // Ćirilica je potrebna kada roditelj za dete izabere ćirilično pismo
+  subsets: ["latin", "latin-ext", "cyrillic", "cyrillic-ext"],
   display: "swap",
 });
 

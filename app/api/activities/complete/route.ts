@@ -24,7 +24,10 @@ interface CompletedGame {
     activityId: number;
     level: number;
     score: number;
+    /** Zadaci rešeni samostalno */
     correct: number;
+    /** Zadaci rešeni tek uz pomoć (istaknut odgovor); `null` = klijent nije poslao */
+    prompted: number | null;
     total: number;
     durationSec: number;
     moodBefore: Mood | null;
@@ -47,6 +50,13 @@ function parseCompletedGame(body: Record<string, unknown>): CompletedGame {
         throw new HttpError(400, INVALID_RESULT);
     }
 
+    // Samostalni i potpomognuti odgovori zajedno ne mogu premašiti broj zadataka.
+    let prompted: number | null = null;
+    if (body.prompted !== undefined && body.prompted !== null) {
+        prompted = asInt(body.prompted, { min: 0, max: 1000 });
+        if (prompted === null || correct + prompted > total) throw new HttpError(400, INVALID_RESULT);
+    }
+
     let moodBefore: Mood | null = null;
     if (body.moodBefore !== undefined && body.moodBefore !== null) {
         moodBefore = oneOf(body.moodBefore, MOOD_VALUES);
@@ -58,6 +68,7 @@ function parseCompletedGame(body: Record<string, unknown>): CompletedGame {
         level,
         score: Math.round(score),
         correct,
+        prompted,
         total,
         durationSec: Math.round(durationSec),
         moodBefore,
@@ -108,9 +119,10 @@ export async function POST(request: Request) {
         const session = await requireChildAccess(childId);
         const game = parseCompletedGame(body);
 
+        // Zvezdice zavise samo od SAMOSTALNO tačnih odgovora; završen nivo donosi bar jednu.
         const stars = starsFor(game.correct, game.total);
 
-        // Kolone koje postoje i u bazi pre migracije. `notes` zadržava stari
+        // Kolone koje postoje i u bazi pre migracija. `notes` zadržava stari
         // format jer ga čitaju stariji zapisi i izveštaji.
         const legacyRow = {
             child_id: childId,
@@ -121,7 +133,8 @@ export async function POST(request: Request) {
             mood_before: game.moodBefore,
             recorded_by: session.userId,
         };
-        const fullRow = {
+        // + kolone iz migracije 0001
+        const structuredRow = {
             ...legacyRow,
             level: game.level,
             stars,
@@ -131,14 +144,26 @@ export async function POST(request: Request) {
             duration_seconds: game.durationSec,
         };
 
-        let { data, error } = await supabaseAdmin.from("progress_logs").insert(fullRow).select("id").single();
-        if (error && isMissingColumnError(error)) {
-            // Migracija još nije primenjena — sačuvaj bar osnovne kolone.
-            ({ data, error } = await supabaseAdmin.from("progress_logs").insert(legacyRow).select("id").single());
-        }
-        if (error) throw error;
+        // Od najpotpunijeg reda ka najstarijem obliku: ako baza nema kolonu, pokušaj
+        // se ponavlja bez nje — prvo bez kolona iz migracije 0002 (prompted_count),
+        // pa bez svih novih kolona. Partija se tako čuva i u bazi bez migracija.
+        const candidates: Record<string, unknown>[] = [
+            ...(game.prompted !== null ? [{ ...structuredRow, prompted_count: game.prompted }] : []),
+            structuredRow,
+            legacyRow,
+        ];
 
-        const logId = (data as { id: number }).id;
+        let logId: number | null = null;
+        for (const [index, row] of candidates.entries()) {
+            const { data, error } = await supabaseAdmin.from("progress_logs").insert(row).select("id").single();
+            if (!error) {
+                logId = (data as { id: number }).id;
+                break;
+            }
+            if (!isMissingColumnError(error) || index === candidates.length - 1) throw error;
+        }
+        if (logId === null) throw new Error("Zapis partije nije sačuvan");
+
         const experiencePoints = await awardExperience(childId, stars * POINTS_PER_STAR);
 
         return NextResponse.json({ success: true, logId, stars, experiencePoints });
