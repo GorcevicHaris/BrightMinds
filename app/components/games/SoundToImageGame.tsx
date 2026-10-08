@@ -1,583 +1,513 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useGameEmitter } from '@/lib/useSocket';
-import { useSpeech } from '@/lib/useSpeech';
+import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { cn } from "@/lib/cn";
+import { getGame } from "@/lib/games";
+import { useSpeech } from "@/lib/speech";
+import { isMuted } from "@/lib/sound";
+import { ChoiceCard, Feedback, GameHud, GameStage, SpeakButton, playSfx, shuffle, useGameSync } from "@/app/components/games/kit";
+import type { BaseView, ChoiceState, FeedbackKind, GameProps } from "@/app/components/games/kit";
 
-interface GameProps {
-    childId: number;
-    level: number;
-    onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null, stats?: { correct: number, total: number }) => void;
-    onClose?: () => void;
-    autoStart?: boolean;
-    isMonitor?: boolean;
-    monitorState?: any;
-    gender?: string;
-}
+// ── Zvukovi ───────────────────────────────────────────────────────────────────
+// Redosled je od najpoznatijih ka težim: viši nivoi dodaju zvukove s kraja liste.
+// Svaki unos ima i zvuk u /public/sounds i sliku u /public/soundImage.
+
+type Category = "animal" | "nature" | "thing";
 
 interface SoundItem {
     id: string;
-    image: string;
     label: string;
-    soundUrl: string;
+    image: string;
+    sound: string;
+    category: Category;
 }
 
-const SOUND_ITEMS: SoundItem[] = [
-    { id: "dog", image: "/soundImage/dog.png", label: "Pas", soundUrl: "/sounds/pas.mp3" },
-    { id: "cat", image: "/soundImage/cat.png", label: "Mačka", soundUrl: "/sounds/macka.mp3" },
-    { id: "cow", image: "/soundImage/cow.png", label: "Krava", soundUrl: "/sounds/krava.wav" },
-    { id: "horse", image: "/soundImage/horsee.png", label: "Konj", soundUrl: "/sounds/konj.mp3" },
-    { id: "bear", image: "/soundImage/bear.png", label: "Medved", soundUrl: "/sounds/medved.mp3" },
-    { id: "bird", image: "/soundImage/bird.png", label: "Ptica", soundUrl: "/sounds/ptica.mp3" },
-    { id: "monkey", image: "/soundImage/monkey.png", label: "Majmun", soundUrl: "/sounds/majmun.mp3" },
-    { id: "rooster", image: "/soundImage/cock.png", label: "Petao", soundUrl: "/sounds/petao.wav" },
-    { id: "pig", image: "/soundImage/pigg.jpg", label: "Svinja", soundUrl: "/sounds/svinja.mp3" },
-    { id: "rain", image: "/soundImage/rain.png", label: "Kiša", soundUrl: "/sounds/kisa.mp3" },
-    { id: "thunder", image: "/soundImage/thunder.png", label: "Grmljavina", soundUrl: "/sounds/grmljavina.mp3" },
-    { id: "doorbell", image: "/soundImage/bell.jpg", label: "Zvono", soundUrl: "/sounds/zvonoKucno.mp3" },
-    { id: "police", image: "/soundImage/policeCar.png", label: "Policija", soundUrl: "/sounds/policija.mp3" },
-    { id: "car_horn", image: "/soundImage/car.jpg", label: "Sirena auta", soundUrl: "/sounds/sirenaAuta.mp3" },
+const ITEMS: SoundItem[] = [
+    { id: "dog", label: "Pas", image: "/soundImage/dog.webp", sound: "/sounds/pas.mp3", category: "animal" },
+    { id: "cat", label: "Mačka", image: "/soundImage/cat.webp", sound: "/sounds/macka.mp3", category: "animal" },
+    { id: "cow", label: "Krava", image: "/soundImage/cow.webp", sound: "/sounds/krava.wav", category: "animal" },
+    { id: "rooster", label: "Petao", image: "/soundImage/cock.webp", sound: "/sounds/petao.wav", category: "animal" },
+    { id: "pig", label: "Svinja", image: "/soundImage/pigg.webp", sound: "/sounds/svinja.mp3", category: "animal" },
+    { id: "horse", label: "Konj", image: "/soundImage/horsee.webp", sound: "/sounds/konj.mp3", category: "animal" },
+    { id: "bird", label: "Ptica", image: "/soundImage/bird.webp", sound: "/sounds/ptica.mp3", category: "animal" },
+    { id: "car", label: "Auto", image: "/soundImage/car.webp", sound: "/sounds/sirenaAuta.mp3", category: "thing" },
+    { id: "bell", label: "Zvono", image: "/soundImage/bell.webp", sound: "/sounds/zvonoKucno.mp3", category: "thing" },
+    { id: "bear", label: "Medved", image: "/soundImage/bear.webp", sound: "/sounds/medved.mp3", category: "animal" },
+    { id: "monkey", label: "Majmun", image: "/soundImage/monkey.webp", sound: "/sounds/majmun.mp3", category: "animal" },
+    { id: "rain", label: "Kiša", image: "/soundImage/rain.webp", sound: "/sounds/kisa.mp3", category: "nature" },
+    { id: "police", label: "Policija", image: "/soundImage/policeCar.webp", sound: "/sounds/policija.mp3", category: "thing" },
+    { id: "thunder", label: "Grmljavina", image: "/soundImage/thunder.webp", sound: "/sounds/grmljavina.mp3", category: "nature" },
 ];
+
+const ITEM_BY_ID: Record<string, SoundItem | undefined> = Object.fromEntries(ITEMS.map((item) => [item.id, item]));
+
+/** Kiša, grmljavina i sirena traju dugo — zvuk se sam utiša posle ovoliko. */
+const MAX_PLAY_MS = 6000;
+
+// ── Nivoi ─────────────────────────────────────────────────────────────────────
 
 interface LevelConfig {
-    rounds: number;       // broj rundi (pitanja)
-    poolSize: number;     // koliko različitih zvukova se koristi
-    optionsCount: number; // broj ponuđenih odgovora po pitanju
+    rounds: number;
+    /** Broj ponuđenih slika: lako 2–3, srednje 4, teško 6 */
+    options: number;
+    /** Koliko prvih zvukova sa liste učestvuje */
+    pool: number;
+    /** Pogrešne slike se biraju iz iste grupe kao tačna (životinje sa životinjama…) */
+    similar?: boolean;
 }
 
-const LEVEL_CONFIGS: LevelConfig[] = [
-    // Nivo  1 — intro: 3 poznate životinje, 2 opcije, 4 pitanja
-    { rounds: 4, poolSize: 3, optionsCount: 2 },
-    // Nivo  2
-    { rounds: 4, poolSize: 4, optionsCount: 2 },
-    // Nivo  3
-    { rounds: 5, poolSize: 4, optionsCount: 3 },
-    // Nivo  4
-    { rounds: 5, poolSize: 5, optionsCount: 3 },
-    // Nivo  5
-    { rounds: 6, poolSize: 6, optionsCount: 3 },
-    // Nivo  6
-    { rounds: 6, poolSize: 7, optionsCount: 4 },
-    // Nivo  7
-    { rounds: 7, poolSize: 8, optionsCount: 4 },
-    // Nivo  8
-    { rounds: 7, poolSize: 9, optionsCount: 4 },
-    // Nivo  9
-    { rounds: 8, poolSize: 10, optionsCount: 5 },
-    // Nivo 10
-    { rounds: 8, poolSize: 11, optionsCount: 5 },
-    // Nivo 11
-    { rounds: 9, poolSize: 12, optionsCount: 6 },
-    // Nivo 12
-    { rounds: 9, poolSize: 13, optionsCount: 6 },
-    // Nivo 13
-    { rounds: 10, poolSize: 14, optionsCount: 7 },
-    // Nivo 14
-    { rounds: 10, poolSize: 14, optionsCount: 8 },
-    // Nivo 15 — finale: svi zvukovi, 8 opcija, 12 pitanja
-    { rounds: 12, poolSize: 14, optionsCount: 8 },
+const LEVELS: LevelConfig[] = [
+    { rounds: 5, options: 2, pool: 5 },
+    { rounds: 5, options: 2, pool: 6 },
+    { rounds: 5, options: 3, pool: 7 },
+    { rounds: 5, options: 3, pool: 8 },
+    { rounds: 6, options: 3, pool: 9 },
+    { rounds: 5, options: 4, pool: 10 },
+    { rounds: 5, options: 4, pool: 11 },
+    { rounds: 6, options: 4, pool: 12 },
+    { rounds: 6, options: 4, pool: 13 },
+    { rounds: 6, options: 4, pool: 14 },
+    { rounds: 5, options: 6, pool: 14 },
+    { rounds: 6, options: 6, pool: 14 },
+    { rounds: 6, options: 6, pool: 14, similar: true },
+    { rounds: 6, options: 6, pool: 14, similar: true },
+    { rounds: 6, options: 6, pool: 14, similar: true },
 ];
 
-function getLevelConfig(level: number): LevelConfig {
-    return LEVEL_CONFIGS[Math.min(level - 1, LEVEL_CONFIGS.length - 1)];
+function levelIndex(level: number): number {
+    return Number.isFinite(level) ? Math.min(Math.max(Math.round(level), 1), LEVELS.length) - 1 : 0;
 }
 
-export default function SoundToImageGame({ 
-    childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender 
-}: GameProps) {
-    const [currentSound, setCurrentSound] = useState<SoundItem | null>(null);
-    const [options, setOptions] = useState<SoundItem[]>([]);
-    const [score, setScore] = useState(monitorState?.score || 0);
-    const [round, setRound] = useState(monitorState?.round || 0);
-    const [correctCount, setCorrectCount] = useState(monitorState?.correctCount || 0);
-    const [incorrectCount, setIncorrectCount] = useState(monitorState?.incorrectCount || 0);
-    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : (monitorState?.isPlaying || false));
-    const [moodBefore, setMoodBefore] = useState<string | null>(null);
-    const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
-    const [showMoodAfter, setShowMoodAfter] = useState(false);
-    const [gameCompleted, setGameCompleted] = useState(false);
-    const [feedback, setFeedback] = useState<"correct" | "incorrect" | null>(null);
-    const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
-    const [startTime, setStartTime] = useState<number | null>(null);
-    const [isPlayingSound, setIsPlayingSound] = useState(false);
+interface Round {
+    targetId: string;
+    optionIds: string[];
+}
 
+/**
+ * Sve runde nivoa unapred. Svaki zvuk se traži najviše jednom po nivou (pa se nikad
+ * ne ponavlja u uzastopnim rundama), a zvukovi koji su novi na ovom nivou sigurno dolaze na red.
+ */
+function buildRounds(level: number): Round[] {
+    const index = levelIndex(level);
+    const config = LEVELS[index];
+    const previousPool = index > 0 ? LEVELS[index - 1].pool : 0;
+    const pool = ITEMS.slice(0, config.pool);
+    const fresh = pool.slice(previousPool);
+    const known = pool.slice(0, previousPool);
+    const targets = shuffle([...shuffle(fresh), ...shuffle(known)].slice(0, config.rounds));
+
+    return targets.map((target) => {
+        let others = shuffle(pool.filter((item) => item.id !== target.id));
+        if (config.similar) {
+            others = [...others.filter((item) => item.category === target.category), ...others.filter((item) => item.category !== target.category)];
+        }
+        const options = shuffle([target, ...others.slice(0, config.options - 1)]);
+        return { targetId: target.id, optionIds: options.map((item) => item.id) };
+    });
+}
+
+// ── Stanje ────────────────────────────────────────────────────────────────────
+
+export interface SoundToImageView extends BaseView {
+    /** Zvuk koji se traži u ovoj rundi */
+    targetId: string;
+    optionIds: string[];
+    /** Pogrešno izabrane slike u ovoj rundi (posle 2 stiže pomoć) */
+    wrongIds: string[];
+    pickedId: string | null;
+    feedback: FeedbackKind;
+    done: boolean;
+}
+
+function emptyView(level: number): SoundToImageView {
+    return {
+        score: 0,
+        correctCount: 0,
+        incorrectCount: 0,
+        round: 1,
+        totalRounds: LEVELS[levelIndex(level)].rounds,
+        targetId: "",
+        optionIds: [],
+        wrongIds: [],
+        pickedId: null,
+        feedback: null,
+        done: false,
+    };
+}
+
+function num(value: unknown, fallback: number): number {
+    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function knownIds(value: unknown): string[] {
+    return Array.isArray(value) ? value.filter((id): id is string => typeof id === "string" && ITEM_BY_ID[id] !== undefined) : [];
+}
+
+/** Monitor dobija delimično (ili prazno) stanje — sve što fali ili je pogrešnog tipa menja podrazumevana vrednost. */
+function mergeMonitor(base: SoundToImageView, incoming: Partial<SoundToImageView> | null | undefined): SoundToImageView {
+    if (!incoming) return base;
+    return {
+        score: num(incoming.score, base.score),
+        correctCount: num(incoming.correctCount, base.correctCount),
+        incorrectCount: num(incoming.incorrectCount, base.incorrectCount),
+        round: num(incoming.round, base.round),
+        totalRounds: num(incoming.totalRounds, base.totalRounds),
+        targetId: typeof incoming.targetId === "string" ? incoming.targetId : base.targetId,
+        optionIds: knownIds(incoming.optionIds),
+        wrongIds: knownIds(incoming.wrongIds),
+        pickedId: typeof incoming.pickedId === "string" ? incoming.pickedId : null,
+        feedback: incoming.feedback === "correct" || incoming.feedback === "wrong" ? incoming.feedback : null,
+        done: incoming.done === true,
+    };
+}
+
+// Raspored i veličine slika po broju ponuđenih odgovora (potpune klase, bez sklapanja).
+const GRID: Record<number, string> = {
+    2: "mx-auto max-w-xl grid-cols-2",
+    3: "mx-auto max-w-2xl grid-cols-3",
+    4: "grid-cols-2 md:grid-cols-4",
+    6: "mx-auto max-w-3xl grid-cols-2 sm:grid-cols-3 lg:max-w-none lg:grid-cols-6",
+};
+
+const IMAGE_SIZES: Record<number, string> = {
+    2: "(min-width: 640px) 260px, 45vw",
+    3: "(min-width: 640px) 200px, 30vw",
+    4: "(min-width: 768px) 200px, 45vw",
+    6: "(min-width: 1024px) 130px, (min-width: 640px) 230px, 45vw",
+};
+
+type Timer = ReturnType<typeof setTimeout>;
+
+// ── Igra ──────────────────────────────────────────────────────────────────────
+
+/*
+ * Zvezdice (correct / total): total = broj rundi (zvukova) na nivou, correct = runde u kojima
+ * je dete izabralo pravu sliku iz prvog pokušaja. Pogrešan izbor ne prekida rundu — dete
+ * pokušava ponovo (uz pomoć posle 2 greške), ali ta runda se tada ne broji kao samostalno tačna.
+ * Jedna pogođena runda od pet već donosi 1★.
+ */
+export default function SoundToImageGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<SoundToImageView>) {
+    const accent = getGame("sound-to-image").accent;
+    const { say, stop: stopSpeech } = useSpeech(gender);
+    const sync = useGameSync<SoundToImageView>({ childId, gameId: "sound-to-image", level, isMonitor });
+
+    const [rounds] = useState<Round[]>(() => buildRounds(level));
+    const [view, setView] = useState<SoundToImageView>(() => ({ ...emptyView(level), ...rounds[0] }));
+    const [playing, setPlaying] = useState(false);
+    /** Pregledač je odbio automatsko puštanje — dugme tada blago pulsira dok ga dete ne dodirne */
+    const [needsTap, setNeedsTap] = useState(false);
+
+    const viewRef = useRef(view);
+    const startedRef = useRef(false);
+    const finishedRef = useRef(false);
+    const lockedRef = useRef(false);
+    /** Runda u kojoj je zvuk već pušten (da ga automatika ne pusti dvaput) */
+    const playedRoundRef = useRef(0);
+    const timersRef = useRef<Set<Timer>>(new Set());
+    const retryTimerRef = useRef<Timer | null>(null);
+    const cutTimerRef = useRef<Timer | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
-    const initialRoundRef = useRef(false);
-    const lastSoundIdRef = useRef<string | null>(null);
-    const cfg = getLevelConfig(level);
-    const maxRounds = cfg.rounds;
+    /** Raste pri svakom puštanju/gašenju, da zakasneli događaji starog puštanja ne diraju novo */
+    const playIdRef = useRef(0);
+    const cacheRef = useRef<Map<string, HTMLAudioElement>>(new Map());
 
-    useEffect(() => {
-        if (isMonitor && monitorState) {
-            if (monitorState.score !== undefined) setScore(monitorState.score);
-            if (monitorState.round !== undefined) setRound(monitorState.round);
-            if (monitorState.correctCount !== undefined) setCorrectCount(monitorState.correctCount);
-            if (monitorState.incorrectCount !== undefined) setIncorrectCount(monitorState.incorrectCount);
-            if (monitorState.currentSound) setCurrentSound(monitorState.currentSound);
-            if (monitorState.options) setOptions(monitorState.options);
-            if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
+    const shown = isMonitor ? mergeMonitor(emptyView(level), monitorState) : view;
+    const target = ITEM_BY_ID[shown.targetId];
+    const options = shown.optionIds.flatMap((id) => ITEM_BY_ID[id] ?? []);
+    const solved = shown.feedback === "correct";
+    const hinting = !solved && shown.wrongIds.length >= 2;
+    const interactive = !isMonitor && !shown.done;
+
+    // ── Zvuk ──────────────────────────────────────────────────────────────────
+
+    const haltSound = useCallback(() => {
+        playIdRef.current += 1;
+        if (cutTimerRef.current) {
+            clearTimeout(cutTimerRef.current);
+            cutTimerRef.current = null;
         }
-    }, [isMonitor, monitorState]);
-
-    useEffect(() => {
-        if (autoStart && !isMonitor && !isPlaying && round === 0) {
-            handleMoodBeforeSelect("neutral");
-        }
-    }, [autoStart, isMonitor, isPlaying, round]);
-
-    const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
-    const { speak, stopSpeech: stopTTS } = useSpeech();
-
-    const stopSound = useCallback(() => {
-        if (audioRef.current) {
-            audioRef.current.pause();
+        const audio = audioRef.current;
+        if (audio) {
+            audio.onended = null;
+            audio.onerror = null;
+            audio.pause();
             audioRef.current = null;
         }
-        stopTTS();
-        setIsPlayingSound(false);
-    }, [stopTTS]);
+        setPlaying(false);
+    }, []);
 
-    // Automatski pusti zvuk čim se postavi novi currentSound
-    const autoPlaySoundRef = useRef<SoundItem | null>(null);
+    const playSound = useCallback(
+        (id: string) => {
+            const item = ITEM_BY_ID[id];
+            if (!item) return;
+            stopSpeech();
+            haltSound();
 
-    const playSound = useCallback((item?: SoundItem) => {
-        const target = item ?? currentSound;
-        if (!target || isMonitor) return;
+            let audio = cacheRef.current.get(id);
+            if (!audio) {
+                audio = new Audio(item.sound);
+                cacheRef.current.set(id, audio);
+            }
+            const current = audio;
+            const playId = playIdRef.current;
+            /** Gasi ovo puštanje — osim ako ga je u međuvremenu zamenilo novije (ili je već ugašeno) */
+            const release = () => {
+                if (playIdRef.current !== playId) return false;
+                haltSound();
+                return true;
+            };
 
-        setIsPlayingSound(true);
+            audioRef.current = current;
+            current.muted = isMuted();
+            current.currentTime = 0;
+            current.onended = release;
+            // Fajl ne može da se učita: umesto zvuka dete čuje reč, pa i dalje može da nađe sliku
+            current.onerror = () => {
+                if (release()) say(item.label);
+            };
+            cutTimerRef.current = setTimeout(release, MAX_PLAY_MS);
+            setPlaying(true);
+            setNeedsTap(false);
 
-        if (audioRef.current) {
-            audioRef.current.pause();
-            audioRef.current = null;
-        }
-
-        const audio = new Audio(target.soundUrl);
-        audioRef.current = audio;
-
-        audio.play().catch(() => {
-            audioRef.current = null;
-            if (!isMonitor) speak(target.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false), gender);
-            else setIsPlayingSound(false);
-        });
-
-        audio.onended = () => setIsPlayingSound(false);
-        audio.onerror = () => {
-            audioRef.current = null;
-            if (!isMonitor) speak(target.label, () => setIsPlayingSound(false), () => setIsPlayingSound(false), gender);
-            else setIsPlayingSound(false);
-        };
-    }, [currentSound, isMonitor, speak, gender]);
-
-    const generateRound = useCallback((stats?: { score: number, round: number, correctCount: number, incorrectCount: number }) => {
-        const { poolSize, optionsCount } = getLevelConfig(level);
-        const pool = SOUND_ITEMS.slice(0, Math.min(poolSize, SOUND_ITEMS.length));
-
-        // Filtriramo prethodni zvuk da se ne bi ponovio odmah u sledećoj rundi
-        const filteredPool = pool.filter(item => item.id !== lastSoundIdRef.current);
-        const activePool = filteredPool.length > 0 ? filteredPool : pool;
-
-        const correctAnswer = activePool[Math.floor(Math.random() * activePool.length)];
-        lastSoundIdRef.current = correctAnswer.id;
-
-        const allOthers = SOUND_ITEMS.filter(item => item.id !== correctAnswer.id);
-        const wrongOptions = allOthers
-            .sort(() => Math.random() - 0.5)
-            .slice(0, Math.min(optionsCount - 1, allOthers.length));
-
-        const allOptions = [correctAnswer, ...wrongOptions].sort(() => Math.random() - 0.5);
-
-        // Zapamti za auto-play i postavi stanje
-        autoPlaySoundRef.current = correctAnswer;
-        setCurrentSound({ ...correctAnswer });
-        setOptions(allOptions);
-        setFeedback(null);
-        setSelectedOptionId(null);
-
-        if (!isMonitor) {
-            emitGameProgress({
-                childId,
-                activityId: 5,
-                gameType: 'sound-to-image',
-                event: 'new_round',
-                data: {
-                    currentSound: correctAnswer,
-                    options: allOptions,
-                    score: stats ? stats.score : 0,
-                    round: stats ? stats.round : 0,
-                    correctCount: stats ? stats.correctCount : 0,
-                    incorrectCount: stats ? stats.incorrectCount : 0,
-                },
-                timestamp: new Date().toISOString(),
+            current.play().catch((error: unknown) => {
+                if (!release()) return;
+                // Automatsko puštanje bez dodira nije dozvoljeno — čekamo da dete pritisne dugme
+                if (error instanceof DOMException && error.name === "NotAllowedError") setNeedsTap(true);
             });
-        }
-    }, [level, childId, emitGameProgress, isMonitor]);
+        },
+        [haltSound, say, stopSpeech]
+    );
 
-    // Auto-play zvuk nakon što se postavi novi currentSound
+    // Učitavanje zvukova nivoa unapred + gašenje svega kad igra nestane
     useEffect(() => {
-        if (!isPlaying || isMonitor || !currentSound) return;
-        if (autoPlaySoundRef.current?.id === currentSound.id) {
-            // Mali delay da se UI renderuje
-            const t = setTimeout(() => {
-                playSound(currentSound);
-                autoPlaySoundRef.current = null;
-            }, 600);
-            return () => clearTimeout(t);
+        if (isMonitor) return;
+        const cache = cacheRef.current;
+        const timers = timersRef.current;
+        for (const round of rounds) {
+            const item = ITEM_BY_ID[round.targetId];
+            if (!item || cache.has(item.id)) continue;
+            const audio = new Audio();
+            audio.preload = "auto";
+            audio.src = item.sound;
+            cache.set(item.id, audio);
         }
-    }, [currentSound, isPlaying, isMonitor, playSound]);
-
-    useEffect(() => {
-        if (isPlaying && !isMonitor && !initialRoundRef.current) {
-            initialRoundRef.current = true;
-            generateRound();
-        }
-    }, [isPlaying, generateRound, isMonitor]);
-
-    // Cleanup on unmount
-    useEffect(() => {
         return () => {
-            if (audioRef.current) {
-                audioRef.current.pause();
-                audioRef.current = null;
-            }
-            stopTTS();
+            timers.forEach(clearTimeout);
+            timers.clear();
+            if (cutTimerRef.current) clearTimeout(cutTimerRef.current);
+            cutTimerRef.current = null;
+            audioRef.current = null;
+            cache.forEach((audio) => {
+                audio.onended = null;
+                audio.onerror = null;
+                audio.pause();
+                audio.removeAttribute("src");
+                audio.load();
+            });
+            cache.clear();
         };
-    }, [stopTTS]);
+    }, [isMonitor, rounds]);
 
-    const startGame = () => {
-        setShowMoodBefore(true);
+    useEffect(() => {
+        if (isMonitor || startedRef.current) return;
+        startedRef.current = true;
+        sync.start(viewRef.current);
+    }, [isMonitor, sync]);
+
+    // Svaka runda sama pusti zvuk posle kratke pauze; pre prve se izgovori uputstvo.
+    const round = view.round;
+    const roundTargetId = view.targetId;
+    const roundOver = view.done || view.feedback === "correct";
+    useEffect(() => {
+        if (isMonitor || roundOver) return;
+        const pending: Timer[] = [];
+        let cancelled = false;
+        const autoPlay = () => {
+            if (cancelled || playedRoundRef.current === round) return;
+            playedRoundRef.current = round;
+            playSound(roundTargetId);
+        };
+        if (round === 1) {
+            const afterSpeech = () => {
+                if (!cancelled) pending.push(setTimeout(autoPlay, 300));
+            };
+            pending.push(setTimeout(() => say("Poslušaj zvuk i dodirni pravu sliku.", afterSpeech), 500));
+            // Ako kraj govora iz bilo kog razloga ne stigne, zvuk ipak krene
+            pending.push(setTimeout(autoPlay, 5500));
+        } else {
+            pending.push(setTimeout(autoPlay, 700));
+        }
+        return () => {
+            cancelled = true;
+            pending.forEach(clearTimeout);
+        };
+    }, [isMonitor, round, roundTargetId, roundOver, playSound, say]);
+
+    // ── Potezi ────────────────────────────────────────────────────────────────
+
+    const later = (fn: () => void, ms: number): Timer => {
+        const id = setTimeout(() => {
+            timersRef.current.delete(id);
+            fn();
+        }, ms);
+        timersRef.current.add(id);
+        return id;
     };
 
-    const handleMoodBeforeSelect = (mood: string) => {
-        setMoodBefore(mood);
-        setShowMoodBefore(false);
-        setIsPlaying(true);
-        setStartTime(Date.now());
-        setScore(0);
-        setRound(0);
-        setCorrectCount(0);
-        setIncorrectCount(0);
-        setGameCompleted(false);
-        lastSoundIdRef.current = null; // Resetujemo istoriju zvukova za novu igru
-
-        emitGameStart(childId, 5, 'sound-to-image', {
-            level,
-            score: 0,
-            round: 0,
-            correctCount: 0,
-            incorrectCount: 0,
-            isPlaying: true
-        });
+    const commit = (next: SoundToImageView, log?: string) => {
+        viewRef.current = next;
+        setView(next);
+        sync.update(next, log);
     };
 
-    const handleAnswer = (selectedItem: SoundItem) => {
-        if (!isPlaying || isMonitor || feedback) return;
-
-        stopSound();
-        const isCorrect = selectedItem.id === currentSound?.id;
-        setSelectedOptionId(selectedItem.id);
-        setFeedback(isCorrect ? "correct" : "incorrect");
-
-        const newScore = isCorrect ? score + 100 : score;
-        const newCorrectCount = isCorrect ? correctCount + 1 : correctCount;
-        const newIncorrectCount = !isCorrect ? incorrectCount + 1 : incorrectCount;
-        const newRound = round + 1;
-
-        setScore(newScore);
-        setCorrectCount(newCorrectCount);
-        setIncorrectCount(newIncorrectCount);
-        setRound(newRound);
-
-        emitGameProgress({
-            childId,
-            activityId: 5,
-            gameType: 'sound-to-image',
-            event: 'answer',
-            data: {
-                correct: isCorrect,
-                selectedId: selectedItem.id,
-                correctId: currentSound?.id,
-                score: newScore,
-                round: newRound,
-                correctCount: newCorrectCount,
-                incorrectCount: newIncorrectCount,
-                currentSound,
-                options,
-            },
-            timestamp: new Date().toISOString(),
-        });
-
-        setTimeout(() => {
-            if (newRound >= maxRounds) {
-                setIsPlaying(false);
-                setGameCompleted(true);
-
-                emitGameComplete({
-                    childId,
-                    activityId: 5,
-                    gameType: 'sound-to-image',
-                    event: 'completed',
-                    data: {
-                        finalScore: newScore,
-                        totalRounds: newRound,
-                        correctCount: newCorrectCount,
-                        incorrectCount: newIncorrectCount,
-                    },
-                    timestamp: new Date().toISOString(),
-                });
-
-                if (autoStart) {
-                    handleMoodAfterSelect("neutral");
-                } else {
-                    setTimeout(() => {
-                        setShowMoodAfter(true);
-                    }, 500);
-                }
-            } else {
-                generateRound({
-                    score: newScore,
-                    round: newRound,
-                    correctCount: newCorrectCount,
-                    incorrectCount: newIncorrectCount
-                });
-            }
-        }, 1500);
+    const cancelRetry = () => {
+        if (!retryTimerRef.current) return;
+        clearTimeout(retryTimerRef.current);
+        timersRef.current.delete(retryTimerRef.current);
+        retryTimerRef.current = null;
     };
 
-    const handleMoodAfterSelect = (mood: string) => {
-        setShowMoodAfter(false);
-        const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-        onComplete(score, duration, moodBefore, mood, { correct: correctCount, total: maxRounds });
+    const replay = () => {
+        if (!interactive || lockedRef.current) return;
+        const current = viewRef.current;
+        playedRoundRef.current = current.round;
+        playSfx("tap");
+        playSound(current.targetId);
+        sync.update(current, "Ponovo pušta zvuk");
     };
 
-    // ── Mood Before — Premium Immersive Design ────────────────
-    if (!isMonitor && showMoodBefore) {
-        return (
-            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
-                {/* Background Decor */}
-                <div className="absolute inset-0 bg-slate-50">
-                    <div
-                        className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
-                        style={{ backgroundImage: "url('/images/slusaosliku.png')" }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-white/80 to-purple-600/10 backdrop-blur-3xl" />
-                </div>
+    const pick = (id: string) => {
+        if (!interactive || lockedRef.current) return;
+        const current = viewRef.current;
+        const picked = ITEM_BY_ID[id];
+        const wanted = ITEM_BY_ID[current.targetId];
+        if (!picked || !wanted || current.wrongIds.includes(id)) return;
 
-                <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
-                    {onClose && (
-                        <button
-                            onClick={onClose}
-                            className="fixed top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-lg border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-[110]"
-                        >
-                            <span>⬅</span> Nazad
-                        </button>
-                    )}
-                    <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
-                            ✨ Raspoloženje
-                        </div>
-                        <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
-                            Kako si danas?
-                        </h2>
-                        <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
-                    </div>
+        cancelRetry();
+        haltSound();
+        stopSpeech();
+        playedRoundRef.current = current.round;
 
-                    <div className="flex flex-wrap justify-center gap-3 sm:gap-6 w-full max-w-4xl px-4">
-                        {[
-                            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
-                            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
-                            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
-                            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
-                            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-                        ].map((mood, idx) => (
-                            <button
-                                key={mood.value}
-                                onClick={() => handleMoodBeforeSelect(mood.value)}
-                                className="group relative flex flex-col items-center bg-white rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-105 hover:-translate-y-2 cursor-pointer shadow-lg border border-slate-100 hover:border-indigo-100 animate-in zoom-in-95 duration-500"
-                                style={{ animationDelay: `${idx * 100}ms` }}
-                            >
-                                <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
-                                <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
-                                    {mood.emoji}
-                                </div>
-                                <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
+        if (id !== current.targetId) {
+            const next: SoundToImageView = {
+                ...current,
+                pickedId: id,
+                feedback: "wrong",
+                wrongIds: [...current.wrongIds, id],
+                incorrectCount: current.incorrectCount + 1,
+            };
+            playSfx("wrong");
+            commit(next, `Pogrešno: ${picked.label.toLowerCase()} (traži se ${wanted.label.toLowerCase()})`);
+            // Poruka se skloni, a zvuk se sam ponovi da dete može da pokuša opet
+            retryTimerRef.current = later(() => {
+                retryTimerRef.current = null;
+                const latest = viewRef.current;
+                if (latest.done || latest.feedback !== "wrong") return;
+                commit({ ...latest, pickedId: null, feedback: null });
+                playSound(latest.targetId);
+            }, 1200);
+            return;
+        }
 
-    // ── Mood After Screen ───────────────────────────────────
-    if (!isMonitor && showMoodAfter) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[500px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 shadow-2xl animate-in fade-in duration-500">
-                <div className="text-center mb-10 md:mb-16">
-                    <span className="px-4 py-1.5 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
-                    <h2 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
-                    <p className="text-lg md:text-xl text-slate-500 font-medium tracking-wide">
-                        Sjajno si {gender?.toLowerCase() === 'female' ? 'prepoznala' : 'prepoznao'} zvukove! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
-                    </p>
-                </div>
+        lockedRef.current = true;
+        const firstTry = current.wrongIds.length === 0;
+        const answered: SoundToImageView = {
+            ...current,
+            pickedId: id,
+            feedback: "correct",
+            correctCount: current.correctCount + (firstTry ? 1 : 0),
+            score: current.score + (firstTry ? 10 : 5),
+        };
+        const log = `Tačno: ${wanted.label.toLowerCase()}${firstTry ? " iz prve" : ` (pogrešnih pokušaja: ${current.wrongIds.length})`}`;
 
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-8 w-full max-w-5xl px-2">
-                    {[
-                        { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
-                        { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
-                        { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
-                        { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
-                        { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-                    ].map(mood => (
-                        <button
-                            key={mood.value}
-                            onClick={() => handleMoodAfterSelect(mood.value)}
-                            className="group relative flex flex-col items-center bg-white rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] p-3 sm:p-5 md:p-8 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100"
-                        >
-                            <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-100 rounded-xl sm:rounded-[2rem] md:rounded-[2.5rem] transition-opacity`}></div>
-                            <span className="text-4xl sm:text-6xl md:text-7xl mb-1 sm:mb-2 md:mb-4 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-                            <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700">{mood.label}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        );
-    }
+        if (current.round >= rounds.length) {
+            if (finishedRef.current) return;
+            finishedRef.current = true;
+            const final: SoundToImageView = { ...answered, done: true };
+            commit(final, `${log} — nivo je završen 🎉`);
+            playSfx("win");
+            later(() => {
+                sync.complete(final);
+                onComplete({ score: final.score, durationSec: sync.elapsedSec(), correct: final.correctCount, total: rounds.length });
+            }, 1100);
+            return;
+        }
 
+        playSfx("correct");
+        commit(answered, log);
+        later(() => {
+            const upcoming = rounds[current.round];
+            commit({ ...viewRef.current, ...upcoming, round: current.round + 1, wrongIds: [], pickedId: null, feedback: null });
+            lockedRef.current = false;
+        }, 1300);
+    };
 
-    // ── Game Screen ─────────────────────────────────────────
+    // ── Prikaz ────────────────────────────────────────────────────────────────
+
+    const stateOf = (id: string): ChoiceState => {
+        if (solved) return id === shown.targetId ? "correct" : "dimmed";
+        if (shown.feedback === "wrong" && id === shown.pickedId) return "wrong";
+        if (shown.wrongIds.includes(id)) return "dimmed";
+        return "idle";
+    };
+
+    const columns = options.length <= 2 ? 2 : options.length === 3 ? 3 : options.length === 4 ? 4 : 6;
+
     return (
-        <div className="bg-white/90 backdrop-blur-xl rounded-2xl md:rounded-[3rem] p-4 pt-6 md:p-10 shadow-2xl border border-white/50 w-full max-w-6xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 via-transparent to-amber-500/5 pointer-events-none"></div>
+        <GameStage>
+            <GameHud round={shown.round} totalRounds={shown.totalRounds} score={shown.score} unit="Zvuk" />
 
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6 md:mb-10 bg-gradient-to-r from-orange-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-4 py-3 md:px-10 md:py-6 shadow-xl relative overflow-hidden ring-1 ring-orange-100/50">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-
-                <div className="flex items-center gap-3 md:gap-8 relative z-10">
-                    <div className="h-10 w-10 md:h-14 md:w-14 rounded-xl bg-white shadow-md flex items-center justify-center text-xl md:text-3xl ring-4 ring-orange-50 border border-orange-100 transform -rotate-3">
-                        🔊
-                    </div>
-                    <div>
-                        <h3 className="text-lg md:text-2xl font-black text-slate-800 tracking-wide uppercase leading-tight">Nivo {level}</h3>
-                    </div>
+            <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-card border-2 bg-surface p-3 shadow-soft sm:gap-6 sm:p-6", accent.border)}>
+                <div className="min-w-0 flex-1">
+                    <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">Šta čuješ?</p>
+                    <p className="mt-1 hidden text-base font-bold text-ink-soft min-[420px]:block sm:text-lg">Poslušaj zvuk i dodirni pravu sliku</p>
                 </div>
-
-                <div className="flex items-center gap-3 md:gap-6 relative z-10">
-                    <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-orange-100/50 text-center min-w-[80px] md:min-w-[120px]">
-                        <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Runda</span>
-                        <span className="text-xl md:text-3xl font-black text-orange-500">{round}<span className="text-slate-400 text-sm md:text-xl mx-1">/</span>{maxRounds}</span>
-                    </div>
-
-                    <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-xl md:rounded-3xl px-4 py-2 md:px-8 md:py-3 border border-orange-100/50 text-center min-w-[80px] md:min-w-[120px]">
-                        <span className="block text-[8px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5 md:mb-1">Rezultat</span>
-                        <span className="text-xl md:text-3xl font-black text-emerald-500">{score}</span>
-                    </div>
-                </div>
+                {isMonitor ? (
+                    <p className={cn("rounded-2xl px-4 py-3 text-base font-extrabold", accent.soft, accent.text)}>
+                        <span aria-hidden="true">🔊 </span>
+                        Traženi zvuk: {target ? target.label.toLowerCase() : "…"}
+                    </p>
+                ) : (
+                    <SpeakButton
+                        large
+                        onClick={replay}
+                        label={playing ? "Slušaj…" : "Pusti zvuk"}
+                        className={cn("min-w-44", needsTap && !playing && interactive && "animate-soft-pulse")}
+                    />
+                )}
             </div>
 
-            {/* Game Canvas */}
-            <div className="flex-1 flex flex-col items-center justify-center gap-6 md:gap-12 pt-2 md:pt-4 relative z-10">
-
-                {/* Sound Control */}
-                <div className="text-center">
-                    <span className="inline-block px-4 py-1.5 rounded-full bg-slate-100 text-slate-500 text-[10px] md:text-xs font-black uppercase tracking-widest mb-4 md:mb-10 border border-slate-200">
-                        Šta čuješ? Klikni na tačnu sliku!
-                    </span>
-
-                    {/* Dugme za ponovni play zvuka */}
-                    <div className="flex justify-center">
-                        <button
-                            onClick={() => playSound()}
-                            disabled={isPlayingSound || !currentSound}
-                            title="Ponovo pusti zvuk"
-                            className={`group relative w-28 h-28 md:w-40 md:h-40 rounded-full transition-all duration-500 ${isPlayingSound
-                                ? "bg-slate-100 scale-95"
-                                : "bg-white shadow-2xl hover:shadow-orange-200/50 hover:scale-110 active:scale-95"
-                                }`}
-                        >
-                            <div className={`absolute inset-0 rounded-full bg-orange-500/10 transition-all duration-1000 ${isPlayingSound ? "animate-ping scale-150 opacity-0" : "scale-0 opacity-0"}`}></div>
-                            <div className="relative z-10 flex flex-col items-center justify-center h-full border-4 border-slate-50 rounded-full">
-                                <span className={`text-4xl md:text-6xl transition-all duration-500 ${isPlayingSound ? "scale-125 rotate-12" : "group-hover:scale-110"}`}>
-                                    {isPlayingSound ? "🔊" : "🔈"}
+            {options.length === 0 ? (
+                <p className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-base font-bold text-ink-soft">Čekamo sledeći zvuk…</p>
+            ) : (
+                <div className={cn("grid w-full gap-2 sm:gap-4", GRID[columns])}>
+                    {options.map((item) => {
+                        const state = stateOf(item.id);
+                        const hinted = hinting && item.id === shown.targetId;
+                        return (
+                            <ChoiceCard
+                                key={item.id}
+                                state={state}
+                                disabled={!interactive || solved || state === "dimmed"}
+                                onClick={() => pick(item.id)}
+                                className={cn("flex-col gap-2", hinted && "animate-soft-pulse ring-4 ring-brand-300")}
+                            >
+                                <span className="relative block aspect-[5/4] w-full overflow-hidden rounded-xl bg-brand-50 sm:aspect-square">
+                                    <Image src={item.image} alt="" fill sizes={IMAGE_SIZES[columns]} className="object-cover" draggable={false} />
                                 </span>
-                                <span className="mt-2 text-[8px] md:text-[10px] font-black text-orange-500 uppercase tracking-widest bg-orange-50 px-3 py-1 rounded-full">
-                                    {isPlayingSound ? "Slušaj..." : "Ponovi"}
-                                </span>
-                            </div>
-                        </button>
-                    </div>
-
-                    {/* Rezervisani prostor za feedback da se slike ne pomeraju */}
-                    <div className="h-12 md:h-20 flex items-center justify-center">
-                        {feedback && (
-                            <div className={`text-xl md:text-2xl font-black uppercase tracking-widest animate-bounce ${feedback === 'correct' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                {feedback === 'correct' ? '✅ Tačno!' : '❌ Pogrešno'}
-                            </div>
-                        )}
-                    </div>
+                                <span className="text-base leading-tight sm:text-lg">{item.label}</span>
+                            </ChoiceCard>
+                        );
+                    })}
                 </div>
+            )}
 
-                {/* Options Grid */}
-                <div className="w-full max-w-5xl px-2">
-                    <div className={`grid gap-2 sm:gap-4 md:gap-8 mx-auto ${options.length <= 3
-                        ? 'grid-cols-3'
-                        : options.length <= 4
-                            ? 'grid-cols-2 sm:grid-cols-4'
-                            : options.length <= 6
-                                ? 'grid-cols-3 sm:grid-cols-3'
-                                : 'grid-cols-2 sm:grid-cols-4'
-                        }`}>
-                        {options.map((option, idx) => {
-                            const isSelected = option.id === selectedOptionId;
-                            const isCorrect = option.id === currentSound?.id;
-
-                            return (
-                                <button
-                                    key={`${option.id}-${idx}`}
-                                    onClick={() => handleAnswer(option)}
-                                    disabled={isMonitor || feedback === 'correct'}
-                                    className={`group relative bg-white rounded-[24] flex flex-col items-stretch justify-start transition-all duration-300 transform border shadow-sm overflow-hidden h-[160px] sm:h-[220px] md:h-[280px] ${feedback === 'correct' && isCorrect
-                                        ? "border-emerald-400 bg-emerald-50 shadow-2xl scale-105 z-20 ring-4 ring-emerald-100"
-                                        : feedback === 'incorrect' && isSelected
-                                            ? "border-rose-400 bg-rose-50 shadow-lg scale-95 z-10 opacity-70 animate-shake"
-                                            : "border-slate-50 hover:border-orange-100 hover:shadow-xl hover:-translate-y-1 active:scale-95"
-                                        }`}
-                                >
-                                    {/* Image Container - Full Width/Height Fill */}
-                                    <div className="flex-1 relative overflow-hidden">
-                                        <img
-                                            src={option.image}
-                                            alt={option.label}
-                                            className="absolute inset-0 w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110"
-                                        />
-                                        {/* Subtle gradient overlay for the label */}
-                                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                    </div>
-
-                                    {/* Label Bar */}
-                                    <div className={`py-2 md:py-4 px-2 text-center transition-colors duration-300 ${feedback === 'correct' && option.id === currentSound?.id ? 'bg-emerald-50' : 'bg-white group-hover:bg-orange-50'}`}>
-                                        <span className={`text-[10px] sm:text-xs md:text-lg font-black tracking-tight uppercase ${feedback === 'correct' && option.id === currentSound?.id ? 'text-emerald-700' : 'text-slate-700 group-hover:text-orange-600'}`}>
-                                            {option.label}
-                                        </span>
-                                    </div>
-
-                                    {feedback === 'correct' && option.id === currentSound?.id && (
-                                        <div className="absolute top-2 right-2 bg-emerald-500 text-white p-2 rounded-xl shadow-lg animate-bounce border-2 border-white z-30">
-                                            <svg className="w-4 h-4 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" d="M5 13l4 4L19 7" />
-                                            </svg>
-                                        </div>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-
-            <div className="mt-8 text-center text-[10px] md:text-sm font-bold text-slate-400 uppercase tracking-widest opacity-60 px-4 pb-4">
-                💡 Svaki tačan odgovor te približava cilju!
-            </div>
-        </div>
+            <Feedback
+                kind={shown.feedback}
+                correctText={target ? `Tačno! To je ${target.label.toLowerCase()}.` : undefined}
+                wrongText={hinting ? "Pogledaj sliku koja svetli" : "Poslušaj još jednom"}
+            />
+        </GameStage>
     );
 }

@@ -1,148 +1,137 @@
 // lib/useAvatarAudio.ts
-'use client';
+// Pušta zvuk govora kroz Web Audio i meri jačinu glasa da bi avatar pomerao usta.
+"use client";
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from "react";
+
+type AudioContextCtor = typeof AudioContext;
+
+function createContext(): AudioContext | null {
+    const Ctor: AudioContextCtor | undefined =
+        window.AudioContext ?? (window as unknown as { webkitAudioContext?: AudioContextCtor }).webkitAudioContext;
+    return Ctor ? new Ctor() : null;
+}
 
 export function useAvatarAudio() {
-  const [mouthOpen, setMouthOpen] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const ctxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const rafRef = useRef<number | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    /** 0–1, menja se u svakom frejmu; čita se iz useFrame bez React renderovanja */
+    const mouthRef = useRef(0);
 
-  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
-  const isPlayingRef = useRef(false);
+    const ctxRef = useRef<AudioContext | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+    const rafRef = useRef<number | null>(null);
+    const playingRef = useRef(false);
+    /** Raste pri svakom play/stop — stari asinhroni pozivi se po tome prepoznaju i odbacuju */
+    const tokenRef = useRef(0);
 
-  // Initialize context on mount and attempt to resume on first interaction
-  useEffect(() => {
-    const initCtx = () => {
-      if (!ctxRef.current || ctxRef.current.state === 'closed') {
-        const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-        ctxRef.current = new Ctx();
-      }
-    };
+    const getContext = useCallback(async (): Promise<AudioContext | null> => {
+        if (!ctxRef.current || ctxRef.current.state === "closed") ctxRef.current = createContext();
+        const ctx = ctxRef.current;
+        if (ctx && ctx.state === "suspended") await ctx.resume().catch(() => {});
+        return ctx;
+    }, []);
 
-    const resumeCtx = async () => {
-      initCtx();
-      if (ctxRef.current && ctxRef.current.state === 'suspended') {
-        await ctxRef.current.resume().catch(() => {});
-      }
-      // Remove listener once resumed
-      window.removeEventListener('click', resumeCtx);
-      window.removeEventListener('touchstart', resumeCtx);
-    };
-
-    initCtx();
-    window.addEventListener('click', resumeCtx);
-    window.addEventListener('touchstart', resumeCtx);
-
-    return () => {
-      window.removeEventListener('click', resumeCtx);
-      window.removeEventListener('touchstart', resumeCtx);
-    };
-  }, []);
-
-  const stopAnalysis = useCallback(() => {
-    isPlayingRef.current = false;
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    setIsPlaying(false);
-    setMouthOpen(0);
-  }, []);
-
-  const analyse = useCallback(() => {
-    if (!analyserRef.current || !isPlayingRef.current) return;
-    const data = new Uint8Array(analyserRef.current.frequencyBinCount);
-    analyserRef.current.getByteFrequencyData(data);
-
-    // Low-pass filter equivalent by picking specific frequency bins (voice range)
-    const slice = data.slice(2, 50);
-    const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-
-    // Normalize and scale for morph targets
-    setMouthOpen(Math.min(1, avg / 65));
-    rafRef.current = requestAnimationFrame(analyse);
-  }, []);
-
-  const playSound = useCallback(async (url: string | null, onEnded?: () => void) => {
-    try {
-      if (!url) {
-        // Simulated mouth movement for browser fallback
-        setIsPlaying(true);
-        isPlayingRef.current = true;
-        let start = Date.now();
-        
-        const simAnimate = () => {
-          if (!isPlayingRef.current) return;
-          const elapsed = Date.now() - start;
-          setMouthOpen(0.3 + Math.sin(elapsed * 0.01) * 0.3);
-          rafRef.current = requestAnimationFrame(simAnimate);
+    // Pregledači dozvoljavaju zvuk tek posle prvog dodira — tada "budimo" kontekst
+    useEffect(() => {
+        const unlock = () => void getContext();
+        window.addEventListener("pointerdown", unlock, { once: true });
+        return () => {
+            window.removeEventListener("pointerdown", unlock);
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+            try {
+                sourceRef.current?.stop();
+            } catch {
+                /* već zaustavljen */
+            }
+            void ctxRef.current?.close().catch(() => {});
         };
-        simAnimate();
-        return;
-      }
+    }, [getContext]);
 
-      const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-
-      if (!ctxRef.current || ctxRef.current.state === 'closed') {
-        ctxRef.current = new Ctx() as AudioContext;
-      }
-      const ctx = ctxRef.current;
-
-      if (ctx.state === 'suspended') {
-        await ctx.resume();
-      }
-
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Audio fetch failed: ${res.status}`);
-
-      const buf = await res.arrayBuffer();
-      const decoded = await ctx.decodeAudioData(buf);
-
-      // Stop previous if any
-      if (sourceNodeRef.current) {
-        try { sourceNodeRef.current.stop(); } catch (e) { }
-      }
-
-      const src = ctx.createBufferSource();
-      sourceNodeRef.current = src;
-
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 256;
-      analyser.smoothingTimeConstant = 0.6;
-      analyserRef.current = analyser;
-
-      src.buffer = decoded;
-      src.connect(analyser);
-      analyser.connect(ctx.destination);
-
-      src.start(0);
-      setIsPlaying(true);
-      isPlayingRef.current = true;
-      analyse();
-
-      src.onended = () => {
-        if (sourceNodeRef.current === src) {
-          stopAnalysis();
-          onEnded?.();
+    const stop = useCallback(() => {
+        tokenRef.current += 1;
+        playingRef.current = false;
+        if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = null;
         }
-      };
-    } catch (e) {
-      console.warn('Avatar audio playback error:', e);
-      stopAnalysis();
-      onEnded?.();
-    }
-  }, [analyse, stopAnalysis]);
+        const source = sourceRef.current;
+        sourceRef.current = null;
+        if (source) {
+            source.onended = null;
+            try {
+                source.stop();
+            } catch {
+                /* već zaustavljen */
+            }
+        }
+        mouthRef.current = 0;
+        setIsPlaying(false);
+    }, []);
 
-  const stop = useCallback(() => {
-    if (sourceNodeRef.current) {
-      try { sourceNodeRef.current.stop(); } catch (e) { }
-      sourceNodeRef.current = null;
-    }
-    stopAnalysis();
-  }, [stopAnalysis]);
+    const playSound = useCallback(
+        async (url: string | null, onEnded?: () => void) => {
+            stop();
+            const token = tokenRef.current;
+            playingRef.current = true;
+            setIsPlaying(true);
 
-  return { mouthOpen, isPlaying, playSound, stop };
+            // Bez zvučnog fajla (govor iz pregledača): samo simuliramo pokret usta do `stop()`
+            if (!url) {
+                const startedAt = performance.now();
+                const simulate = () => {
+                    if (!playingRef.current || tokenRef.current !== token) return;
+                    mouthRef.current = 0.3 + Math.sin((performance.now() - startedAt) * 0.012) * 0.3;
+                    rafRef.current = requestAnimationFrame(simulate);
+                };
+                simulate();
+                return;
+            }
+
+            try {
+                const ctx = await getContext();
+                if (!ctx) throw new Error("no_audio_context");
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`audio_${response.status}`);
+                const decoded = await ctx.decodeAudioData(await response.arrayBuffer());
+                if (tokenRef.current !== token) return; // u međuvremenu zaustavljeno ili zamenjeno
+
+                const source = ctx.createBufferSource();
+                const analyser = ctx.createAnalyser();
+                analyser.fftSize = 256;
+                analyser.smoothingTimeConstant = 0.6;
+                source.buffer = decoded;
+                source.connect(analyser);
+                analyser.connect(ctx.destination);
+                sourceRef.current = source;
+                analyserRef.current = analyser;
+
+                const bins = new Uint8Array(analyser.frequencyBinCount);
+                const analyse = () => {
+                    if (!playingRef.current || tokenRef.current !== token) return;
+                    analyser.getByteFrequencyData(bins);
+                    // Opseg u kome je ljudski glas
+                    let sum = 0;
+                    for (let i = 2; i < 50; i++) sum += bins[i];
+                    mouthRef.current = Math.min(1, sum / 48 / 65);
+                    rafRef.current = requestAnimationFrame(analyse);
+                };
+
+                source.onended = () => {
+                    if (tokenRef.current !== token) return;
+                    stop();
+                    onEnded?.();
+                };
+                source.start(0);
+                analyse();
+            } catch {
+                if (tokenRef.current !== token) return;
+                stop();
+                onEnded?.();
+            }
+        },
+        [getContext, stop]
+    );
+
+    return { mouthRef, isPlaying, playSound, stop };
 }

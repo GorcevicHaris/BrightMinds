@@ -1,212 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bright Minds
 
-## Getting Started
+Edukativne igre za decu (posebno decu sa autizmom i razvojnim teškoćama), sa praćenjem napretka za roditelje, učitelje i terapeute.
 
-First, run the development server:
+- **Dete** se prijavljuje vizuelnim kodom (4 sličice) i igra sedam igara u tri težine.
+- **Roditelj / učitelj / terapeut** upravlja profilima dece, gleda statistiku i prati igru uživo.
+
+## Pokretanje
 
 ```bash
+npm install
+cp .env.example .env.local   # pa popunite vrednosti
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-<!-- touch 1 -->
-
-<!-- touch 2 -->
-
-<!-- touch 3 -->
-
-<!-- touch 4 -->
-
-<!-- touch 5 -->
-
-<!-- touch 6 -->
-
-<!-- touch 7 -->
-
-<!-- touch 8 -->
-
-<!-- touch 9 -->
-
-<!-- touch 10 -->
-
-<!-- touch 11 -->
-
-<!-- touch 12 -->
-
-<!-- touch 13 -->
-
-<!-- touch 14 -->
-
-<!-- touch 15 -->
-
-<!-- touch 16 -->
-
-<!-- update 17 -->
-
-<!-- update 18 -->
-
-<!-- update 19 -->
-
-<!-- update 20 -->
-
-<!-- update 21 -->
-
-<!-- update 22 -->
-
-<!-- update 23 -->
-
-<!-- update 24 -->
-
-<!-- update 25 -->
-
-<!-- update 26 -->
-
-<!-- update 27 -->
-
-<!-- update 28 -->
-
-<!-- update 29 -->
-
-<!-- update 30 -->
-
-<!-- update 31 -->
-
-<!-- update 32 -->
-
-<!-- update 33 -->
-
-<!-- update 34 -->
-
-<!-- update 35 -->
-
-<!-- update 36 -->
-
-<!-- update 37 -->
-
-<!-- update 38 -->
-
-<!-- update 39 -->
-
-<!-- update 40 -->
-
-<!-- update 41 -->
-
-<!-- update 42 -->
-
-<!-- update 43 -->
-
-<!-- update 44 -->
-
-<!-- update 45 -->
-
-<!-- update 46 -->
-
-<!-- update 47 -->
-
-<!-- update 48 -->
-
-<!-- update 49 -->
-
-<!-- update 50 -->
-
-<!-- update 51 -->
-
-<!-- update 52 -->
-
-<!-- update 53 -->
-
-<!-- update 54 -->
-
-<!-- update 55 -->
-
-<!-- update 56 -->
-
-<!-- update 57 -->
-
-<!-- update 58 -->
-
-<!-- update 59 -->
-
-<!-- update 60 -->
-
-<!-- update 61 -->
-
-<!-- update 62 -->
-
-<!-- update 63 -->
-
-<!-- update 64 -->
-
-<!-- update 65 -->
-
-<!-- update 66 -->
-
-<!-- update 67 -->
-
-<!-- update 68 -->
-
-<!-- update 69 -->
-
-<!-- update 70 -->
-
-<!-- update 71 -->
-
-<!-- update 72 -->
-
-<!-- update 73 -->
-
-<!-- update 74 -->
-
-<!-- update 75 -->
-
-<!-- update 76 -->
-
-<!-- update 77 -->
-
-<!-- update 78 -->
-
-<!-- update 79 -->
-
-<!-- update 80 -->
-
-<!-- update 81 -->
-
-<!-- update 82 -->
-
-<!-- update 83 -->
-
-<!-- update 84 -->
-
-<!-- update 85 -->
-
-<!-- update 86 -->
-
-<!-- update 87 -->
-
-<!-- update 88 -->
+Aplikacija je na [http://localhost:3000](http://localhost:3000). Drugi port: `npm run dev -- -p 3100`.
+
+### Promenljive okruženja
+
+| Promenljiva | Obavezna | Čemu služi |
+| --- | --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | da | URL Supabase projekta |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | da | javni ključ — samo za Realtime (praćenje uživo) |
+| `SUPABASE_SERVICE_ROLE_KEY` | da | serverski ključ — sav pristup bazi ide preko API ruta |
+| `JWT_SECRET` | da | potpisivanje sesija (`openssl rand -hex 48`) |
+| `ELEVENLABS_API_KEY` | ne | glas učitelja; bez njega se koristi glas pregledača |
+| `ELEVENLABS_VOICE_ID`, `ELEVENLABS_FEMALE_VOICE_ID` | ne | muški / ženski glas |
+
+### Baza
+
+Šema i migracija su u [`supabase/`](supabase/README.md). Migracija je idempotentna i ne briše podatke.
+
+## Kako je organizovano
+
+```
+app/
+  login, register            prijava (dete: vizuelni kod, odrasli: email + lozinka)
+  dashboard/                 roditeljski panel (lista dece)
+  dashboard/child/[id]/      dečji ekran: izbor igre, težine, igra, rezultat
+  dashboard/progress/[id]/   statistika napretka
+  dashboard/monitor/[id]/    praćenje igre uživo
+  dev/games/                 probna stranica za igre bez baze (samo u razvoju)
+  api/                       API rute (auth, children, activities, tts)
+  components/
+    ui/                      dugmad, polja, kartice, modal, logo
+    games/                   sedam igara
+    games/kit/               zajednički delovi igara (HUD, kartice odgovora, zvuk, sinhronizacija)
+lib/
+  games.ts                   spisak igara, boje, zvezdice — jedini izvor istine
+  auth.ts                    sesije i provera pristupa (roditeljska i dečja sesija)
+  realtime.ts                praćenje uživo preko Supabase Realtime Broadcast-a
+  speech.ts                  govor (ElevenLabs + rezervni glas pregledača)
+```
+
+### Dizajn
+
+Tokeni (boje, senke, animacije) su u [`app/globals.css`](app/globals.css). Principi: miran i predvidljiv interfejs, veliki ciljevi za dodir, jasan kontrast, bez vremenskog pritiska i bez kažnjavanja grešaka. Animacije se gase kada sistem traži smanjeno kretanje.
+
+### Dodavanje igre
+
+1. Dodajte unos u `lib/games.ts` (ID, `activityId`, naziv, boje).
+2. Napravite komponentu u `app/components/games/` koja prima `GameProps` iz `games/kit` i na kraju nivoa zove `onComplete({ score, durationSec, correct, total })`.
+3. Celo stanje za prikaz držite u jednom JSON objektu (`view`) i šaljite ga kroz `useGameSync` — isti objekat koristi roditelj za prikaz uživo.
+4. Registrujte komponentu u `GameContainer.tsx` i `LiveMonitor.tsx`.
+
+## Skripte
+
+| Skripta | Opis |
+| --- | --- |
+| `npm run dev` | razvojni server |
+| `npm run build` / `npm start` | produkcija |
+| `npm run lint` | ESLint |
+| `npm run typecheck` | provera tipova |

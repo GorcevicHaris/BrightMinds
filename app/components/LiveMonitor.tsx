@@ -1,326 +1,362 @@
-// app/components/LiveMonitor.tsx
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useGameMonitor } from '@/lib/useSocket';
-import { GameUpdate } from '@/lib/types';
-import { Eye, Activity, Clock, Award, TrendingUp, Monitor } from 'lucide-react';
-import ShapeMatchingGame from './games/ShapeMatchingGame';
-import MemoryGame from './games/MemoryGame';
-import ColoringGame from './games/ColoringGame';
-import SoundToImageGame from './games/SoundToImageGame';
-import SocialCommunicationGame from './games/SocialCommunicationGame';
-import SocialStoryGame from './games/SocialStoryGame';
-import EmotionsGame from './games/EmotionsGame';
-
+// Praćenje uživo: roditelj/terapeut vidi isti ekran koji dete trenutno igra.
+// Igra šalje svoje stanje (view) preko lib/realtime.ts, a ovde se ista komponenta
+// igre iscrtava u režimu `isMonitor` sa tim stanjem.
+import { useCallback, useReducer, type ComponentType } from "react";
+import dynamic from "next/dynamic";
+import type { BaseView, GameProps } from "@/app/components/games/kit/types";
+import { Spinner } from "@/app/components/ui/Button";
+import { Alert, Card } from "@/app/components/ui/Card";
+import { cn } from "@/lib/cn";
+import { MAX_LEVEL, getGameByType, type GameDefinition, type GameType } from "@/lib/games";
+import { tierForLevel } from "@/lib/progress";
+import { useGameMonitor } from "@/lib/realtime";
+import type { GameUpdate } from "@/lib/types";
 
 interface LiveMonitorProps {
-  childId: number;
-  childName: string;
+    childId: number;
+    childName: string;
 }
 
-export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
-  const [updates, setUpdates] = useState<GameUpdate[]>([]);
-  const [currentGame, setCurrentGame] = useState<string | null>(null);
-  const [liveStats, setLiveStats] = useState({
-    score: 0,
-    level: 1,
-    moves: 0,
-    correct: 0,
-    incorrect: 0,
-  });
-  const [visualState, setVisualState] = useState<any>(null);
+// ── Komponente igara ──────────────────────────────────────────────────────────
 
-  const handleUpdate = useCallback((update: GameUpdate & { isSync?: boolean; reason?: string }) => {
-    // 1. Ako je igra započela (ili se sinhronizujemo na već započetu) ili imamo gameType u progresu
-    if (update.event === 'started' || update.isSync || (!currentGame && update.gameType)) {
-      if (update.gameType) setCurrentGame(update.gameType);
-
-      // Reset state for new game or sync
-      if (update.event === 'started' || update.isSync) {
-        setVisualState(update.data || {});
-        setLiveStats({
-          score: update.data?.score || 0,
-          level: update.data?.level || 1,
-          moves: update.data?.moves || 0,
-          correct: update.data?.correctCount || 0,
-          incorrect: update.data?.incorrectCount || 0,
-        });
-      }
-
-      if (update.isSync) {
-        setUpdates(prev => prev.length === 0 ? [update] : prev);
-      } else if (update.event === 'started') {
-        setUpdates((prev) => [update, ...prev].slice(0, 20));
-      }
-    }
-
-    if (update.event === 'completed') {
-      // Ignorišemo disconnect kao kraj igre da bismo omogućili refresh stranice kod deteta
-      if (update.reason === 'disconnect') {
-        setUpdates((prev) => [update, ...prev].slice(0, 20));
-        return;
-      }
-      // 2. Igra je stvarno gotova (manual exit ili win)
-      setCurrentGame(null);
-      setVisualState(null);
-      setUpdates((prev) => [update, ...prev].slice(0, 20));
-      return;
-    }
-
-    // 3. Običan progres (uključujući i slučajeve gde smo gore preskočili started/sync logiku)
-    if (update.event !== 'started' && !update.isSync) {
-      setUpdates((prev) => [update, ...prev].slice(0, 20));
-      if (update.data) {
-        setVisualState((prev: any) => ({
-          ...prev,
-          ...update.data,
-        }));
-      }
-    }
-
-    // 4. Ažuriraj statistiku
-    if (update.data) {
-      setLiveStats((prev) => {
-        const newStats = { ...prev };
-
-        // Prioritet imaju direktno poslati brojači iz same igrice
-        if (update.data.score !== undefined) newStats.score = update.data.score;
-        if (update.data.level !== undefined) newStats.level = update.data.level;
-        if (update.data.moves !== undefined) newStats.moves = update.data.moves;
-
-        if (update.data.correctCount !== undefined) {
-          newStats.correct = update.data.correctCount;
-        } else if (update.event === 'shape_placed' || update.event === 'color_applied' || (update.event === 'progress' && update.data.matched)) {
-          // Fallback ako igrica ne šalje total count
-          if (!update.isSync && (update.data.correct === true || update.data.matched === true)) {
-            newStats.correct += 1;
-          }
-        }
-
-        if (update.data.incorrectCount !== undefined) {
-          newStats.incorrect = update.data.incorrectCount;
-        } else if (update.data.totalIncorrect !== undefined) {
-          newStats.incorrect = update.data.totalIncorrect;
-        } else if (!update.isSync && (update.data.correct === false || (update.event === 'progress' && update.data.matched === false))) {
-          newStats.incorrect += 1;
-        }
-
-        return newStats;
-      });
-    }
-  }, [childId, currentGame, setUpdates, setCurrentGame, setVisualState, setLiveStats]);
-
-  const { activeSession, isConnected } = useGameMonitor(childId, handleUpdate);
-
-  const renderGamePreview = () => {
-    if (!currentGame || !visualState) return null;
-
-    const gameProps = {
-      childId,
-      level: visualState.level || liveStats.level || 1,
-      onComplete: () => { },
-      isMonitor: true,
-      monitorState: {
-        isPlaying: true,
-        currentIndex: visualState.index ?? 0,
-        score: liveStats.score,
-        correctCount: liveStats.correct,
-        totalIncorrect: liveStats.incorrect,
-        ...visualState,
-      },
-    };
+function MirrorLoading() {
     return (
-      <div className="mt-4 sm:mt-6 border-t pt-4 sm:pt-6 bg-white sm:rounded-xl p-0 sm:p-4 sm:shadow-inner -mx-2 sm:mx-0">
-        <div className="flex items-center gap-2 mb-4 text-blue-600 font-semibold border-b pb-2 px-2 sm:px-0">
-          <Monitor size={20} className="animate-pulse" />
-          <span>Live Ekran (Pogled deteta)</span>
+        <div className="flex min-h-64 flex-1 items-center justify-center gap-2 text-sm font-bold text-ink-soft">
+            <Spinner className="h-4 w-4" />
+            Učitavanje igre…
         </div>
-        <div className="bg-gray-50 rounded-xl sm:rounded-2xl overflow-hidden border-y sm:border-2 border-dashed border-blue-200 p-0 sm:p-6 flex justify-center w-full min-h-[500px]">
-          <div className="pointer-events-none transform scale-100 origin-top w-full flex justify-center pt-2 sm:pt-0">
-            {currentGame === 'shape_matching' && <ShapeMatchingGame {...gameProps} />}
-            {currentGame === 'memory' && <MemoryGame {...gameProps} />}
-            {currentGame === 'coloring' && <ColoringGame {...gameProps} />}
-            {currentGame === 'sound-to-image' && <SoundToImageGame {...gameProps} />}
-            {currentGame === 'social' && <SocialCommunicationGame {...gameProps} />}
-            {currentGame === 'social-story' && <SocialStoryGame {...gameProps} />}
-            {currentGame === 'emotions' && <EmotionsGame {...gameProps} />}
-          </div>
-
-        </div>
-        <p className="text-center text-xs text-gray-400 mt-2">
-          * Prikaz je u realnom vremenu i bezbedan za gledanje
-        </p>
-      </div>
     );
-  };
+}
 
-  const getGameName = (gameType: string) => {
-    switch (gameType) {
-      case 'shape_matching': return 'Složi Oblik';
-      case 'memory': return 'Spoji Parove';
-      case 'coloring': return 'Bojenje';
-      case 'sound-to-image': return 'Zvuk → Slika';
-      case 'social': return 'Šta treba da kažeš?';
-      case 'social-story': return 'Istraži Grad';
-      case 'emotions': return 'Moja Osećanja';
-      default: return gameType;
+// Svaka igra ima sopstveni tip stanja (GameProps<V extends BaseView>) i uklapa se u opšti
+// GameProps bez kastovanja; igra koja odstupi od ugovora iz kit/types.ts ovde prijavljuje grešku.
+// (next/dynamic traži da opcije budu objekat napisan na licu mesta, zato se ponavljaju.)
+const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
+    shape_matching: dynamic(() => import("@/app/components/games/ShapeMatchingGame"), { ssr: false, loading: MirrorLoading }),
+    memory: dynamic(() => import("@/app/components/games/MemoryGame"), { ssr: false, loading: MirrorLoading }),
+    coloring: dynamic(() => import("@/app/components/games/ColoringGame"), { ssr: false, loading: MirrorLoading }),
+    "sound-to-image": dynamic(() => import("@/app/components/games/SoundToImageGame"), { ssr: false, loading: MirrorLoading }),
+    social: dynamic(() => import("@/app/components/games/SocialCommunicationGame"), { ssr: false, loading: MirrorLoading }),
+    "social-story": dynamic(() => import("@/app/components/games/SocialStoryGame"), { ssr: false, loading: MirrorLoading }),
+    emotions: dynamic(() => import("@/app/components/games/EmotionsGame"), { ssr: false, loading: MirrorLoading }),
+};
 
+const noop = () => {};
+
+// ── Stanje monitora ───────────────────────────────────────────────────────────
+
+/** Stanje igre kako ga šalje dete: polja iz BaseView + nivo + sve što je specifično za igru. */
+interface MonitorView extends Partial<BaseView> {
+    level?: number;
+    [key: string]: unknown;
+}
+
+interface ActiveGame {
+    game: GameDefinition;
+    view: MonitorView;
+    /** Menja se sa svakim novim početkom nivoa, da se ekran igre iscrta iz početka */
+    session: number;
+    phase: "playing" | "finished";
+    updatedAt: string;
+}
+
+type FeedTone = "start" | "progress" | "finish" | "exit";
+
+interface FeedEntry {
+    id: number;
+    at: string;
+    text: string;
+    tone: FeedTone;
+}
+
+interface MonitorState {
+    active: ActiveGame | null;
+    /** Najnovije prvo */
+    feed: FeedEntry[];
+    nextEntryId: number;
+}
+
+interface MonitorAction {
+    update: GameUpdate;
+    /** Vreme prijema — koristi se ako poruka nema ispravan `timestamp` */
+    receivedAt: string;
+}
+
+const MAX_FEED_ENTRIES = 30;
+const MAX_LOG_LENGTH = 240;
+const INITIAL_STATE: MonitorState = { active: null, feed: [], nextEntryId: 1 };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function asNumber(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function levelOf(view: MonitorView | undefined): number {
+    const level = asNumber(view?.level);
+    return level === null ? 1 : Math.min(Math.max(Math.round(level), 1), MAX_LEVEL);
+}
+
+function withEntry(state: MonitorState, at: string, text: string, tone: FeedTone): Pick<MonitorState, "feed" | "nextEntryId"> {
+    return {
+        feed: [{ id: state.nextEntryId, at, text, tone }, ...state.feed].slice(0, MAX_FEED_ENTRIES),
+        nextEntryId: state.nextEntryId + 1,
+    };
+}
+
+function monitorReducer(state: MonitorState, { update, receivedAt }: MonitorAction): MonitorState {
+    const data: MonitorView = isRecord(update.data) ? update.data : {};
+    const at = Number.isNaN(Date.parse(update.timestamp)) ? receivedAt : update.timestamp;
+    const active = state.active;
+
+    if (update.event === "completed") {
+        if (data.reason === "manual_exit") {
+            return { ...withEntry(state, at, "Dete je izašlo iz igre", "exit"), active: null };
+        }
+        const game = getGameByType(update.gameType) ?? active?.game;
+        const view: MonitorView = active && active.game.id === game?.id ? { ...active.view, ...data } : data;
+        const finalScore = asNumber(data.finalScore) ?? asNumber(view.score) ?? 0;
+        return {
+            ...withEntry(state, at, `Završen nivo ${levelOf(view)} — ${finalScore} poena`, "finish"),
+            active: game ? { game, view, session: active?.session ?? 1, phase: "finished", updatedAt: at } : null,
+        };
     }
-  };
 
-  const getEventDescription = (update: GameUpdate) => {
-    switch (update.event) {
-      case 'started':
-        return `🎮 Započeo igru "${getGameName(update.gameType)}"`;
-      case 'shape_placed':
-        return update.data.correct
-          ? `✅ Tačan oblik - ${update.data.shape} (+${10 * update.data.level} poena)`
-          : `❌ Pogrešan oblik - ${update.data.shape}`;
-      case 'card_flipped':
-        return `🎴 Okrenuo karticu - ${update.data.emoji}`;
-      case 'color_applied':
-        return `🎨 Obojio segment - ${update.data.color}`;
-      case 'answer':
-        if ((update.gameType as string) === 'social') {
-          return update.data.correct
-            ? `✅ Tačan odgovor (pitanje ${(update.data.index ?? 0) + 1}/${update.data.totalSituations ?? '?'}) — ${update.data.score} poena ukupno`
-            : `❌ Pogrešan odgovor na pitanju ${(update.data.index ?? 0) + 1}`;
-        }
-        if ((update.gameType as string) === 'social-story') {
-          return update.data.correct
-            ? `✅ Tačan odgovor na raskrsnici (pitanje rešeno)`
-            : `❌ Pogrešan odgovor na raskrsnicu`;
-        }
-        if ((update.gameType as string) === 'sound-to-image') {
-          return update.data.correct
-            ? `🔊 Tačno prepoznao zvuk: ${update.data.currentSound?.label || ''}`
-            : `👂 Pogrešan pokušaj prepoznavanja zvuka`;
-        }
-        return update.data.correct ? '✅ Tačan odgovor' : '❌ Pogrešan odgovor';
+    const game = getGameByType(update.gameType);
+    if (!game) return state;
+    const continues = active !== null && active.phase === "playing" && active.game.id === game.id;
 
-      case 'progress':
-        if ((update.gameType as string) === 'social-story') {
-          return `🚗 Vozi se kroz grad: ${update.data.curId || 'n00'}`;
+    if (update.event === "started") {
+        // Snimak stanja posle (ponovnog) povezivanja monitora: ista partija, samo osvežavamo sliku.
+        if (update.isSync && continues && levelOf(active.view) === levelOf(data)) {
+            return { ...state, active: { ...active, view: data, updatedAt: at } };
         }
-        if ((update.gameType as string) === 'emotions') {
-          return update.data.matched
-            ? `✅ Tačno prepoznao emociju: ${update.data.selectedEmotion}`
-            : `❌ Pogrešan izbor emocije: ${update.data.selectedEmotion}`;
-        }
-        return update.data.matched
-          ? `✨ Par pronađen - ${update.data.emoji} (+${update.data.score} poena)`
-          : '🔄 Progres';
-
-      case 'completed':
-        if ((update as any).reason === 'disconnect') return '🔌 Prekinuta veza — dete je izašlo';
-        if (update.data?.reason === 'manual_exit') return '🚪 Izašao iz igre pre kraja';
-        return `🏆 Završio igru! Konačan rezultat: ${update.data?.finalScore ?? 0} poena`;
-      case 'new_round':
-        return `🎯 Nova runda - Pronađi ${update.data?.currentSound?.label ?? '?'}`;
-      default:
-        return update.event;
+        const text = update.isSync
+            ? `Igra „${game.title}” je već u toku — nivo ${levelOf(data)}`
+            : `Započeta igra „${game.title}” — nivo ${levelOf(data)}`;
+        return {
+            ...withEntry(state, at, text, "start"),
+            active: { game, view: data, session: (active?.session ?? 0) + 1, phase: "playing", updatedAt: at },
+        };
     }
-  };
 
-  return (
-    <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl p-2 sm:p-6 md:p-8 w-full border border-slate-100">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 pb-4 border-b border-slate-100 gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
-            <Eye className="text-white" size={22} />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black text-slate-900">Live Praćenje</h2>
-            <p className="text-slate-500 font-medium text-sm">{childName}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-xl border">
-          {isConnected ? (
-            <>
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-green-600 font-bold text-sm">Povezano</span>
-            </>
-          ) : (
-            <>
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span className="text-red-600 font-bold text-sm">Nepovezano</span>
-            </>
-          )}
-        </div>
-      </div>
+    const log = typeof data.log === "string" ? data.log.trim().slice(0, MAX_LOG_LENGTH) : "";
+    return {
+        ...(log ? withEntry(state, at, log, "progress") : state),
+        active: continues
+            ? { ...active, view: { ...active.view, ...data }, updatedAt: at }
+            : { game, view: data, session: (active?.session ?? 0) + 1, phase: "playing", updatedAt: at },
+    };
+}
 
-      {/* Current Game Status */}
-      {currentGame ? (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl sm:rounded-2xl p-3 sm:p-6 mb-6 border border-blue-100">
-          <div className="flex items-center gap-3 mb-4 sm:mb-5">
-            <Activity className="text-blue-600 shrink-0" size={24} />
-            <h3 className="text-lg sm:text-xl font-black text-slate-800 leading-tight">
-              Trenutno igra: {getGameName(currentGame)}
-            </h3>
-          </div>
+// ── Komponenta ────────────────────────────────────────────────────────────────
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-xl p-4 text-center shadow-sm">
-              <Award className="mx-auto mb-2 text-yellow-500" size={24} />
-              <div className="text-2xl font-black text-slate-800">{liveStats.score}</div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Poeni</div>
+export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
+    // `key` garantuje čisto stanje ako se promeni dete koje se prati
+    return <MonitorSession key={childId} childId={childId} childName={childName} />;
+}
+
+function MonitorSession({ childId, childName }: LiveMonitorProps) {
+    const [state, dispatch] = useReducer(monitorReducer, INITIAL_STATE);
+
+    const handleUpdate = useCallback(
+        (update: GameUpdate) => {
+            if (Number(update.childId) !== childId) return;
+            dispatch({ update, receivedAt: new Date().toISOString() });
+        },
+        [childId]
+    );
+    const { isConnected, isConfigured } = useGameMonitor(childId, handleUpdate);
+    const { active, feed } = state;
+
+    return (
+        <div className="space-y-6">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <ConnectionStatus isConnected={isConnected} isConfigured={isConfigured} />
+                {isConfigured && (
+                    <p className="text-sm text-ink-soft">Prikaz se osvežava sam, čim {childName} napravi potez u igri.</p>
+                )}
             </div>
-            <div className="bg-white rounded-xl p-4 text-center shadow-sm">
-              <TrendingUp className="mx-auto mb-2 text-purple-500" size={24} />
-              <div className="text-2xl font-black text-slate-800">{liveStats.level}</div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nivo</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 text-center shadow-sm">
-              <div className="text-2xl font-black text-green-600">{liveStats.correct}</div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Tačno</div>
-            </div>
-            <div className="bg-white rounded-xl p-4 text-center shadow-sm">
-              <div className="text-2xl font-black text-red-500">{liveStats.incorrect}</div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Netačno</div>
-            </div>
-          </div>
 
-          {renderGamePreview()}
-        </div>
-      ) : (
-        <div className="bg-slate-50 rounded-2xl p-10 mb-6 text-center border border-slate-100">
-          <Clock className="mx-auto mb-4 text-slate-300" size={48} />
-          <p className="text-slate-500 text-lg font-medium">Dete trenutno ne igra nijednu igru</p>
-          <p className="text-slate-400 text-sm mt-1">Ovde ćete videti aktivnosti čim dete započne igru</p>
-        </div>
-      )}
+            {!isConfigured && (
+                <Alert tone="info">
+                    Za praćenje uživo potrebno je podesiti promenljive <code>NEXT_PUBLIC_SUPABASE_URL</code> i{" "}
+                    <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code>.
+                </Alert>
+            )}
 
-      {/* Activity Feed */}
-      <div>
-        <h3 className="text-lg font-black text-slate-800 mb-4 flex items-center gap-2">
-          <Activity size={20} />
-          Aktivnost uživo
-        </h3>
-
-        <div className="space-y-2 max-h-[50vh] sm:max-h-96 overflow-y-auto pr-1 sm:pr-2">
-          {updates.length === 0 ? (
-            <p className="text-slate-400 text-center py-8 font-medium">Nema aktivnosti</p>
-          ) : (
-            updates.map((update, index) => (
-              <div
-                key={index}
-                className="bg-slate-50 rounded-xl p-4 border-l-4 border-blue-400 hover:bg-slate-100 transition-colors"
-              >
-                <div className="flex justify-between items-start">
-                  <p className="text-slate-800 font-medium text-sm">
-                    {getEventDescription(update)}
-                  </p>
-                  <span className="text-xs text-slate-400 font-mono whitespace-nowrap ml-4">
-                    {new Date(update.timestamp).toLocaleTimeString('sr-RS')}
-                  </span>
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+                <div className="min-w-0 space-y-6">
+                    {active ? (
+                        <>
+                            <NowPlaying active={active} />
+                            <GameMirror active={active} childId={childId} />
+                        </>
+                    ) : (
+                        <IdleCard childName={childName} isWaitingForConnection={isConfigured && !isConnected} />
+                    )}
                 </div>
-              </div>
-            ))
-          )}
+                <ActivityFeed feed={feed} />
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
+}
+
+// ── Status veze ───────────────────────────────────────────────────────────────
+
+function ConnectionStatus({ isConnected, isConfigured }: { isConnected: boolean; isConfigured: boolean }) {
+    const status = !isConfigured
+        ? { label: "Realtime nije podešen", pill: "border-line bg-surface text-ink-soft", dot: "bg-slate-400" }
+        : isConnected
+          ? { label: "Povezano", pill: "border-emerald-200 bg-emerald-50 text-emerald-800", dot: "bg-emerald-500" }
+          : { label: "Povezivanje…", pill: "border-sun-200 bg-sun-50 text-sun-700", dot: "bg-sun-500 animate-pulse" };
+    return (
+        <p role="status" className={cn("inline-flex min-h-9 items-center gap-2 rounded-full border px-3.5 text-sm font-extrabold", status.pill)}>
+            <span aria-hidden="true" className={cn("h-2.5 w-2.5 rounded-full", status.dot)} />
+            {status.label}
+        </p>
+    );
+}
+
+// ── Trenutna igra ─────────────────────────────────────────────────────────────
+
+function Stat({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="rounded-xl bg-canvas px-3 py-2.5">
+            <dt className="text-xs font-bold text-ink-soft">{label}</dt>
+            <dd className="mt-0.5 text-xl font-extrabold leading-tight text-ink">{value}</dd>
+        </div>
+    );
+}
+
+function NowPlaying({ active }: { active: ActiveGame }) {
+    const { game, view, phase } = active;
+    const level = levelOf(view);
+    const show = (value: unknown) => String(asNumber(value) ?? "—");
+    const round = asNumber(view.round);
+    const totalRounds = asNumber(view.totalRounds);
+
+    return (
+        <Card aria-labelledby="monitor-now-playing" role="region">
+            <div className="flex flex-wrap items-center gap-3">
+                <span aria-hidden="true" className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-xl text-2xl", game.accent.soft)}>
+                    {game.icon}
+                </span>
+                <div className="min-w-40 flex-1">
+                    <p className="text-xs font-bold text-ink-soft">{phase === "playing" ? "Trenutno igra" : "Nivo je završen"}</p>
+                    <h2 id="monitor-now-playing" className="break-words text-xl font-extrabold text-ink">
+                        {game.title}
+                    </h2>
+                </div>
+                <span className={cn("rounded-full border px-3 py-1 text-xs font-extrabold", game.accent.soft, game.accent.text, game.accent.border)}>
+                    Težina: {tierForLevel(level).label}
+                </span>
+            </div>
+
+            <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
+                <Stat label="Nivo" value={`${level} / ${MAX_LEVEL}`} />
+                <Stat label="Zadatak" value={round === null || totalRounds === null ? "—" : `${round} / ${totalRounds}`} />
+                <Stat label="Tačno" value={show(view.correctCount)} />
+                <Stat label="Netačno" value={show(view.incorrectCount)} />
+                <Stat label="Poeni" value={show(view.score)} />
+            </dl>
+
+            <p className="mt-4 text-xs font-semibold text-ink-soft">
+                Poslednja promena: <time dateTime={active.updatedAt}>{formatTime(active.updatedAt)}</time>
+            </p>
+        </Card>
+    );
+}
+
+function GameMirror({ active, childId }: { active: ActiveGame; childId: number }) {
+    const Game = GAME_COMPONENTS[active.game.gameType];
+    const finished = active.phase === "finished";
+
+    return (
+        <Card padded={false} className="overflow-hidden" aria-labelledby="monitor-mirror" role="region">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line px-5 py-3">
+                <h2 id="monitor-mirror" className="text-base font-extrabold text-ink">
+                    Ekran deteta (uživo)
+                </h2>
+                <p className="text-xs font-semibold text-ink-soft">
+                    {finished ? "Nivo je završen — čeka se sledeći" : "Samo prikaz, bez upravljanja igrom"}
+                </p>
+            </div>
+            {/* contain-content: sve što igra iscrta (i fiksirani slojevi) ostaje unutar okvira */}
+            <div
+                aria-hidden="true"
+                inert
+                className={cn(
+                    "pointer-events-none flex min-h-80 select-none flex-col bg-canvas p-3 contain-content transition-opacity duration-300 sm:p-5",
+                    finished && "opacity-50"
+                )}
+            >
+                <Game
+                    key={`${active.game.id}:${active.session}`}
+                    childId={childId}
+                    level={levelOf(active.view)}
+                    onComplete={noop}
+                    isMonitor
+                    monitorState={active.view}
+                />
+            </div>
+        </Card>
+    );
+}
+
+function IdleCard({ childName, isWaitingForConnection }: { childName: string; isWaitingForConnection: boolean }) {
+    return (
+        <Card className="py-12 text-center sm:py-16">
+            <p className="text-4xl" aria-hidden="true">
+                🎮
+            </p>
+            <h2 className="mt-3 text-xl font-extrabold text-ink">Trenutno nema aktivne igre</h2>
+            <p className="mx-auto mt-2 max-w-md text-sm text-ink-soft">
+                {isWaitingForConnection
+                    ? "Povezivanje sa kanalom za praćenje je u toku…"
+                    : `Kada ${childName} pokrene igru, ovde će se pojaviti ekran igre i rezultat u realnom vremenu.`}
+            </p>
+        </Card>
+    );
+}
+
+// ── Tok aktivnosti ────────────────────────────────────────────────────────────
+
+const FEED_DOT: Record<FeedTone, string> = {
+    start: "bg-brand-500",
+    progress: "bg-slate-300",
+    finish: "bg-emerald-500",
+    exit: "bg-slate-500",
+};
+
+function formatTime(iso: string): string {
+    return new Date(iso).toLocaleTimeString("sr-Latn-RS");
+}
+
+function ActivityFeed({ feed }: { feed: FeedEntry[] }) {
+    return (
+        <Card padded={false} className="overflow-hidden lg:sticky lg:top-6" aria-labelledby="monitor-feed" role="region">
+            <div className="border-b border-line px-5 py-3">
+                <h2 id="monitor-feed" className="text-base font-extrabold text-ink">
+                    Tok aktivnosti
+                </h2>
+            </div>
+            {feed.length === 0 && <p className="px-5 py-10 text-center text-sm text-ink-soft">Događaji iz igre pojaviće se ovde.</p>}
+            <ol aria-live="polite" aria-relevant="additions" className="scroll-soft max-h-[30rem] divide-y divide-line overflow-y-auto">
+                {feed.map((entry) => (
+                    <li key={entry.id} className="flex animate-fade items-start gap-3 px-5 py-3">
+                        <span aria-hidden="true" className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", FEED_DOT[entry.tone])} />
+                        <p className="min-w-0 flex-1 break-words text-sm font-semibold text-ink">{entry.text}</p>
+                        <time dateTime={entry.at} className="shrink-0 pt-0.5 text-xs font-bold tabular-nums text-ink-soft">
+                            {formatTime(entry.at)}
+                        </time>
+                    </li>
+                ))}
+            </ol>
+        </Card>
+    );
 }

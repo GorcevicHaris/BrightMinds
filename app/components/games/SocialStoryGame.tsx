@@ -1,925 +1,477 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useGameEmitter } from "@/lib/useSocket";
-import { useSpeech } from "@/lib/useSpeech";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+    ChoiceCard,
+    Feedback,
+    GameHud,
+    GamePrompt,
+    GameStage,
+    genderText,
+    isFemale,
+    playSfx,
+    shuffle,
+    useGameSync,
+    type BaseView,
+    type ChoiceState,
+    type FeedbackKind,
+    type GameProps,
+} from "@/app/components/games/kit";
+import { cn } from "@/lib/cn";
+import { getGame } from "@/lib/games";
+import { useSpeech } from "@/lib/speech";
+import { decisionCount, optionsOf, storyForLevel, type SceneTone, type Story } from "./data/socialStories";
 
-// ─────────────────────────────────────────────────────
-// TYPES
-// ─────────────────────────────────────────────────────
-interface GameProps {
-  childId: number;
-  level: number;
-  onComplete: (
-    score: number,
-    duration: number,
-    moodBefore?: string | null,
-    moodAfter?: string | null,
-    stats?: any
-  ) => void;
-  onClose?: () => void;
-  autoStart?: boolean;
-  isMonitor?: boolean;
-  monitorState?: any;
-  gender?: string;
+// ── Stanje igre ───────────────────────────────────────────────────────────────
+// Sve što utiče na prikaz je u jednom JSON objektu koji se šalje live monitoru.
+// Sadržaj priče se ne šalje: monitor ga nalazi lokalno po nivou, a view nosi samo indekse.
+//
+// Ocena nivoa: total = broj koraka sa odlukom, correct = odluke pogođene iz PRVOG pokušaja.
+// Pripovedni koraci (bez izbora) se ne računaju. Zvezdice iz toga računa kontejner.
+
+type StoryPhase = "cover" | "story" | "done";
+
+export interface StoryView extends BaseView {
+    // score: 100 poena za odluku iz prvog pokušaja, 50 ako je bio potreban još neki pokušaj
+    // correctCount: odluke pogođene iz prvog pokušaja; incorrectCount: ukupno slabijih izbora
+    // round / totalRounds: trenutni korak priče (od 1) i broj koraka
+    phase: StoryPhase;
+    /** Indeks koraka priče, od 0 */
+    stepIndex: number;
+    /** Redosled prikaza izbora na trenutnom koraku (indeksi iz `optionsOf`, 0 = najbolji izbor) */
+    order: number[];
+    /** Slabiji izbori koje je dete već probalo na ovom koraku, redom kojim ih je biralo */
+    tried: number[];
+    /** Najbolji izbor je pronađen — sledi „Dalje” */
+    answered: boolean;
 }
 
-interface StoryStep {
-  scene: string;        // big emoji(s) showing the situation
-  question: string;     // short, simple question
-  options: {
-    emoji: string;
-    label: string;
-    correct: boolean;
-    feedback: string;   // what to show after tapping
-  }[];
+const ACCENT = getGame("social-story").accent;
+const SPEAK_DELAY_MS = 400;
+const CELEBRATION_MS = 1100;
+const POINTS_FIRST_TRY = 100;
+const POINTS_LATER_TRY = 50;
+
+function identityOrder(count: number): number[] {
+    return Array.from({ length: count }, (_, i) => i);
 }
 
-interface StoryLevel {
-  title: string;
-  place: string;       // sub-title
-  icon: string;
-  color: string;       // tailwind gradient
-  bg: string;          // background color class
-  steps: StoryStep[];
+function shuffledOrder(count: number): number[] {
+    return shuffle(identityOrder(count));
 }
 
-// ─────────────────────────────────────────────────────
-// LEVELS  (8 themed social stories)
-// Each step: big scene emoji + 1-line question + 2-3 choices
-// ─────────────────────────────────────────────────────
-const LEVELS: StoryLevel[] = [
-  {
-    title: "Jutro",
-    place: "Jutarnja rutina",
-    icon: "🌅",
-    color: "from-orange-400 to-amber-500",
-    bg: "bg-orange-50",
-    steps: [
-      {
-        scene: "😴 🛏️",
-        question: "Probudio/la si se! Šta radiš prvo?",
-        options: [
-          { emoji: "🚿", label: "Perem se", correct: true, feedback: "Tačno!" },
-          { emoji: "📱", label: "Gledam telefon", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🍽️ 🥛",
-        question: "Šta jedeš ujutru?",
-        options: [
-          { emoji: "🥣", label: "Kaša i mleko", correct: true, feedback: "Tačno!" },
-          { emoji: "🍰", label: "Torta", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🎒 👟",
-        question: "Šta pakuješ za školu?",
-        options: [
-          { emoji: "📓", label: "Svesku", correct: true, feedback: "Tačno!" },
-          { emoji: "🧸", label: "Igračku", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Škola",
-    place: "Učionica",
-    icon: "🏫",
-    color: "from-blue-400 to-indigo-500",
-    bg: "bg-blue-50",
-    steps: [
-      {
-        scene: "🏫 🚌",
-        question: "Stigao/la si u školu! Šta radiš?",
-        options: [
-          { emoji: "💺", label: "Sjednem za klupu", correct: true, feedback: "Tačno!" },
-          { emoji: "🏃", label: "Trčim po hodniku", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "👩‍🏫 📋",
-        question: "Učiteljica govori. Šta radiš?",
-        options: [
-          { emoji: "👂", label: "Slušam", correct: true, feedback: "Tačno!" },
-          { emoji: "🗣️", label: "Pričam", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🤚 ❓",
-        question: "Znaš odgovor! Šta radiš?",
-        options: [
-          { emoji: "✋", label: "Dižem ruku", correct: true, feedback: "Tačno!" },
-          { emoji: "📣", label: "Vičem", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Stomatolog",
-    place: "Ordinacija",
-    icon: "🦷",
-    color: "from-cyan-400 to-teal-500",
-    bg: "bg-cyan-50",
-    steps: [
-      {
-        scene: "🦷 🪥",
-        question: "Kada peremo zube?",
-        options: [
-          { emoji: "☀️🌙", label: "Jutro i veče", correct: true, feedback: "Tačno!" },
-          { emoji: "🎂", label: "Samo na rođendan", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🏥 😨",
-        question: "Kada idemo kod stomatologa?",
-        options: [
-          { emoji: "📆", label: "Redovno", correct: true, feedback: "Tačno!" },
-          { emoji: "😣", label: "Samo kad boli", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🪥 ⏱️",
-        question: "Koliko dugo peremo zube?",
-        options: [
-          { emoji: "2️⃣", label: "2 minute", correct: true, feedback: "Tačno!" },
-          { emoji: "⚡", label: "5 sekundi", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Prodavnica",
-    place: "Kupovina",
-    icon: "🛒",
-    color: "from-green-400 to-emerald-500",
-    bg: "bg-green-50",
-    steps: [
-      {
-        scene: "🛒 📝",
-        question: "Šta nam pomaže u kupovini?",
-        options: [
-          { emoji: "📋", label: "Lista", correct: true, feedback: "Tačno!" },
-          { emoji: "🎮", label: "Konzola igram", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🧀 🥦 🍎",
-        question: "Gde stoji sir?",
-        options: [
-          { emoji: "🧀", label: "Mlečni proizvodi", correct: true, feedback: "Tačno!" },
-          { emoji: "🍭", label: "Slatkiši", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "💳 💵",
-        question: "Na kasi smo. Šta radimo?",
-        options: [
-          { emoji: "💰", label: "Platimo", correct: true, feedback: "Tačno!" },
-          { emoji: "🏃", label: "Odemo bez plaćanja", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Park",
-    place: "Igra napolju",
-    icon: "🌳",
-    color: "from-lime-400 to-green-500",
-    bg: "bg-lime-50",
-    steps: [
-      {
-        scene: "🌳 ☀️",
-        question: "Leti napolju nosimo...?",
-        options: [
-          { emoji: "🧴", label: "Kremu za sunce", correct: true, feedback: "Tačno!" },
-          { emoji: "🧥", label: "Zimski kaput", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "💧 🥤",
-        question: "Znojiš se. Šta radiš?",
-        options: [
-          { emoji: "💧", label: "Pijem vodu", correct: true, feedback: "Tačno!" },
-          { emoji: "🍔", label: "Jedem hamburger", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🌆 🏠",
-        question: "Smrkava se. Mama zove.",
-        options: [
-          { emoji: "🏠", label: "Idem kući", correct: true, feedback: "Tačno!" },
-          { emoji: "🌙", label: "Ostanem napolju", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Kod doktora",
-    place: "Pedijatar",
-    icon: "🏥",
-    color: "from-rose-400 to-red-500",
-    bg: "bg-rose-50",
-    steps: [
-      {
-        scene: "🤒 🌡️",
-        question: "Osećaš se loše. Šta radiš?",
-        options: [
-          { emoji: "👨‍👩‍👦", label: "Kažem mami", correct: true, feedback: "Tačno!" },
-          { emoji: "🤫", label: "Ćutim", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🏥 👨‍⚕️",
-        question: "Doktor te pregleda.",
-        options: [
-          { emoji: "😌", label: "Miram sarađujem", correct: true, feedback: "Tačno!" },
-          { emoji: "😭", label: "Vrištim", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "💊 💉",
-        question: "Doktor daje lek.",
-        options: [
-          { emoji: "✅", label: "Popijem", correct: true, feedback: "Tačno!" },
-          { emoji: "🚮", label: "Bacim", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Restoran",
-    place: "Jelo napolju",
-    icon: "🍽️",
-    color: "from-amber-400 to-orange-500",
-    bg: "bg-amber-50",
-    steps: [
-      {
-        scene: "🍽️ 🪑",
-        question: "U restoranu...",
-        options: [
-          { emoji: "��", label: "Sjedem za sto", correct: true, feedback: "Tačno!" },
-          { emoji: "🏃", label: "Trčim naokolo", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "👨‍🍳 📋",
-        question: "Konobar dolazi.",
-        options: [
-          { emoji: "🗣️", label: "Naručujem pristojno", correct: true, feedback: "Tačno!" },
-          { emoji: "😤", label: "Vičem", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🧻 🤲",
-        question: "Završio si jelo.",
-        options: [
-          { emoji: "🤲", label: "Brišem ruke", correct: true, feedback: "Tačno!" },
-          { emoji: "🏃", label: "Ustanem odmah", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Vatrogasna bezbednost",
-    place: "Šta raditi u hitnim situacijama",
-    icon: "🚒",
-    color: "from-red-500 to-rose-600",
-    bg: "bg-red-50",
-    steps: [
-      {
-        scene: "🔥 😨",
-        question: "Ima dima u kući!",
-        options: [
-          { emoji: "🏃", label: "Izlazim napolje", correct: true, feedback: "Tačno!" },
-          { emoji: "🛒", label: "Uzimam igračke", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "📞 🚒",
-        question: "Koga zovemo za požar?",
-        options: [
-          { emoji: "🚒", label: "Vatrogasce (193)", correct: true, feedback: "Tačno!" },
-          { emoji: "🍕", label: "Pizzu", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🔌 💡",
-        question: "Nisi siguran da li je toplo.",
-        options: [
-          { emoji: "��‍👩‍👦", label: "Pitam odrasle", correct: true, feedback: "Tačno!" },
-          { emoji: "🤚", label: "Diram", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Rođendan",
-    place: "Proslava",
-    icon: "🥳",
-    color: "from-purple-400 to-fuchsia-500",
-    bg: "bg-purple-50",
-    steps: [
-      {
-        scene: "🎂 🎁",
-        question: "Dobio/la si poklon! Šta radiš?",
-        options: [
-          { emoji: "🙏", label: "Zahvalim se", correct: true, feedback: "Tačno!" },
-          { emoji: "🗑️", label: "Bacim ga", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🕯️  thổi",
-        question: "Vreme je za svećice!",
-        options: [
-          { emoji: "💨", label: "Duvam svećice", correct: true, feedback: "Tačno!" },
-          { emoji: "😭", label: "Plačem", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🍰 🍽️",
-        question: "Seče se torta. Šta radiš?",
-        options: [
-          { emoji: "⏳", label: "Čekam svoj red", correct: true, feedback: "Tačno!" },
-          { emoji: "👊", label: "Otmem tortu", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Kućni ljubimac",
-    place: "Briga o psu",
-    icon: "🐶",
-    color: "from-teal-400 to-emerald-500",
-    bg: "bg-teal-50",
-    steps: [
-      {
-        scene: "🐶 🍖",
-        question: "Pas je gladan. Šta mu daješ?",
-        options: [
-          { emoji: "🦴", label: "Hranu za pse", correct: true, feedback: "Tačno!" },
-          { emoji: "🍫", label: "Čokoladu", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🐕 🚶",
-        question: "Pas želi napolje.",
-        options: [
-          { emoji: "🦮", label: "Idemo u šetnju", correct: true, feedback: "Tačno!" },
-          { emoji: "😡", label: "Viknem na njega", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "💤 🐶",
-        question: "Pas spava.",
-        options: [
-          { emoji: "🤫", label: "Pustim ga", correct: true, feedback: "Tačno!" },
-          { emoji: "🔊", label: "Budim ga", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Putovanje",
-    place: "Voz",
-    icon: "🚆",
-    color: "from-yellow-400 to-orange-500",
-    bg: "bg-yellow-50",
-    steps: [
-      {
-        scene: "🚆 🎫",
-        question: "Ulaziš u voz.",
-        options: [
-          { emoji: "🎟️", label: "Pokažem kartu", correct: true, feedback: "Tačno!" },
-          { emoji: "🏃", label: "Trčim unutra", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "💺 ��",
-        question: "Voz kreće.",
-        options: [
-          { emoji: "🪑", label: "Sednem na mesto", correct: true, feedback: "Tačno!" },
-          { emoji: "🤸", label: "Skačem", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🤫 👥",
-        question: "Ljudima se spava u vozu.",
-        options: [
-          { emoji: "🤐", label: "Budem tih", correct: true, feedback: "Tačno!" },
-          { emoji: "🗣️", label: "Vičem", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Lekar",
-    place: "Pregled",
-    icon: "👨‍⚕️",
-    color: "from-pink-400 to-rose-500",
-    bg: "bg-pink-50",
-    steps: [
-      {
-        scene: "🌡️ 🤒",
-        question: "Imaš temperaturu.",
-        options: [
-          { emoji: "🗣️", label: "Kažem mami", correct: true, feedback: "Tačno!" },
-          { emoji: "��", label: "Krijem to", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🩺 👨‍⚕️",
-        question: "Doktor te sluša.",
-        options: [
-          { emoji: "🫁", label: "Dišem duboko", correct: true, feedback: "Tačno!" },
-          { emoji: "😭", label: "Vrištim", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "💊 🥤",
-        question: "Moraš da popiješ lek.",
-        options: [
-          { emoji: "✅", label: "Popijem ga", correct: true, feedback: "Tačno!" },
-          { emoji: "🤮", label: "Pljunem", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Radionica",
-    place: "Crtanje",
-    icon: "🎨",
-    color: "from-indigo-400 to-blue-500",
-    bg: "bg-indigo-50",
-    steps: [
-      {
-        scene: "🎨 🖌️",
-        question: "Crtamo. Šta uzimaš?",
-        options: [
-          { emoji: "🖍️", label: "Bojice", correct: true, feedback: "Tačno!" },
-          { emoji: "👞", label: "Cipele", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "✂️ 📄",
-        question: "Secemo papir.",
-        options: [
-          { emoji: "👁️", label: "Pazim na prste", correct: true, feedback: "Tačno!" },
-          { emoji: "🙈", label: "Sečem bez gledanja", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🧹 🗑️",
-        question: "Završili smo rad.",
-        options: [
-          { emoji: "🧹", label: "Pospremim za sobom", correct: true, feedback: "Tačno!" },
-          { emoji: "🏃", label: "Samo odem", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Bazen",
-    place: "Plivanje",
-    icon: "🏊",
-    color: "from-emerald-400 to-teal-500",
-    bg: "bg-emerald-50",
-    steps: [
-      {
-        scene: "🏊 🩱",
-        question: "Ulaziš na bazen.",
-        options: [
-          { emoji: "👙", label: "Obučem kupaći", correct: true, feedback: "Tačno!" },
-          { emoji: "👞", label: "Uđem u cipelama", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🏃 ⚠️",
-        question: "Dal smeš da trčiš pored bazena?",
-        options: [
-          { emoji: "🚶", label: "Ne, klizavo je", correct: true, feedback: "Tačno!" },
-          { emoji: "🏃", label: "Da, uvek", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "🚿 🧴",
-        question: "Posle bazena ideš pod...?",
-        options: [
-          { emoji: "🚿", label: "Tuš", correct: true, feedback: "Tačno!" },
-          { emoji: "🌳", label: "Drvo", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-  {
-    title: "Zima",
-    place: "Sneg",
-    icon: "❄️",
-    color: "from-sky-400 to-blue-500",
-    bg: "bg-sky-50",
-    steps: [
-      {
-        scene: "❄️ 🧥",
-        question: "Hladno je. Šta nosiš?",
-        options: [
-          { emoji: "🧤", label: "Jaknu i kapu", correct: true, feedback: "Tačno!" },
-          { emoji: "🩱", label: "Kupaći", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "⛄",
-        question: "Pravimo Sneška Belića!",
-        options: [
-          { emoji: "🤝", label: "Pomažem", correct: true, feedback: "Tačno!" },
-          { emoji: "💥", label: "Rušim ga", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-      {
-        scene: "☕ 🛋️",
-        question: "Ulazimo u toplu kuću.",
-        options: [
-          { emoji: "🍵", label: "Pijemo čaj", correct: true, feedback: "Tačno!" },
-          { emoji: "🧊", label: "Jedemo sneg", correct: false, feedback: "Pokušaj ponovo!" }
-        ],
-      },
-    ],
-  },
-];
+function optionCount(story: Story, stepIndex: number): number {
+    const decision = story.steps[stepIndex]?.decision;
+    return decision ? optionsOf(decision).length : 0;
+}
 
+function createView(story: Story, order: number[]): StoryView {
+    return {
+        score: 0,
+        correctCount: 0,
+        incorrectCount: 0,
+        round: 1,
+        totalRounds: story.steps.length,
+        phase: "cover",
+        stepIndex: 0,
+        order,
+        tried: [],
+        answered: false,
+    };
+}
 
-// ─────────────────────────────────────────────────────
-// COMPONENT
-// ─────────────────────────────────────────────────────
-export default function SocialStoryGame({
-  childId,
-  level,
-  onComplete,
-  onClose,
-  autoStart,
-  isMonitor,
-  monitorState,
-  gender,
-}: GameProps) {
-  const lvl = LEVELS[Math.min(level - 1, LEVELS.length - 1)];
-  const totalSteps = lvl.steps.length;
+function toCount(value: unknown): number {
+    return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
 
-  const [phase, setPhase] = useState<"intro" | "playing" | "win">(
-    isMonitor ? "playing" : "intro"
-  );
-  const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
-  const [showMoodAfter, setShowMoodAfter] = useState(false);
-  const [moodBefore, setMoodBefore] = useState<string | null>(null);
-  const [stepIdx, setStepIdx] = useState(monitorState?.stepIdx ?? 0);
-  const [score, setScore] = useState(monitorState?.score ?? 0);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [feedbackCorrect, setFeedbackCorrect] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
-  const [correctCount, setCorrectCount] = useState(0);
-  const [totalAttempts, setTotalAttempts] = useState(0);
-  const [startTime] = useState(Date.now());
+function isPermutation(value: unknown, count: number): value is number[] {
+    return Array.isArray(value) && value.length === count && identityOrder(count).every((i) => value.includes(i));
+}
 
-  const formatText = (text: string) => {
-    if (!gender) return text;
-    const isFemale = gender.toLowerCase() === 'female';
-    return text
-      .replace(/Dobio\/la/g, isFemale ? 'Dobila' : 'Dobio')
-      .replace(/Probudio\/la/g, isFemale ? 'Probudila' : 'Probudio')
-      .replace(/Stigao\/la/g, isFemale ? 'Stigla' : 'Stigao')
-      .replace(/Završio\/la/g, isFemale ? 'Završila' : 'Završio')
-      .replace(/uradio\/la/g, isFemale ? 'uradila' : 'uradio');
-  };
+/** Monitor dobija delimično ili zastarelo stanje, pa svaku vrednost svodimo na ono što priča zaista ima. */
+function resolveView(raw: Partial<StoryView>, story: Story): StoryView {
+    const stepIndex = Math.min(toCount(raw.stepIndex), story.steps.length - 1);
+    const count = optionCount(story, stepIndex);
+    const tried = Array.isArray(raw.tried)
+        ? raw.tried.filter((value, i, all) => Number.isInteger(value) && value > 0 && value < count && all.indexOf(value) === i)
+        : [];
+    return {
+        score: toCount(raw.score),
+        correctCount: toCount(raw.correctCount),
+        incorrectCount: toCount(raw.incorrectCount),
+        round: stepIndex + 1,
+        totalRounds: story.steps.length,
+        phase: raw.phase === "story" || raw.phase === "done" ? raw.phase : "cover",
+        stepIndex,
+        order: isPermutation(raw.order, count) ? raw.order : identityOrder(count),
+        tried,
+        answered: count > 0 && raw.answered === true,
+    };
+}
 
-  const { emitGameStart, emitGameProgress, emitGameComplete } = useGameEmitter();
-  const { speak, stopSpeech } = useSpeech();
+/** Naziv izbora za dnevnik roditelja — bez navodnika iz samog teksta izbora. */
+function quoted(label: string): string {
+    return `„${label.replace(/[„”]/g, "")}”`;
+}
 
-  const currentStep = lvl.steps[Math.min(stepIdx, totalSteps - 1)];
-  const progressPct = Math.round(((stepIdx) / totalSteps) * 100);
+function scrollIntoViewGently(element: HTMLElement | null) {
+    if (!element) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    element.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+}
 
-  // TTS Logic
-  useEffect(() => {
-    if (phase === "playing" && currentStep && !isMonitor) {
-      speak(formatText(currentStep.question), undefined, undefined, gender);
-    }
-  }, [stepIdx, phase, currentStep, isMonitor, speak, gender]);
+// ── Igra ──────────────────────────────────────────────────────────────────────
 
-  // Reset on level change
-  useEffect(() => {
-    stopSpeech();
-    setPhase(isMonitor ? "playing" : "intro");
-    setStepIdx(0);
-    setScore(0);
-    setFeedback(null);
-    setIsLocked(false);
-  }, [level, isMonitor]);
+export default function SocialStoryGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<StoryView>) {
+    const story = storyForLevel(level);
+    const female = isFemale(gender);
+    const t = (text: string) => genderText(text, female);
 
-  // Auto-start
-  useEffect(() => {
-    if (autoStart && !isMonitor && (showMoodBefore || phase === "intro")) {
-      handleMoodBeforeSelect("neutral");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, isMonitor, phase]);
+    const [view, setView] = useState<StoryView>(() => createView(story, shuffledOrder(optionCount(story, 0))));
+    const sync = useGameSync<StoryView>({ childId, gameId: "social-story", level, isMonitor });
+    const { say, stop } = useSpeech(gender);
 
-  // Monitor sync
-  useEffect(() => {
-    if (isMonitor && monitorState) {
-      if (monitorState.phase) setPhase(monitorState.phase);
-      if (monitorState.stepIdx !== undefined) setStepIdx(monitorState.stepIdx);
-      if (monitorState.score !== undefined) setScore(monitorState.score);
-    }
-  }, [isMonitor, monitorState]);
+    const initialView = useRef(view);
+    const started = useRef(false);
+    const finished = useRef(false);
+    const finishTimer = useRef<number | null>(null);
+    const topRef = useRef<HTMLSpanElement>(null);
+    const feedbackRef = useRef<HTMLDivElement>(null);
 
-  const handleMoodBeforeSelect = (mood: string) => {
-    stopSpeech();
-    setMoodBefore(mood);
-    setShowMoodBefore(false);
-    setPhase("playing");
-    emitGameStart(childId, 7, "social-story" as any, { level, stepIdx: 0, score: 0, phase: "playing" });
-  };
+    const shown = isMonitor ? resolveView({ ...createView(story, []), ...monitorState }, story) : view;
+    const step = story.steps[shown.stepIndex];
+    const decision = step.decision;
+    const options = decision ? optionsOf(decision) : [];
+    const isLastStep = shown.stepIndex === story.steps.length - 1;
+    const stepLabel = `Korak ${shown.round}/${shown.totalRounds}`;
 
-  const handleMoodAfterSelect = (mood: string) => {
-    setShowMoodAfter(false);
-    const dur = Math.floor((Date.now() - startTime) / 1000);
-    onComplete(score, dur, moodBefore, mood, { correct: correctCount, total: totalAttempts });
-  };
+    // Izbor čije se objašnjenje vidi: najbolji kad je pronađen, inače poslednji probani
+    const lastTried = shown.tried.length > 0 ? shown.tried[shown.tried.length - 1] : null;
+    const explainedIndex = decision ? (shown.answered ? 0 : lastTried) : null;
+    const feedbackKind: FeedbackKind = shown.answered ? "correct" : lastTried !== null ? "wrong" : null;
+    // Posle dva slabija izbora (ili kad ostane samo jedan izbor) najbolji izbor blago pulsira
+    const hintBest = !shown.answered && shown.tried.length >= Math.min(2, Math.max(options.length - 1, 1));
 
-  const handleAnswer = (opt: { emoji: string; label: string; correct: boolean; feedback: string }) => {
-    if (isLocked) return;
-    const { correct, feedback: feedbackText, label } = opt;
-    stopSpeech();
-    setIsLocked(true);
-    setFeedback(feedbackText);
-    setFeedbackCorrect(correct);
-    setSelectedLabel(label);
-    setTotalAttempts(prev => prev + 1);
-    if (correct) setCorrectCount(prev => prev + 1);
+    const explanationSpeech = (optionIndex: number) =>
+        optionIndex === 0 ? `Tako je! ${t(options[0].why)}` : `${t(options[optionIndex].why)} Probaj drugi izbor.`;
 
-    const newScore = correct ? score + 100 : score;
-    if (correct) setScore(newScore);
+    const pageSpeech =
+        shown.phase === "cover"
+            ? `Priča: ${story.title}. ${t(story.intro)}`
+            : shown.phase === "story"
+              ? [t(step.text), decision ? t(decision.question) : ""].filter(Boolean).join(" ")
+              : "";
 
-    emitGameProgress({
-      childId,
-      activityId: 7,
-      gameType: "social-story" as any,
-      event: "progress",
-      data: { stepIdx, correct, score: newScore, phase: "playing" },
-      timestamp: new Date().toISOString(),
-    });
+    useEffect(() => {
+        if (isMonitor || started.current) return;
+        started.current = true;
+        sync.start(initialView.current);
+    }, [isMonitor, sync]);
 
-    setTimeout(() => {
-      setFeedback(null);
-      setIsLocked(false);
+    // Svaka nova stranica se pročita naglas
+    useEffect(() => {
+        if (isMonitor || !pageSpeech) return;
+        const timer = window.setTimeout(() => void say(pageSpeech), SPEAK_DELAY_MS);
+        return () => window.clearTimeout(timer);
+    }, [isMonitor, pageSpeech, say]);
 
-      if (!correct) return; // wait for correct answer
+    // Na telefonu: nova stranica se čita od vrha, a objašnjenje i „Dalje” ne ostaju ispod ivice ekrana
+    useEffect(() => {
+        if (!isMonitor) scrollIntoViewGently(topRef.current);
+    }, [isMonitor, view.phase, view.stepIndex]);
 
-      const nextStep = stepIdx + 1;
-      if (nextStep >= totalSteps) {
-        // All steps done → win
-        const finalScore = newScore + 200;
-        setScore(finalScore);
-        emitGameComplete({
-          childId,
-          activityId: 7,
-          gameType: "social-story" as any,
-          event: "completed",
-          data: { finalScore, phase: "win" },
-          timestamp: new Date().toISOString(),
-        });
+    useEffect(() => {
+        if (!isMonitor && (view.answered || view.tried.length > 0)) scrollIntoViewGently(feedbackRef.current);
+    }, [isMonitor, view.answered, view.tried.length]);
 
-        if (autoStart) {
-          handleMoodAfterSelect("neutral");
-        } else {
-          setPhase("win");
+    useEffect(
+        () => () => {
+            if (finishTimer.current !== null) window.clearTimeout(finishTimer.current);
+        },
+        []
+    );
+
+    const begin = () => {
+        if (isMonitor || view.phase !== "cover") return;
+        const next: StoryView = { ...view, phase: "story" };
+        playSfx("tap");
+        setView(next);
+        sync.update(next, `Priča „${story.title}” je počela`);
+    };
+
+    const choose = (optionIndex: number) => {
+        if (isMonitor || view.phase !== "story" || !decision || view.answered || view.tried.includes(optionIndex)) return;
+        const label = quoted(t(options[optionIndex].label));
+        void say(explanationSpeech(optionIndex));
+
+        if (optionIndex !== 0) {
+            const next: StoryView = { ...view, tried: [...view.tried, optionIndex], incorrectCount: view.incorrectCount + 1 };
+            playSfx("wrong");
+            setView(next);
+            sync.update(next, `${stepLabel}: izbor ${label} nije najbolji, bira ponovo`);
+            return;
         }
-      } else {
-        setStepIdx(nextStep);
-      }
-    }, 1600);
-  };
 
+        const attempt = view.tried.length + 1;
+        const firstTry = attempt === 1;
+        const next: StoryView = {
+            ...view,
+            answered: true,
+            score: view.score + (firstTry ? POINTS_FIRST_TRY : POINTS_LATER_TRY),
+            correctCount: view.correctCount + (firstTry ? 1 : 0),
+        };
+        playSfx("correct");
+        setView(next);
+        sync.update(next, `${stepLabel}: tačan izbor ${label} iz ${firstTry ? "prvog" : `${attempt}.`} pokušaja`);
+    };
 
-  // ── Mood Before — Premium Immersive Design ────────────────
-  if (!isMonitor && showMoodBefore) {
-    return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
-        {/* Background Decor */}
-        <div className="absolute inset-0 bg-slate-50">
-          <div
-            className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
-            style={{ backgroundImage: "url('/images/socijalneprice.png')" }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-white/80 to-purple-500/10 backdrop-blur-3xl" />
-        </div>
+    const finish = () => {
+        if (finished.current) return;
+        finished.current = true;
+        const total = decisionCount(story);
+        const next: StoryView = { ...view, phase: "done" };
+        playSfx("win");
+        setView(next);
+        sync.update(next, `Priča „${story.title}” je pročitana: ${next.correctCount}/${total} odluka iz prvog pokušaja`);
+        finishTimer.current = window.setTimeout(() => {
+            sync.complete(next);
+            onComplete({ score: next.score, durationSec: sync.elapsedSec(), correct: next.correctCount, total });
+        }, CELEBRATION_MS);
+    };
 
-        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="fixed top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-lg border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-[110]"
-            >
-              <span>⬅</span> Nazad
-            </button>
-          )}
-          <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
-              ✨ Raspoloženje
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
-              Kako si danas?
-            </h2>
-            <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
-          </div>
+    const advance = () => {
+        if (isMonitor || view.phase !== "story" || (decision && !view.answered)) return;
+        stop();
+        if (isLastStep) {
+            finish();
+            return;
+        }
+        const stepIndex = view.stepIndex + 1;
+        const next: StoryView = {
+            ...view,
+            stepIndex,
+            round: stepIndex + 1,
+            order: shuffledOrder(optionCount(story, stepIndex)),
+            tried: [],
+            answered: false,
+        };
+        playSfx("tap");
+        setView(next);
+        sync.update(next, `Korak ${next.round}/${next.totalRounds}: nova stranica priče`);
+    };
 
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-6 w-full max-w-4xl px-4">
-            {[
-              { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
-              { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
-              { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
-              { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
-              { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-            ].map((mood, idx) => (
-              <button
-                key={mood.value}
-                onClick={() => handleMoodBeforeSelect(mood.value)}
-                className="group relative flex flex-col items-center bg-white rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-105 hover:-translate-y-2 cursor-pointer shadow-lg border border-slate-100 hover:border-indigo-100 animate-in zoom-in-95 duration-500"
-                style={{ animationDelay: `${idx * 100}ms` }}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
-                <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
-                  {mood.emoji}
-                </div>
-                <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+    const nextButton = (
+        <PrimaryButton onClick={isMonitor ? undefined : advance} disabled={isMonitor}>
+            {isLastStep ? "Završi priču" : "Dalje"}
+        </PrimaryButton>
     );
-  }
 
-  // ── WIN ─────────────────────────────────────────
-  if (phase === "win" && !showMoodAfter) {
     return (
-      <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 p-8 text-center rounded-[3rem] bg-white/80 backdrop-blur-xl shadow-2xl animate-in zoom-in duration-500">
-        <div className="relative">
-          <div
-            className={`w-36 h-36 md:w-52 md:h-52 rounded-full bg-gradient-to-br ${lvl.color} flex items-center justify-center shadow-2xl`}
-            style={{ fontSize: 90 }}
-          >
-            {lvl.icon}
-          </div>
-          <span className="absolute -top-4 -right-4 text-5xl animate-bounce">🌟</span>
-          <span className="absolute -bottom-4 -left-4 text-4xl animate-bounce">🎉</span>
-        </div>
-        <h2 className="text-4xl md:text-6xl font-black text-slate-900 leading-tight">Bravo! 🏆</h2>
-        <p className="text-xl md:text-2xl text-slate-500 font-semibold mb-8">
-          Sjajno si {gender?.toLowerCase() === 'female' ? 'završila' : 'završio'} priču! <br />
-          <span className="font-black text-slate-800 tracking-tight">{lvl.title}</span>
-        </p>
+        <GameStage>
+            <span ref={topRef} aria-hidden="true" className="pointer-events-none absolute left-0 top-0 h-px w-px scroll-mt-4" />
 
-        <button
-          onClick={() => setShowMoodAfter(true)}
-          className={`px-12 py-5 bg-gradient-to-br ${lvl.color} text-white text-2xl font-black rounded-3xl shadow-xl hover:scale-105 transition-transform`}
-        >
-          Završi 🏁
-        </button>
-      </div>
-    );
-  }
-
-  if (!isMonitor && showMoodAfter) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[450px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl animate-in fade-in duration-500 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-
-        <div className="text-center mb-6 md:mb-12 relative z-10">
-          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-sm font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Sjajno urađeno!</span>
-          <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-2 md:mb-4">Kako se osećaš sada? 🌟</h2>
-          <p className="text-sm sm:text-base md:text-xl text-slate-500 font-medium tracking-wide">
-            Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>
-          </p>
-        </div>
-
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
-          {[
-            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
-            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
-            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
-            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
-            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-          ].map((mood) => (
-            <button
-              key={mood.value}
-              onClick={() => handleMoodAfterSelect(mood.value)}
-              className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-2xl md:rounded-[2.5rem] transition-opacity`} />
-              <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-              <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // ── PLAYING ─────────────────────────────────────
-
-  return (
-    <div className={`w-full flex-1 flex flex-col gap-4 md:gap-6 max-w-3xl mx-auto`}>
-
-      {/* ── Progress bar & HUD ── */}
-      <div className="flex items-center gap-4 bg-white rounded-2xl md:rounded-3xl px-5 py-4 shadow-lg border border-slate-100">
-        <div
-          className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-gradient-to-br ${lvl.color} flex items-center justify-center shrink-0 shadow-md`}
-          style={{ fontSize: 28 }}
-        >
-          {lvl.icon}
-        </div>
-        <div className="flex-1">
-          <div className="flex justify-between items-center mb-1.5">
-            <span className="text-sm font-black text-slate-700 uppercase tracking-wide">{lvl.title}</span>
-            <span className="text-xs font-black text-slate-400">
-              Korak {stepIdx + 1} / {totalSteps}
-            </span>
-          </div>
-          <div className="h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
-            <div
-              className={`h-full bg-gradient-to-r ${lvl.color} transition-all duration-700 ease-out rounded-full`}
-              style={{ width: `${progressPct}%` }}
+            <GameHud
+                unit="Korak"
+                round={shown.round}
+                totalRounds={shown.totalRounds}
+                score={shown.score}
+                onSpeak={
+                    isMonitor || !pageSpeech
+                        ? undefined
+                        : () => void say(explainedIndex !== null ? explanationSpeech(explainedIndex) : pageSpeech)
+                }
             />
-          </div>
-        </div>
-        <div className="shrink-0 text-right">
-          <p className="text-xs font-black text-amber-500 uppercase">Poeni</p>
-          <p className="text-2xl font-black text-slate-800">{score}</p>
-        </div>
-      </div>
 
-      {/* ── Scene card ── */}
-      <div className={`${lvl.bg} rounded-3xl md:rounded-[2.5rem] p-6 md:p-10 flex flex-col items-center gap-4 text-center shadow-inner border-2 border-white`}>
-        {/* Big scene emoji */}
-        <div className="text-7xl md:text-9xl leading-none animate-in zoom-in duration-400">
-          {currentStep.scene}
-        </div>
-        {/* Question */}
-        <p className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-800 leading-tight max-w-lg">
-          {formatText(currentStep.question)}
-        </p>
-      </div>
+            {shown.phase === "cover" && (
+                <section
+                    aria-label={`Priča: ${story.title}`}
+                    className="mx-auto w-full max-w-2xl animate-pop overflow-hidden rounded-card border border-line bg-surface shadow-lift"
+                >
+                    <div aria-hidden="true" className={cn("h-2 bg-linear-to-r", ACCENT.gradient)} />
+                    <Scene emojis={story.cover} tone={story.tone} size="cover" />
+                    <div className="flex flex-col items-center gap-3 px-4 py-5 text-center sm:gap-4 sm:px-8 sm:py-8">
+                        <p className={cn("rounded-full border px-3 py-1 text-sm font-extrabold", ACCENT.soft, ACCENT.text, ACCENT.border)}>
+                            Priča u {story.steps.length} koraka
+                        </p>
+                        <h2 className="text-3xl font-extrabold leading-tight text-ink sm:text-5xl">{story.title}</h2>
+                        <p className="max-w-md text-lg font-bold leading-snug text-ink-soft sm:text-xl">{t(story.intro)}</p>
+                        <PrimaryButton onClick={isMonitor ? undefined : begin} disabled={isMonitor} className="mt-2">
+                            Počni priču
+                        </PrimaryButton>
+                    </div>
+                </section>
+            )}
 
-      {/* ── Feedback banner ── */}
-      {feedback && (
-        <div
-          className={`rounded-2xl px-6 py-4 text-center text-lg md:text-xl font-black border-4 animate-in slide-in-from-top-2 duration-300
-            ${feedbackCorrect
-              ? "bg-green-50 border-green-300 text-green-700"
-              : "bg-red-50 border-red-300 text-red-700"
-            }`}
+            {shown.phase === "story" && (
+                <div
+                    key={`${level}-${shown.stepIndex}`}
+                    className={cn("grid animate-fade-up gap-4 sm:gap-5", decision ? "lg:grid-cols-2 lg:items-start" : "mx-auto w-full max-w-2xl")}
+                >
+                    <article className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+                        <Scene emojis={step.scene} tone={story.tone} label={`${story.icon} ${story.title}`} />
+                        <p className="px-4 py-4 text-xl font-bold leading-snug text-ink sm:px-6 sm:py-5 sm:text-2xl sm:leading-relaxed">
+                            {t(step.text)}
+                        </p>
+                        {!decision && <div className="flex justify-center px-4 pb-5 sm:px-6 sm:pb-6">{nextButton}</div>}
+                    </article>
+
+                    {decision && (
+                        <section aria-label="Pitanje i izbori" className="flex min-w-0 flex-col gap-3">
+                            <GamePrompt title={t(decision.question)} />
+
+                            <ul className="grid gap-3">
+                                {shown.order.map((optionIndex) => {
+                                    const option = options[optionIndex];
+                                    const label = t(option.label);
+                                    const isBest = optionIndex === 0;
+                                    const wasTried = shown.tried.includes(optionIndex);
+                                    const state: ChoiceState = shown.answered ? (isBest ? "correct" : "dimmed") : wasTried ? "dimmed" : "idle";
+                                    const locked = isMonitor || shown.answered || wasTried;
+                                    const status = state === "correct" ? ", najbolji izbor" : wasTried ? ", već probano" : "";
+                                    return (
+                                        <li key={optionIndex}>
+                                            <ChoiceCard
+                                                state={state}
+                                                disabled={locked}
+                                                onClick={locked ? undefined : () => choose(optionIndex)}
+                                                aria-label={`${label}${status}`}
+                                                className={cn(
+                                                    !shown.answered && optionIndex === lastTried && "animate-shake",
+                                                    hintBest && isBest && "animate-soft-pulse outline-2 outline-offset-2 outline-brand-300"
+                                                )}
+                                            >
+                                                <span className="flex w-full items-center gap-3 text-left sm:gap-4">
+                                                    <span
+                                                        aria-hidden="true"
+                                                        className="grid h-12 min-w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 px-1.5 text-3xl leading-none sm:h-14 sm:min-w-14 sm:text-4xl"
+                                                    >
+                                                        {option.emoji}
+                                                    </span>
+                                                    <span className="min-w-0 flex-1 text-base leading-snug sm:text-lg">{label}</span>
+                                                </span>
+                                            </ChoiceCard>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+
+                            <div ref={feedbackRef} className="flex scroll-mb-4 flex-col gap-2">
+                                <Feedback kind={feedbackKind} correctText="Tako je!" wrongText="Probajmo drugačije" />
+                                <div aria-live="polite">
+                                    {explainedIndex !== null && (
+                                        <div
+                                            key={explainedIndex}
+                                            className={cn(
+                                                "animate-fade-up rounded-card border-2 p-4 sm:p-5",
+                                                shown.answered ? "border-emerald-200 bg-emerald-50" : "border-sun-200 bg-sun-50"
+                                            )}
+                                        >
+                                            {!shown.answered && (
+                                                <p className="mb-1 text-sm font-extrabold text-ink-soft sm:text-base">
+                                                    <span aria-hidden="true">{options[explainedIndex].emoji} </span>
+                                                    {t(options[explainedIndex].label)}
+                                                </p>
+                                            )}
+                                            <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{t(options[explainedIndex].why)}</p>
+                                            {shown.answered && <div className="mt-4 flex justify-end">{nextButton}</div>}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </section>
+                    )}
+                </div>
+            )}
+
+            {shown.phase === "done" && (
+                <div className="grid flex-1 place-items-center">
+                    <div role="status" className="w-full max-w-md animate-pop rounded-card border border-line bg-surface px-6 py-8 text-center shadow-lift">
+                        <p aria-hidden="true" className="text-7xl leading-none">
+                            🎉
+                        </p>
+                        <p className="mt-4 font-display text-3xl font-extrabold text-ink sm:text-4xl">Kraj priče!</p>
+                        <p className="mt-2 text-lg font-bold text-ink-soft sm:text-xl">{t("Bravo! {Pročitao|Pročitala} si celu priču.")}</p>
+                    </div>
+                </div>
+            )}
+        </GameStage>
+    );
+}
+
+// ── Lokalni delovi (nema ih u kitu) ───────────────────────────────────────────
+
+const SCENE_TONES: Record<SceneTone, { sky: string; ground: string }> = {
+    sun: { sky: "from-sun-50 to-sun-100", ground: "bg-sun-200" },
+    lilac: { sky: "from-brand-50 to-brand-100", ground: "bg-brand-200" },
+    aqua: { sky: "from-cyan-50 to-teal-100", ground: "bg-teal-200" },
+    leaf: { sky: "from-sky-50 to-emerald-100", ground: "bg-emerald-200" },
+    rose: { sky: "from-rose-50 to-orange-100", ground: "bg-rose-200" },
+    sky: { sky: "from-sky-50 to-sky-100", ground: "bg-sky-200" },
+    snow: { sky: "from-sky-100 to-slate-50", ground: "bg-white" },
+};
+
+const SCENE_SIZES = {
+    page: { box: "h-32 sm:h-44 lg:h-56", main: "text-7xl sm:text-8xl", side: "text-5xl sm:text-6xl" },
+    cover: { box: "h-40 sm:h-56", main: "text-7xl sm:text-8xl", side: "text-5xl sm:text-6xl" },
+};
+
+interface SceneProps {
+    /** Prvi emodži je glavni; uz dva sporedna glavni stoji u sredini */
+    emojis: readonly string[];
+    tone: SceneTone;
+    size?: keyof typeof SCENE_SIZES;
+    /** Naziv priče u uglu slike */
+    label?: string;
+}
+
+/** Slika jedne stranice: nebo, tlo i nekoliko velikih emodžija, kao ilustracija u slikovnici. */
+function Scene({ emojis, tone, size = "page", label }: SceneProps) {
+    const [main, ...sides] = emojis;
+    const figures = sides.length >= 2 ? [sides[0], main, sides[1]] : [main, ...sides];
+    const mainAt = sides.length >= 2 ? 1 : 0;
+    const colors = SCENE_TONES[tone];
+    const sizes = SCENE_SIZES[size];
+
+    return (
+        <div className={cn("relative flex items-end justify-center gap-4 overflow-hidden bg-linear-to-b px-4 pb-6 sm:gap-6 sm:pb-8", sizes.box, colors.sky)}>
+            <span aria-hidden="true" className={cn("absolute -inset-x-10 bottom-0 h-10 rounded-t-[100%] sm:h-14", colors.ground)} />
+            {figures.map((emoji, i) => (
+                <span key={i} aria-hidden="true" className={cn("relative select-none leading-none drop-shadow-sm", i === mainAt ? sizes.main : sizes.side)}>
+                    {emoji}
+                </span>
+            ))}
+            {label && (
+                <p className={cn("absolute left-3 top-3 rounded-full border bg-surface px-3 py-1 text-xs font-extrabold sm:text-sm", ACCENT.text, ACCENT.border)}>
+                    {label}
+                </p>
+            )}
+        </div>
+    );
+}
+
+interface PrimaryButtonProps {
+    children: ReactNode;
+    onClick?: () => void;
+    disabled?: boolean;
+    className?: string;
+}
+
+/** Veliko dugme za sledeći korak („Počni priču”, „Dalje”). */
+function PrimaryButton({ children, onClick, disabled, className }: PrimaryButtonProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            className={cn(
+                "inline-flex min-h-16 w-full items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] border-brand-700 bg-brand-500 px-8 font-display text-xl font-extrabold text-white shadow-soft transition-[transform,background-color,border-width] enabled:hover:bg-brand-600 enabled:active:translate-y-[3px] enabled:active:border-b-2 disabled:cursor-default sm:w-auto sm:min-w-56 sm:text-2xl",
+                className
+            )}
         >
-          {feedbackCorrect ? "✅ " : "❌ "}{feedback}
-        </div>
-      )}
-
-      {/* ── Answer options ── */}
-      <div className={`grid gap-3 md:gap-4 ${currentStep.options.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-3"}`}>
-        {currentStep.options.map((opt, i) => (
-          <button
-            key={i}
-            onClick={() => handleAnswer(opt)}
-            disabled={isLocked}
-            className={`flex items-center sm:flex-col justify-start sm:justify-center gap-4 sm:gap-2 p-4 md:p-6 rounded-2xl md:rounded-3xl border-4 font-black transition-all duration-200
-              ${!feedbackCorrect && selectedLabel === opt.label
-                ? "border-rose-400 bg-rose-50 animate-shake"
-                : isLocked
-                  ? "opacity-60 cursor-not-allowed border-slate-100 bg-white"
-                  : "bg-white border-slate-100 hover:border-slate-300 hover:shadow-xl hover:-translate-y-1 active:scale-95 cursor-pointer shadow-md"
-              }`}
-          >
-            <span className="text-4xl sm:text-6xl leading-none shrink-0">{opt.emoji}</span>
-            <span className="text-sm md:text-base text-slate-700 text-left sm:text-center leading-tight font-black">
-              {opt.label}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      {/* Step dot indicators */}
-      <div className="flex justify-center gap-2 pb-2">
-        {lvl.steps.map((_, i) => (
-          <div
-            key={i}
-            className={`h-2.5 rounded-full transition-all duration-500
-              ${i < stepIdx
-                ? `bg-gradient-to-r ${lvl.color} w-6`
-                : i === stepIdx
-                  ? `bg-gradient-to-r ${lvl.color} w-8`
-                  : "bg-slate-200 w-2.5"
-              }`}
-          />
-        ))}
-      </div>
-    </div>
-  );
+            {children}
+            <svg className="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+                <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+        </button>
+    );
 }

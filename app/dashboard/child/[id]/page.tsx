@@ -1,75 +1,70 @@
 // app/dashboard/child/[id]/page.tsx
-import ExitButton from "@/app/components/ExitButton";
-import { verifyToken } from "@/lib/auth";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AuthError, requireChildAccess } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
+import { buttonClasses } from "@/app/components/ui/Button";
 import ChildPageClient from "./ChildPageClient";
 
-export interface Child {
+export const metadata: Metadata = { title: "Igre" };
+
+export interface ChildProfile {
     id: number;
     first_name: string;
     last_name: string;
-    date_of_birth: string;
-    gender: string;
-    notes?: string;
-    streak: number;
-    experience_points: number;
+    gender: string | null;
+    streak: number | null;
+    experience_points: number | null;
+}
+
+function Problem({ title, text }: { title: string; text: string }) {
+    return (
+        <main className="grid min-h-dvh place-items-center bg-canvas p-4">
+            <div className="w-full max-w-md rounded-card border border-line bg-surface p-8 text-center shadow-soft">
+                <p className="text-5xl" aria-hidden="true">🧭</p>
+                <h1 className="mt-4 text-2xl font-extrabold text-ink">{title}</h1>
+                <p className="mt-2 text-base font-semibold text-ink-soft">{text}</p>
+                <Link href="/login" className={buttonClasses({ size: "lg", className: "mt-6" })}>
+                    Nazad na prijavu
+                </Link>
+            </div>
+        </main>
+    );
 }
 
 export default async function ChildPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const childId = Number(id);
 
-    let child: Child | null = null;
-
-    // Try 1: Parent/teacher access via JWT — verify ownership
+    // Pristup ima samo roditelj ovog deteta ili dete prijavljeno svojim kodom
+    let viewer: "child" | "parent";
     try {
-        const user = await verifyToken();
-        const { data: accessRows } = await supabaseAdmin
-            .from('user_children')
-            .select('child:children(*)')
-            .eq('user_id', user.id)
-            .eq('child_id', childId)
-            .limit(1)
-            .maybeSingle();
-
-        if (accessRows?.child) {
-            child = (Array.isArray(accessRows.child) ? accessRows.child[0] : accessRows.child) as Child;
+        const session = await requireChildAccess(childId);
+        viewer = session.childId ? "child" : "parent";
+    } catch (error) {
+        if (error instanceof AuthError && error.status === 401) redirect("/login");
+        if (error instanceof AuthError) {
+            return <Problem title="Nemaš pristup" text="Ovaj profil ne postoji ili ne pripada tvom nalogu." />;
         }
+        return <Problem title="Nešto nije u redu" text="Podaci trenutno nisu dostupni. Pokušaj ponovo malo kasnije." />;
+    }
+
+    let child: ChildProfile | null = null;
+    try {
+        const { data } = await supabaseAdmin
+            .from("children")
+            .select("id, first_name, last_name, gender, streak, experience_points")
+            .eq("id", childId)
+            .maybeSingle();
+        child = data as ChildProfile | null;
     } catch {
-        // No valid JWT — this might be a child self-login via PIN
-    }
-
-    // Try 2: Child self-login — just fetch the child directly
-    // (The child authenticated via PIN on /login and was redirected here)
-    if (!child) {
-        const { data: childRow } = await supabaseAdmin
-            .from('children')
-            .select('*')
-            .eq('id', childId)
-            .limit(1)
-            .maybeSingle();
-
-        if (childRow) {
-            child = childRow as Child;
-        }
+        child = null;
     }
 
     if (!child) {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center p-4">
-                <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full text-center">
-                    <div className="text-6xl mb-4">⚠️</div>
-                    <h1 className="text-2xl font-bold text-red-600 mb-4">
-                        Dete nije pronađeno
-                    </h1>
-                    <p className="text-gray-600 mb-6">
-                        Nemate pristup ovom detetu ili ono ne postoji.
-                    </p>
-                    <ExitButton target="/login" />
-                </div>
-            </div>
-        );
+        return <Problem title="Profil nije pronađen" text="Ovaj profil ne postoji ili je obrisan." />;
     }
 
-    return <ChildPageClient child={child} childId={childId} />;
+    return <ChildPageClient child={child} viewer={viewer} />;
 }

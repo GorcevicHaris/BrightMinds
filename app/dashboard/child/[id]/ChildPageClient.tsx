@@ -1,296 +1,207 @@
 // app/dashboard/child/[id]/ChildPageClient.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Gamepad2, LogOut, Trophy } from "lucide-react";
 import GameContainer from "./GameContainer";
 import ProgressDashboard from "@/app/components/ProgressDashboard";
-import { Child } from "./page";
+import { Button, buttonClasses } from "@/app/components/ui/Button";
+import { Modal } from "@/app/components/ui/Modal";
+import { SoundToggle } from "@/app/components/ui/SoundToggle";
+import { cn } from "@/lib/cn";
+import { speak, stopSpeaking } from "@/lib/speech";
+import type { ChildProfile } from "./page";
 
-// Dynamic import – Three.js ne radi na serveru
+// Three.js radi samo u pregledaču
 const Professor3D = dynamic(() => import("@/app/components/Professor3D"), { ssr: false });
-import { triggerAvatarLogout } from "@/app/components/Professor3D";
+
+type View = "games" | "progress";
 
 interface Props {
-    child: Child;
-    childId: number;
+    child: ChildProfile;
+    /** Ko gleda stranicu: dete prijavljeno kodom ili roditelj iz svog panela */
+    viewer: "child" | "parent";
 }
 
-export default function ChildPageClient({ child, childId }: Props) {
-    const [activeView, setActiveView] = useState<"game" | "stats">("game");
-    const [showExitConfirm, setShowExitConfirm] = useState(false);
-    const [isLoggingOut, setIsLoggingOut] = useState(false);
+const TABS: { id: View; label: string; Icon: typeof Gamepad2 }[] = [
+    { id: "games", label: "Igre", Icon: Gamepad2 },
+    { id: "progress", label: "Napredak", Icon: Trophy },
+];
 
-    const handleLogoutConfirmed = async () => {
-        try {
-            await fetch("/api/auth/logout", { method: "POST" });
-            if (typeof window !== "undefined") {
-                sessionStorage.removeItem("childLogin");
-                localStorage.removeItem("user");
-                sessionStorage.clear();
-            }
-            window.location.href = "/login";
-        } catch {
-            window.location.href = "/login";
-        }
-    };
-
-    const handleLogoutClick = () => {
-        setShowExitConfirm(true);
-    };
-
-    const handleConfirmExit = () => {
-        setShowExitConfirm(false);
-        setIsLoggingOut(true);
-        triggerAvatarLogout();
-    };
-
-    // Prevent body scroll when confirm modal is open
-    useEffect(() => {
-        if (showExitConfirm) {
-            document.body.style.overflow = "hidden";
-        } else {
-            document.body.style.overflow = "";
-        }
-        return () => { document.body.style.overflow = ""; };
-    }, [showExitConfirm]);
+export default function ChildPageClient({ child, viewer }: Props) {
+    const router = useRouter();
+    const [view, setView] = useState<View>("games");
+    const [points, setPoints] = useState(child.experience_points ?? 0);
+    const [confirmExit, setConfirmExit] = useState(false);
+    const [isLeaving, setIsLeaving] = useState(false);
+    const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const firstName = child.first_name || "Druže";
-    const initials = `${child.first_name?.charAt(0) || ""}${child.last_name?.charAt(0) || ""}`;
+    const gender = child.gender ?? undefined;
+    const isFemale = gender?.toLowerCase() === "female";
+    const streak = child.streak ?? 0;
+    const initials = `${child.first_name?.charAt(0) ?? ""}${child.last_name?.charAt(0) ?? ""}`.toUpperCase();
+
+    // Pozdrav pri ulasku
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            void speak(`Zdravo ${firstName}! ${isFemale ? "Dobro došla" : "Dobro došao"} nazad!`, { gender });
+        }, 1200);
+        return () => {
+            clearTimeout(timer);
+            stopSpeaking();
+        };
+    }, [firstName, gender, isFemale]);
+
+    useEffect(() => () => {
+        if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    }, []);
+
+    const logout = useCallback(async () => {
+        try {
+            await fetch("/api/auth/logout", { method: "POST" });
+        } finally {
+            router.replace("/login");
+        }
+    }, [router]);
+
+    const handleConfirmExit = () => {
+        setConfirmExit(false);
+        setIsLeaving(true);
+        let done = false;
+        const finish = () => {
+            if (done) return;
+            done = true;
+            void logout();
+        };
+        // Ako govor potraje ili ne uspe, odjava se svakako dešava
+        leaveTimer.current = setTimeout(finish, 4000);
+        void speak(`Vidimo se uskoro! ${isFemale ? "Bila si odlična" : "Bio si odličan"} danas!`, { gender, onEnd: finish });
+    };
+
+    const exitControl =
+        viewer === "parent" ? (
+            <Link href="/dashboard" className={buttonClasses({ variant: "secondary", size: "md" })}>
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                <span className="hidden sm:inline">Roditeljski panel</span>
+                <span className="sm:hidden">Nazad</span>
+            </Link>
+        ) : (
+            <Button variant="secondary" onClick={() => setConfirmExit(true)} disabled={isLeaving}>
+                <LogOut className="h-5 w-5" aria-hidden="true" />
+                <span className="hidden sm:inline">{isLeaving ? "Odjavljujem…" : "Izađi"}</span>
+                <span className="sr-only sm:hidden">Izađi</span>
+            </Button>
+        );
 
     return (
-        <div className="min-h-screen font-sans" style={{ background: "linear-gradient(160deg, #f0f4ff 0%, #fdf4ff 50%, #f0fdf4 100%)" }}>
-
-            {/* ── 3D Professor Avatar ─────────────────────────────────────── */}
-            <Professor3D childName={firstName} gender={child.gender} onLogoutConfirmed={handleLogoutConfirmed} />
-
-            {/* ── TOP HEADER ────────────────────────────────────────────
-                  Keep it VERY simple for kids — just name + exit + nav  */}
-            <header className="sticky top-0 z-[5000] bg-white/80 backdrop-blur-xl border-b-2 border-purple-100/60 shadow-sm">
-                <div className="max-w-none mx-auto px-6 sm:px-12 h-16 sm:h-20 flex items-center justify-between gap-3">
-
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        <div className="relative shrink-0">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-white text-sm sm:text-base font-black shadow-lg shadow-violet-200 uppercase shrink-0">
-                                {initials}
-                            </div>
-                            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 sm:w-3.5 sm:h-3.5 bg-emerald-400 rounded-full border-2 border-white shadow-sm" />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="text-base sm:text-xl font-black text-slate-900 leading-none truncate">
-                                    {firstName}
-                                </span>
-                                {child.streak > 0 && (
-                                    <span className="inline-flex items-center gap-0.5 bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-black border border-orange-200 shrink-0">
-                                        🔥 {child.streak}
-                                    </span>
-                                )}
-                            </div>
-                            <p className="text-[10px] sm:text-xs text-purple-400 font-black uppercase tracking-wider leading-none mt-0.5">
-                                ⭐ {child.experience_points || 0} poena
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Right: Nav + Exit */}
-                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-                        {/* Navigation pills */}
-                        <div className="flex items-center bg-slate-100 rounded-xl sm:rounded-2xl p-1 gap-1">
-                            <button
-                                onClick={() => setActiveView("game")}
-                                aria-label="Igre"
-                                className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-xs sm:text-sm transition-all duration-300 ${activeView === "game"
-                                    ? "bg-white text-violet-600 shadow-md shadow-violet-100"
-                                    : "text-slate-500 hover:text-slate-700"
-                                    }`}
-                            >
-                                <span className="text-base sm:text-lg">🎮</span>
-                                <span className="hidden sm:inline">Igre</span>
-                            </button>
-                            <button
-                                onClick={() => setActiveView("stats")}
-                                aria-label="Napredak"
-                                className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-black text-xs sm:text-sm transition-all duration-300 ${activeView === "stats"
-                                    ? "bg-white text-violet-600 shadow-md shadow-violet-100"
-                                    : "text-slate-500 hover:text-slate-700"
-                                    }`}
-                            >
-                                <span className="text-base sm:text-lg">⭐</span>
-                                <span className="hidden sm:inline">Napredak</span>
-                            </button>
-                        </div>
-
-                        {/* Exit button — big, friendly */}
-                        <button
-                            onClick={handleLogoutClick}
-                            disabled={isLoggingOut}
-                            aria-label="Izađi"
-                            className={`flex items-center gap-1.5 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm transition-all shadow-lg border-b-4 ${isLoggingOut
-                                ? "bg-rose-400 cursor-wait opacity-80 border-rose-500 shadow-none scale-95"
-                                : "bg-rose-500 hover:bg-rose-600 active:scale-95 text-white shadow-rose-200 border-rose-700"
-                                }`}
-                        >
-                            {isLoggingOut ? (
-                                <>
-                                    <span className="animate-spin text-base">⏳</span>
-                                    <span className="hidden sm:inline">Odjavljujem...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="text-base">👋</span>
-                                    <span className="hidden sm:inline">Izađi</span>
-                                </>
+        <div className="min-h-dvh bg-canvas pb-24 md:pb-10">
+            <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
+                <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:h-18 sm:px-6 lg:px-8">
+                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-base font-extrabold text-white" aria-hidden="true">
+                        {initials || "🙂"}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate font-display text-lg font-extrabold leading-tight text-ink sm:text-xl">{firstName}</p>
+                        <p className="flex items-center gap-3 text-xs font-extrabold sm:text-sm">
+                            <span className="text-sun-700" aria-label={`${points} poena`}>⭐ {points}</span>
+                            {streak > 0 && (
+                                <span className="text-orange-600" aria-label={`${streak} dana zaredom`}>🔥 {streak}</span>
                             )}
-                        </button>
+                        </p>
                     </div>
+
+                    {/* Navigacija — tablet i desktop */}
+                    <nav className="hidden items-center gap-1 rounded-2xl bg-canvas p-1 md:flex" aria-label="Glavna navigacija">
+                        {TABS.map(({ id, label, Icon }) => (
+                            <button
+                                key={id}
+                                type="button"
+                                onClick={() => setView(id)}
+                                aria-current={view === id ? "page" : undefined}
+                                className={cn(
+                                    "inline-flex min-h-11 items-center gap-2 rounded-xl px-5 text-sm font-extrabold transition-colors",
+                                    view === id ? "bg-surface text-brand-700 shadow-soft" : "text-ink-soft hover:text-ink"
+                                )}
+                            >
+                                <Icon className="h-5 w-5" aria-hidden="true" />
+                                {label}
+                            </button>
+                        ))}
+                    </nav>
+
+                    <SoundToggle />
+                    {exitControl}
                 </div>
             </header>
 
-            {/* ── MAIN CONTENT ──────────────────────────────────────────── */}
-            <main className="max-w-none mx-auto px-4 sm:px-8 md:px-12 py-4 sm:py-10">
+            <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+                {view === "games" ? (
+                    <div className="space-y-6 sm:space-y-8">
+                        {/* Pozdrav + učitelj */}
+                        <section className="relative overflow-hidden rounded-card bg-brand-600 text-white shadow-soft">
+                            <div className="absolute -right-10 -top-16 h-56 w-56 rounded-full bg-brand-500" aria-hidden="true" />
+                            <div className="absolute -bottom-20 right-24 h-48 w-48 rounded-full bg-brand-700" aria-hidden="true" />
+                            <div className="relative flex min-h-36 items-center sm:min-h-44">
+                                <div className="flex-1 p-5 pr-2 sm:p-8">
+                                    <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl">Zdravo, {firstName}!</h1>
+                                    <p className="mt-1 text-base font-semibold text-brand-100 sm:text-lg">Šta ćemo danas da igramo?</p>
+                                    {streak > 1 && (
+                                        <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-sm font-extrabold">
+                                            🔥 {streak} dana zaredom
+                                        </p>
+                                    )}
+                                </div>
+                                <Professor3D gender={gender} className="h-36 w-32 shrink-0 self-end sm:h-44 sm:w-48" />
+                            </div>
+                        </section>
 
-                {activeView === "game" ? (
-                    /* ── GAME VIEW ─────────────────────────────────────────── */
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {/* Game container */}
-                        <GameContainer childId={childId} childName={firstName} gender={child.gender} />
+                        <GameContainer childId={child.id} childName={firstName} gender={gender} onExperienceChange={setPoints} />
                     </div>
-
                 ) : (
-                    /* ── STATS VIEW ────────────────────────────────────────── */
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-5 sm:space-y-8">
-
-                        {/* Stats header banner */}
-                        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-r from-amber-400 via-yellow-500 to-orange-400 p-5 sm:p-8 shadow-2xl shadow-amber-200">
-                            <div className="absolute top-0 right-0 w-32 h-32 sm:w-48 sm:h-48 bg-white/10 rounded-full -mr-10 -mt-10 blur-xl" />
-                            <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-36 sm:h-36 bg-white/10 rounded-full -ml-8 -mb-8 blur-xl" />
-
-                            <div className="relative z-10 flex items-center justify-between gap-4">
-                                <div>
-                                    <p className="text-white/70 text-xs sm:text-sm font-bold uppercase tracking-widest mb-1">Tvoji rezultati ✨</p>
-                                    <h1 className="text-2xl sm:text-4xl font-black text-white leading-tight mb-1 sm:mb-2">
-                                        Bravo, {firstName}! 🏆
-                                    </h1>
-                                    <p className="text-white/80 text-sm sm:text-base font-semibold">
-                                        Pogledaj koliko si naučio/la
-                                    </p>
-                                </div>
-                                <div className="hidden sm:block text-6xl sm:text-7xl animate-bounce shrink-0" style={{ animationDuration: "2.5s" }}>
-                                    🏆
-                                </div>
-                            </div>
-
-                            {/* Quick stats pills */}
-                            <div className="relative z-10 flex flex-wrap gap-2 sm:gap-3 mt-4 sm:mt-6">
-                                <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1.5 rounded-full">
-                                    <span className="text-sm">⭐</span>
-                                    <span className="text-white font-black text-xs sm:text-sm">{child.experience_points || 0} poena</span>
-                                </div>
-                                {child.streak > 0 && (
-                                    <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-sm border border-white/30 px-3 py-1.5 rounded-full">
-                                        <span className="text-sm">🔥</span>
-                                        <span className="text-white font-black text-xs sm:text-sm">{child.streak} dana zaredom</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Progress component */}
-                        <ProgressDashboard childId={childId} childName={firstName} />
+                    <div className="space-y-5 sm:space-y-6">
+                        <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">Tvoj napredak</h1>
+                        <ProgressDashboard childId={child.id} childName={firstName} audience={viewer} />
                     </div>
                 )}
             </main>
 
-            {/* ── BOTTOM NAV BAR (mobile only) ──────────────────────────
-                Large tap targets, very clear icons — critical for autism UX */}
-            <div className="fixed bottom-0 left-0 right-0 z-[5000] md:hidden bg-white/95 backdrop-blur-xl border-t-2 border-slate-100 shadow-2xl">
-                <div className="flex items-stretch max-w-md mx-auto">
-                    <button
-                        onClick={() => setActiveView("game")}
-                        className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 sm:py-4 transition-all duration-200 ${activeView === "game"
-                            ? "text-violet-600"
-                            : "text-slate-400"
-                            }`}
-                    >
-                        <span className={`text-2xl sm:text-3xl transition-transform duration-200 ${activeView === "game" ? "scale-110" : "scale-100"}`}>🎮</span>
-                        <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${activeView === "game" ? "text-violet-600" : "text-slate-400"}`}>Igre</span>
-                        {activeView === "game" && (
-                            <div className="absolute bottom-0 h-1 w-12 bg-violet-500 rounded-t-full" />
-                        )}
-                    </button>
-
-                    <button
-                        onClick={() => setActiveView("stats")}
-                        className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 sm:py-4 transition-all duration-200 ${activeView === "stats"
-                            ? "text-amber-500"
-                            : "text-slate-400"
-                            }`}
-                    >
-                        <span className={`text-2xl sm:text-3xl transition-transform duration-200 ${activeView === "stats" ? "scale-110" : "scale-100"}`}>🏆</span>
-                        <span className={`text-[10px] sm:text-xs font-black uppercase tracking-wider ${activeView === "stats" ? "text-amber-500" : "text-slate-400"}`}>Napredak</span>
-                        {activeView === "stats" && (
-                            <div className="absolute bottom-0 h-1 w-12 bg-amber-500 rounded-t-full" />
-                        )}
-                    </button>
-
-                    <button
-                        onClick={handleLogoutClick}
-                        className="flex-1 flex flex-col items-center justify-center gap-1 py-3 sm:py-4 text-rose-400 active:scale-95 transition-all duration-200"
-                    >
-                        <span className="text-2xl sm:text-3xl">👋</span>
-                        <span className="text-[10px] sm:text-xs font-black uppercase tracking-wider text-rose-400">Izađi</span>
-                    </button>
+            {/* Donja navigacija — telefon */}
+            <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden" aria-label="Glavna navigacija">
+                <div className="mx-auto grid max-w-md grid-cols-2">
+                    {TABS.map(({ id, label, Icon }) => (
+                        <button
+                            key={id}
+                            type="button"
+                            onClick={() => setView(id)}
+                            aria-current={view === id ? "page" : undefined}
+                            className={cn(
+                                "relative flex min-h-16 flex-col items-center justify-center gap-0.5 text-xs font-extrabold transition-colors",
+                                view === id ? "text-brand-700" : "text-ink-faint"
+                            )}
+                        >
+                            {view === id && <span className="absolute inset-x-8 top-0 h-1 rounded-b-full bg-brand-600" aria-hidden="true" />}
+                            <Icon className="h-6 w-6" aria-hidden="true" />
+                            {label}
+                        </button>
+                    ))}
                 </div>
-            </div>
+            </nav>
 
-            {/* Bottom padding for mobile nav */}
-            <div className="h-16 sm:h-20 md:h-6" />
-
-            {/* ── EXIT CONFIRM MODAL ─────────────────────────────────────
-                Very big, clear, friendly — no complex text for young kids */}
-            {showExitConfirm && (
-                <div
-                    className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
-                    style={{ background: "rgba(15,10,40,0.75)", backdropFilter: "blur(12px)" }}
-                    onClick={() => setShowExitConfirm(false)}
-                >
-                    <div
-                        className="bg-white rounded-[2rem] sm:rounded-[3rem] p-7 sm:p-12 max-w-sm sm:max-w-md w-full text-center shadow-2xl border-4 border-violet-100 animate-in zoom-in-90 duration-300"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        {/* Big friendly robot/avatar */}
-                        <div className="text-7xl sm:text-9xl mb-4 sm:mb-6 animate-bounce" style={{ animationDuration: "1.5s" }}>👋</div>
-
-                        <h2 className="text-2xl sm:text-4xl font-black text-slate-900 mb-2 sm:mb-3 tracking-tight">
-                            Igraš se još?
-                        </h2>
-                        <p className="text-slate-500 text-base sm:text-lg font-medium mb-6 sm:mb-10 leading-relaxed">
-                            Da li zaista želiš da izađeš iz igre?
-                        </p>
-
-                        <div className="flex flex-col gap-3 sm:gap-4">
-                            {/* Stay button — green, primary */}
-                            <button
-                                onClick={() => setShowExitConfirm(false)}
-                                className="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white py-4 sm:py-5 rounded-2xl sm:rounded-3xl font-black text-lg sm:text-2xl transition-all shadow-xl shadow-emerald-200 border-b-4 border-emerald-700 flex items-center justify-center gap-3"
-                            >
-                                <span className="text-2xl sm:text-3xl">🎮</span>
-                                <span>Nastavi igru!</span>
-                            </button>
-
-                            {/* Exit button — red */}
-                            <button
-                                onClick={handleConfirmExit}
-                                className="w-full bg-rose-100 hover:bg-rose-200 active:scale-95 text-rose-600 py-3 sm:py-4 rounded-2xl sm:rounded-3xl font-black text-base sm:text-xl transition-all border-2 border-rose-200 flex items-center justify-center gap-3"
-                            >
-                                <span className="text-xl sm:text-2xl">👋</span>
-                                <span>Da, izlazim</span>
-                            </button>
-                        </div>
-                    </div>
+            <Modal open={confirmExit} onClose={() => setConfirmExit(false)} size="sm" title="Završavaš za danas?">
+                <p className="text-base font-semibold text-ink-soft">Možeš da nastaviš igru ili da izađeš.</p>
+                <div className="mt-5 flex flex-col gap-3">
+                    <Button chunky size="xl" variant="success" block onClick={() => setConfirmExit(false)}>
+                        Nastavi igru
+                    </Button>
+                    <Button size="lg" variant="secondary" block onClick={handleConfirmExit}>
+                        Da, izlazim
+                    </Button>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 }

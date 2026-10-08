@@ -1,15 +1,28 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Tree-shake Three.js and only import what's used
   transpilePackages: ["three"],
-  // Reduce bundle size by externalizing large server-only packages
-  serverExternalPackages: [],
-  // Production-only: remove all console.* calls
+  images: {
+    // Slike u /public su velike (1–3 MB PNG); služimo ih smanjene i u modernom formatu
+    formats: ["image/avif", "image/webp"],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+  },
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production"
-      ? { exclude: ["error", "warn"] }
-      : false,
+    // U produkciji uklanjamo console.log; greške i upozorenja ostaju
+    removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
   },
 };
 
