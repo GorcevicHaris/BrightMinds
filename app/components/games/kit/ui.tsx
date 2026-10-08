@@ -40,9 +40,13 @@ interface GameHudProps {
     className?: string;
 }
 
+/** Do ovoliko zadataka svaki ima svoj segment; preko toga bi segmenti na uskom telefonu bili sitni, pa je traka neprekidna. */
+const MAX_SEGMENTS = 8;
+
 export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, extra, className }: GameHudProps) {
     const total = Math.max(totalRounds, 1);
     const current = Math.min(Math.max(round, 1), total);
+    const segmented = total <= MAX_SEGMENTS;
     // Ako dete dugo ništa ne dodirne, dugme „Ponovi” blago zasvetli — bez glasa i bez požurivanja
     const idle = useIdle(IDLE_HINT_MS, round);
     return (
@@ -52,22 +56,30 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
                     {unit} {current} od {total}
                 </p>
                 <div
-                    className="flex gap-1.5"
+                    className={segmented ? "flex gap-1.5" : "flex h-2.5 overflow-hidden rounded-full bg-brand-100"}
                     role="progressbar"
                     aria-valuemin={1}
                     aria-valuemax={total}
                     aria-valuenow={current}
                     aria-label={`${unit} ${current} od ${total}`}
                 >
-                    {Array.from({ length: total }, (_, i) => (
-                        <span
-                            key={i}
-                            className={cn(
-                                "h-2.5 flex-1 rounded-full transition-colors duration-300",
-                                i < current - 1 ? "bg-emerald-400" : i === current - 1 ? "bg-brand-500" : "bg-brand-100"
-                            )}
-                        />
-                    ))}
+                    {segmented ? (
+                        Array.from({ length: total }, (_, i) => (
+                            <span
+                                key={i}
+                                className={cn(
+                                    "h-2.5 flex-1 rounded-full transition-colors duration-300",
+                                    i < current - 1 ? "bg-emerald-400" : i === current - 1 ? "bg-brand-500" : "bg-brand-100"
+                                )}
+                            />
+                        ))
+                    ) : (
+                        // Iste boje kao segmenti: zeleno = završeno, ljubičasto = tekući zadatak, svetlo = ostalo
+                        <>
+                            <span className="bg-emerald-400 transition-[width] duration-300" style={{ width: `${((current - 1) / total) * 100}%` }} />
+                            <span className="rounded-r-full bg-brand-500 transition-[width] duration-300" style={{ width: `${100 / total}%` }} />
+                        </>
+                    )}
                 </div>
             </div>
             {extra}
@@ -104,11 +116,41 @@ export function SpeakButton({ onClick, label = "Ponovi", large = false, classNam
                 className
             )}
         >
-            <svg className={large ? "h-7 w-7" : "h-5 w-5"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-                <path d="M11 5 6 9H3v6h3l5 4V5z" strokeLinejoin="round" />
-                <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" strokeLinecap="round" />
-            </svg>
+            <SpeakerIcon className={large ? "h-7 w-7" : "h-5 w-5"} />
             <span className={large ? undefined : "hidden text-sm sm:inline"}>{label}</span>
+        </button>
+    );
+}
+
+function SpeakerIcon({ className }: { className: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+            <path d="M11 5 6 9H3v6h3l5 4V5z" strokeLinejoin="round" />
+            <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+// ── OptionSpeaker ─────────────────────────────────────────────────────────────
+// Mali zvučnik uz izbor: čita taj izbor naglas, bez biranja.
+
+interface OptionSpeakerProps {
+    /** Naziv za čitače ekrana, npr. "Pročitaj: …" */
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+}
+
+export function OptionSpeaker({ label, onClick, disabled }: OptionSpeakerProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={label}
+            className="grid min-h-14 w-14 shrink-0 place-items-center rounded-tile border-2 border-line bg-surface text-brand-600 shadow-soft transition-colors enabled:hover:border-brand-300 enabled:hover:bg-brand-50 disabled:cursor-default disabled:opacity-45"
+        >
+            <SpeakerIcon className="h-6 w-6" />
         </button>
     );
 }
@@ -141,7 +183,7 @@ export function GamePrompt({ title, subtitle, visual, className }: GamePromptPro
 }
 
 // ── ChoiceCard ────────────────────────────────────────────────────────────────
-// Veliko dugme-odgovor sa jasnim stanjima. Nikad ne kažnjava: pogrešno je blago, tačno je veselo.
+// Veliko dugme-odgovor sa jasnim stanjima. Nikad ne kažnjava: pogrešno je blago, tačno je mirno potvrđeno.
 
 export type ChoiceState = "idle" | "correct" | "wrong" | "dimmed" | "selected" | "hint";
 
@@ -223,7 +265,7 @@ export function Feedback({ kind, correctText = "Tačno.", wrongText = "Probaj op
 }
 
 // ── ExplainPanel ──────────────────────────────────────────────────────────────
-// Objašnjenje posle tačnog odgovora, sa dugmetom "Dalje" (ili kratkom proslavom na kraju nivoa).
+// Objašnjenje posle tačnog odgovora, sa dugmetom "Dalje" (ili kratkom porukom na kraju nivoa).
 
 interface ExplainPanelProps {
     /** Zašto je odgovor tačan */
@@ -237,13 +279,13 @@ interface ExplainPanelProps {
     nextLabel?: string;
     /** Za fokus na dugme posle tačnog odgovora */
     nextRef?: React.Ref<HTMLButtonElement>;
-    /** Nivo je završen: umesto dugmeta stoji pohvala */
+    /** Nivo je završen: umesto dugmeta stoji kratka poruka */
     done?: boolean;
     doneText?: string;
     className?: string;
 }
 
-export function ExplainPanel({ text, icon, accent, onNext, nextLabel = "Dalje", nextRef, done = false, doneText = "Bravo!", className }: ExplainPanelProps) {
+export function ExplainPanel({ text, icon, accent, onNext, nextLabel = "Dalje", nextRef, done = false, doneText = "Nivo je završen.", className }: ExplainPanelProps) {
     const textId = React.useId();
     return (
         <section
@@ -288,4 +330,35 @@ export function ExplainPanel({ text, icon, accent, onNext, nextLabel = "Dalje", 
             )}
         </section>
     );
+}
+
+// ── TriedNote ─────────────────────────────────────────────────────────────────
+// Posle izbora koji manje pomaže: šta je izabrano i šta bi se verovatno desilo — mirno, bez osude.
+// Roditelj daje `key` (probani izbor) da se kartica pri svakom novom pokušaju ponovo pojavi.
+
+interface TriedNoteProps {
+    emoji: string;
+    /** Tekst probanog izbora */
+    label: React.ReactNode;
+    /** Šta bi se verovatno desilo */
+    note: React.ReactNode;
+}
+
+export function TriedNote({ emoji, label, note }: TriedNoteProps) {
+    return (
+        <div className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 p-4 sm:p-5">
+            <p className="mb-1 text-sm font-extrabold text-ink-soft sm:text-base">
+                <span aria-hidden="true">{emoji} </span>
+                {label}
+            </p>
+            <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{note}</p>
+        </div>
+    );
+}
+
+// ── WaitingNote ───────────────────────────────────────────────────────────────
+// Prazna tabla na monitoru dok ne stigne stanje igre („Čekamo sledeći zadatak…”).
+
+export function WaitingNote({ children }: { children: React.ReactNode }) {
+    return <p className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-base font-bold text-ink-soft">{children}</p>;
 }

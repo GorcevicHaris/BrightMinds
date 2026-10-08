@@ -624,7 +624,7 @@ function buildLevel(level: number): SocialSituation[] {
 }
 
 /** Situacije po nivoima 1–15 (ID-jevi 1–45 imaju isti raspored kao ranije; 46–60 su novi). */
-export const SITUATIONS_BY_LEVEL: Record<number, SocialSituation[]> = Object.fromEntries(
+const SITUATIONS_BY_LEVEL: Record<number, SocialSituation[]> = Object.fromEntries(
     Array.from({ length: MAX_LEVEL }, (_, i) => [i + 1, buildLevel(i + 1)])
 );
 
@@ -642,19 +642,4 @@ export function getSituationsForLevel(level: number): SocialSituation[] {
 
 export function getSituation(id: number): SocialSituation | undefined {
     return SITUATIONS_BY_ID.get(id);
-}
-
-/**
- * Indeksi izbora koji se nude kad dete sme da vidi najviše `limit` izbora.
- * Ostaju svi izbori koji pomažu a staju, i uvek bar jedan koji manje pomaže.
- */
-export function offeredOptions(situation: SocialSituation, limit: number): number[] {
-    const all = situation.options.map((_, i) => i);
-    const size = Math.max(2, Math.min(all.length, limit));
-    if (size >= all.length) return all;
-    const good = all.filter((i) => situation.acceptable.includes(i));
-    const other = all.filter((i) => !situation.acceptable.includes(i));
-    const keptOther = other.slice(0, Math.max(1, size - good.length));
-    const keptGood = good.slice(0, size - keptOther.length);
-    return [...keptGood, ...keptOther].sort((a, b) => a - b);
 }

@@ -26,6 +26,17 @@ export function toPublicUser(row: PublicUser): PublicUser {
  * mogli biti sačuvani sa velikim slovima). `email` mora biti već normalizovan.
  */
 export async function findUserByEmail(email: string): Promise<UserRow | null> {
+    // Brzi put: tačno poklapanje koristi jedinstveni indeks nad emailom (novi nalozi se čuvaju malim slovima)
+    const exact = await supabaseAdmin
+        .from("users")
+        .select(`${PUBLIC_USER_COLUMNS}, password_hash`)
+        .eq("email", email)
+        .limit(1);
+    if (exact.error) throw exact.error;
+    const exactRows = (exact.data ?? []) as UserRow[];
+    if (exactRows.length > 0) return exactRows[0];
+
+    // Stariji nalozi sačuvani sa velikim slovima: poređenje bez obzira na veličinu slova (bez indeksa, retko)
     const { data, error } = await supabaseAdmin
         .from("users")
         .select(`${PUBLIC_USER_COLUMNS}, password_hash`)

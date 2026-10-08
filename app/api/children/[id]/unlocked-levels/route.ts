@@ -5,15 +5,26 @@
 // Nivo je položen kada je dete bar polovinu zadataka rešilo samostalno (videti
 // `isLevelPassed`). Za dete nema neuspeha: nivo koji još nije savladan ostaje
 // dostupan za novi pokušaj, samo ne otključava sledeći.
+//
+// Odakle se čita, od najnovije baze ka najstarijoj:
+//   1. pogled `child_game_progress` (migracija 0004) — JEDAN mali upit; odluka
+//      „položen” je sačuvana uz svaku partiju (`progress_logs.passed`);
+//   2. kolone iz migracije 0001 — po jedan upit za svaku igru, pravilo računa kod;
+//   3. baza bez migracija — nivo i zvezdice iz stare beleške.
 import { NextResponse } from "next/server";
 import { requireChildAccess } from "@/lib/auth";
 import { GAMES, MAX_LEVEL, type GameId, isGradedActivity } from "@/lib/games";
-import { isMissingColumnError, supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin, withSchemaFallback } from "@/lib/supabase";
 import { isLevelPassed, parseLegacyNotes, type ProgressLogRow } from "../../../_lib/children";
 import { errorResponse, parseIdParam, requireSession } from "../../../_lib/http";
 
 interface RouteContext {
     params: Promise<{ id: string }>;
+}
+
+interface GameProgressRow {
+    activity_id: number;
+    highest_level_passed: number | null;
 }
 
 type LevelRow = Pick<ProgressLogRow, "id" | "level" | "stars" | "success_level" | "correct_count" | "total_count">;
@@ -24,6 +35,19 @@ const MAX_LEGACY_PAGES = 50;
 /** Strana pri traženju najvišeg položenog nivoa jedne igre (odgovor je skoro uvek na prvoj). */
 const LEVEL_PAGE_SIZE = 200;
 const MAX_LEVEL_PAGES = 100;
+
+/** Najviši položen nivo po igri iz pogleda `child_game_progress`: jedan upit, najviše red po igri. */
+async function highestPassedFromView(childId: number): Promise<Map<number, number>> {
+    const { data, error } = await supabaseAdmin
+        .from("child_game_progress")
+        .select("activity_id, highest_level_passed")
+        .eq("child_id", childId);
+    if (error) throw error;
+
+    return new Map(((data ?? []) as GameProgressRow[]).map((row) => [row.activity_id, row.highest_level_passed ?? 0]));
+}
+
+// ── Baza bez migracije 0004 ───────────────────────────────────────────────────
 
 /**
  * Najviši položen nivo jedne igre. Odnos tačnih i ukupnih odgovora ne može da
@@ -108,13 +132,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
         const childId = parseIdParam((await params).id);
         await requireChildAccess(childId);
 
-        let highest: Map<number, number>;
-        try {
-            highest = await highestPassedFromColumns(childId);
-        } catch (error) {
-            if (!isMissingColumnError(error)) throw error;
-            highest = await highestPassedFromNotes(childId);
-        }
+        const sources = [highestPassedFromView, highestPassedFromColumns, highestPassedFromNotes];
+        const { data: highest } = await withSchemaFallback(
+            sources.map((read) => async () => ({ data: await read(childId), error: null })),
+            "unlocked-levels"
+        );
 
         const unlockedLevels = {} as Record<GameId, number>;
         for (const game of GAMES) {

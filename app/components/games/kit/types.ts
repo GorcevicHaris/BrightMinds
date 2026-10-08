@@ -29,6 +29,8 @@ export interface GameProps<V extends BaseView = BaseView> {
     /** 1–15 (1–5 lako, 6–10 srednje, 11–15 teško) */
     level: number;
     gender?: string;
+    /** Ime deteta — npr. da lik u priči ne nosi isto ime */
+    childName?: string;
     onComplete: (result: GameResult) => void;
     /** Samo prikaz za roditelja: bez zvuka, bez unosa, stanje dolazi iz `monitorState` */
     isMonitor?: boolean;

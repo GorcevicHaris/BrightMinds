@@ -10,11 +10,14 @@ import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
     Feedback,
+    finiteOr,
     GameHud,
     GamePrompt,
     GameStage,
     playSfx,
     shuffle,
+    PULSE_ONCE,
+    useDemo,
     useGameSync,
     useInputGuard,
     useTimers,
@@ -547,15 +550,11 @@ function hasKey<T extends object>(record: T, key: unknown): key is keyof T {
     return typeof key === "string" && Object.prototype.hasOwnProperty.call(record, key);
 }
 
-function numberOr(value: unknown, fallback: number): number {
-    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
 function toOption(value: unknown): ShapeOption | null {
     if (typeof value !== "object" || value === null) return null;
     const { shape, color, rot, scale } = value as Partial<ShapeOption>;
     if (!hasKey(SHAPES, shape) || !hasKey(PALETTE, color)) return null;
-    return { shape, color, rot: numberOr(rot, 0), scale: numberOr(scale, 1) };
+    return { shape, color, rot: finiteOr(rot, 0), scale: finiteOr(scale, 1) };
 }
 
 /** Stanje za monitor: podrazumevane vrednosti + ono što je stiglo, uz proveru polja od kojih zavisi crtanje. */
@@ -642,42 +641,6 @@ const BOARD_STYLE = {
     gridTemplateColumns: "repeat(var(--cols), minmax(0, 1fr))",
     maxWidth: "calc(var(--cols) * var(--tile) + (var(--cols) - 1) * var(--gap))",
 } as CSSProperties;
-
-// ── Pokazivanje ───────────────────────────────────────────────────────────────
-// Uz svako uputstvo kratko se istakne ono o čemu uputstvo govori: jedan miran puls, pa mir.
-// Zajednički kit ovo još nema, pa je kuka lokalna.
-
-const DEMO_MS = 1500;
-/** Uz `animate-soft-pulse`: jedan krug umesto beskonačnog ponavljanja */
-const PULSE_ONCE: CSSProperties = { animationDuration: `${DEMO_MS}ms`, animationIterationCount: 1 };
-
-function useDemo(enabled: boolean) {
-    const [demo, setDemo] = useState({ on: enabled, run: 0 });
-    const timer = useRef<TimerId | null>(null);
-
-    const arm = useCallback(() => {
-        if (timer.current !== null) clearTimeout(timer.current);
-        timer.current = setTimeout(() => {
-            timer.current = null;
-            setDemo((current) => ({ ...current, on: false }));
-        }, DEMO_MS);
-    }, []);
-
-    useEffect(() => {
-        if (enabled) arm();
-        return () => {
-            if (timer.current !== null) clearTimeout(timer.current);
-        };
-    }, [enabled, arm]);
-
-    /** Ponovo pokazuje (novi zadatak ili dugme „Ponovi”); `run` se menja da bi puls krenuo iz početka */
-    const show = useCallback(() => {
-        setDemo((current) => ({ on: true, run: current.run + 1 }));
-        arm();
-    }, [arm]);
-
-    return { on: demo.on, run: demo.run, show };
-}
 
 // ── Igra ──────────────────────────────────────────────────────────────────────
 

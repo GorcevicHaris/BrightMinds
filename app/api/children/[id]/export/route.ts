@@ -5,7 +5,8 @@
 // Fajl je UTF-8 sa BOM oznakom (da Excel ispravno prikaže š, đ, č, ć, ž), polja
 // su razdvojena zarezom, redovi sa CRLF (RFC 4180). Datum i vreme su u zoni
 // Europe/Belgrade. „Samostalno tačno” i „Uz pomoć” su odvojene kolone: terapeutu
-// je važno šta je dete uradilo BEZ pomoći.
+// je važno šta je dete uradilo BEZ pomoći. Raspoloženje pre/posle dolazi iz posete
+// (play_sessions) kojoj partija pripada; stariji zapisi ga nose sami.
 import { NextResponse } from "next/server";
 import { requireChildOwner } from "@/lib/auth";
 import { getGameByActivityId, getMood, MAX_LEVEL, successLevelFor } from "@/lib/games";
@@ -13,9 +14,11 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { APP_TIME_ZONE, dateOnlyInTimeZone } from "@/lib/validation";
 import {
     CHILD_NOT_FOUND,
+    fetchPlaySessions,
     parseDbTimestamp,
     parseLegacyNotes,
-    type ChildRow,
+    selectProgressLogs,
+    type PlaySessionRow,
     type ProgressLogRow,
 } from "../../../_lib/children";
 import { errorResponse, HttpError, parseIdParam } from "../../../_lib/http";
@@ -28,6 +31,8 @@ interface RouteContext {
 const PAGE_SIZE = 1000;
 /** Osigurač protiv beskonačne petlje (milion zapisa); realno se nikad ne dostiže. */
 const MAX_PAGES = 1000;
+/** Poseta nikad nema više nego zapisa, pa važi ista gornja granica. */
+const MAX_SESSIONS = PAGE_SIZE * MAX_PAGES;
 
 const BOM = "﻿";
 const HEADER = [
@@ -103,8 +108,10 @@ function timeInAppZone(date: Date): string {
 /**
  * Red tabele → red CSV-a. Kolone iz migracija imaju prednost; kada ih nema ili su
  * prazne, nivo i zvezdice se čitaju iz stare beleške, a trajanje iz minuta.
+ * `session` je poseta kojoj partija pripada (ako je ima): raspoloženje se čita iz
+ * nje, a iz samog zapisa samo kada poseta nema taj odgovor ili je zapis stariji.
  */
-function toCsvRow(row: ProgressLogRow, completedAt: Date | null): Cell[] {
+function toCsvRow(row: ProgressLogRow, completedAt: Date | null, session: PlaySessionRow | undefined): Cell[] {
     const legacy = parseLegacyNotes(row.notes);
     const level = inRange(count(row.level), 1, MAX_LEVEL) ?? inRange(legacy.level, 1, MAX_LEVEL);
     const stars =
@@ -121,15 +128,15 @@ function toCsvRow(row: ProgressLogRow, completedAt: Date | null): Cell[] {
         count(row.prompted_count),
         count(row.total_count),
         count(row.duration_seconds) ?? (minutes !== null ? minutes * 60 : null),
-        getMood(row.mood_before)?.label ?? null,
-        getMood(row.mood_after)?.label ?? null,
+        getMood(session?.mood_before ?? row.mood_before)?.label ?? null,
+        getMood(session?.mood_after ?? row.mood_after)?.label ?? null,
     ];
 }
 
 // ── Čitanje iz baze ───────────────────────────────────────────────────────────
 
 /**
- * Svi zapisi deteta. `select('*')` jer nove kolone možda ne postoje u bazi.
+ * Svi zapisi deteta, samo kolone koje izvoz koristi (`*` u bazi koja ih nema sve).
  * Strane idu po ključu (id opada), a ne po pomeraju: nijedan red se ne
  * preskače niti ponavlja ako se tokom izvoza upiše nova partija, i petlja ne
  * zavisi od toga koliko redova PostgREST vraća po upitu.
@@ -139,13 +146,12 @@ async function fetchAllLogs(childId: number): Promise<ProgressLogRow[]> {
     let beforeId: number | null = null;
 
     for (let page = 0; page < MAX_PAGES; page++) {
-        let query = supabaseAdmin.from("progress_logs").select("*").eq("child_id", childId);
-        if (beforeId !== null) query = query.lt("id", beforeId);
-
-        const { data, error } = await query.order("id", { ascending: false }).limit(PAGE_SIZE);
-        if (error) throw error;
-
-        const batch = (data ?? []) as ProgressLogRow[];
+        const cursor: number | null = beforeId;
+        const batch = await selectProgressLogs((columns) => {
+            let query = supabaseAdmin.from("progress_logs").select(columns).eq("child_id", childId);
+            if (cursor !== null) query = query.lt("id", cursor);
+            return query.order("id", { ascending: false }).limit(PAGE_SIZE);
+        });
         if (batch.length === 0) break;
         rows.push(...batch);
         beforeId = batch[batch.length - 1].id;
@@ -199,13 +205,22 @@ export async function GET(_request: Request, { params }: RouteContext) {
         const childId = parseIdParam((await params).id);
         await requireChildOwner(childId);
 
-        const { data, error } = await supabaseAdmin.from("children").select("*").eq("id", childId).limit(1);
-        if (error) throw error;
-        const child = ((data ?? []) as ChildRow[])[0];
+        // Tri nezavisna čitanja idu istovremeno; od deteta treba samo ime (za naziv fajla).
+        const [childResult, allLogs, sessions] = await Promise.all([
+            supabaseAdmin.from("children").select("first_name").eq("id", childId).limit(1),
+            fetchAllLogs(childId),
+            fetchPlaySessions(childId, MAX_SESSIONS),
+        ]);
+        if (childResult.error) throw childResult.error;
+        const child = ((childResult.data ?? []) as { first_name: string }[])[0];
         if (!child) throw new HttpError(404, CHILD_NOT_FOUND);
 
+        const sessionsById = new Map(sessions.map((session) => [session.id, session]));
+        const sessionOf = (row: ProgressLogRow) =>
+            typeof row.session_id === "number" ? sessionsById.get(row.session_id) : undefined;
+
         // Najnovije prvo; zapisi bez upotrebljivog datuma idu na kraj.
-        const logs = (await fetchAllLogs(childId))
+        const logs = allLogs
             .map((row) => ({ row, completedAt: parseDbTimestamp(row.completed_at) }))
             .sort(
                 (a, b) =>
@@ -213,7 +228,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
                     b.row.id - a.row.id
             );
 
-        const lines = [csvLine(HEADER), ...logs.map(({ row, completedAt }) => csvLine(toCsvRow(row, completedAt)))];
+        const lines = [csvLine(HEADER), ...logs.map(({ row, completedAt }) => csvLine(toCsvRow(row, completedAt, sessionOf(row))))];
 
         return new NextResponse(`${BOM}${lines.join("\r\n")}\r\n`, {
             headers: {

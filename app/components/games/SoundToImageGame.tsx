@@ -7,14 +7,31 @@ import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
 import { gameSoundsEnabled, playWithFade } from "@/lib/sound";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
-import { ChoiceCard, Feedback, GameHud, GameStage, playSfx, shuffle, useGameSync, useInputGuard, useTimers } from "@/app/components/games/kit";
+import {
+    ChoiceCard,
+    Feedback,
+    finiteOr,
+    GameHud,
+    GameStage,
+    hintDue,
+    playSfx,
+    shuffle,
+    useGameSync,
+    useInputGuard,
+    useTimers,
+    WaitingNote,
+} from "@/app/components/games/kit";
 import type { BaseView, ChoiceState, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
+import { OwlPicture, WindPicture, type SoundPicture } from "./SoundPictures";
 
 // ── Zvukovi ───────────────────────────────────────────────────────────────────
-// Svaki unos ima zvuk u /public/sounds i sliku u /public/soundImage.
+// Svaki unos ima zvuk u /public/sounds i sliku: fotografiju iz /public/soundImage (`image`)
+// ili, kad fotografije nema, crtež iz SoundPictures.tsx (`Art`).
 //
 // Redosled je od tihih i poznatih ka naglim: viši nivoi dodaju zvukove s kraja liste,
 // a prva četiri su tiha, pa svaki nivo ima šta da pusti i kad su glasni zvuci isključeni.
+// Tihih zvukova je sedam (mačka, krava, svinja, ptica, kiša, sova, vetar); svi su na listi
+// do nivoa 4, pa dete kome su glasni zvuci isključeni ne sluša stalno istih pet.
 //
 // `loud` označava nagle ili oštre zvuke (lavež, sirena, grmljavina, zvono…). Oni se puštaju
 // samo ako je roditelj to dozvolio; njihove slike i dalje mogu biti ponuđene kao odgovor.
@@ -23,16 +40,18 @@ import type { BaseView, ChoiceState, FeedbackKind, GameProps, TimerId } from "@/
 
 type Category = "animals" | "vehicles" | "weather" | "home";
 
-interface SoundItem {
+interface SoundItemBase {
     id: string;
     label: string;
-    image: string;
     sound: string;
     category: Category;
     loud: boolean;
     /** Udeo izabrane jačine kojim se pušta ovaj snimak (0–1) */
     level: number;
 }
+
+/** Slika zvuka: putanja do fotografije ili crtež (SVG komponenta) — tačno jedno od ta dva. */
+type SoundItem = SoundItemBase & ({ image: string; Art?: undefined } | { Art: SoundPicture; image?: undefined });
 
 const ITEMS: SoundItem[] = [
     { id: "cat", label: "Mačka", image: "/soundImage/cat.webp", sound: "/sounds/macka.mp3", category: "animals", loud: false, level: 0.3 },
@@ -41,7 +60,12 @@ const ITEMS: SoundItem[] = [
     { id: "bird", label: "Ptica", image: "/soundImage/bird.webp", sound: "/sounds/ptica.mp3", category: "animals", loud: false, level: 1 },
     { id: "dog", label: "Pas", image: "/soundImage/dog.webp", sound: "/sounds/pas.mp3", category: "animals", loud: true, level: 0.65 },
     { id: "rain", label: "Kiša", image: "/soundImage/rain.webp", sound: "/sounds/kisa.mp3", category: "weather", loud: false, level: 1 },
+    // Sova i vetar: NIKO IH JOŠ NIJE PRESLUŠAO. Jačina je namerno oprezna i određena samo merenjem fajla
+    // (isti postupak kao za ostale: najglasnija sekunda na oko −20 dBFS; vetar se meri u prvih 6 s, koliko se
+    // i pušta). Pre objave ih treba preslušati na uređaju i proveriti da nijedan ne počinje naglo.
+    { id: "owl", label: "Sova", Art: OwlPicture, sound: "/sounds/sova.mp3", category: "animals", loud: false, level: 0.45 },
     { id: "horse", label: "Konj", image: "/soundImage/horsee.webp", sound: "/sounds/konj.mp3", category: "animals", loud: true, level: 0.5 },
+    { id: "wind", label: "Vetar", Art: WindPicture, sound: "/sounds/vetar.mp3", category: "weather", loud: false, level: 0.35 },
     { id: "rooster", label: "Petao", image: "/soundImage/cock.webp", sound: "/sounds/petao.wav", category: "animals", loud: true, level: 0.7 },
     { id: "car", label: "Auto", image: "/soundImage/car.webp", sound: "/sounds/sirenaAuta.mp3", category: "vehicles", loud: true, level: 0.55 },
     { id: "bell", label: "Zvono", image: "/soundImage/bell.webp", sound: "/sounds/zvonoKucno.mp3", category: "home", loud: true, level: 0.85 },
@@ -94,22 +118,24 @@ interface LevelConfig {
     similar?: boolean;
 }
 
+// Svaki nivo ima iste zvukove kao pre dodavanja sove i vetra, plus njih dva čim dođu na red
+// (sova od nivoa 3, vetar od nivoa 4).
 const LEVELS: LevelConfig[] = [
     { rounds: 5, options: 2, pool: 5 },
     { rounds: 5, options: 2, pool: 6 },
-    { rounds: 5, options: 3, pool: 7 },
     { rounds: 5, options: 3, pool: 8 },
-    { rounds: 6, options: 3, pool: 9 },
-    { rounds: 5, options: 4, pool: 10 },
-    { rounds: 5, options: 4, pool: 11 },
-    { rounds: 6, options: 4, pool: 12 },
-    { rounds: 6, options: 4, pool: 13 },
+    { rounds: 5, options: 3, pool: 10 },
+    { rounds: 6, options: 3, pool: 11 },
+    { rounds: 5, options: 4, pool: 12 },
+    { rounds: 5, options: 4, pool: 13 },
     { rounds: 6, options: 4, pool: 14 },
-    { rounds: 5, options: 6, pool: 14 },
-    { rounds: 6, options: 6, pool: 14 },
-    { rounds: 6, options: 6, pool: 14, similar: true },
-    { rounds: 6, options: 6, pool: 14, similar: true },
-    { rounds: 6, options: 6, pool: 14, similar: true },
+    { rounds: 6, options: 4, pool: 15 },
+    { rounds: 6, options: 4, pool: 16 },
+    { rounds: 5, options: 6, pool: 16 },
+    { rounds: 6, options: 6, pool: 16 },
+    { rounds: 6, options: 6, pool: 16, similar: true },
+    { rounds: 6, options: 6, pool: 16, similar: true },
+    { rounds: 6, options: 6, pool: 16, similar: true },
 ];
 
 function levelIndex(level: number): number {
@@ -166,11 +192,6 @@ function buildRounds(level: number, { loudSounds, maxRounds, maxOptions }: Round
     });
 }
 
-/** Tačna slika se ističe posle `hintAfter` grešaka (0 = nikad), a najkasnije kad ostane samo ona. */
-function hintReady(wrongPicks: number, optionCount: number, hintAfter: number): boolean {
-    return hintAfter > 0 && wrongPicks >= Math.min(hintAfter, optionCount - 1);
-}
-
 // ── Stanje ────────────────────────────────────────────────────────────────────
 
 export interface SoundToImageView extends BaseView {
@@ -210,10 +231,6 @@ const EMPTY_VIEW: SoundToImageView = {
     done: false,
 };
 
-function num(value: unknown, fallback: number): number {
-    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
 function knownIds(value: unknown): string[] {
     return Array.isArray(value) ? value.filter((id): id is string => typeof id === "string" && ITEM_BY_ID[id] !== undefined) : [];
 }
@@ -222,11 +239,11 @@ function knownIds(value: unknown): string[] {
 function mergeMonitor(incoming: Partial<SoundToImageView> | null | undefined): SoundToImageView {
     if (!incoming) return EMPTY_VIEW;
     return {
-        score: num(incoming.score, 0),
-        correctCount: num(incoming.correctCount, 0),
-        incorrectCount: num(incoming.incorrectCount, 0),
-        round: num(incoming.round, 1),
-        totalRounds: num(incoming.totalRounds, 1),
+        score: finiteOr(incoming.score, 0),
+        correctCount: finiteOr(incoming.correctCount, 0),
+        incorrectCount: finiteOr(incoming.incorrectCount, 0),
+        round: finiteOr(incoming.round, 1),
+        totalRounds: finiteOr(incoming.totalRounds, 1),
         targetId: typeof incoming.targetId === "string" ? incoming.targetId : "",
         optionIds: knownIds(incoming.optionIds),
         wrongIds: knownIds(incoming.wrongIds),
@@ -234,7 +251,7 @@ function mergeMonitor(incoming: Partial<SoundToImageView> | null | undefined): S
         feedback: incoming.feedback === "correct" || incoming.feedback === "wrong" ? incoming.feedback : null,
         heard: incoming.heard === true,
         hint: incoming.hint === true,
-        promptedCount: num(incoming.promptedCount, 0),
+        promptedCount: finiteOr(incoming.promptedCount, 0),
         soundOff: incoming.soundOff === true,
         done: incoming.done === true,
     };
@@ -529,7 +546,8 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
 
         if (id !== current.targetId) {
             const wrongIds = [...current.wrongIds, id];
-            const hint = hintReady(wrongIds.length, current.optionIds.length, settings.hintAfter);
+            // Tačna slika se ističe posle `hintAfter` grešaka (0 = nikad), a najkasnije kad ostane samo ona
+            const hint = hintDue(settings.hintAfter, wrongIds.length, current.optionIds.length - 1);
             // Uzastopni brzi dodiri posle greške ne broje se kao nove greške
             guard.hold();
             playSfx("wrong");
@@ -618,7 +636,8 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                         <path d="m16 9.5 5 5M21 9.5l-5 5" strokeLinecap="round" />
                     </svg>
                     <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{SOUND_OFF_TEXT}</p>
-                    <p className="max-w-md text-base font-bold text-ink-soft">{SOUND_OFF_ADULT_TEXT}</p>
+                    {/* Red za odrasle: ostaje u običnom pisanju i kad su detetu uključena velika slova */}
+                    <p className="max-w-md text-base font-bold normal-case text-ink-soft">{SOUND_OFF_ADULT_TEXT}</p>
                     {!isMonitor && (
                         <button
                             type="button"
@@ -643,7 +662,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                     </div>
 
                     {options.length === 0 ? (
-                        <p className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-base font-bold text-ink-soft">Čekamo sledeći zvuk…</p>
+                        <WaitingNote>Čekamo sledeći zvuk…</WaitingNote>
                     ) : (
                         <div className={cn("grid w-full gap-2 sm:gap-4", GRID[columns])}>
                             {options.map((item) => {
@@ -657,7 +676,11 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                                         className="flex-col gap-2"
                                     >
                                         <span className="relative block aspect-[5/4] w-full overflow-hidden rounded-xl bg-brand-50 sm:aspect-square">
-                                            <Image src={item.image} alt="" fill sizes={IMAGE_SIZES[columns]} className="object-cover" draggable={false} />
+                                            {item.Art ? (
+                                                <item.Art className="absolute inset-0 h-full w-full" />
+                                            ) : (
+                                                <Image src={item.image} alt="" fill sizes={IMAGE_SIZES[columns]} className="object-cover" draggable={false} />
+                                            )}
                                         </span>
                                         <span className="text-base leading-tight sm:text-lg">{item.label}</span>
                                     </ChoiceCard>

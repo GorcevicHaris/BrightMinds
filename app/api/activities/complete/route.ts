@@ -1,11 +1,23 @@
 // app/api/activities/complete/route.ts
-// POST  — čuva završenu partiju (zvezdice i uspešnost računa SERVER).
-// PATCH — naknadno upisuje raspoloženje posle igre za već sačuvane partije.
+// POST  — čuva završenu partiju (zvezdice, uspešnost i „nivo položen” računa SERVER)
+//         i vezuje je za posetu (play_sessions): raspoloženje pre igre se čuva
+//         jednom, na poseti, a ne uz svaku partiju.
+// PATCH — upisuje raspoloženje posle igre: na posetu (sessionId) ili, u bazi bez
+//         tabele poseta, uz već sačuvane partije (logIds).
 import { NextResponse } from "next/server";
 import { requireChildAccess } from "@/lib/auth";
-import { ACTIVITY_IDS, MAX_LEVEL, MOODS, starsFor, successLevelFor, type Mood } from "@/lib/games";
-import { isMissingColumnError, supabaseAdmin } from "@/lib/supabase";
+import {
+    ACTIVITY_IDS,
+    MAX_LEVEL,
+    MOODS,
+    isGradedActivity,
+    starsFor,
+    successLevelFor,
+    type Mood,
+} from "@/lib/games";
+import { noResult, supabaseAdmin, withSchemaFallback } from "@/lib/supabase";
 import { asInt, asIntArray, asNumber, oneOf } from "@/lib/validation";
+import { isLevelPassed, PLAY_SESSIONS_MEMO, PLAY_SESSIONS_TABLE } from "../../_lib/children";
 import { errorResponse, HttpError, readJsonObject, requireSession } from "../../_lib/http";
 
 const MOOD_VALUES: readonly Mood[] = MOODS.map((mood) => mood.value);
@@ -31,6 +43,8 @@ interface CompletedGame {
     total: number;
     durationSec: number;
     moodBefore: Mood | null;
+    /** Poseta koju je klijent dobio pri prethodnoj partiji; `null` = prva partija posete */
+    sessionId: number | null;
 }
 
 function parseCompletedGame(body: Record<string, unknown>): CompletedGame {
@@ -72,7 +86,68 @@ function parseCompletedGame(body: Record<string, unknown>): CompletedGame {
         total,
         durationSec: Math.round(durationSec),
         moodBefore,
+        // Neupotrebljiva vrednost se tretira kao da nije poslata: otvara se nova poseta.
+        sessionId: asInt(body.sessionId, { min: 1 }),
     };
+}
+
+/**
+ * Poseta kojoj partija pripada. Poslata poseta važi samo ako pripada OVOM detetu;
+ * u suprotnom (ili kada nije poslata) otvara se nova, sa raspoloženjem pre igre.
+ * Vraća `null` kada baza još nema tabelu poseta (migracija 0004) — i kada upis
+ * posete ne uspe: poseta je sporedna, partija mora da se sačuva i bez nje.
+ */
+async function resolvePlaySession(
+    childId: number,
+    requestedId: number | null,
+    moodBefore: Mood | null,
+    userId: number
+): Promise<number | null> {
+    try {
+        const { data } = await withSchemaFallback<unknown>(
+            [
+                async () => {
+                    if (requestedId !== null) {
+                        const existing = await supabaseAdmin
+                            .from(PLAY_SESSIONS_TABLE)
+                            .select("id")
+                            .eq("id", requestedId)
+                            .eq("child_id", childId)
+                            .limit(1);
+                        if (existing.error || (existing.data ?? []).length > 0) return existing;
+                    }
+                    return supabaseAdmin
+                        .from(PLAY_SESSIONS_TABLE)
+                        .insert({ child_id: childId, mood_before: moodBefore, created_by: userId })
+                        .select("id");
+                },
+                noResult,
+            ],
+            PLAY_SESSIONS_MEMO
+        );
+        return ((data ?? []) as { id: number }[])[0]?.id ?? null;
+    } catch (error) {
+        console.error("[api] POST /api/activities/complete: poseta nije zabeležena:", error);
+        return null;
+    }
+}
+
+/**
+ * Upisuje raspoloženje posle igre i kraj posete. `false` ako poseta ne pripada
+ * detetu ili baza nema tabelu poseta.
+ */
+async function endPlaySession(childId: number, sessionId: number, moodAfter: Mood): Promise<boolean> {
+    const { data } = await withSchemaFallback<unknown>([
+        () =>
+            supabaseAdmin
+                .from(PLAY_SESSIONS_TABLE)
+                .update({ mood_after: moodAfter, ended_at: new Date().toISOString() })
+                .eq("id", sessionId)
+                .eq("child_id", childId)
+                .select("id"),
+        noResult,
+    ]);
+    return ((data ?? []) as { id: number }[]).length > 0;
 }
 
 /**
@@ -121,21 +196,29 @@ export async function POST(request: Request) {
 
         // Zvezdice zavise samo od SAMOSTALNO tačnih odgovora; završen nivo donosi bar jednu.
         const stars = starsFor(game.correct, game.total);
+        const successLevel = successLevelFor(stars);
+        // Odluka „nivo položen” se donosi ovde, jednom, i čuva uz partiju.
+        const passed = isLevelPassed(
+            { correct_count: game.correct, total_count: game.total, stars, success_level: successLevel },
+            isGradedActivity(game.activityId)
+        );
+
+        const sessionId = await resolvePlaySession(childId, game.sessionId, game.moodBefore, session.userId);
 
         // Kolone koje postoje i u bazi pre migracija. `notes` zadržava stari
         // format jer ga čitaju stariji zapisi i izveštaji.
-        const legacyRow = {
+        const base = {
             child_id: childId,
             activity_id: game.activityId,
-            success_level: successLevelFor(stars),
+            success_level: successLevel,
             duration_minutes: Math.max(1, Math.ceil(game.durationSec / 60)),
             notes: `Nivo ${game.level}, Zvezdice: ${stars}, Rezultat: ${game.score}`,
-            mood_before: game.moodBefore,
             recorded_by: session.userId,
         };
+        // Raspoloženje pre igre ide uz partiju samo kada nema posete koja ga čuva.
+        const legacyRow = { ...base, mood_before: game.moodBefore };
         // + kolone iz migracije 0001
-        const structuredRow = {
-            ...legacyRow,
+        const structured = {
             level: game.level,
             stars,
             score: game.score,
@@ -143,30 +226,36 @@ export async function POST(request: Request) {
             total_count: game.total,
             duration_seconds: game.durationSec,
         };
+        // + kolona iz migracije 0002 (samo ako je klijent poslao broj odgovora uz pomoć)
+        const prompted = game.prompted !== null ? { prompted_count: game.prompted } : {};
+        // + kolone iz migracije 0004
+        const sessionOrMood = sessionId !== null ? { session_id: sessionId } : { mood_before: game.moodBefore };
 
-        // Od najpotpunijeg reda ka najstarijem obliku: ako baza nema kolonu, pokušaj
-        // se ponavlja bez nje — prvo bez kolona iz migracije 0002 (prompted_count),
-        // pa bez svih novih kolona. Partija se tako čuva i u bazi bez migracija.
-        const candidates: Record<string, unknown>[] = [
-            ...(game.prompted !== null ? [{ ...structuredRow, prompted_count: game.prompted }] : []),
-            structuredRow,
+        // Od najpotpunijeg reda ka najstarijem obliku: ako baza nema kolonu, upis se
+        // ponavlja bez nje. Partija se tako čuva i u bazi bez ijedne migracije.
+        const rows: Record<string, unknown>[] = [
+            { ...base, ...structured, ...prompted, ...sessionOrMood, passed },
+            { ...legacyRow, ...structured, ...prompted },
+            { ...legacyRow, ...structured },
             legacyRow,
         ];
-
-        let logId: number | null = null;
-        for (const [index, row] of candidates.entries()) {
-            const { data, error } = await supabaseAdmin.from("progress_logs").insert(row).select("id").single();
-            if (!error) {
-                logId = (data as { id: number }).id;
-                break;
-            }
-            if (!isMissingColumnError(error) || index === candidates.length - 1) throw error;
-        }
-        if (logId === null) throw new Error("Zapis partije nije sačuvan");
+        const { data, variant } = await withSchemaFallback<unknown>(
+            rows.map((row) => () => supabaseAdmin.from("progress_logs").insert(row).select("id").single()),
+            "progress_logs.insert"
+        );
+        const logId = (data as { id: number }).id;
 
         const experiencePoints = await awardExperience(childId, stars * POINTS_PER_STAR);
 
-        return NextResponse.json({ success: true, logId, stars, experiencePoints });
+        return NextResponse.json({
+            success: true,
+            logId,
+            stars,
+            experiencePoints,
+            // Poseta se vraća samo ako je partija zaista vezana za nju; inače klijent
+            // raspoloženje posle igre šalje uz partije (logIds), kao u bazi bez poseta.
+            sessionId: variant === 0 ? sessionId : null,
+        });
     } catch (error) {
         return errorResponse(error, "POST /api/activities/complete");
     }
@@ -179,19 +268,36 @@ export async function PATCH(request: Request) {
         const childId = readChildId(body);
         await requireChildAccess(childId);
 
-        const logIds = asIntArray(body.logIds, { minItems: 1, maxItems: 50, min: 1 });
-        if (!logIds) throw new HttpError(400, "Neispravan spisak partija");
+        // Bar jedno od: poseta (sessionId) ili spisak partija (logIds, baza bez poseta).
+        let sessionId: number | null = null;
+        if (body.sessionId !== undefined && body.sessionId !== null) {
+            sessionId = asInt(body.sessionId, { min: 1 });
+            if (sessionId === null) throw new HttpError(400, "Neispravna poseta");
+        }
+        let logIds: number[] | null = null;
+        if (body.logIds !== undefined && body.logIds !== null) {
+            logIds = asIntArray(body.logIds, { minItems: 1, maxItems: 50, min: 1 });
+            if (!logIds) throw new HttpError(400, "Neispravan spisak partija");
+        }
+        if (sessionId === null && logIds === null) throw new HttpError(400, "Neispravan spisak partija");
 
         const moodAfter = oneOf(body.moodAfter, MOOD_VALUES);
         if (!moodAfter) throw new HttpError(400, "Nepoznato raspoloženje");
 
-        // Uslov po child_id sprečava izmenu tuđih zapisa čak i ako se pošalju njihovi ID-jevi.
-        const { error } = await supabaseAdmin
-            .from("progress_logs")
-            .update({ mood_after: moodAfter })
-            .in("id", logIds)
-            .eq("child_id", childId);
-        if (error) throw error;
+        // Sa posetom se odgovor čuva jednom, na njoj. Uslov po child_id (i ovde i
+        // ispod) sprečava izmenu tuđih zapisa čak i ako se pošalju njihovi ID-jevi.
+        let saved = sessionId !== null && (await endPlaySession(childId, sessionId, moodAfter));
+
+        if (!saved && logIds) {
+            const { error } = await supabaseAdmin
+                .from("progress_logs")
+                .update({ mood_after: moodAfter })
+                .in("id", logIds)
+                .eq("child_id", childId);
+            if (error) throw error;
+            saved = true;
+        }
+        if (!saved) throw new HttpError(404, "Poseta nije pronađena");
 
         return NextResponse.json({ success: true });
     } catch (error) {

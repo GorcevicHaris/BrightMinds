@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { ArrowLeft, Eye, Lock, X } from "lucide-react";
+import { ArrowLeft, Check, Eye, Lock, X } from "lucide-react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
@@ -24,6 +24,7 @@ import {
 } from "@/lib/games";
 import { useGameBroadcast } from "@/lib/realtime";
 import { useSpeech } from "@/lib/speech";
+import { usePlanProgress } from "./planProgress";
 import { useSessionClock } from "./sessionClock";
 
 // Svaka igra se učitava tek kada je dete izabere
@@ -131,7 +132,16 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const [moodBefore, setMoodBefore] = useState<Mood | null>(null);
     const [moodAsked, setMoodAsked] = useState(false);
     const sessionLogIds = useRef<number[]>([]);
+    /** Jedna poseta = jedna sesija igre u bazi (raspoloženje se čuva jednom, ne uz svaki nivo) */
+    const sessionIdRef = useRef<number | null>(null);
     const completingRef = useRef(false);
+
+    // Dnevni plan „prvo–zatim”: igre se otvaraju redom; igra je odigrana kad dete završi bar jedan nivo
+    const plan = settings.plan;
+    const [planDone, markPlanDone] = usePlanProgress(childId);
+    const levelsFinishedInGame = useRef(0);
+    const nextPlanned = plan.find((id) => !planDone.includes(id)) ?? null;
+    const planActive = plan.length > 0 && nextPlanned !== null;
 
     const clock = useSessionClock(childId, preview ? 0 : settings.sessionMinutes, screen === "playing" && !outcome);
 
@@ -168,6 +178,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
     const openGame = (id: GameId) => {
         if (clock.limitReached) return;
+        // Dok plan traje, otvaraju se odigrane igre i ona koja je na redu
+        if (planActive && id !== nextPlanned && !planDone.includes(id)) return;
+        levelsFinishedInGame.current = 0;
         playSfx("tap");
         setGameId(id);
         setOutcome(null);
@@ -204,6 +217,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
     /** Izlaz iz igre: ako je nešto odigrano (i pitanje je uključeno), pitamo kako se dete sada oseća. */
     const leaveGame = () => {
+        if (game && levelsFinishedInGame.current > 0 && plan.includes(game.id)) markPlanDone(game.id);
         if (screen === "playing" && game && !outcome) {
             publish({
                 childId,
@@ -227,10 +241,12 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         const logIds = sessionLogIds.current;
         sessionLogIds.current = [];
         if (mood && logIds.length > 0) {
+            // Sa sesijom se odgovor čuva na njoj; bez nje (starija baza) uz svaki zapis posebno
+            const target = sessionIdRef.current !== null ? { sessionId: sessionIdRef.current } : { logIds };
             void fetch("/api/activities/complete", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ childId, logIds, moodAfter: mood }),
+                body: JSON.stringify({ childId, moodAfter: mood, ...target }),
             }).catch(() => {});
         }
         backToPicker();
@@ -242,6 +258,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         async (result: GameResult) => {
             if (completingRef.current || !game) return;
             completingRef.current = true;
+            levelsFinishedInGame.current += 1;
 
             // Završen nivo uvek donosi bar jednu zvezdicu; sledeći nivo se predlaže
             // kada je bar polovina zadataka rešena samostalno
@@ -282,11 +299,13 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         prompted: result.prompted ?? 0,
                         durationSec: result.durationSec,
                         moodBefore,
+                        sessionId: sessionIdRef.current,
                     }),
                 });
                 if (!res.ok) throw new Error("save_failed");
                 const data = await res.json();
                 if (typeof data.logId === "number") sessionLogIds.current.push(data.logId);
+                if (typeof data.sessionId === "number") sessionIdRef.current = data.sessionId;
                 if (typeof data.experiencePoints === "number") onExperienceChange?.(data.experiencePoints);
                 setOutcome((prev) => (prev ? { ...prev, saved: "ok" } : prev));
             } catch {
@@ -302,17 +321,30 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         if (clock.limitReached) {
             return <RestCard childName={childName} onExtend={() => clock.addMinutes(ADULT_EXTRA_MINUTES)} />;
         }
+        // Sa planom: prikazujemo samo igre iz plana, redom. Kad je plan završen, dete bira samo.
+        const shown = planActive ? plan.map((id) => getGame(id)) : GAMES;
         return (
-            <section aria-labelledby="games-heading">
-                <h2 id="games-heading" className="mb-4 text-xl font-extrabold text-ink sm:mb-5 sm:text-2xl">
-                    Izaberi igru
+            <section aria-labelledby="games-heading" className="space-y-4 sm:space-y-5">
+                {plan.length > 0 && <PlanStrip plan={plan} done={planDone} current={nextPlanned} />}
+                <h2 id="games-heading" className="text-xl font-extrabold text-ink sm:text-2xl">
+                    {planActive ? "Tvoj plan za danas" : plan.length > 0 ? "Plan je završen. Izaberi igru." : "Izaberi igru"}
                 </h2>
                 <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-                    {GAMES.map((g, index) => (
-                        <li key={g.id}>
-                            <GameCard game={g} unlocked={unlockedFor(g.id)} loading={levelsLoading} priority={index < 3} onOpen={() => openGame(g.id)} />
-                        </li>
-                    ))}
+                    {shown.map((g, index) => {
+                        const status = !planActive ? undefined : planDone.includes(g.id) ? "done" : g.id === nextPlanned ? "now" : "later";
+                        return (
+                            <li key={g.id}>
+                                <GameCard
+                                    game={g}
+                                    unlocked={unlockedFor(g.id)}
+                                    loading={levelsLoading}
+                                    priority={index < 3}
+                                    status={status}
+                                    onOpen={() => openGame(g.id)}
+                                />
+                            </li>
+                        );
+                    })}
                 </ul>
             </section>
         );
@@ -385,7 +417,15 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 {screen === "mood-after" && <MoodPicker title="Kako si sada?" subtitle="Dodirni lice" onSelect={handleMoodAfter} />}
 
                 {screen === "playing" && (
-                    <GameSlot key={`${game.id}-${level}-${attempt}`} gameId={game.id} childId={childId} level={level} gender={gender} onComplete={handleComplete} />
+                    <GameSlot
+                        key={`${game.id}-${level}-${attempt}`}
+                        gameId={game.id}
+                        childId={childId}
+                        level={level}
+                        gender={gender}
+                        childName={childName}
+                        onComplete={handleComplete}
+                    />
                 )}
             </div>
 
@@ -432,17 +472,51 @@ export function WatchedBadge() {
 
 // ── Kartica igre ──────────────────────────────────────────────────────────────
 
-function GameCard({ game, unlocked, loading, priority, onOpen }: { game: GameDefinition; unlocked: number; loading: boolean; priority: boolean; onOpen: () => void }) {
+type PlanStatus = "done" | "now" | "later";
+
+const PLAN_STATUS_LABEL: Record<PlanStatus, string> = { done: "Odigrano", now: "Sada", later: "Zatim" };
+
+interface GameCardProps {
+    game: GameDefinition;
+    unlocked: number;
+    loading: boolean;
+    priority: boolean;
+    /** Mesto igre u dnevnom planu (bez plana: undefined) */
+    status?: PlanStatus;
+    onOpen: () => void;
+}
+
+function GameCard({ game, unlocked, loading, priority, status, onOpen }: GameCardProps) {
     // `unlocked` = poslednji položeni nivo + 1 (16 znači da je položeno svih 15)
     const done = Math.min(Math.max(unlocked - 1, 0), MAX_LEVEL);
     const allDone = done >= MAX_LEVEL;
+    const waiting = status === "later";
     return (
         <button
             type="button"
             onClick={onOpen}
-            className="group flex w-full flex-col overflow-hidden rounded-card border-2 border-b-[6px] border-line bg-surface text-left shadow-soft transition-[transform,border-color,box-shadow] hover:border-brand-300 hover:shadow-lift active:translate-y-[3px] active:border-b-2"
+            disabled={waiting}
+            className={cn(
+                "group relative flex w-full flex-col overflow-hidden rounded-card border-2 border-b-[6px] bg-surface text-left shadow-soft transition-[transform,border-color,box-shadow]",
+                waiting
+                    ? "cursor-not-allowed border-line"
+                    : "hover:border-brand-300 hover:shadow-lift active:translate-y-[3px] active:border-b-2",
+                status === "now" ? "border-brand-500" : "border-line"
+            )}
         >
-            <span className="relative block aspect-[16/9] w-full overflow-hidden bg-brand-50">
+            {status && (
+                <span
+                    className={cn(
+                        "absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-extrabold shadow-soft",
+                        status === "done" ? "bg-emerald-700 text-white" : status === "now" ? "bg-brand-600 text-white" : "bg-surface text-ink-soft"
+                    )}
+                >
+                    {status === "done" && <Check className="h-4 w-4" aria-hidden="true" />}
+                    {status === "later" && <Lock className="h-4 w-4" aria-hidden="true" />}
+                    {PLAN_STATUS_LABEL[status]}
+                </span>
+            )}
+            <span className={cn("relative block aspect-[16/9] w-full overflow-hidden bg-brand-50", waiting && "opacity-50 grayscale")}>
                 <Image
                     src={game.image}
                     alt=""
@@ -473,6 +547,52 @@ function GameCard({ game, unlocked, loading, priority, onOpen }: { game: GameDef
                 </span>
             </span>
         </button>
+    );
+}
+
+// ── Plan „prvo–zatim” ─────────────────────────────────────────────────────────
+// Vizuelni raspored: šta radim sada, šta je posle i kada je kraj.
+
+function PlanStrip({ plan, done, current }: { plan: GameId[]; done: GameId[]; current: GameId | null }) {
+    return (
+        <ol className="flex items-stretch gap-2 overflow-x-auto rounded-card border border-line bg-surface p-3 shadow-soft sm:gap-3 sm:p-4" aria-label="Plan igre za danas">
+            {plan.map((id, index) => {
+                const g = getGame(id);
+                const isDone = done.includes(id);
+                const isCurrent = id === current;
+                return (
+                    <li
+                        key={id}
+                        aria-current={isCurrent ? "step" : undefined}
+                        className={cn(
+                            "flex min-w-24 flex-1 flex-col items-center gap-1 rounded-tile border-2 px-2 py-3 text-center",
+                            isCurrent ? "border-brand-500 bg-brand-50" : "border-line bg-canvas"
+                        )}
+                    >
+                        <span className="text-xs font-extrabold text-ink-soft">{index === 0 ? "Prvo" : "Zatim"}</span>
+                        <span className={cn("relative grid h-12 w-12 place-items-center rounded-2xl text-2xl", isDone ? "bg-emerald-100" : "bg-surface")} aria-hidden="true">
+                            {g.icon}
+                            {isDone && (
+                                <span className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-emerald-700 text-white ring-2 ring-white">
+                                    <Check className="h-3.5 w-3.5" />
+                                </span>
+                            )}
+                        </span>
+                        <span className="text-sm font-extrabold leading-tight text-ink">{g.title}</span>
+                        {isDone && <span className="sr-only">odigrano</span>}
+                    </li>
+                );
+            })}
+            <li
+                className={cn(
+                    "flex min-w-20 flex-col items-center justify-center gap-1 rounded-tile border-2 px-2 py-3 text-center",
+                    current === null ? "border-emerald-500 bg-emerald-50" : "border-line bg-canvas"
+                )}
+            >
+                <span className="text-2xl" aria-hidden="true">🏁</span>
+                <span className="text-sm font-extrabold text-ink">Kraj</span>
+            </li>
+        </ol>
     );
 }
 

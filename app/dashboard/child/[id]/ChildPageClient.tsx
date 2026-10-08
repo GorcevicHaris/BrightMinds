@@ -9,6 +9,7 @@ import { ArrowLeft, Gamepad2, LogOut, Trophy } from "lucide-react";
 import GameContainer, { WatchedBadge } from "./GameContainer";
 import { ChildSettingsProvider } from "@/app/components/ChildSettingsProvider";
 import ProgressDashboard from "@/app/components/ProgressDashboard";
+import CustomStoryShelf from "@/app/components/stories/CustomStoryShelf";
 import { Button, buttonClasses } from "@/app/components/ui/Button";
 import { Modal } from "@/app/components/ui/Modal";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
@@ -55,13 +56,14 @@ export default function ChildPageClient({ child, viewer, settings, preview = fal
     // Pozdrav pri ulasku (jedna kratka rečenica)
     useEffect(() => {
         const timer = setTimeout(() => {
-            void speak(`Zdravo ${firstName}. ${isFemale ? "Dobro došla" : "Dobro došao"}.`, { gender });
+            // Ime deteta se ne šalje servisu za govor (najmanje podataka o detetu)
+            void speak(`Zdravo. ${isFemale ? "Dobro došla" : "Dobro došao"}.`, { gender });
         }, 1200);
         return () => {
             clearTimeout(timer);
             stopSpeaking();
         };
-    }, [firstName, gender, isFemale]);
+    }, [gender, isFemale]);
 
     useEffect(() => () => {
         if (leaveTimer.current) clearTimeout(leaveTimer.current);
@@ -170,6 +172,9 @@ export default function ChildPageClient({ child, viewer, settings, preview = fal
                             onExperienceChange={setPoints}
                             preview={preview}
                         />
+
+                        {/* Priče koje je odrasli napisao baš za ovo dete (ne prikazuje se ako ih nema) */}
+                        <CustomStoryShelf childId={child.id} gender={gender} offline={preview} />
                     </div>
                 ) : (
                     <div className="space-y-5 sm:space-y-6">

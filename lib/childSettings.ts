@@ -3,6 +3,11 @@
 // Podrazumevane vrednosti zavise od uzrasta (videti docs/istrazivanje.md), a
 // roditelj ili terapeut može da promeni svaku. Modul je čist (radi i na serveru).
 
+import { GAMES, type GameId } from "./games";
+
+/** Najviše igara u dnevnom planu „prvo–zatim” */
+export const MAX_PLAN_GAMES = 4;
+
 export type AgeBand = "young" | "middle" | "older";
 export type Script = "latin" | "cyrillic";
 export type MoodCheck = "off" | "three";
@@ -35,6 +40,11 @@ export interface ChildSettings {
     /** Dnevno ograničenje igre u minutima; 0 = bez ograničenja */
     sessionMinutes: 0 | 10 | 15 | 20 | 30;
     moodCheck: MoodCheck;
+    /**
+     * Dnevni plan „prvo–zatim”: igre redom kojim ih dete igra. Prazno = dete bira samo.
+     * Vizuelni raspored čini igru predvidljivom: šta radim, koliko i šta je posle.
+     */
+    plan: GameId[];
 }
 
 export interface BandPreset {
@@ -95,6 +105,7 @@ export function defaultSettings(band: AgeBand): ChildSettings {
         sessionMinutes: band === "young" ? 10 : band === "middle" ? 15 : 20,
         // Deca mlađa od ~5–6 godina ne mogu pouzdano da ocene svoje raspoloženje na skali
         moodCheck: band === "young" ? "off" : "three",
+        plan: [],
     };
 }
 
@@ -104,6 +115,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function pick<T>(value: unknown, allowed: readonly T[], fallback: T): T {
     return (allowed as readonly unknown[]).includes(value) ? (value as T) : fallback;
+}
+
+function sanitizePlan(value: unknown): GameId[] {
+    if (!Array.isArray(value)) return [];
+    const valid = new Set<string>(GAMES.map((g) => g.id));
+    const plan: GameId[] = [];
+    for (const item of value) {
+        if (typeof item === "string" && valid.has(item) && !plan.includes(item as GameId)) plan.push(item as GameId);
+        if (plan.length === MAX_PLAN_GAMES) break;
+    }
+    return plan;
 }
 
 function bool(value: unknown, fallback: boolean): boolean {
@@ -134,6 +156,7 @@ export function sanitizeSettings(raw: unknown, ageBand: AgeBand): ChildSettings 
         hintAfter: pick<HintAfter>(source.hintAfter, [0, 1, 2], base.hintAfter),
         sessionMinutes: pick<ChildSettings["sessionMinutes"]>(source.sessionMinutes, [0, 10, 15, 20, 30], base.sessionMinutes),
         moodCheck: pick<MoodCheck>(source.moodCheck, ["off", "three"], base.moodCheck),
+        plan: sanitizePlan(source.plan),
     };
 }
 

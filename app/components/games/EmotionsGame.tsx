@@ -13,9 +13,11 @@ import {
     GameStage,
     playSfx,
     shuffle,
+    toCount,
     useGameSync,
     useInputGuard,
     useTimers,
+    WaitingNote,
     type BaseView,
     type ChoiceState,
     type GameProps,
@@ -25,6 +27,7 @@ import {
     getEmotionLevel,
     getScenario,
     inEmotionOrder,
+    isNamesake,
     questionFor,
     type EmotionId,
     type EmotionScenario,
@@ -45,6 +48,8 @@ export interface EmotionsView extends BaseView {
     scenarioId: number;
     /** Ponuđena osećanja, u redosledu prikaza */
     options: EmotionId[];
+    /** Lik iz scenarija se zove kao dete, pa se scenario priča o zamenskom liku istog roda */
+    standIn: boolean;
     /** Osećanje koje je dete izabralo u ovom zadatku; null dok bira */
     picked: EmotionId | null;
     /** Zadaci rešeni uz pomoć — u ovoj igri uvek 0 */
@@ -56,6 +61,7 @@ export interface EmotionsView extends BaseView {
 interface Round {
     scenarioId: number;
     options: EmotionId[];
+    standIn: boolean;
 }
 
 const ACCENT = getGame("emotions").accent;
@@ -95,6 +101,7 @@ const EMPTY_VIEW: EmotionsView = {
     totalRounds: 1,
     scenarioId: 0,
     options: [],
+    standIn: false,
     picked: null,
     promptedCount: 0,
     finished: false,
@@ -104,6 +111,8 @@ interface RoundLimits {
     emotionCount: number;
     maxRounds: number;
     choiceLimit: number;
+    /** Ime deteta: scenario o liku koji se isto zove priča se o zamenskom liku */
+    childName: string | undefined;
 }
 
 /**
@@ -111,22 +120,18 @@ interface RoundLimits {
  * koliko dozvoljavaju nivo i podešavanja. Najčešća osećanja su uvek među ponuđenim;
  * drugo najčešće se izostavlja samo kad bi inače sve ponuđeno bilo „najčešće”.
  */
-function buildRounds(level: number, { emotionCount, maxRounds, choiceLimit }: RoundLimits): Round[] {
+function buildRounds(level: number, { emotionCount, maxRounds, choiceLimit, childName }: RoundLimits): Round[] {
     const { scenarios, choices, palette } = getEmotionLevel(level, { emotionCount, maxRounds });
     const size = Math.min(choices, choiceLimit, palette.length);
     return shuffle(scenarios).map((scenario) => {
         const common = scenario.common.length < size ? scenario.common : scenario.common.slice(0, 1);
         const others = shuffle(palette.filter((id) => !scenario.common.includes(id))).slice(0, size - common.length);
-        return { scenarioId: scenario.id, options: inEmotionOrder([...common, ...others]) };
+        return { scenarioId: scenario.id, options: inEmotionOrder([...common, ...others]), standIn: isNamesake(scenario, childName) };
     });
 }
 
 function initialView(rounds: Round[]): EmotionsView {
-    return { ...EMPTY_VIEW, totalRounds: Math.max(rounds.length, 1), scenarioId: rounds[0]?.scenarioId ?? 0, options: rounds[0]?.options ?? [] };
-}
-
-function toCount(value: unknown, fallback: number): number {
-    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
+    return { ...EMPTY_VIEW, ...rounds[0], totalRounds: Math.max(rounds.length, 1) };
 }
 
 /** Stanje sa monitora može biti prazno ili nepotpuno — sve što fali ili nema smisla menja se podrazumevanim. */
@@ -144,6 +149,7 @@ function mergeMonitorView(state: Partial<EmotionsView> | null | undefined): Emot
         totalRounds,
         scenarioId: onBoard ? scenario.id : 0,
         options: onBoard ? options : [],
+        standIn: onBoard && state.standIn === true,
         picked: (onBoard && options.find((id) => id === state.picked)) || null,
         promptedCount: toCount(state.promptedCount, 0),
         finished: state.finished === true,
@@ -191,7 +197,7 @@ function choiceState(id: EmotionId, picked: EmotionId | null, scenario: EmotionS
 
 // ── Igra ──────────────────────────────────────────────────────────────────────
 
-export default function EmotionsGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<EmotionsView>) {
+export default function EmotionsGame({ childId, level, gender, childName, onComplete, isMonitor = false, monitorState }: GameProps<EmotionsView>) {
     const settings = useChildSettings();
     const sync = useGameSync<EmotionsView>({ childId, gameId: "emotions", level, isMonitor });
     const { say, stop } = useSpeech(gender);
@@ -207,6 +213,7 @@ export default function EmotionsGame({ childId, level, gender, onComplete, isMon
                   emotionCount: settings.preset.emotionCount,
                   maxRounds: settings.preset.maxRounds,
                   choiceLimit: settings.choiceLimit,
+                  childName,
               })
     );
     const [view, setView] = useState(() => initialView(rounds));
@@ -216,7 +223,8 @@ export default function EmotionsGame({ childId, level, gender, onComplete, isMon
     const nextButtonRef = useRef<HTMLButtonElement>(null);
 
     const shown = isMonitor ? mergeMonitorView(monitorState) : view;
-    const scenario = getScenario(shown.scenarioId);
+    // Tekst, pitanje i objašnjenje dolaze iz istog (po potrebi preimenovanog) scenarija — i za prikaz i za govor
+    const scenario = getScenario(shown.scenarioId, shown.standIn);
     const question = scenario ? questionFor(scenario) : "";
     // Glas čita situaciju pa pitanje; ponuđena osećanja se ne čitaju sama
     const prompt = scenario ? `${scenario.text} ${question}` : "";
@@ -253,7 +261,7 @@ export default function EmotionsGame({ childId, level, gender, onComplete, isMon
     const handlePick = (id: EmotionId) => {
         const current = viewRef.current;
         if (isMonitor || guard.blocked() || current.picked !== null || current.finished) return;
-        const target = getScenario(current.scenarioId);
+        const target = getScenario(current.scenarioId, current.standIn);
         if (!target || !current.options.includes(id)) return;
 
         const pickedCommon = target.common.includes(id);
@@ -303,8 +311,7 @@ export default function EmotionsGame({ childId, level, gender, onComplete, isMon
         const next: EmotionsView = {
             ...current,
             round: current.round + 1,
-            scenarioId: upcoming.scenarioId,
-            options: upcoming.options,
+            ...upcoming,
             picked: null,
         };
         guard.hold();
@@ -389,7 +396,7 @@ export default function EmotionsGame({ childId, level, gender, onComplete, isMon
                     </div>
                 </>
             ) : (
-                <p className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-base font-bold text-ink-soft">Čekamo sledeći zadatak…</p>
+                <WaitingNote>Čekamo sledeći zadatak…</WaitingNote>
             )}
         </GameStage>
     );

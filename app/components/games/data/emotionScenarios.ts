@@ -2,15 +2,19 @@
 //
 // Pravila pisanja:
 //  • Treće lice: svaki scenario govori o imenovanom detetu, nikad o detetu koje igra.
-//  • Rečenice su kratke i doslovne; ime lika je uvek u nominativu i na početku.
+//  • Rečenice su kratke i doslovne; ime lika je na početku i po pravilu u nominativu.
+//    Jedini drugi oblik za sada je akuzativ („Brat stalno prekida Milu.”, scenario 248).
+//    Svaki padežni oblik imena mora da postoji u tabeli NAME_CASES (vidi „Imenjaci” niže).
 //  • Rod glagola i prideva je napisan u samom scenariju, za tog lika (bez šablona).
 //  • Nema pogrešnih osećanja: `common` su osećanja koja većina ljudi tada ima,
 //    a svako drugo osećanje je takođe prihvatljiv odgovor.
 //  • Emodži scene namerno nije lice, da ne bi odao odgovor.
 
+import { toCyrillic } from "@/lib/script";
+
 export type EmotionId = "happy" | "sad" | "angry" | "scared" | "surprised" | "proud";
 
-export interface Emotion {
+interface Emotion {
     id: EmotionId;
     /** Reč na kartici — prilog, pa ne zavisi od roda lika */
     label: string;
@@ -22,7 +26,7 @@ export interface Emotion {
  * Stalan redosled prikaza i redosled uvođenja: deca sa 3 osećanja vide prva tri,
  * sa 5 prvih pet, sa 6 sva. Kartice su zato uvek na istom mestu.
  */
-export const EMOTION_ORDER: readonly EmotionId[] = ["happy", "sad", "angry", "scared", "surprised", "proud"];
+const EMOTION_ORDER: readonly EmotionId[] = ["happy", "sad", "angry", "scared", "surprised", "proud"];
 
 export const EMOTIONS: Record<EmotionId, Emotion> = {
     happy: { id: "happy", label: "Srećno", plural: "srećni" },
@@ -34,7 +38,7 @@ export const EMOTIONS: Record<EmotionId, Emotion> = {
 };
 
 /** Osećanja koja dete poznaje, prema podešavanju uzrasta (3, 5 ili 6). */
-export function allowedEmotions(emotionCount: number): EmotionId[] {
+function allowedEmotions(emotionCount: number): EmotionId[] {
     const count = Number.isFinite(emotionCount) ? Math.min(Math.max(Math.round(emotionCount), 3), EMOTION_ORDER.length) : 3;
     return EMOTION_ORDER.slice(0, count);
 }
@@ -42,9 +46,9 @@ export function allowedEmotions(emotionCount: number): EmotionId[] {
 // ── Likovi ────────────────────────────────────────────────────────────────────
 // Mali, stalan skup imena. Imena su izabrana tako da nemaju drugo značenje koje bi zbunilo dete.
 
-export type CharacterId = "mila" | "ana" | "sara" | "luka" | "marko" | "filip";
+type CharacterId = "mila" | "ana" | "sara" | "luka" | "marko" | "filip";
 
-export const CHARACTERS: Record<CharacterId, { name: string; female: boolean }> = {
+const CHARACTERS: Record<CharacterId, { name: string; female: boolean }> = {
     mila: { name: "Mila", female: true },
     ana: { name: "Ana", female: true },
     sara: { name: "Sara", female: true },
@@ -226,8 +230,77 @@ const SCENARIOS: readonly EmotionScenario[] = [
 
 const SCENARIOS_BY_ID = new Map<number, EmotionScenario>(SCENARIOS.map((scenario) => [scenario.id, scenario]));
 
-export function getScenario(id: number): EmotionScenario | undefined {
-    return SCENARIOS_BY_ID.get(id);
+// ── Imenjaci ──────────────────────────────────────────────────────────────────
+// Kad se dete zove isto kao lik, pitanje „Kako se Mila oseća?” zvuči kao pitanje o samom
+// detetu. Takav scenario se zato ispriča o drugom liku istog roda (rod glagola, prideva i
+// zamenica u tekstu ostaje tačan): menja se svako pojavljivanje imena — u tekstu, pitanju
+// i objašnjenju, na ekranu i u govoru.
+//
+// Imena se ne menjaju rezanjem i lepljenjem nastavaka: svaki oblik koji sme da se pojavi
+// u tekstu stoji u tabeli, a zamenjuje se samo cela reč, oblikom istog padeža. Lokativ je
+// kod ovih imena jednak dativu; vokativ i prisvojni pridevi („Milin”) nisu podržani, jer
+// se o liku uvek govori u trećem licu — scenario ih ne sme sadržati.
+
+type ObliqueCase = "gen" | "dat" | "acc" | "ins";
+
+const NAME_CASES: Record<CharacterId, Record<ObliqueCase, string>> = {
+    mila: { gen: "Mile", dat: "Mili", acc: "Milu", ins: "Milom" },
+    ana: { gen: "Ane", dat: "Ani", acc: "Anu", ins: "Anom" },
+    sara: { gen: "Sare", dat: "Sari", acc: "Saru", ins: "Sarom" },
+    luka: { gen: "Luke", dat: "Luki", acc: "Luku", ins: "Lukom" },
+    marko: { gen: "Marka", dat: "Marku", acc: "Marka", ins: "Markom" },
+    filip: { gen: "Filipa", dat: "Filipu", acc: "Filipa", ins: "Filipom" },
+};
+
+/**
+ * Ko zamenjuje koga. Zamena je uvek istog roda. Luka nije zamena nikome: „Marka” i „Filipa”
+ * su i genitiv i akuzativ, a Luka ta dva padeža razlikuje (Luke / Luku), pa se iz same reči
+ * ne bi znalo koji oblik treba. U svim parovima ispod svaka reč ima tačno jednu zamenu.
+ */
+const STAND_IN: Record<CharacterId, CharacterId> = {
+    mila: "ana",
+    ana: "sara",
+    sara: "mila",
+    luka: "marko",
+    marko: "filip",
+    filip: "marko",
+};
+
+const OBLIQUE_CASES: readonly ObliqueCase[] = ["gen", "dat", "acc", "ins"];
+const WORD = /\p{L}+/gu;
+
+/** Tekst u kome je svaki oblik imena lika `from` zamenjen istim padežom imena `to`. */
+function renameCharacter(text: string, from: CharacterId, to: CharacterId): string {
+    const swaps = new Map<string, string>([[CHARACTERS[from].name, CHARACTERS[to].name]]);
+    for (const nameCase of OBLIQUE_CASES) swaps.set(NAME_CASES[from][nameCase], NAME_CASES[to][nameCase]);
+    return text.replace(WORD, (word) => swaps.get(word) ?? word);
+}
+
+const STAND_IN_SCENARIOS = new Map<number, EmotionScenario>(
+    SCENARIOS.map((scenario) => {
+        const who = STAND_IN[scenario.who];
+        const rename = (text: string) => renameCharacter(text, scenario.who, who);
+        return [scenario.id, { ...scenario, who, text: rename(scenario.text), why: rename(scenario.why) }];
+    })
+);
+
+/**
+ * Da li se dete zove isto kao lik iz scenarija. Poredi se celo ime, bez obzira na velika i
+ * mala slova i razmake oko imena; važi i ime upisano ćirilicom.
+ */
+export function isNamesake(scenario: EmotionScenario, childName: string | undefined): boolean {
+    const given = childName?.trim().toLocaleLowerCase("sr");
+    if (!given) return false;
+    const name = CHARACTERS[scenario.who].name;
+    return given === name.toLocaleLowerCase("sr") || given === toCyrillic(name).toLocaleLowerCase("sr");
+}
+
+/**
+ * Scenario po ID-ju. Sa `standIn` vraća isti scenario ispričan o zamenskom liku
+ * (za dete koje se zove kao lik iz scenarija — vidi `isNamesake`).
+ */
+export function getScenario(id: number, standIn = false): EmotionScenario | undefined {
+    return (standIn ? STAND_IN_SCENARIOS : SCENARIOS_BY_ID).get(id);
 }
 
 /** Pitanje je uvek ista, kratka rečenica sa imenom lika. */
@@ -262,7 +335,7 @@ const RULES: readonly LevelRule[] = [
 
 const MAX_LEVEL = RULES[RULES.length - 1].last;
 
-export interface EmotionLevel {
+interface EmotionLevel {
     /** Scenariji nivoa u osnovnom redosledu (igra ih meša) */
     scenarios: EmotionScenario[];
     /** Najviše ponuđenih osećanja na ovom nivou */
@@ -271,7 +344,7 @@ export interface EmotionLevel {
     palette: EmotionId[];
 }
 
-export interface EmotionLevelOptions {
+interface EmotionLevelOptions {
     /** Koliko osećanja dete poznaje: 3, 5 ili 6 */
     emotionCount: number;
     /** Najviše zadataka u nivou za ovaj uzrast */

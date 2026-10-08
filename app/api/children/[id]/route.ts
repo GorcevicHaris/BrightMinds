@@ -6,9 +6,10 @@ import {
     assertPinAvailable,
     CHILD_NOT_FOUND,
     childWriteError,
+    deletePlaySessions,
     parseChildInput,
+    selectChildRows,
     toChild,
-    type ChildRow,
 } from "../../_lib/children";
 import { errorResponse, HttpError, parseIdParam, readJsonObject } from "../../_lib/http";
 
@@ -25,21 +26,22 @@ export async function PUT(request: Request, { params }: RouteContext) {
 
         if (input.pin_code) await assertPinAvailable(input.pin_code, childId);
 
-        const { data, error } = await supabaseAdmin
-            .from("children")
-            .update({
-                first_name: input.first_name,
-                last_name: input.last_name,
-                date_of_birth: input.date_of_birth,
-                gender: input.gender,
-                ...(input.notes !== undefined ? { notes: input.notes } : {}),
-                ...(input.pin_code !== undefined ? { pin_code: input.pin_code } : {}),
-            })
-            .eq("id", childId)
-            .select("*");
-        if (error) throw childWriteError(error, input.pin_code);
-
-        const child = ((data ?? []) as ChildRow[])[0];
+        const [child] = await selectChildRows((columns) =>
+            supabaseAdmin
+                .from("children")
+                .update({
+                    first_name: input.first_name,
+                    last_name: input.last_name,
+                    date_of_birth: input.date_of_birth,
+                    gender: input.gender,
+                    ...(input.notes !== undefined ? { notes: input.notes } : {}),
+                    ...(input.pin_code !== undefined ? { pin_code: input.pin_code } : {}),
+                })
+                .eq("id", childId)
+                .select(columns)
+        ).catch((error: unknown) => {
+            throw childWriteError(error, input.pin_code);
+        });
         if (!child) throw new HttpError(404, CHILD_NOT_FOUND);
 
         return NextResponse.json({ child: toChild(child) });
@@ -57,6 +59,8 @@ async function deleteChildRow(childId: number) {
 async function deleteDependents(childId: number): Promise<void> {
     const { error: logsError } = await supabaseAdmin.from("progress_logs").delete().eq("child_id", childId);
     if (logsError) throw logsError;
+    // Posete (migracija 0004) posle zapisa, da baza nema šta da odvezuje; bez tabele nema šta da se briše.
+    await deletePlaySessions(childId);
     const { error: linksError } = await supabaseAdmin.from("user_children").delete().eq("child_id", childId);
     if (linksError) throw linksError;
 }

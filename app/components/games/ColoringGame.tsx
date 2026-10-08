@@ -4,10 +4,24 @@
 // Nivoi 1–5: slobodno bojenje, bez pogrešnog ishoda. Nivoi 6–15: bojenje po uputstvu, jedan zadatak
 // odjednom; broj zadataka, broj ponuđenih boja i trenutak pomoći prate podešavanja deteta.
 
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
-import { Feedback, GameHud, GamePrompt, GameStage, playSfx, shuffle, useGameSync, useInputGuard, useTimers } from "@/app/components/games/kit";
+import {
+    DEMO_MS,
+    Feedback,
+    finiteOr,
+    GameHud,
+    GamePrompt,
+    GameStage,
+    playSfx,
+    PULSE_ONCE,
+    shuffle,
+    useDemo,
+    useGameSync,
+    useInputGuard,
+    useTimers,
+} from "@/app/components/games/kit";
 import type { BaseView, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
@@ -820,10 +834,6 @@ function withFills(view: ColoringView, picture: Picture, fills: Fills): Coloring
     };
 }
 
-function num(value: unknown, fallback: number): number {
-    return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
 function strings(value: unknown): string[] {
     return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
@@ -840,18 +850,18 @@ function mergeMonitor(base: ColoringView, incoming: Partial<ColoringView> | null
     const feedback = incoming.feedback;
     const options = strings(incoming.options).filter((id) => COLOR_BY_ID[id] !== undefined);
     return {
-        score: num(incoming.score, base.score),
-        correctCount: num(incoming.correctCount, base.correctCount),
-        incorrectCount: num(incoming.incorrectCount, base.incorrectCount),
-        round: num(incoming.round, base.round),
-        totalRounds: num(incoming.totalRounds, base.totalRounds),
+        score: finiteOr(incoming.score, base.score),
+        correctCount: finiteOr(incoming.correctCount, base.correctCount),
+        incorrectCount: finiteOr(incoming.incorrectCount, base.incorrectCount),
+        round: finiteOr(incoming.round, base.round),
+        totalRounds: finiteOr(incoming.totalRounds, base.totalRounds),
         fills,
         color: typeof incoming.color === "string" ? incoming.color : base.color,
         options: options.length > 0 ? options : base.options,
         wrongColors: strings(incoming.wrongColors),
         wrongZones: strings(incoming.wrongZones),
         hint: incoming.hint === true,
-        promptedCount: num(incoming.promptedCount, base.promptedCount),
+        promptedCount: finiteOr(incoming.promptedCount, base.promptedCount),
         feedback: feedback === "correct" || feedback === "zone" || feedback === "color" || feedback === "pick" ? feedback : null,
         done: incoming.done === true,
     };
@@ -882,11 +892,8 @@ function feedbackText(view: ColoringView, round: Round | undefined): string {
 
 // ── Pokazivanje ───────────────────────────────────────────────────────────────
 // Uz svako uputstvo kratko se istakne ono o čemu uputstvo govori (traženi deo slike i tražena boja):
-// jedan miran puls, pa mir. Zajednički kit ovo još nema, pa je kuka lokalna.
+// jedan miran puls, pa mir (`useDemo` iz kita).
 
-const DEMO_MS = 1500;
-/** Uz `animate-soft-pulse`: jedan krug umesto beskonačnog ponavljanja */
-const PULSE_ONCE: CSSProperties = { animationDuration: `${DEMO_MS}ms`, animationIterationCount: 1 };
 /** Uz `animate-fade` (SVG nema senku): oznaka se jednom polako pojavi i nestane */
 const FADE_IN_OUT: CSSProperties = {
     animationDuration: `${DEMO_MS / 2}ms`,
@@ -894,34 +901,6 @@ const FADE_IN_OUT: CSSProperties = {
     animationDirection: "alternate",
     animationTimingFunction: "ease-in-out",
 };
-
-function useDemo(enabled: boolean) {
-    const [demo, setDemo] = useState({ on: enabled, run: 0 });
-    const timer = useRef<TimerId | null>(null);
-
-    const arm = useCallback(() => {
-        if (timer.current !== null) clearTimeout(timer.current);
-        timer.current = setTimeout(() => {
-            timer.current = null;
-            setDemo((current) => ({ ...current, on: false }));
-        }, DEMO_MS);
-    }, []);
-
-    useEffect(() => {
-        if (enabled) arm();
-        return () => {
-            if (timer.current !== null) clearTimeout(timer.current);
-        };
-    }, [enabled, arm]);
-
-    /** Ponovo pokazuje (novi zadatak ili dugme „Ponovi”); `run` se menja da bi puls krenuo iz početka */
-    const show = useCallback(() => {
-        setDemo((current) => ({ on: true, run: current.run + 1 }));
-        arm();
-    }, [arm]);
-
-    return { on: demo.on, run: demo.run, show };
-}
 
 // ── Igra ──────────────────────────────────────────────────────────────────────
 
@@ -1258,7 +1237,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                 className="block h-10 w-10 rounded-full border-4 border-white shadow-soft ring-1 ring-line sm:h-14 sm:w-14"
                                 style={{ background: round.color.hex }}
                             />
-                            <span className="whitespace-nowrap text-[0.6875rem] font-extrabold leading-none text-ink sm:text-sm">{round.color.nom}</span>
+                            <span className="whitespace-nowrap text-xs font-extrabold leading-none tracking-tight text-ink sm:text-sm sm:tracking-normal">{round.color.nom}</span>
                         </span>
                     ) : (
                         <span aria-hidden="true">{picture.emoji}</span>

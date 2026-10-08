@@ -18,7 +18,7 @@
 
 export type SceneTone = "sun" | "lilac" | "aqua" | "leaf" | "rose" | "sky" | "snow";
 
-export interface StoryOption {
+interface StoryOption {
     emoji: string;
     label: string;
     /** Šta se verovatno desi posle ovog izbora — kratko i bez osude */
@@ -65,7 +65,7 @@ const choice = (question: string, good: StoryOption[], other: StoryOption[]): St
     acceptable: good.map((_, i) => i),
 });
 
-export const STORIES: readonly Story[] = [
+const STORIES: readonly Story[] = [
     // ── Laki nivoi (1–5): 4 koraka ────────────────────────────────────────────
     {
         title: "Jutro",
@@ -989,19 +989,4 @@ export function storyForLevel(level: number): Story {
 /** Broj koraka sa odlukom — to je `total` za ocenu nivoa u režimu „Čitaj i biraj”. */
 export function decisionCount(story: Story): number {
     return story.steps.filter((step) => step.decision).length;
-}
-
-/**
- * Indeksi izbora koji se nude kad dete sme da vidi najviše `limit` izbora.
- * Ostaju svi izbori koji pomažu a staju, i uvek bar jedan koji manje pomaže.
- */
-export function offeredOptions(decision: StoryDecision, limit: number): number[] {
-    const all = decision.options.map((_, i) => i);
-    const size = Math.max(2, Math.min(all.length, limit));
-    if (size >= all.length) return all;
-    const good = all.filter((i) => decision.acceptable.includes(i));
-    const other = all.filter((i) => !decision.acceptable.includes(i));
-    const keptOther = other.slice(0, Math.max(1, size - good.length));
-    const keptGood = good.slice(0, size - keptOther.length);
-    return [...keptGood, ...keptOther].sort((a, b) => a - b);
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Alert } from "./ui/Card";
-import { Button } from "./ui/Button";
+import { Button, buttonClasses } from "./ui/Button";
 import { Select, Switch } from "./ui/Field";
 import { Modal } from "./ui/Modal";
 import {
@@ -10,11 +10,14 @@ import {
     BAND_PRESETS,
     ageInYears,
     bandForAge,
+    MAX_PLAN_GAMES,
     defaultSettings,
     sanitizeSettings,
     type AgeBand,
     type ChildSettings,
 } from "@/lib/childSettings";
+import { cn } from "@/lib/cn";
+import { GAMES, type GameId } from "@/lib/games";
 
 interface Props {
     childId: number;
@@ -42,6 +45,26 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
     const [settings, setSettings] = useState<ChildSettings>(() => sanitizeSettings(stored, ageBand));
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState("");
+    const [confirmErase, setConfirmErase] = useState(false);
+    const [eraseState, setEraseState] = useState<"idle" | "working" | "done" | "failed">("idle");
+
+    const togglePlanGame = (id: GameId) =>
+        setSettings((prev) => {
+            if (prev.plan.includes(id)) return { ...prev, plan: prev.plan.filter((g) => g !== id) };
+            if (prev.plan.length >= MAX_PLAN_GAMES) return prev;
+            return { ...prev, plan: [...prev.plan, id] };
+        });
+
+    const eraseResults = async () => {
+        setEraseState("working");
+        try {
+            const res = await fetch(`/api/children/${childId}/progress`, { method: "DELETE" });
+            setEraseState(res.ok ? "done" : "failed");
+        } catch {
+            setEraseState("failed");
+        }
+        setConfirmErase(false);
+    };
 
     const activeBand = settings.band ?? ageBand;
     const preset = BAND_PRESETS[activeBand];
@@ -134,6 +157,50 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                     </div>
                 </Section>
 
+                <Section
+                    title="Plan igre „prvo–zatim”"
+                    hint={`Izaberite do ${MAX_PLAN_GAMES} igre redom kojim će ih dete igrati. Dete vidi raspored i zna šta je sada, šta posle i kada je kraj. Bez plana dete bira samo.`}
+                >
+                    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                        {GAMES.map((game) => {
+                            const position = settings.plan.indexOf(game.id);
+                            const selected = position >= 0;
+                            const full = !selected && settings.plan.length >= MAX_PLAN_GAMES;
+                            return (
+                                <li key={game.id}>
+                                    <button
+                                        type="button"
+                                        aria-pressed={selected}
+                                        disabled={full}
+                                        onClick={() => togglePlanGame(game.id)}
+                                        className={cn(
+                                            "flex min-h-12 w-full items-center gap-2 rounded-xl border-2 px-3 py-2 text-left text-sm font-extrabold transition-colors disabled:opacity-50",
+                                            selected ? "border-brand-500 bg-brand-50 text-ink" : "border-line bg-surface text-ink-soft hover:border-brand-200"
+                                        )}
+                                    >
+                                        <span
+                                            className={cn(
+                                                "grid h-7 w-7 shrink-0 place-items-center rounded-full text-sm",
+                                                selected ? "bg-brand-600 text-white" : "bg-canvas"
+                                            )}
+                                            aria-hidden="true"
+                                        >
+                                            {selected ? position + 1 : game.icon}
+                                        </span>
+                                        <span className="min-w-0 truncate">{game.title}</span>
+                                        {selected && <span className="sr-only">, {position + 1}. u planu</span>}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                    {settings.plan.length > 0 && (
+                        <button type="button" onClick={() => set("plan", [])} className="mt-2 min-h-9 rounded-lg px-2 text-sm font-extrabold text-brand-700 hover:bg-brand-50">
+                            Ukloni plan
+                        </button>
+                    )}
+                </Section>
+
                 <Section title="Čitanje" hint="Sve igre mogu da se igraju i bez čitanja: uputstva se izgovaraju.">
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Select
@@ -224,6 +291,33 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                             <option value="three">Tri lica, može da se preskoči</option>
                         </Select>
                     </div>
+                </Section>
+
+                <Section title="Podaci" hint="Rezultati igara pripadaju vama i detetu: možete ih preuzeti ili trajno obrisati.">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <a href={`/api/children/${childId}/export`} download className={buttonClasses({ variant: "secondary", size: "sm" })}>
+                            Preuzmi rezultate (CSV)
+                        </a>
+                        {!confirmErase ? (
+                            <Button variant="ghost" size="sm" onClick={() => setConfirmErase(true)} disabled={eraseState === "working"}>
+                                Obriši sve rezultate
+                            </Button>
+                        ) : (
+                            <span className="flex flex-wrap items-center gap-2 rounded-xl bg-rose-50 px-3 py-2">
+                                <span className="text-sm font-bold text-rose-700">Trajno obrisati sve rezultate?</span>
+                                <Button variant="danger" size="sm" onClick={eraseResults} isLoading={eraseState === "working"}>
+                                    Obriši
+                                </Button>
+                                <Button variant="secondary" size="sm" onClick={() => setConfirmErase(false)}>
+                                    Odustani
+                                </Button>
+                            </span>
+                        )}
+                    </div>
+                    <p className="mt-2 min-h-5 text-sm font-bold" aria-live="polite">
+                        {eraseState === "done" && <span className="text-emerald-700">Rezultati su obrisani.</span>}
+                        {eraseState === "failed" && <span className="text-rose-700">Brisanje nije uspelo. Pokušajte ponovo.</span>}
+                    </p>
                 </Section>
             </div>
         </Modal>

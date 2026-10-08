@@ -1,8 +1,9 @@
 // app/api/_lib/children.ts
 // Zajednički deo ruta za decu: oblik odgovora, provera ulaza, jedinstvenost PIN-a
-// i čitanje zapisa partija (progress_logs) koje dele rute za nivoe i izvoz.
+// i čitanje zapisa partija (progress_logs) i poseta (play_sessions) koje dele
+// rute za nivoe, statistiku i izvoz.
 import { ADVANCE_RATIO } from "@/lib/games";
-import { isUniqueViolation, supabaseAdmin } from "@/lib/supabase";
+import { isUniqueViolation, noResult, supabaseAdmin, withSchemaFallback, type DbAttemptResult } from "@/lib/supabase";
 import {
     asTrimmedString,
     dateOnlyInTimeZone,
@@ -57,6 +58,26 @@ export interface ChildRow {
     created_at?: string | null;
     /** jsonb; kolonu dodaje migracija 0002 */
     settings?: unknown;
+}
+
+/**
+ * Kolone tabele `children` koje aplikacija koristi. Izričit spisak umesto `*`:
+ * red tako ne nosi kolone koje niko ne čita (npr. `profile_image`, koja u
+ * starijim bazama može biti velika).
+ */
+export const CHILD_COLUMNS =
+    "id, first_name, last_name, date_of_birth, gender, notes, pin_code, streak, experience_points, last_login_at, created_at, settings";
+
+/**
+ * Čita ili upisuje redove tabele `children` tražeći samo `CHILD_COLUMNS`. Ako baza
+ * još nema neku od tih kolona (migracije 0001/0002), isti upit se ponavlja sa `*`.
+ * `run` dobija spisak kolona za `.select(...)` i vraća upit.
+ */
+export async function selectChildRows(
+    run: (columns: string) => PromiseLike<DbAttemptResult<unknown>>
+): Promise<ChildRow[]> {
+    const { data } = await withSchemaFallback<unknown>([() => run(CHILD_COLUMNS), () => run("*")], "children.columns");
+    return (data ?? []) as ChildRow[];
 }
 
 /** Sačuvana podešavanja kao objekat; `{}` ako kolona ne postoji ili vrednost nije objekat. */
@@ -152,8 +173,8 @@ export function childWriteError(error: unknown, pinCode: string | null | undefin
 // ── Zapisi partija (progress_logs) ─────────────────────────────────────────────
 
 /**
- * Red tabele `progress_logs` kako ga vraća `select('*')`. Kolone iz migracija
- * (0001: level … duration_seconds, 0002: prompted_count) mogu da nedostaju.
+ * Red tabele `progress_logs`. Kolone iz migracija (0001: level … duration_seconds,
+ * 0002: prompted_count, 0004: session_id, passed) mogu da nedostaju.
  */
 export interface ProgressLogRow {
     id: number;
@@ -171,6 +192,89 @@ export interface ProgressLogRow {
     total_count?: number | null;
     duration_seconds?: number | null;
     prompted_count?: number | null;
+    /** Poseta kojoj partija pripada; `null` za zapise pre migracije 0004 */
+    session_id?: number | null;
+    /** Odluka „nivo položen” doneta pri upisu; `null`/nema = stariji zapis */
+    passed?: boolean | null;
+}
+
+/**
+ * Kolone zapisa partije koje čitaju statistika i izvoz (bez child_id i
+ * recorded_by, koji su poznati iz upita). Baza bez migracije 0004 nema
+ * session_id/passed — tada se čita `*` (videti `selectProgressLogs`).
+ */
+export const PROGRESS_LOG_COLUMNS =
+    "id, activity_id, success_level, duration_minutes, notes, mood_before, mood_after, completed_at, level, stars, score, correct_count, total_count, duration_seconds, prompted_count, session_id, passed";
+
+/**
+ * Jedna strana zapisa partija sa izričitim kolonama; ako baza još nema neku od
+ * njih, isti upit se ponavlja sa `*`. `run` dobija spisak kolona i vraća upit.
+ */
+export async function selectProgressLogs(
+    run: (columns: string) => PromiseLike<DbAttemptResult<unknown>>
+): Promise<ProgressLogRow[]> {
+    const { data } = await withSchemaFallback<unknown>(
+        [() => run(PROGRESS_LOG_COLUMNS), () => run("*")],
+        "progress_logs.columns"
+    );
+    return (data ?? []) as ProgressLogRow[];
+}
+
+// ── Posete (play_sessions, migracija 0004) ─────────────────────────────────────
+
+export const PLAY_SESSIONS_TABLE = "play_sessions";
+/** Ključ pod kojim `withSchemaFallback` pamti da tabela poseta ne postoji. */
+export const PLAY_SESSIONS_MEMO = "play_sessions";
+
+/** Raspoloženje jedne posete — ono što statistici i izvozu treba od `play_sessions`. */
+export interface PlaySessionRow {
+    id: number;
+    mood_before: string | null;
+    mood_after: string | null;
+}
+
+/** PostgREST vraća najviše 1000 redova po upitu. */
+const SESSION_PAGE_SIZE = 1000;
+
+/**
+ * Posete deteta, najnovije prvo, najviše `maxRows`. Baza bez migracije 0004
+ * nema tabelu — tada je spisak prazan i raspoloženje se čita iz zapisa partija.
+ */
+export async function fetchPlaySessions(childId: number, maxRows: number): Promise<PlaySessionRow[]> {
+    const rows: PlaySessionRow[] = [];
+    for (let from = 0; from < maxRows; from += SESSION_PAGE_SIZE) {
+        const to = Math.min(from + SESSION_PAGE_SIZE, maxRows) - 1;
+        const { data } = await withSchemaFallback<unknown>(
+            [
+                () =>
+                    supabaseAdmin
+                        .from(PLAY_SESSIONS_TABLE)
+                        .select("id, mood_before, mood_after")
+                        .eq("child_id", childId)
+                        .order("started_at", { ascending: false })
+                        .order("id", { ascending: false })
+                        .range(from, to),
+                noResult,
+            ],
+            PLAY_SESSIONS_MEMO
+        );
+
+        const page = (data ?? []) as PlaySessionRow[];
+        rows.push(...page);
+        if (page.length < SESSION_PAGE_SIZE) break;
+    }
+    return rows;
+}
+
+/**
+ * Briše sve posete deteta; baza bez tabele poseta nema šta da briše. Namerno bez
+ * pamćenja (`memoKey`): brisanje ličnih podataka mora uvek da proba pravu tabelu.
+ */
+export async function deletePlaySessions(childId: number): Promise<void> {
+    await withSchemaFallback<unknown>([
+        () => supabaseAdmin.from(PLAY_SESSIONS_TABLE).delete().eq("child_id", childId),
+        noResult,
+    ]);
 }
 
 /** Nivo i zvezdice iz stare beleške "Nivo 3, Zvezdice: 2, Rezultat: 150". */

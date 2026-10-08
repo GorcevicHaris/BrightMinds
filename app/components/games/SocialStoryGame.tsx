@@ -9,10 +9,17 @@ import {
     GamePrompt,
     GameStage,
     genderText,
+    hintDue,
+    offeredOptions,
+    OptionSpeaker,
     playSfx,
     shuffle,
+    toIndexList,
+    TriedNote,
     useGameSync,
     useInputGuard,
+    useListenGate,
+    useSayAll,
     useTimers,
     type BaseView,
     type ChoiceState,
@@ -22,7 +29,7 @@ import {
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
-import { decisionCount, offeredOptions, storyForLevel, type SceneTone, type Story, type StoryDecision, type StoryStep } from "./data/socialStories";
+import { decisionCount, storyForLevel, type SceneTone, type Story, type StoryDecision, type StoryStep } from "./data/socialStories";
 
 // ── Stanje igre ───────────────────────────────────────────────────────────────
 // Sve što utiče na prikaz je u jednom JSON objektu koji se šalje live monitoru.
@@ -79,9 +86,6 @@ const LISTENING_TEXT = "Slušamo…";
 const HELPS_TEXT = "To pomaže.";
 const RETRY_TEXT = "Probajmo drugi način.";
 const HINT_TEXT = "Pogledaj karticu koja svetli.";
-const SPEAK_DELAY_MS = 400;
-/** Ako se kraj čitanja ne javi, izbori se ipak otključaju posle ovoliko vremena */
-const LISTEN_MAX_MS = 6000;
 const SCROLL_DELAY_MS = 60;
 const CELEBRATION_MS = 1100;
 const POINTS_FIRST_PICK = 100;
@@ -113,12 +117,6 @@ function createView(story: Story, records: StepRecord[]): StoryView {
 
 function toCount(value: unknown): number {
     return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
-}
-
-function toIndexList(value: unknown, size: number): number[] {
-    if (!Array.isArray(value)) return [];
-    const valid = value.filter((v): v is number => Number.isInteger(v) && v >= 0 && v < size);
-    return Array.from(new Set(valid));
 }
 
 function resolveRecord(raw: unknown, decision: StoryDecision | undefined, fallback: StepRecord): StepRecord {
@@ -158,14 +156,6 @@ function resolveView(raw: Partial<StoryView> | null | undefined, story: Story, f
 /** Izbori su zaključani dok se korak čita — samo ako na njemu još treba birati. */
 function awaitsChoice(story: Story, mode: StoryMode, stepIndex: number, records: StepRecord[]): boolean {
     return mode === "choose" && story.steps[stepIndex].decision !== undefined && records[stepIndex].picked === null;
-}
-
-/**
- * Kartica zasvetli posle onoliko izbora koji manje pomažu koliko je roditelj podesio
- * (0 = nikad), a najkasnije kad su svi takvi izbori već probani.
- */
-function hintDue(hintAfter: number, triedCount: number, lessHelpfulOffered: number): boolean {
-    return hintAfter > 0 && triedCount >= Math.min(hintAfter, lessHelpfulOffered);
 }
 
 /** Nijedna kartica se ne boji kao „pogrešna”: probani izbori se samo utišaju. */
@@ -227,11 +217,11 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
     const { after } = useTimers();
     const sync = useGameSync<StoryView>({ childId, gameId: "social-story", level, isMonitor });
     const { say, stop } = useSpeech(gender);
+    const { sayAll, cancel: cancelSpeechQueue } = useSayAll(say);
 
     // Komponenta se za svaki nivo pravi iznova, pa se izbori biraju i mešaju samo jednom, ovde.
     const [view, setView] = useState<StoryView>(() => createView(story, createRecords(story, settings.choiceLimit, !isMonitor)));
     const viewRef = useRef(view);
-    const speechRun = useRef(0);
     const started = useRef(false);
     const finished = useRef(false);
     const topRef = useRef<HTMLSpanElement>(null);
@@ -257,24 +247,6 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
             sync.update(next, log);
         },
         [sync]
-    );
-
-    /** Izgovara delove jedan za drugim; svaki novi govor ili prekid poništava započeti niz. */
-    const sayAll = useCallback(
-        (parts: string[], onDone?: () => void) => {
-            speechRun.current += 1;
-            const run = speechRun.current;
-            const next = (i: number) => {
-                if (run !== speechRun.current) return;
-                if (i >= parts.length) {
-                    onDone?.();
-                    return;
-                }
-                void say(parts[i], () => next(i + 1));
-            };
-            next(0);
-        },
-        [say]
     );
 
     const unlock = useCallback(() => {
@@ -309,23 +281,8 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
         sync.start(viewRef.current);
     }, [isMonitor, sync]);
 
-    useEffect(
-        () => () => {
-            speechRun.current += 1;
-        },
-        []
-    );
-
     // Svaka nova stranica se pročita naglas; izbori čekaju kraj čitanja, ali ne duže od LISTEN_MAX_MS
-    useEffect(() => {
-        if (isMonitor || view.phase === "done") return;
-        const speakTimer = window.setTimeout(narrate, SPEAK_DELAY_MS);
-        const unlockTimer = window.setTimeout(unlock, LISTEN_MAX_MS);
-        return () => {
-            window.clearTimeout(speakTimer);
-            window.clearTimeout(unlockTimer);
-        };
-    }, [isMonitor, narrate, unlock, view.phase, view.stepIndex]);
+    useListenGate(!isMonitor && view.phase !== "done", `${view.phase}:${view.stepIndex}`, narrate, unlock);
 
     // Na telefonu: nova stranica se čita od vrha
     useEffect(() => {
@@ -333,7 +290,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
     }, [isMonitor, view.phase, view.stepIndex]);
 
     const silence = () => {
-        speechRun.current += 1;
+        cancelSpeechQueue();
         stop();
     };
 
@@ -644,13 +601,12 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                         </div>
                                     )}
                                     {record.picked === null && lastTried !== null && (
-                                        <div key={lastTried} className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 p-4 sm:p-5">
-                                            <p className="mb-1 text-sm font-extrabold text-ink-soft sm:text-base">
-                                                <span aria-hidden="true">{decision.options[lastTried].emoji} </span>
-                                                {t(decision.options[lastTried].label)}
-                                            </p>
-                                            <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{t(decision.options[lastTried].why)}</p>
-                                        </div>
+                                        <TriedNote
+                                            key={lastTried}
+                                            emoji={decision.options[lastTried].emoji}
+                                            label={t(decision.options[lastTried].label)}
+                                            note={t(decision.options[lastTried].why)}
+                                        />
                                     )}
                                 </div>
                             </section>
@@ -777,28 +733,6 @@ function BackButton({ onClick, disabled }: NavButtonProps) {
                 <path d="M19 12H5M11 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Nazad
-        </button>
-    );
-}
-
-interface OptionSpeakerProps extends NavButtonProps {
-    label: string;
-}
-
-/** Mali zvučnik uz izbor: čita taj izbor naglas, bez biranja. */
-function OptionSpeaker({ label, onClick, disabled }: OptionSpeakerProps) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            disabled={disabled}
-            aria-label={label}
-            className="grid min-h-14 w-14 shrink-0 place-items-center rounded-tile border-2 border-line bg-surface text-brand-600 shadow-soft transition-colors enabled:hover:border-brand-300 enabled:hover:bg-brand-50 disabled:cursor-default disabled:opacity-45"
-        >
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-                <path d="M11 5 6 9H3v6h3l5 4V5z" strokeLinejoin="round" />
-                <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" strokeLinecap="round" />
-            </svg>
         </button>
     );
 }

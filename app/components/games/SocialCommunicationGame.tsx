@@ -13,10 +13,18 @@ import {
     GamePrompt,
     GameStage,
     genderText,
+    hintDue,
+    offeredOptions,
+    OptionSpeaker,
     playSfx,
     shuffle,
+    toCount,
+    toIndexList,
+    TriedNote,
     useGameSync,
     useInputGuard,
+    useListenGate,
+    useSayAll,
     type BaseView,
     type ChoiceState,
     type FeedbackKind,
@@ -25,7 +33,6 @@ import {
 import {
     getSituation,
     getSituationsForLevel,
-    offeredOptions,
     type SituationKind,
     type SocialOption,
     type SocialSituation,
@@ -70,9 +77,6 @@ const HELPS_TEXT = "To pomaže.";
 const RETRY_TEXT = "Probajmo drugi način.";
 const HINT_TEXT = "Pogledaj karticu koja svetli.";
 const KIND_LABEL: Record<SituationKind, string> = { polite: "učtivost", advocacy: "zastupanje sebe" };
-const SPEAK_DELAY_MS = 400;
-/** Ako se kraj govora ne javi, izbori se ipak pojave posle ovoliko vremena */
-const MODEL_MAX_MS = 6000;
 const CELEBRATE_MS = 1000;
 /** Poeni prema broju izbora koji manje pomažu pre onog koji pomaže */
 const POINTS = [100, 60, 30];
@@ -105,16 +109,6 @@ function initialView(rounds: Round[]): SocialView {
     };
 }
 
-function toCount(value: unknown, fallback: number): number {
-    return typeof value === "number" && Number.isFinite(value) && value >= 0 ? Math.floor(value) : fallback;
-}
-
-function toIndexList(value: unknown, size: number): number[] {
-    if (!Array.isArray(value)) return [];
-    const valid = value.filter((v): v is number => Number.isInteger(v) && v >= 0 && v < size);
-    return Array.from(new Set(valid));
-}
-
 /** Stanje sa monitora može biti prazno ili nepotpuno — sve što fali ili nema smisla menja se podrazumevanim. */
 function mergeMonitorView(fallback: SocialView, state: Partial<SocialView> | null | undefined): SocialView {
     if (!state) return fallback;
@@ -138,14 +132,6 @@ function mergeMonitorView(fallback: SocialView, state: Partial<SocialView> | nul
         promptedCount: toCount(state.promptedCount, 0),
         finished: state.finished === true,
     };
-}
-
-/**
- * Kartica zasvetli posle onoliko izbora koji manje pomažu koliko je roditelj podesio
- * (0 = nikad), a najkasnije kad su svi takvi izbori već probani.
- */
-function hintDue(hintAfter: number, triedCount: number, lessHelpfulOffered: number): boolean {
-    return hintAfter > 0 && triedCount >= Math.min(hintAfter, lessHelpfulOffered);
 }
 
 /** Svetli samo jedna kartica: prvi prikazani izbor koji pomaže. */
@@ -203,13 +189,13 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
     const guard = useInputGuard();
     const sync = useGameSync<SocialView>({ childId, gameId: "social", level, isMonitor });
     const { say, stop } = useSpeech(gender);
+    const { sayAll, cancel: cancelSpeechQueue } = useSayAll(say);
 
     // Komponenta se za svaki nivo pravi iznova, pa se izbori biraju i mešaju samo jednom, ovde.
     const [rounds] = useState(() => buildRounds(level, settings.choiceLimit, settings.preset.maxRounds, !isMonitor));
     const [view, setView] = useState(() => initialView(rounds));
     const viewRef = useRef(view);
     const finishTimer = useRef<number | null>(null);
-    const speechRun = useRef(0);
     const startedRef = useRef(false);
     const completedRef = useRef(false);
     const nextButtonRef = useRef<HTMLButtonElement>(null);
@@ -229,24 +215,6 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
             sync.update(next, log);
         },
         [sync]
-    );
-
-    /** Izgovara delove jedan za drugim; svaki novi govor ili prekid poništava započeti niz. */
-    const sayAll = useCallback(
-        (parts: string[], onDone?: () => void) => {
-            speechRun.current += 1;
-            const run = speechRun.current;
-            const step = (i: number) => {
-                if (run !== speechRun.current) return;
-                if (i >= parts.length) {
-                    onDone?.();
-                    return;
-                }
-                void say(parts[i], () => step(i + 1));
-            };
-            step(0);
-        },
-        [say]
     );
 
     const revealOptions = useCallback(() => {
@@ -283,22 +251,13 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
 
     useEffect(
         () => () => {
-            speechRun.current += 1;
             if (finishTimer.current !== null) window.clearTimeout(finishTimer.current);
         },
         []
     );
 
-    // Svaka nova situacija: primer se pročita naglas, pa se pojave izbori
-    useEffect(() => {
-        if (isMonitor) return;
-        const speakTimer = window.setTimeout(present, SPEAK_DELAY_MS);
-        const revealTimer = window.setTimeout(revealOptions, MODEL_MAX_MS);
-        return () => {
-            window.clearTimeout(speakTimer);
-            window.clearTimeout(revealTimer);
-        };
-    }, [isMonitor, present, revealOptions, view.round]);
+    // Svaka nova situacija: primer se pročita naglas, pa se pojave izbori (najkasnije posle LISTEN_MAX_MS)
+    useListenGate(!isMonitor, view.round, present, revealOptions);
 
     // Posle izbora koji pomaže fokus ide na „Dalje” (tastatura, čitači ekrana, mali ekrani)
     useEffect(() => {
@@ -356,7 +315,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
         if (isMonitor || guard.blocked()) return;
         const current = viewRef.current;
         if (current.picked === null || current.finished || completedRef.current) return;
-        speechRun.current += 1;
+        cancelSpeechQueue();
         stop();
 
         if (current.round >= rounds.length) {
@@ -477,13 +436,12 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
 
                     <div aria-live="polite">
                         {triedOption && (
-                            <div key={lastTried} className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 p-4 sm:p-5">
-                                <p className="mb-1 text-sm font-extrabold text-ink-soft sm:text-base">
-                                    <span aria-hidden="true">{triedOption.emoji} </span>
-                                    {optionLabel(triedOption, female)}
-                                </p>
-                                <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{genderText(triedOption.note, female)}</p>
-                            </div>
+                            <TriedNote
+                                key={lastTried}
+                                emoji={triedOption.emoji}
+                                label={optionLabel(triedOption, female)}
+                                note={genderText(triedOption.note, female)}
+                            />
                         )}
                     </div>
 
@@ -507,29 +465,5 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                 </>
             )}
         </GameStage>
-    );
-}
-
-// ── Lokalni delovi (nema ih u kitu) ───────────────────────────────────────────
-
-interface OptionSpeakerProps {
-    label: string;
-    onClick: () => void;
-}
-
-/** Mali zvučnik uz izbor: čita taj izbor naglas, bez biranja. */
-function OptionSpeaker({ label, onClick }: OptionSpeakerProps) {
-    return (
-        <button
-            type="button"
-            onClick={onClick}
-            aria-label={label}
-            className="grid min-h-14 w-14 shrink-0 place-items-center rounded-tile border-2 border-line bg-surface text-brand-600 shadow-soft transition-colors hover:border-brand-300 hover:bg-brand-50"
-        >
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-                <path d="M11 5 6 9H3v6h3l5 4V5z" strokeLinejoin="round" />
-                <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" strokeLinecap="round" />
-            </svg>
-        </button>
     );
 }

@@ -1,10 +1,10 @@
 // Probni prikaz dečjeg ekrana sa izmišljenim profilom — samo u razvoju.
-// Parametri: ?gender=male|female &viewer=parent &age=4 &script=cyrillic &caps=0|1 &motion=reduced &avatar=0 &limit=10
+// Parametri: ?gender=male|female &viewer=parent &age=4 &script=cyrillic &caps=0|1 &motion=reduced &avatar=0 &limit=10 &plan=shapes,coloring
 import { notFound } from "next/navigation";
 import ChildPageClient from "@/app/dashboard/child/[id]/ChildPageClient";
 import { resolveSettings } from "@/lib/childSettings";
 
-type Params = Partial<Record<"gender" | "viewer" | "age" | "script" | "caps" | "motion" | "avatar" | "limit", string>>;
+type Params = Partial<Record<"gender" | "viewer" | "age" | "script" | "caps" | "motion" | "avatar" | "limit" | "plan", string>>;
 
 export default async function DevChildPage({ searchParams }: { searchParams: Promise<Params> }) {
     if (process.env.NODE_ENV === "production") notFound();
@@ -20,6 +20,7 @@ export default async function DevChildPage({ searchParams }: { searchParams: Pro
             ...(p.motion ? { reduceMotion: p.motion === "reduced" } : {}),
             ...(p.avatar ? { avatar: p.avatar !== "0" } : {}),
             ...(p.limit ? { sessionMinutes: Number(p.limit) } : {}),
+            ...(p.plan ? { plan: p.plan.split(",") } : {}),
         },
         birth.toISOString().slice(0, 10)
     );

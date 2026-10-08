@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart3, LogOut, Pencil, Play, Plus, Radio, Settings2, Trash2 } from "lucide-react";
+import { BarChart3, BookOpen, LogOut, Pencil, Play, Plus, Radio, Settings2, Trash2 } from "lucide-react";
+import CustomStoriesManager from "./stories/CustomStoriesManager";
 import ChildSettingsModal from "./ChildSettingsModal";
 import VisualPinPad from "./VisualPinPad";
 import { Alert, Card } from "./ui/Card";
@@ -121,6 +122,7 @@ export default function Dashboard() {
 
     const [editing, setEditing] = useState<Child | "new" | null>(null);
     const [configuring, setConfiguring] = useState<Child | null>(null);
+    const [writingStories, setWritingStories] = useState<Child | null>(null);
     const [deleting, setDeleting] = useState<Child | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState("");
@@ -263,6 +265,7 @@ export default function Dashboard() {
                                     child={child}
                                     onEdit={() => setEditing(child)}
                                     onConfigure={() => setConfiguring(child)}
+                                    onStories={() => setWritingStories(child)}
                                     onDelete={() => {
                                         setDeleteError("");
                                         setDeleting(child);
@@ -277,9 +280,16 @@ export default function Dashboard() {
             <footer className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8">
                 <p className="max-w-3xl text-xs font-medium text-ink-faint">
                     Bright Minds je vežbanka uz podršku odraslih. Nije terapija ni dijagnostički alat i ne zamenjuje logopeda,
-                    defektologa ili psihologa. Veštine se najbolje prenose u svakodnevni život kada ih dete vežba i van ekrana, sa vama.
+                    defektologa ili psihologa. Veštine se najbolje prenose u svakodnevni život kada ih dete vežba i van ekrana, sa vama.{" "}
+                    <Link href="/privatnost" className="font-bold text-brand-700 underline-offset-4 hover:underline">
+                        Podaci i privatnost
+                    </Link>
                 </p>
             </footer>
+
+            {writingStories && (
+                <CustomStoriesManager childId={writingStories.id} childName={writingStories.first_name} onClose={() => setWritingStories(null)} />
+            )}
 
             {configuring && (
                 <ChildSettingsModal
@@ -331,7 +341,15 @@ export default function Dashboard() {
 
 // ── Kartica deteta ────────────────────────────────────────────────────────────
 
-function ChildCard({ child, onEdit, onConfigure, onDelete }: { child: Child; onEdit: () => void; onConfigure: () => void; onDelete: () => void }) {
+interface ChildCardProps {
+    child: Child;
+    onEdit: () => void;
+    onConfigure: () => void;
+    onStories: () => void;
+    onDelete: () => void;
+}
+
+function ChildCard({ child, onEdit, onConfigure, onStories, onDelete }: ChildCardProps) {
     const pinItems = pinToItems(child.pin_code);
     const hasPin = pinItems.length === PIN_LENGTH && pinItems.every(Boolean);
     const age = ageLabel(child.date_of_birth);
@@ -423,7 +441,7 @@ function ChildCard({ child, onEdit, onConfigure, onDelete }: { child: Child; onE
                     <Play className="h-5 w-5" aria-hidden="true" />
                     Pokreni igre
                 </Link>
-                <div className="mt-2.5 grid grid-cols-3 gap-2">
+                <div className="mt-2.5 grid grid-cols-2 gap-2">
                     <Link href={`/dashboard/progress/${child.id}`} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
                         <BarChart3 className="h-4 w-4 shrink-0" aria-hidden="true" />
                         Statistika
@@ -432,6 +450,10 @@ function ChildCard({ child, onEdit, onConfigure, onDelete }: { child: Child; onE
                         <Radio className="h-4 w-4 shrink-0" aria-hidden="true" />
                         Uživo
                     </Link>
+                    <button type="button" onClick={onStories} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
+                        <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
+                        Moje priče
+                    </button>
                     <button type="button" onClick={onConfigure} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
                         <Settings2 className="h-4 w-4 shrink-0" aria-hidden="true" />
                         Podesi

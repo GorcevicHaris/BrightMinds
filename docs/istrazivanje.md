@@ -31,14 +31,21 @@ Važno: Bright Minds je vežbanka uz podršku odraslih. **Nije terapija ni dijag
 | **Veliki ciljevi za dodir, samo dodir** (bez prevlačenja, štipanja, dugog pritiska), kratka pauza unosa posle promene zadatka. | Većina autistične dece ima motoričke teškoće; mala deca dodiruju više puta i drže prst. | Jaki — Bhat 2020; Sesame Workshop; WCAG 2.5.8 |
 | **Izvoz i brisanje podataka**, bez analitike trećih strana u dečjem delu. | Podaci o deci i zdravlju su posebna kategorija. Ovo nije pravni savet. | Zakon — ZZPL čl. 5, 16, 17, 54 |
 
+## Šta je urađeno posle prve verzije
+
+- **Plan igre „prvo–zatim”:** odrasli bira do četiri igre redom; dete vidi raspored, šta je sada, šta posle i kada je kraj (vizuelni rasporedi — Knight i sar. 2015; TEACCH).
+- **„Moje priče”:** priče koje odrasli sam piše za dete (ili kreće od primera), u prvom licu i bez pitanja; dete ih čita korak po korak pre stvarnog događaja.
+- **Podaci i privatnost:** stranica `/privatnost`, preuzimanje i brisanje rezultata; ime deteta se ne šalje servisu za govor.
+- **Sesije igre u bazi:** raspoloženje se čuva jednom po poseti, pa statistika više nije uvećana brojem odigranih nivoa.
+
 ## Šta još nije urađeno
 
 - **Proba sa decom i terapeutima.** Brojevi po uzrastu (izbori, parovi, minuti) su obrazložene procene; treba ih proveriti u radu sa decom, uključujući decu koja ne govore.
+- **Preslušavanje zvukova.** Podela na tihe i nagle zvuke i ujednačavanje jačine urađeni su po merenju fajlova, bez slušanja.
 - **Snimljen ljudski glas** za stalna uputstva (sintetički glas je mlađoj deci teže razumljiv).
-- **Lično prilagođene priče** (ime, fotografije, koraci koje unosi odrasli) i tematski paketi prema interesovanjima deteta.
+- **Fotografije u pričama i tematski paketi** prema interesovanjima deteta.
 - **Piktogrami** (npr. ARASAAC, licenca CC BY-NC-SA — nekomercijalna) umesto emodžija u scenama.
-- **Plan igre „prvo–zatim”** koji sastavlja odrasli.
-- **Procena uticaja na zaštitu podataka** i rok čuvanja podataka.
+- **Procena uticaja na zaštitu podataka** i rok čuvanja podataka; na stranici o privatnosti treba navesti ko je rukovalac.
 
 ## Glavni izvori
 

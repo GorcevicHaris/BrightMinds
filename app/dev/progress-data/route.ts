@@ -1,7 +1,8 @@
 // Izmišljeni podaci o napretku za probne stranice — samo u razvoju.
 // Prolaze kroz isti `buildProgress` kao pravi zapisi, pa /dev/progress prikazuje sva stanja:
 // savladanu igru, igru kojoj treba podrška, igru koja nije igrana, zapise bez `prompted_count`
-// i raspoloženje sa obe skale (pet i tri lica).
+// i raspoloženje sa obe skale (pet i tri lica) — i iz poseta (`play_sessions`, jedan izbor po
+// poseti) i iz starijih zapisa koji raspoloženje nose uz svaku partiju.
 import { NextResponse } from "next/server";
 import { getGame, starsFor, successLevelFor, type GameId, type Mood } from "@/lib/games";
 import { buildProgress } from "@/lib/progress";
@@ -25,6 +26,13 @@ interface Play {
     daysAgo: number;
     moodBefore: Mood | null;
     moodAfter: Mood | null;
+}
+
+/** Red tabele `play_sessions` kakav čita `buildProgress`. */
+interface MockSession {
+    id: number;
+    mood_before: Mood | null;
+    mood_after: Mood | null;
 }
 
 /** Deterministički "nasumičan" broj 0–1, da prikaz bude isti pri svakom učitavanju. */
@@ -94,8 +102,24 @@ export function GET() {
 
     const now = Date.now();
     const plays = [...Array.from({ length: RANDOM_ROWS }, (_, index) => randomPlay(index)), ...SCRIPTED];
+    // Tri od četiri partije pripadaju poseti (jedna poseta po danu): raspoloženje je tada na
+    // poseti, a ne u zapisu. Svaka četvrta je "stariji" zapis sa raspoloženjem uz samu partiju.
+    const sessions: MockSession[] = [];
+    const sessionByDay = new Map<number, number>();
+    const sessionFor = (play: Play): number => {
+        const day = Math.floor(play.daysAgo);
+        let id = sessionByDay.get(day);
+        if (id === undefined) {
+            id = sessions.length + 1;
+            sessionByDay.set(day, id);
+            sessions.push({ id, mood_before: play.moodBefore, mood_after: play.moodAfter });
+        }
+        return id;
+    };
+
     const rows = plays.map((play, index) => {
         const stars = starsFor(play.correct, play.total);
+        const sessionId = index % 4 === 3 ? null : sessionFor(play);
         return {
             id: index + 1,
             child_id: 0,
@@ -111,11 +135,12 @@ export function GET() {
             total_count: play.total,
             // Kolona ne postoji u starijim zapisima — tada je i ovde nema
             ...(play.prompted === null ? {} : { prompted_count: play.prompted }),
-            mood_before: play.moodBefore,
-            mood_after: play.moodAfter,
+            session_id: sessionId,
+            mood_before: sessionId === null ? play.moodBefore : null,
+            mood_after: sessionId === null ? play.moodAfter : null,
             completed_at: new Date(now - Math.floor(play.daysAgo * DAY_MS)).toISOString(),
         };
     });
 
-    return NextResponse.json(buildProgress(rows));
+    return NextResponse.json(buildProgress(rows, new Date(now), sessions));
 }

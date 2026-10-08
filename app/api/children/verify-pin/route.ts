@@ -9,7 +9,7 @@ import { setSessionCookie } from "@/lib/auth";
 import { getClientIp, takeAttempt, type RateLimitRule } from "@/lib/rateLimit";
 import { assertDbConfigured, supabaseAdmin } from "@/lib/supabase";
 import { asTrimmedString, dateOnlyInTimeZone, shiftDateOnly } from "@/lib/validation";
-import { parseDbTimestamp, type ChildRow } from "../../_lib/children";
+import { parseDbTimestamp, selectChildRows, type ChildRow } from "../../_lib/children";
 import { enforceRateLimit, errorResponse, HttpError, readJsonObject } from "../../_lib/http";
 
 /** Neuspešni pokušaji po IP adresi. */
@@ -61,9 +61,10 @@ async function findOwner(childId: number): Promise<Owner | null> {
 }
 
 async function loadChild(childId: number): Promise<ChildRow | null> {
-    const { data, error } = await supabaseAdmin.from("children").select("*").eq("id", childId).limit(1);
-    if (error) throw error;
-    return ((data ?? []) as ChildRow[])[0] ?? null;
+    const rows = await selectChildRows((columns) =>
+        supabaseAdmin.from("children").select(columns).eq("id", childId).limit(1)
+    );
+    return rows[0] ?? null;
 }
 
 /**
@@ -126,15 +127,14 @@ export async function POST(request: Request) {
         const attempt = takeAttempt(`pin:${getClientIp(request)}`, PIN_RULE);
         enforceRateLimit(attempt, "Previše pokušaja. Sačekaj malo pa probaj ponovo.");
 
-        const { data, error } = await supabaseAdmin
-            .from("children")
-            .select("*")
-            .eq("pin_code", pinCode)
-            .order("id", { ascending: true })
-            .limit(2);
-        if (error) throw error;
-
-        const matches = (data ?? []) as ChildRow[];
+        const matches = await selectChildRows((columns) =>
+            supabaseAdmin
+                .from("children")
+                .select(columns)
+                .eq("pin_code", pinCode)
+                .order("id", { ascending: true })
+                .limit(2)
+        );
         if (matches.length === 0) throw new HttpError(401, "Netačan kod");
         if (matches.length > 1) {
             // Nasleđeni duplikati (pre jedinstvenog indeksa): ne pogađamo koje je dete u pitanju.

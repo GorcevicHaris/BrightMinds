@@ -1,6 +1,7 @@
 // lib/progress.ts
 // Statistika napretka: zajednički tipovi za API (/api/children/[id]/progress) i
-// ProgressDashboard, plus čista funkcija koja redove iz `progress_logs` pretvara u odgovor.
+// ProgressDashboard, plus čista funkcija koja redove iz `progress_logs` (i posete iz
+// `play_sessions`) pretvara u odgovor.
 //
 // VREMENSKA ZONA: svi "dani" (aktivni dani, grafikon za 30 dana) računaju se u zoni
 // Europe/Belgrade, bez obzira na zonu servera ili pregledača. Ranije su se datumi
@@ -67,6 +68,10 @@ export type MoodCounts = Record<Mood, number>;
  * Lica koja je dete samo izabralo pre i posle igre. Namerno samo raspodela izbora:
  * kod male dece skala sa licima nije pouzdano merenje, pa se pre i posle ne porede
  * i ništa se ne tumači kao ishod igre. Kraća skala (tri lica) koristi podskup istih vrednosti.
+ *
+ * Broji se jedan izbor po POSETI (`play_sessions`), ma koliko nivoa dete u njoj odigralo;
+ * u zbiru po igri poseta se broji jednom za svaku igru igranu u toj poseti. Stariji zapisi
+ * bez posete nose izbor uz svaku partiju i broje se po partiji, kao i ranije.
  */
 export interface MoodChoices {
     before: MoodCounts;
@@ -236,8 +241,17 @@ interface NormalizedLog {
     /** Da li partija računa nivo kao završen */
     passed: boolean;
     durationSeconds: number | null;
+    /** Poseta čije raspoloženje partija deli; `null` za zapis bez (poznate) posete */
+    sessionId: number | null;
+    /** Raspoloženje posete ako partija pripada poseti, inače ono iz samog zapisa */
     moodBefore: Mood | null;
     moodAfter: Mood | null;
+}
+
+/** Raspoloženje jedne posete (red iz `play_sessions`). */
+interface SessionMood {
+    before: Mood | null;
+    after: Mood | null;
 }
 
 /** Zadaci jedne partije: uvek `independent + (prompted ?? 0) <= total` i `total > 0`. */
@@ -321,13 +335,25 @@ function toRoundCounts(row: Record<string, unknown>): RoundCounts | null {
     return { independent, prompted: prompted === null ? null : Math.min(prompted, total - independent), total };
 }
 
+/** Posete po ID-ju; redovi bez upotrebljivog ID-ja se preskaču. */
+function indexSessions(sessions: readonly unknown[]): Map<number, SessionMood> {
+    const byId = new Map<number, SessionMood>();
+    for (const row of sessions) {
+        if (!isRecord(row)) continue;
+        const id = toNumber(row.id);
+        if (id !== null) byId.set(id, { before: toMood(row.mood_before), after: toMood(row.mood_after) });
+    }
+    return byId;
+}
+
 /**
  * Jedan red iz `progress_logs`. Nove kolone (level, stars, score, correct_count,
  * total_count, prompted_count, duration_seconds) imaju prednost; ako ih nema u bazi ili
  * su prazne, vrednosti se čitaju iz stare beleške, a zvezdice i iz `success_level`.
+ * Raspoloženje dolazi iz posete (`session_id`) kada je ona poznata, inače iz samog zapisa.
  * Vraća `null` za red koji ne pripada nijednoj igri ili nema upotrebljiv datum/rezultat.
  */
-function normalizeLog(row: unknown): NormalizedLog | null {
+function normalizeLog(row: unknown, sessions: ReadonlyMap<number, SessionMood>): NormalizedLog | null {
     if (!isRecord(row)) return null;
 
     const id = toNumber(row.id);
@@ -351,6 +377,9 @@ function normalizeLog(row: unknown): NormalizedLog | null {
     const durationSeconds = toCount(row.duration_seconds);
     const durationMinutes = toNumber(row.duration_minutes);
 
+    const sessionId = toNumber(row.session_id);
+    const session = sessionId === null ? undefined : sessions.get(sessionId);
+
     return {
         id,
         gameId: game.id,
@@ -361,12 +390,18 @@ function normalizeLog(row: unknown): NormalizedLog | null {
         successLevel: isSuccessLevel(row.success_level) ? row.success_level : successLevelFor(stars),
         score: toCount(row.score) ?? fromNotes(notes, LEGACY_NOTES.score),
         counts,
-        // Isto pravilo kao pri otključavanju sledećeg nivoa (`isLevelPassed` u app/api/_lib/children.ts)
-        passed: !game.graded || (counts ? counts.independent / counts.total >= ADVANCE_RATIO : stars > 0),
+        // Odluka sačuvana pri upisu (`progress_logs.passed`, migracija 0004) ima prednost; za zapise
+        // bez nje važi isto pravilo kao pri otključavanju nivoa (`isLevelPassed` u app/api/_lib/children.ts)
+        passed:
+            typeof row.passed === "boolean"
+                ? row.passed
+                : !game.graded || (counts ? counts.independent / counts.total >= ADVANCE_RATIO : stars > 0),
         durationSeconds:
             durationSeconds ?? (durationMinutes !== null && durationMinutes >= 0 ? Math.round(durationMinutes * 60) : null),
-        moodBefore: toMood(row.mood_before),
-        moodAfter: toMood(row.mood_after),
+        sessionId: session ? sessionId : null,
+        // Posle naknadnog upisa uz partije (logIds) izbor može biti samo u zapisu, pa je on rezerva
+        moodBefore: session?.before ?? toMood(row.mood_before),
+        moodAfter: session?.after ?? toMood(row.mood_after),
     };
 }
 
@@ -397,6 +432,8 @@ interface Tally {
     days: Set<string>;
     lastPlayedMs: number | null;
     mood: MoodChoices;
+    /** Posete čiji je izbor već ubrojan u `mood` (da se poseta ne broji po partiji) */
+    moodSessions: { before: Set<number>; after: Set<number> };
     rounds: WindowRounds;
 }
 
@@ -408,8 +445,19 @@ function emptyTally(): Tally {
         days: new Set(),
         lastPlayedMs: null,
         mood: { before: emptyMoodCounts(), after: emptyMoodCounts() },
+        moodSessions: { before: new Set(), after: new Set() },
         rounds: { independent: 0, prompted: 0, promptedKnown: false, total: 0 },
     };
+}
+
+/** Jedan izbor po poseti; zapis bez posete (stariji) broji se sam za sebe. */
+function countMood(counts: MoodCounts, counted: Set<number>, mood: Mood | null, sessionId: number | null): void {
+    if (!mood) return;
+    if (sessionId !== null) {
+        if (counted.has(sessionId)) return;
+        counted.add(sessionId);
+    }
+    counts[mood] += 1;
 }
 
 function addToTally(tally: Tally, log: NormalizedLog, inWindow: boolean): void {
@@ -419,8 +467,8 @@ function addToTally(tally: Tally, log: NormalizedLog, inWindow: boolean): void {
     tally.days.add(log.day);
     tally.lastPlayedMs = Math.max(tally.lastPlayedMs ?? 0, log.completedAtMs);
 
-    if (log.moodBefore) tally.mood.before[log.moodBefore] += 1;
-    if (log.moodAfter) tally.mood.after[log.moodAfter] += 1;
+    countMood(tally.mood.before, tally.moodSessions.before, log.moodBefore, log.sessionId);
+    countMood(tally.mood.after, tally.moodSessions.after, log.moodAfter, log.sessionId);
 
     if (inWindow && log.counts) {
         tally.rounds.independent += log.counts.independent;
@@ -518,12 +566,21 @@ interface DayTally {
 const toMinutes = (seconds: number) => Math.round(seconds / 6) / 10;
 
 /**
- * Pretvara sirove redove iz `progress_logs` (rezultat `select('*')`) u odgovor API-ja.
+ * Pretvara sirove redove iz `progress_logs` u odgovor API-ja.
  * Čista funkcija: `now` se prosleđuje da bi rezultat bio predvidljiv.
+ *
+ * `sessions` su redovi iz `play_sessions` (id, mood_before, mood_after) istog deteta. Zapis
+ * koji pokazuje na neku od njih (`session_id`) uzima raspoloženje iz posete i u zbiru se
+ * broji jednom po poseti; bez `sessions` (ili za starije zapise) važi raspoloženje iz zapisa.
  */
-export function buildProgress(rows: readonly unknown[], now: Date = new Date()): ProgressResponse {
+export function buildProgress(
+    rows: readonly unknown[],
+    now: Date = new Date(),
+    sessions: readonly unknown[] = []
+): ProgressResponse {
+    const sessionMoods = indexSessions(sessions);
     const logs = rows
-        .map(normalizeLog)
+        .map((row) => normalizeLog(row, sessionMoods))
         .filter((log): log is NormalizedLog => log !== null)
         .sort((a, b) => b.completedAtMs - a.completedAtMs || b.id - a.id);
 

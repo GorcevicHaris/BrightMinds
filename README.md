@@ -68,6 +68,22 @@ Tokeni (boje, senke, animacije) su u [`app/globals.css`](app/globals.css). Princ
 
 Roditelj ili terapeut na kartici deteta bira „Podesi”: uzrasnu grupu, broj ponuđenih odgovora, kada se nudi pomoć, pismo (latinica/ćirilica) i velika slova, zvuk po kanalima (glas, efekti, zvuci u igri, nagli zvuci, jačina), manje animacija, dnevno vreme igre i pitanje o raspoloženju. Čuvaju se u koloni `children.settings` (migracija `0002`).
 
+### Plan igre i priče za dete
+
+- **Plan „prvo–zatim”** (u podešavanjima deteta): do četiri igre redom; dete vidi raspored i igra ih tim redom.
+- **Moje priče** (dugme na kartici deteta): odrasli piše kratku priču u koracima, dete je čita na svom ekranu. Tabela `custom_stories` (migracija `0003`).
+
+### Baza
+
+Migracije su u [`supabase/migrations`](supabase/migrations) i pokreću se redom; svaka je bezbedna za ponovno pokretanje, a aplikacija radi i dok novije nisu primenjene:
+
+| Migracija | Šta donosi |
+| --- | --- |
+| `0001` | osnovna šema, strani ključevi, indeksi, RLS |
+| `0002` | podešavanja po detetu, broj odgovora uz pomoć |
+| `0003` | priče koje piše odrasli |
+| `0004` | sesije igre (`play_sessions`), sačuvana odluka „položeno”, pogled sa najvišim položenim nivoom, dodatni indeksi |
+
 ### Dodavanje igre
 
 1. Dodajte unos u `lib/games.ts` (ID, `activityId`, naziv, boje).

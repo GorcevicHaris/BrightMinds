@@ -12,7 +12,9 @@ import {
     GameHud,
     GameStage,
     playSfx,
+    PULSE_ONCE,
     shuffle,
+    useDemo,
     useGameSync,
     useInputGuard,
     useTimers,
@@ -344,42 +346,6 @@ function MemoryCard({ position, animal, open, matched, hinted, disabled, classNa
             </span>
         </button>
     );
-}
-
-// ── Pokazivanje ───────────────────────────────────────────────────────────────
-// Uz svako uputstvo kratko se istakne ono o čemu uputstvo govori (ovde: tabla sa karticama):
-// jedan miran puls, pa mir. Zajednički kit ovo još nema, pa je kuka lokalna.
-
-const DEMO_MS = 1500;
-/** Uz `animate-soft-pulse`: jedan krug umesto beskonačnog ponavljanja */
-const PULSE_ONCE: CSSProperties = { animationDuration: `${DEMO_MS}ms`, animationIterationCount: 1 };
-
-function useDemo(enabled: boolean) {
-    const [demo, setDemo] = useState({ on: enabled, run: 0 });
-    const timer = useRef<TimerId | null>(null);
-
-    const arm = useCallback(() => {
-        if (timer.current !== null) clearTimeout(timer.current);
-        timer.current = setTimeout(() => {
-            timer.current = null;
-            setDemo((current) => ({ ...current, on: false }));
-        }, DEMO_MS);
-    }, []);
-
-    useEffect(() => {
-        if (enabled) arm();
-        return () => {
-            if (timer.current !== null) clearTimeout(timer.current);
-        };
-    }, [enabled, arm]);
-
-    /** Ponovo pokazuje (novo uputstvo ili dugme „Ponovi”); `run` se menja da bi puls krenuo iz početka */
-    const show = useCallback(() => {
-        setDemo((current) => ({ on: true, run: current.run + 1 }));
-        arm();
-    }, [arm]);
-
-    return { on: demo.on, run: demo.run, show };
 }
 
 // ── Igra ──────────────────────────────────────────────────────────────────────

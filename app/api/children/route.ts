@@ -6,8 +6,8 @@ import {
     assertPinAvailable,
     childWriteError,
     parseChildInput,
+    selectChildRows,
     toChild,
-    type ChildRow,
 } from "../_lib/children";
 import { errorResponse, readJsonObject } from "../_lib/http";
 
@@ -25,15 +25,16 @@ export async function GET() {
         const childIds = ((links ?? []) as { child_id: number }[]).map((link) => link.child_id);
         if (childIds.length === 0) return NextResponse.json({ children: [] });
 
-        const { data, error } = await supabaseAdmin
-            .from("children")
-            .select("*")
-            .in("id", childIds)
-            .order("first_name", { ascending: true })
-            .order("id", { ascending: true });
-        if (error) throw error;
+        const rows = await selectChildRows((columns) =>
+            supabaseAdmin
+                .from("children")
+                .select(columns)
+                .in("id", childIds)
+                .order("first_name", { ascending: true })
+                .order("id", { ascending: true })
+        );
 
-        return NextResponse.json({ children: ((data ?? []) as ChildRow[]).map(toChild) });
+        return NextResponse.json({ children: rows.map(toChild) });
     } catch (error) {
         return errorResponse(error, "GET /api/children");
     }
@@ -48,20 +49,22 @@ export async function POST(request: Request) {
 
         if (pinCode) await assertPinAvailable(pinCode);
 
-        const { data, error } = await supabaseAdmin
-            .from("children")
-            .insert({
-                first_name: input.first_name,
-                last_name: input.last_name,
-                date_of_birth: input.date_of_birth,
-                gender: input.gender,
-                notes: input.notes ?? null,
-                pin_code: pinCode,
-            })
-            .select("*")
-            .single();
-        if (error) throw childWriteError(error, pinCode);
-        const child = data as ChildRow;
+        const [child] = await selectChildRows((columns) =>
+            supabaseAdmin
+                .from("children")
+                .insert({
+                    first_name: input.first_name,
+                    last_name: input.last_name,
+                    date_of_birth: input.date_of_birth,
+                    gender: input.gender,
+                    notes: input.notes ?? null,
+                    pin_code: pinCode,
+                })
+                .select(columns)
+        ).catch((error: unknown) => {
+            throw childWriteError(error, pinCode);
+        });
+        if (!child) throw new Error("Dete nije sačuvano");
 
         const { error: linkError } = await supabaseAdmin.from("user_children").insert({
             user_id: session.userId,
