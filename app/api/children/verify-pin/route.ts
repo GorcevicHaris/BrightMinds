@@ -116,6 +116,7 @@ async function applyDailyLogin(initial: ChildRow): Promise<LoginAward> {
 }
 
 export async function POST(request: Request) {
+    let attempt: ReturnType<typeof takeAttempt> | null = null;
     try {
         const body = await readJsonObject(request);
         const pinCode = readPin(body.pin_code);
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
         assertDbConfigured();
 
         // Pokušaj se rezerviše unapred i vraća samo ako je kod tačan.
-        const attempt = takeAttempt(`pin:${getClientIp(request)}`, PIN_RULE);
+        attempt = takeAttempt(`pin:${getClientIp(request)}`, PIN_RULE);
         enforceRateLimit(attempt, "Previše pokušaja. Sačekaj malo pa probaj ponovo.");
 
         const matches = await selectChildRows((columns) =>
@@ -170,6 +171,8 @@ export async function POST(request: Request) {
         });
         return response;
     } catch (error) {
+        // Pokušaj troši samo pogrešan kod; greška servera ne sme da zaključa dete
+        if (!(error instanceof HttpError && (error.status === 401 || error.status === 429))) attempt?.refund();
         return errorResponse(error, "POST /api/children/verify-pin");
     }
 }

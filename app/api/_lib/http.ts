@@ -12,13 +12,14 @@ export const GENERIC_ERROR = "Došlo je do greške. Pokušajte ponovo.";
 
 /** Greška sa porukom koja je bezbedna za prikaz korisniku. */
 export class HttpError extends Error {
-    constructor(
-        public status: number,
-        message: string,
-        public headers?: Record<string, string>
-    ) {
+    status: number;
+    headers?: Record<string, string>;
+
+    constructor(status: number, message: string, headers?: Record<string, string>) {
         super(message);
         this.name = "HttpError";
+        this.status = status;
+        this.headers = headers;
     }
 }
 

@@ -94,6 +94,8 @@ interface LevelOutcome {
     score: number;
     /** Dovoljno samostalnih odgovora da se predloži sledeći nivo */
     advance: boolean;
+    /** Aktivnost bez ocenjivanih zadataka (npr. priča u režimu samo čitanja) */
+    practice: boolean;
     saved: "saving" | "ok" | "failed";
 }
 
@@ -264,8 +266,10 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             // kada je bar polovina zadataka rešena samostalno
             const stars = Math.max(1, starsFor(result.correct, result.total)) as 1 | 2 | 3;
             // U igrama bez pogrešnih odgovora (osećanja) svaki završen nivo vodi dalje
-            const advance = !game.graded || (result.total > 0 && result.correct / result.total >= ADVANCE_RATIO);
+            const practice = result.total === 0;
+            const advance = !practice && (!game.graded || result.correct / result.total >= ADVANCE_RATIO);
             setOutcome({
+                practice,
                 stars,
                 correct: result.correct,
                 total: result.total,
@@ -282,7 +286,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 }));
             }
             const starWords = stars === 1 ? "Jedna zvezdica" : stars === 2 ? "Dve zvezdice" : "Tri zvezdice";
-            void say(advance ? `Nivo je završen. ${starWords}.` : `Nivo je završen. ${starWords}. Hajde još jednom.`);
+            void say(practice ? "Pročitano." : advance ? `Nivo je završen. ${starWords}.` : `Nivo je završen. ${starWords}. Hajde još jednom.`);
 
             if (preview) return;
             try {
@@ -782,6 +786,8 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
         text = `Igra „${game.title}” je cela pređena.`;
     } else if (outcome.advance && lastInTier) {
         text = `Svi nivoi na težini „${tier.label}” su završeni.`;
+    } else if (outcome.practice) {
+        title = "Pročitano";
     } else if (!outcome.advance) {
         text = "Ovaj nivo vežbamo još malo.";
     }
@@ -801,7 +807,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                     {champion ? "🏆 " : ""}
                     {title}
                 </h2>
-                {showNumbers && !limitReached && game.graded && (
+                {showNumbers && !limitReached && game.graded && !outcome.practice && (
                     <p className="mt-1 text-base font-bold text-ink-soft">
                         Iz prvog pokušaja: {outcome.correct} od {outcome.total}
                     </p>
@@ -814,7 +820,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                 <div className="mt-6 flex flex-col gap-3">
                     {!limitReached && !outcome.advance && (
                         <Button chunky size="xl" variant="sun" block onClick={onRetry}>
-                            Igraj još jednom
+                            {outcome.practice ? "Čitaj ponovo" : "Igraj još jednom"}
                         </Button>
                     )}
                     {!limitReached && outcome.advance && !lastInTier && (

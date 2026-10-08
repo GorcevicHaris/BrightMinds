@@ -99,3 +99,20 @@ Migracije su u [`supabase/migrations`](supabase/migrations) i pokreću se redom;
 | `npm run build` / `npm start` | produkcija |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | provera tipova |
+| `npm test` | automatski testovi |
+
+## Testovi
+
+```bash
+npm test                                                          # svi testovi
+node --import ./tests/setup/register.mjs --test tests/script.test.ts   # jedan fajl
+```
+
+Testovi su u [`tests/`](tests) i koriste ugrađeni Node test runner (`node:test`) — bez dodatnih paketa, bez pregledača i bez prave baze. Potreban je Node 26 (izvršava `.ts` fajlove direktno). Pokrivaju čistu logiku (`lib/`, sadržaj igara u `app/components/games/data/`) i API rute (`tests/api/`); React komponente se ne testiraju.
+
+- [`tests/setup/register.mjs`](tests/setup/register.mjs) uči Node aliasu `@/` i uvozu bez nastavka, i zamenjuje dva modula: `next/headers` (kolačiće postavlja test) i `@supabase/supabase-js` (baza u memoriji, [`tests/setup/fakeSupabase.ts`](tests/setup/fakeSupabase.ts)). Pravi `lib/auth.ts` i `lib/supabase.ts` se izvršavaju i u testovima.
+- Rute se pozivaju direktno kao funkcije. Sesija je kolačić potpisan test-ključem; `.env.local` se ne čita.
+- Bazu bez novijih migracija test opisuje sa `db.dropColumns(...)` i `db.dropTable(...)`, pa se proverava i rad dok migracije nisu primenjene.
+- Test označen sa `todo` opisuje poznatu grešku koja još nije ispravljena: ne obara `npm test`, ali ostaje vidljiv u izveštaju.
+
+Iste provere (lint, tipovi, testovi, build) pokreće GitHub Actions: [`.github/workflows/ci.yml`](.github/workflows/ci.yml).

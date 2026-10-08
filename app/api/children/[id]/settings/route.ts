@@ -5,7 +5,7 @@
 // PUT — samo roditelj/terapeut povezan sa detetom.
 import { NextResponse } from "next/server";
 import { requireChildAccess, requireChildOwner } from "@/lib/auth";
-import { ageInYears, bandForAge, sanitizeSettings, type ChildSettings } from "@/lib/childSettings";
+import { ageInYears, bandForAge, sanitizeSettings, settingsOverrides, type ChildSettings } from "@/lib/childSettings";
 import { isMissingColumnError, supabaseAdmin } from "@/lib/supabase";
 import { isRecord } from "@/lib/validation";
 import { CHILD_NOT_FOUND, storedSettings, type ChildRow } from "../../../_lib/children";
@@ -94,11 +94,13 @@ export async function PUT(request: Request, { params }: RouteContext) {
         const raw = await readSettingsBody(request);
 
         const child = await loadChild(childId);
-        const settings: ChildSettings = sanitizeSettings(raw, bandForAge(ageInYears(child.date_of_birth)));
+        const ageBand = bandForAge(ageInYears(child.date_of_birth));
+        const settings: ChildSettings = sanitizeSettings(raw, ageBand);
 
+        // U bazu ide samo ono što odstupa od preporuke za uzrast; ostalo nastavlja da prati uzrast
         const { data, error } = await supabaseAdmin
             .from("children")
-            .update({ settings })
+            .update({ settings: settingsOverrides(settings, ageBand) })
             .eq("id", childId)
             .select("id");
         if (error) {

@@ -51,7 +51,15 @@ export default function ChildPageClient({ child, viewer, settings, preview = fal
     const gender = child.gender ?? undefined;
     const isFemale = gender?.toLowerCase() === "female";
     const initials = `${child.first_name?.charAt(0) ?? ""}${child.last_name?.charAt(0) ?? ""}`.toUpperCase();
-    const showAvatar = settings.avatar && !settings.reduceMotion;
+    // 3D učitelj je veliki fajl: učitava se tek kad je stranica spremna, a nikad uz štednju podataka
+    const [avatarReady, setAvatarReady] = useState(false);
+    useEffect(() => {
+        const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+        if (connection?.saveData) return;
+        const timer = setTimeout(() => setAvatarReady(true), 1500);
+        return () => clearTimeout(timer);
+    }, []);
+    const showAvatar = settings.avatar && !settings.reduceMotion && avatarReady;
 
     // Pozdrav pri ulasku (jedna kratka rečenica)
     useEffect(() => {

@@ -3,7 +3,8 @@
 // Samo roditelj/terapeut povezan sa detetom; dečja sesija nema pristup.
 //
 // Fajl je UTF-8 sa BOM oznakom (da Excel ispravno prikaže š, đ, č, ć, ž), polja
-// su razdvojena zarezom, redovi sa CRLF (RFC 4180). Datum i vreme su u zoni
+// su razdvojena tačka-zarezom (tako ih Excel sa našim regionalnim podešavanjima deli
+// u kolone), redovi sa CRLF. Datum i vreme su u zoni
 // Europe/Belgrade. „Samostalno tačno” i „Uz pomoć” su odvojene kolone: terapeutu
 // je važno šta je dete uradilo BEZ pomoći. Raspoloženje pre/posle dolazi iz posete
 // (play_sessions) kojoj partija pripada; stariji zapisi ga nose sami.

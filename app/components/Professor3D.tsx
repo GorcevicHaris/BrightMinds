@@ -1,7 +1,7 @@
 "use client";
 
 import { Component, Suspense, useEffect, useRef, type ReactNode } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Environment, useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { useAvatarAudio } from "@/lib/useAvatarAudio";
@@ -36,6 +36,7 @@ function TeacherModel({ mouthRef, isSpeaking, female }: ModelProps) {
     const group = useRef<THREE.Group>(null);
     const { scene, animations } = useGLTF(female ? FEMALE_MODEL : MALE_MODEL);
     const { actions, names, mixer } = useAnimations(animations, group);
+    const invalidate = useThree((state) => state.invalidate);
     const morphTargets = useRef<MorphTarget[]>([]);
 
     // Jednom po modelu: materijali + keš morph ciljeva (bez prolaska kroz scenu u svakom frejmu)
@@ -67,9 +68,12 @@ function TeacherModel({ mouthRef, isSpeaking, female }: ModelProps) {
         if (!action.isScheduled()) {
             action.reset().setLoop(THREE.LoopRepeat, Infinity).setEffectiveTimeScale(1).play();
             mixer.update(Math.min(REST_POSE_TIME, action.getClip().duration / 2));
+            // Dok učitelj ćuti, scena se ne iscrtava stalno — tražimo jedan frejm sa novom pozom
+            invalidate();
         }
         action.setEffectiveTimeScale(isSpeaking ? 1 : 0);
-    }, [isSpeaking, names, actions, mixer]);
+        invalidate();
+    }, [isSpeaking, names, actions, mixer, invalidate]);
 
     useFrame(() => {
         const target = isSpeaking ? (mouthRef.current ?? 0) * 0.9 : 0;
@@ -143,7 +147,9 @@ export default function Professor3D({ gender, className }: Professor3DProps) {
     return (
         <div className={cn("pointer-events-none select-none", className)} aria-hidden="true">
             <AvatarBoundary>
+                {/* Stalno iscrtavanje samo dok učitelj govori; u mirovanju ne troši bateriju tableta */}
                 <Canvas
+                    frameloop={isPlaying ? "always" : "demand"}
                     camera={{ position: CAMERA_POSITION, fov: 30 }}
                     onCreated={({ camera }) => camera.lookAt(...CAMERA_TARGET)}
                     gl={{ antialias: true, alpha: true }}

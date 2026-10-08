@@ -392,8 +392,9 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
         finished.current = true;
         const current = viewRef.current;
         const reading = current.mode === "read";
-        const total = reading ? story.steps.length : decisionCount(story);
-        const correct = reading ? total : current.correctCount;
+        // Samo čitanje nije ocenjivan učinak: bez zadataka, da ne ulepšava statistiku tačnosti
+        const total = reading ? 0 : decisionCount(story);
+        const correct = reading ? 0 : current.correctCount;
         const done: StoryView = { ...current, phase: "done", listening: false };
         silence();
         playSfx("win");

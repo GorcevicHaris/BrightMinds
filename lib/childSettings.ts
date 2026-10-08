@@ -67,14 +67,30 @@ export const BAND_PRESETS: Record<AgeBand, BandPreset> = {
 
 export const AGE_BANDS: AgeBand[] = ["young", "middle", "older"];
 
-/** Navršene godine na današnji dan; null ako datum nije poznat ili ispravan. */
+/** Kalendar po kome se računa uzrast — isti na serveru i na uređaju, ma gde se nalazili */
+const AGE_TIME_ZONE = "Europe/Belgrade";
+
+function calendarDate(date: Date): { year: number; month: number; day: number } {
+    const parts = new Intl.DateTimeFormat("en-CA", { timeZone: AGE_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(date);
+    const part = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+    return { year: part("year"), month: part("month"), day: part("day") };
+}
+
+/**
+ * Navršene godine na današnji dan; null ako datum nije poznat ili ispravan.
+ * Datum rođenja je kalendarski datum (YYYY-MM-DD), pa se poredi sa današnjim kalendarskim
+ * datumom, a ne kao trenutak u vremenu — inače bi dete u nekim vremenskim zonama
+ * „napunilo” godinu dan ranije ili kasnije.
+ */
 export function ageInYears(dateOfBirth: string | null | undefined, now: Date = new Date()): number | null {
-    if (!dateOfBirth) return null;
-    const birth = new Date(dateOfBirth);
-    if (Number.isNaN(birth.getTime())) return null;
-    let years = now.getFullYear() - birth.getFullYear();
-    const hadBirthday =
-        now.getMonth() > birth.getMonth() || (now.getMonth() === birth.getMonth() && now.getDate() >= birth.getDate());
+    const match = dateOfBirth ? /^(\d{4})-(\d{2})-(\d{2})/.exec(dateOfBirth) : null;
+    if (!match) return null;
+    const [birthYear, birthMonth, birthDay] = [Number(match[1]), Number(match[2]), Number(match[3])];
+    if (birthMonth < 1 || birthMonth > 12 || birthDay < 1 || birthDay > 31) return null;
+
+    const today = calendarDate(now);
+    let years = today.year - birthYear;
+    const hadBirthday = today.month > birthMonth || (today.month === birthMonth && today.day >= birthDay);
     if (!hadBirthday) years -= 1;
     return years >= 0 ? years : null;
 }
@@ -158,6 +174,21 @@ export function sanitizeSettings(raw: unknown, ageBand: AgeBand): ChildSettings 
         moodCheck: pick<MoodCheck>(source.moodCheck, ["off", "three"], base.moodCheck),
         plan: sanitizePlan(source.plan),
     };
+}
+
+/**
+ * Samo ono što je odrasli zaista promenio u odnosu na preporuku za uzrast. Čuva se ovo,
+ * a ne ceo objekat — inače bi se preporuke „zamrzle” pri prvom čuvanju i ne bi pratile
+ * dete kako raste (npr. velika slova, dnevno vreme igre).
+ */
+export function settingsOverrides(settings: ChildSettings, ageBand: AgeBand): Partial<ChildSettings> {
+    const base = defaultSettings(settings.band ?? ageBand);
+    const overrides: Partial<Record<keyof ChildSettings, unknown>> = {};
+    for (const key of Object.keys(settings) as (keyof ChildSettings)[]) {
+        const same = key === "plan" ? settings.plan.join(",") === base.plan.join(",") : settings[key] === base[key];
+        if (!same) overrides[key] = settings[key];
+    }
+    return overrides as Partial<ChildSettings>;
 }
 
 /** Podešavanja spremna za igru: uz sirova podešavanja nosi i izvedene granice za uzrast. */

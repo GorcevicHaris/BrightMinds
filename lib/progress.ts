@@ -314,7 +314,8 @@ function toMood(value: unknown): Mood | null {
  */
 function parseTimestamp(value: unknown): number | null {
     if (typeof value !== "string" || value === "") return null;
-    const iso = value.replace(" ", "T");
+    // Postgres ume da ispiše zonu samo satima ("+00"); JavaScript traži i minute ("+00:00")
+    const iso = value.replace(" ", "T").replace(/([+-]\d{2})$/, "$1:00");
     const hasZone = /(?:Z|[+-]\d{2}(?::?\d{2})?)$/i.test(iso);
     const ms = Date.parse(hasZone ? iso : `${iso}Z`);
     return Number.isNaN(ms) ? null : ms;

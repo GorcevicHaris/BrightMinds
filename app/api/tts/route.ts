@@ -19,11 +19,11 @@ const NOT_CONFIGURED = "Glas nije podešen";
 
 export async function POST(request: Request) {
     try {
-        const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
-        if (!apiKey) throw new HttpError(503, NOT_CONFIGURED);
-
         const session = await getSession();
         if (!session) throw new HttpError(401, "Niste prijavljeni");
+
+        const apiKey = process.env.ELEVENLABS_API_KEY?.trim();
+        if (!apiKey) throw new HttpError(503, NOT_CONFIGURED);
 
         const body = await readJsonObject(request);
         const text = asTrimmedString(body.text, { min: 1, max: MAX_TEXT_LENGTH });

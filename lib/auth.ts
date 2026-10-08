@@ -30,12 +30,12 @@ interface TokenPayload {
 }
 
 export class AuthError extends Error {
-    constructor(
-        public status: 401 | 403,
-        message: string
-    ) {
+    status: 401 | 403;
+
+    constructor(status: 401 | 403, message: string) {
         super(message);
         this.name = "AuthError";
+        this.status = status;
     }
 }
 

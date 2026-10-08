@@ -85,7 +85,9 @@ function parseEmoji(value: unknown): string | null | undefined {
     if (typeof value !== "string") return undefined;
     const emoji = value.replace(/\s+/g, "");
     if (emoji === "") return null;
-    return emoji.length <= STORY_EMOJI_MAX_UNITS && !LETTER_OR_DIGIT.test(emoji) ? emoji : undefined;
+    // Emodžiji-tasteri (1️⃣, #️⃣) sadrže cifru, ali su sličice — njih ne računamo kao tekst
+    const withoutKeycaps = emoji.replace(/[0-9#*]\uFE0F?\u20E3/g, "");
+    return emoji.length <= STORY_EMOJI_MAX_UNITS && !LETTER_OR_DIGIT.test(withoutKeycaps) ? emoji : undefined;
 }
 
 function invalid(error: string): StoryValidation {
