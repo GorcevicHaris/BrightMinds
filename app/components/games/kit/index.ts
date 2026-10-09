@@ -3,12 +3,13 @@ export { useGameSync } from "./useGameSync";
 export { useTimers, type TimerId } from "./useTimers";
 export { useIdle, useInputGuard, IDLE_HINT_MS } from "./useIdle";
 export { useDemo, DEMO_MS, PULSE_ONCE } from "./useDemo";
-export { useSayAll, useListenGate, NARRATION_DELAY_MS, LISTEN_MAX_MS } from "./useNarration";
+export { useSayAll, useSayThen, useListenGate, listenLimitFor, NARRATION_DELAY_MS, LISTEN_MAX_MS, FEEDBACK_MIN_MS, FEEDBACK_MAX_MS } from "./useNarration";
 export { playSfx, type Sfx } from "./sfx";
 export { finiteOr, genderText, hintDue, isFemale, offeredOptions, shuffle, toCount, toIndexList } from "./utils";
 export {
     GameTeacherContext,
     GameStage,
+    PlayArea,
     GameHud,
     GamePrompt,
     ChoiceCard,

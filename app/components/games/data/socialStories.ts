@@ -450,7 +450,7 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🏠", "💨"],
-                text: "Ovo se dešava retko. Dobro je da znam šta mogu da uradim. Nekad se u kući pojavi dim. Dim je siv i peče oči.",
+                text: "Nekad se u kući pojavi dim. Dim je siv i peče oči. Ovo se dešava retko. Dobro je da znam šta mogu da uradim.",
                 decision: choice(
                     "Šta možeš da uradiš ako vidiš dim?",
                     [
@@ -494,7 +494,7 @@ const STORIES: readonly Story[] = [
                         o("👋", "Kažem „Zdravo” ili mahnem", "Pozdrav kaže gostima da ih vidim. Mahanje je isto pozdrav."),
                         o("🤝", "Stojim uz mamu dok gosti ulaze", "Uz mamu je lakše kad ulazi mnogo ljudi."),
                     ],
-                    [o("📺", "Pojačam crtani film do kraja", "Tada je u sobi još glasnije. Gosti i ja se ne čujemo.")]
+                    [o("📺", "Pojačam televizor najjače", "Tada je u sobi još glasnije. Gosti i ja se ne čujemo.")]
                 ),
             },
             {
@@ -730,12 +730,12 @@ const STORIES: readonly Story[] = [
                         o("🗣️", "Kažem: „Strah me je.”", "Strah je u redu. Kad kažem, mama i doktor mi pomažu."),
                         o("🤝", "Držim mamu za ruku i gledam u stranu", "Mamina ruka pomaže. Ne moram da gledam u iglu."),
                     ],
-                    [o("🙅", "Mašem rukama", "Kad se ruka pomera, ubod može više da zaboli. Kad je ruka mirna, brzo je gotovo.")]
+                    [o("🙅", "Naglo povučem ruku", "Kad se ruka pomera, ubod može više da zaboli. Kad je ruka mirna, brzo je gotovo.")]
                 ),
             },
             {
                 scene: ["💊", "🥤"],
-                text: "Kod kuće pijem lek. Lek je gorak. Gorak ukus traje kratko.",
+                text: "Pregled je gotov. Na ruci je flaster. Doktor je rekao da kod kuće pijem sirup. Sirup je gorak lek. Gorak ukus traje kratko.",
                 decision: choice(
                     "Šta može da pomogne sa gorkim lekom?",
                     [
@@ -746,8 +746,8 @@ const STORIES: readonly Story[] = [
                 ),
             },
             {
-                scene: ["🩹", "😊"],
-                text: "Pregled je gotov. Na ruci je flaster. Bilo je čekanja i malo straha. Sve je prošlo. Već znam da kažem kad me je strah.",
+                scene: ["🏠", "😊"],
+                text: "Bilo je čekanja i malo straha. Sve je prošlo. Već znam da kažem kad me je strah.",
                 affirm: true,
             },
         ],
@@ -766,7 +766,7 @@ const STORIES: readonly Story[] = [
                     "Šta možeš da uradiš kad neko koristi ono što ti treba?",
                     [
                         o("🙋", "Pitam: „Mogu li posle tebe?”", "Drugarica sada zna da čekam crvenu. Daje mi je kad završi."),
-                        o("🖍️", "Crtam drugom bojom dok čekam", "Dok čekam crvenu, crtež raste i sa drugim bojama."),
+                        o("🖍️", "Crtam drugom bojom dok čekam", "Dok čekam crvenu, crtam dalje drugim bojama."),
                     ],
                     [o("✊", "Uzmem joj bojicu iz ruke", "Ako uzmem bojicu bez pitanja, drugarica se može rastužiti.")]
                 ),
@@ -902,7 +902,7 @@ const STORIES: readonly Story[] = [
                         o("🏊", "Plivam još pet minuta, pa izađem", "To je dogovor. Poslednji minuti su moji."),
                         o("🤿", "Izaberem poslednju igru u vodi", "Poslednja igra je kraj plivanja za danas. Na bazen dolazimo opet."),
                     ],
-                    [o("🙉", "Pravim se da ne čujem", "Tata tada zove više puta i brine. Dogovor je pet minuta.")]
+                    [o("🙈", "Pravim se da ne čujem", "Tata tada zove više puta i brine. Dogovor je pet minuta.")]
                 ),
             },
         ],
@@ -945,7 +945,7 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🛷", "⏳"],
-                text: "Imamo jedne sanke. Sada se spušta Sara. Ja jedva čekam svoj red.",
+                text: "Imamo jedne sanke. Sada se spušta Sara. Ja mnogo želim da se spustim.",
                 decision: choice(
                     "Šta može da pomogne dok čekaš svoj red?",
                     [
@@ -957,7 +957,7 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🥶", "🧤"],
-                text: "Rukavice su mi mokre. Prsti su crveni i bole od hladnoće. Igra je zabavna. Telo mi kaže da mu treba toplota.",
+                text: "Rukavice su mi mokre. Prsti su crveni i bole od hladnoće. Igra je zabavna. To znači da mi je previše hladno.",
                 decision: choice(
                     "Šta možeš da uradiš kad ti je mnogo hladno?",
                     [

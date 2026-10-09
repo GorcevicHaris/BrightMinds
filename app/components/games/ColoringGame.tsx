@@ -14,12 +14,14 @@ import {
     GameHud,
     GamePrompt,
     GameStage,
+    hintDue,
     playSfx,
     PULSE_ONCE,
     shuffle,
     useDemo,
     useGameSync,
     useInputGuard,
+    useSayThen,
     useTimers,
 } from "@/app/components/games/kit";
 import type { BaseView, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
@@ -322,17 +324,17 @@ const PICTURES: Picture[] = [
             { id: "livada", name: "livada", acc: "livadu", g: "f", d: "M52,345 Q200,300 348,345 L348,396 L52,396 Z" },
             {
                 id: "duge",
-                name: "duge zrake",
+                name: "dugi zraci",
                 acc: "duge zrake",
-                g: "fpl",
+                g: "mpl",
                 d: "M220,96 L200,30 L180,96 Z M274,190 L340,170 L274,150 Z M180,244 L200,310 L220,244 Z M126,150 L60,170 L126,190 Z",
                 hit: 10,
             },
             {
                 id: "kratke",
-                name: "kratke zrake",
+                name: "kratki zraci",
                 acc: "kratke zrake",
-                g: "fpl",
+                g: "mpl",
                 d: "M265.1,130.4 L283.4,86.6 L239.6,104.9 Z M239.6,235.1 L283.4,253.4 L265.1,209.6 Z M134.9,209.6 L116.6,253.4 L160.4,235.1 Z M160.4,104.9 L116.6,86.6 L134.9,130.4 Z",
                 hit: 12,
             },
@@ -905,10 +907,10 @@ const FADE_IN_OUT: CSSProperties = {
 // ── Igra ──────────────────────────────────────────────────────────────────────
 
 const GAME = getGame("coloring");
-/** Dovoljno dugo da se čuje „Krov je crven.” pre sledećeg uputstva */
-const NEXT_TASK_MS = 1500;
-const FINISH_MS = 1400;
-const FEEDBACK_MS = 1600;
+/** Gotova slika ostaje na ekranu bar ovoliko pre rezultata — dete stigne da je pogleda */
+const FINISH_MIN_MS = 2600;
+/** Poruka „Tražimo svetlozelenu boju.” stoji dovoljno dugo da se pročita */
+const FEEDBACK_MS = 2600;
 const SPEAK_DELAY_MS = 600;
 
 /** Broj kolona palete na telefonu prema broju ponuđenih boja (od ≥sm su uvek dve kolone sa nazivima) */
@@ -933,7 +935,9 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     const sync = useGameSync<ColoringView>({ childId, gameId: "coloring", level, isMonitor });
     const { after, cancel } = useTimers();
     const guard = useInputGuard();
+    const sayThen = useSayThen(say, after);
     const demo = useDemo(!isMonitor);
+    const showDemo = demo.show;
 
     // Monitor nema podešavanja deteta: ponuđene boje i broj zadataka stižu u `monitorState`
     const [rounds] = useState<Round[]>(() =>
@@ -1001,13 +1005,18 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     // Uputstvo se izgovara na početku nivoa i svaki put kada stigne novi zadatak.
     useEffect(() => {
         if (isMonitor) return;
-        const id = setTimeout(() => say(prompt), SPEAK_DELAY_MS);
+        // Traženi deo zasvetli u trenutku kad se izgovori, a ne pre toga
+        const id = setTimeout(() => {
+            showDemo();
+            say(prompt);
+        }, SPEAK_DELAY_MS);
         return () => clearTimeout(id);
-    }, [isMonitor, say, prompt]);
+    }, [isMonitor, say, prompt, showDemo]);
 
     // ── Potezi ────────────────────────────────────────────────────────────────
 
-    const finish = (current: ColoringView) => {
+    /** `lead` je rečenica o poslednjem obojenom delu („Krov je crven.”), izgovara se pre „Slika je gotova.” */
+    const finish = (current: ColoringView, lead?: string) => {
         if (finishedRef.current) return;
         finishedRef.current = true;
         lockedRef.current = true;
@@ -1019,23 +1028,27 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
             : // Slobodno bojenje nema pogrešnog ishoda: svaka slika se računa kao potpuno tačna
               { ...current, correctCount: current.totalRounds, feedback: "correct", done: true };
         commit(final, `Slika je gotova: ${picture.name.toLowerCase()}`);
-        playSfx("win");
-        say(TEXT_DONE, undefined, "happy");
-
-        after(FINISH_MS, () => {
-            sync.complete(final);
-            onComplete({
-                score: final.score,
-                durationSec: sync.elapsedSec(),
-                correct: final.correctCount,
-                total: final.totalRounds,
-                prompted: final.promptedCount,
-            });
-        });
+        // Zvuk kraja nivoa pušta strana koja prikazuje rezultat — ovde samo potvrda
+        playSfx("correct");
+        sayThen(
+            lead ? `${lead} ${TEXT_DONE}` : TEXT_DONE,
+            () => {
+                sync.complete(final);
+                onComplete({
+                    score: final.score,
+                    durationSec: sync.elapsedSec(),
+                    correct: final.correctCount,
+                    total: final.totalRounds,
+                    prompted: final.promptedCount,
+                });
+            },
+            { min: FINISH_MIN_MS, max: FINISH_MIN_MS + 3500, emotion: "happy" }
+        );
     };
 
     const pickColor = (id: string) => {
-        if (!interactive) return;
+        // Dok se potvrđuje tačan deo, paleta miruje: izbor bi važio za stari zadatak i presekao rečenicu
+        if (!interactive || lockedRef.current) return;
         const current = viewRef.current;
         const color = COLOR_BY_ID[id];
         // Boja se uvek i izgovori: naziv ne zavisi od toga da li dete razlikuje nijanse
@@ -1111,14 +1124,14 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
             if (!upcoming) {
                 viewRef.current = solved;
                 sync.update(solved, log);
-                finish(solved);
+                finish(solved, feedbackText(solved, round));
                 return;
             }
 
             commit(solved, log);
             playSfx("correct");
-            say(feedbackText(solved, round), undefined, "happy");
-            after(NEXT_TASK_MS, () => {
+            // Sledeći zadatak čeka da glas izgovori „Krov je crven.”
+            sayThen(feedbackText(solved, round), () => {
                 const latest = viewRef.current;
                 // Dodir koji je ostao od prethodnog zadatka ne sme da odgovori na novi
                 guard.hold();
@@ -1126,14 +1139,15 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                     ...latest,
                     round: current.round + 1,
                     options: upcoming.options,
-                    color: latest.color !== null && upcoming.options.includes(latest.color) ? latest.color : null,
+                    // Stara boja ostaje izabrana samo ako je baš ona tražena; inače bi uputstvo
+                    // „Dodirni deo” važilo uz pogrešnu boju
+                    color: latest.color === upcoming.color.id ? latest.color : null,
                     wrongColors: [],
                     wrongZones: [],
                     feedback: null,
                 });
-                demo.show();
                 lockedRef.current = false;
-            });
+            }, { emotion: "happy" });
             return;
         }
 
@@ -1142,7 +1156,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
         const wrongColors = rightZone ? [...current.wrongColors, picked.id] : current.wrongColors;
         const wrongZones = rightZone ? current.wrongZones : [...current.wrongZones, zone.id];
-        const hint = settings.hintAfter > 0 && wrongColors.length + wrongZones.length >= settings.hintAfter;
+        // Pomoć stiže posle zadatog broja grešaka, a najkasnije kad ostane samo tražena boja
+        const hint = hintDue(settings.hintAfter, wrongColors.length + wrongZones.length, Math.max(1, round.options.length - 1));
         const missed: ColoringView = {
             ...current,
             // Pogrešna boja se odlaže (i ostaje zatamnjena), pa je sledeći korak jasan: izaberi drugu boju
@@ -1220,6 +1235,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
             />
 
             <GamePrompt
+                // Slobodno bojenje na telefonu: uputstvo se čuje, a mesto ostaje slici i bojama
+                className={guided ? undefined : "hidden sm:flex"}
                 title={instruction}
                 subtitle={step}
                 visual={
@@ -1264,7 +1281,10 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                         role="group"
                         aria-label={`Bojanka: ${picture.name}`}
                         className={cn(
-                            "mx-auto block h-auto max-h-[min(42vh,26rem)] w-full touch-manipulation select-none sm:max-h-[min(52vh,36rem)]",
+                            // Slika staje u visinu ekrana zajedno sa paletom — bojenje bez skrolovanja
+                            "mx-auto block h-auto w-full touch-manipulation select-none",
+                            guided ? "max-h-[max(11rem,calc(100dvh-28.5rem))]" : "max-h-[max(11rem,calc(100dvh-27rem))]",
+                            "sm:max-h-[max(13rem,calc(100dvh-28rem))] short:sm:max-h-[max(13rem,calc(100dvh-25.5rem))]",
                             shown.done && "animate-wiggle"
                         )}
                     >
@@ -1313,7 +1333,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                             style={FADE_IN_OUT}
                                         />
                                     )}
-                                    {interactive && zone.hit && (
+                                    {/* U zadatku šira ivica pripada samo traženom delu: tuđa ne sme da „pojede” dodir namenjen njemu */}
+                                    {interactive && zone.hit && (!round || zone.id === round.zone.id) && (
                                         <path
                                             d={zone.d}
                                             fill="none"
@@ -1341,9 +1362,10 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                 </div>
 
                 {/* Boje i alat */}
-                <div className="flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-3 shadow-soft sm:w-60 lg:w-64">
+                <div className={cn("flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-3 shadow-soft", guided ? "sm:w-60 lg:w-64" : "sm:w-72")}>
                     <p className={cn("hidden px-1 font-display text-base font-extrabold sm:block", accent.text)}>Boje</p>
-                    <div className={cn("grid gap-3 sm:grid-cols-2", PALETTE_COLS[swatches.length] ?? "grid-cols-4")}>
+                    {/* Slobodno bojenje: sve boje u dva reda, da i alat i „Gotovo” stanu na ekran */}
+                    <div className={cn("grid gap-3", guided ? cn("sm:grid-cols-2", PALETTE_COLS[swatches.length] ?? "grid-cols-4") : "grid-cols-4")}>
                         {swatches.map((color) => {
                             const selected = shown.color === color.id;
                             const tried = playing && shown.wrongColors.includes(color.id);
@@ -1361,8 +1383,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                 >
                                     <span
                                         className={cn(
-                                            "relative grid w-full place-items-center rounded-2xl border-2 border-black/15 transition-opacity duration-150 sm:h-16",
-                                            swatches.length > 6 ? "h-16" : "h-19",
+                                            "relative grid w-full place-items-center rounded-2xl border-2 border-black/15 transition-opacity duration-150",
+                                            !guided ? "h-13" : swatches.length > 6 ? "h-16 sm:h-16" : "h-19 sm:h-16",
                                             selected && "ring-4 ring-ink ring-offset-2 ring-offset-surface",
                                             hinted && "animate-soft-pulse ring-4 ring-brand-400 ring-offset-2 ring-offset-surface",
                                             tried && "opacity-30"
@@ -1385,9 +1407,11 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                         )}
                                     </span>
                                     {/* Naziv boje: boja nikad nije jedini znak (na telefonu naziv se čuje pri dodiru) */}
-                                    <span aria-hidden="true" className="hidden text-xs font-extrabold leading-tight text-ink-soft sm:block">
-                                        {color.nom}
-                                    </span>
+                                    {guided && (
+                                        <span aria-hidden="true" className="hidden text-xs font-extrabold leading-tight text-ink-soft sm:block">
+                                            {color.nom}
+                                        </span>
+                                    )}
                                 </button>
                             );
                         })}
@@ -1395,7 +1419,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
                     {!guided && (
                         <>
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-3 gap-3 sm:grid-cols-2">
                                 <ToolButton
                                     label="Gumica"
                                     selected={shown.color === ERASER}
@@ -1409,19 +1433,19 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                     onClick={undo}
                                     icon={<path d="M8 5 4 9l4 4M4 9h10a5 5 0 0 1 0 10h-3" />}
                                 />
-                            </div>
 
                             <button
                                 type="button"
                                 disabled={!interactive || colored < neededForDone}
                                 onClick={() => finish(viewRef.current)}
                                 className={cn(
-                                    "min-h-16 w-full rounded-2xl border-2 border-b-[5px] border-emerald-900 bg-emerald-700 px-4 text-lg font-extrabold text-white transition-[transform,background-color,border-width,opacity] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 disabled:cursor-default disabled:opacity-45 disabled:hover:bg-emerald-500 sm:text-xl",
+                                    "min-h-14 w-full rounded-2xl sm:col-span-2 sm:min-h-16 border-2 border-b-[5px] border-emerald-900 bg-emerald-700 px-4 text-lg font-extrabold text-white transition-[transform,background-color,border-width,opacity] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 disabled:cursor-default disabled:opacity-45 disabled:hover:bg-emerald-500 sm:text-xl",
                                     interactive && allColored && "animate-soft-pulse"
                                 )}
                             >
                                 Gotovo ✓
                             </button>
+                            </div>
                             {!shown.done && colored < neededForDone && (
                                 <p className="text-center text-base font-bold text-ink-soft">
                                     Oboji još {neededForDone - colored} {plural(neededForDone - colored)}

@@ -107,7 +107,7 @@ export const GAMES: GameDefinition[] = [
         gameType: "coloring",
         activityId: 4,
         title: "Bojanka",
-        description: "Oboji sliku kako želiš",
+        description: "Izaberi boje i oboji sliku",
         skill: "Fina motorika i boje",
         icon: "🎨",
         image: "/images/oboji.webp",

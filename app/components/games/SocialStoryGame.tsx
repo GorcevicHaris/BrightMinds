@@ -18,6 +18,7 @@ import {
     TriedNote,
     useGameSync,
     useInputGuard,
+    listenLimitFor,
     useListenGate,
     useSayAll,
     useTimers,
@@ -259,20 +260,31 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
     /** Čita trenutnu stranicu. Kad se korak sa izborom pročita, izbori se otključaju. */
     const narrate = useCallback(() => {
         const current = viewRef.current;
+        // Priča se čita mirnim glasom: stranica često pominje osećanje („strah”, „plače”) koje
+        // ne sme da oboji ceo tekst. Pitanje posle nje se pita radoznalo.
         if (current.phase === "cover") {
-            sayAll([`Priča: ${story.title}. ${genderText(story.intro, female)}`]);
+            sayAll([`Priča: ${story.title}. ${genderText(story.intro, female)}`], undefined, "neutral");
             return;
         }
         if (current.phase !== "story") return;
         const currentStep = story.steps[current.stepIndex];
         const currentDecision = currentStep.decision;
-        sayAll([narrationOf(currentStep, current.mode, female)], () => {
+        const afterNarration = () => {
             unlock();
             const latest = viewRef.current;
             if (!readOptionsAloud || !currentDecision || latest.stepIndex !== current.stepIndex) return;
             if (!awaitsChoice(story, latest.mode, latest.stepIndex, latest.records)) return;
             sayAll(latest.records[latest.stepIndex].order.map((i) => genderText(currentDecision.options[i].label, female)));
-        });
+        };
+        if (currentDecision && current.mode === "choose") {
+            sayAll(
+                [genderText(currentStep.text, female)],
+                () => sayAll([genderText(currentDecision.question, female)], afterNarration, "curious"),
+                "neutral"
+            );
+            return;
+        }
+        sayAll([narrationOf(currentStep, current.mode, female)], afterNarration, "neutral");
     }, [sayAll, unlock, story, female, readOptionsAloud]);
 
     useEffect(() => {
@@ -282,7 +294,9 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
     }, [isMonitor, sync]);
 
     // Svaka nova stranica se pročita naglas; izbori čekaju kraj čitanja, ali ne duže od LISTEN_MAX_MS
-    useListenGate(!isMonitor && view.phase !== "done", `${view.phase}:${view.stepIndex}`, narrate, unlock);
+    // (duža stranica dobija duže čekanje, da se izbori ne otključaju pre nego što se pitanje čuje)
+    const pageText = view.phase === "story" ? narrationOf(story.steps[view.stepIndex], view.mode, female) : "";
+    useListenGate(!isMonitor && view.phase !== "done", `${view.phase}:${view.stepIndex}`, narrate, unlock, listenLimitFor(pageText));
 
     // Na telefonu: nova stranica se čita od vrha
     useEffect(() => {
@@ -343,6 +357,8 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
             const how = attempt === 1 ? "" : ` iz ${attempt}. pokušaja${currentRecord.hint ? ", uz pomoć" : ""}`;
             playSfx("correct");
             commit(next, `${place}: izbor koji pomaže${how}: ${label}`);
+            // Ekran se pomera ka objašnjenju: drugi dodir dvostrukog dodira ne sme da pritisne „Dalje”
+            guard.hold();
             sayAll([explanationSpeech(currentDecision, picked, optionIndex, female)], undefined, "happy");
         } else {
             const tried = [...currentRecord.tried, optionIndex];
@@ -397,7 +413,8 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
         const correct = reading ? 0 : current.correctCount;
         const done: StoryView = { ...current, phase: "done", listening: false };
         silence();
-        playSfx("win");
+        // Zvuk kraja nivoa pušta strana koja prikazuje rezultat
+        playSfx("correct");
         commit(
             done,
             reading

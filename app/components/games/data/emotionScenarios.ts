@@ -164,7 +164,7 @@ const SCENARIOS: readonly EmotionScenario[] = [
     ...group(2, "surprised", 281, [
         ["marko", "🎩", "Marko gleda mađioničara. Mađioničar je izvukao zeca iz šešira.", "Kad vidimo nešto što nismo očekivali, često smo iznenađeni."],
         ["ana", "🐿️", "Ana šeta parkom. Veverica je odjednom pretrčala stazu ispred nje.", "Kad se nešto desi odjednom, često smo iznenađeni."],
-        ["filip", "🌈", "Filip je pogledao kroz prozor. Na nebu je velika duga.", "Kad vidimo nešto što retko viđamo, često smo iznenađeni."],
+        ["filip", "🌈", "Filip je pogledao kroz prozor. Na nebu je velika duga.", "Kad vidimo nešto što retko viđamo, često smo iznenađeni.", "happy"],
         ["sara", "🚪", "Sara je otvorila vrata. Na vratima je baka. Sara nije znala da baka dolazi.", "Kad dođe neko koga nismo očekivali, često smo iznenađeni.", "happy"],
     ]),
 
@@ -194,7 +194,7 @@ const SCENARIOS: readonly EmotionScenario[] = [
         ["filip", "💬", "Filip je rekao istinu. Niko mu ne veruje.", "Kad kažemo istinu, a ne veruju nam, često smo ljuti.", "sad"],
         ["ana", "🥤", "Ana nije prosula sok. Brat je rekao mami da je Ana prosula sok.", "Kad neko kaže da smo uradili nešto što nismo, često smo ljuti."],
         ["luka", "👓", "Luka ima nove naočare. Jedan dečak mu se ruga zbog naočara.", "Kad nam se neko ruga, često smo ljuti.", "sad"],
-        ["mila", "🌙", "Mila je htela još da se igra. Mama je rekla da je vreme za spavanje.", "Kad moramo da prekinemo igru, često smo ljuti."],
+        ["mila", "🌙", "Mila je htela još da se igra. Mama je rekla da je vreme za spavanje.", "Kad moramo da prekinemo igru, često smo ljuti.", "sad"],
         ["marko", "🤫", "Marko je rekao tajnu svom drugu. Drug je rekao tajnu drugoj deci.", "Kad neko kaže našu tajnu drugima, često smo ljuti."],
         ["sara", "✏️", "Sara je pozajmila bratu bojice. Brat je polomio bojice.", "Kad neko pokvari stvar koju smo mu pozajmili, često smo ljuti."],
         ["filip", "✋", "Filip je tri puta rekao sestri: „Prestani.” Sestra ga i dalje gura.", "Kad neko ne prestane, a zamolili smo ga, često smo ljuti."],
@@ -221,7 +221,7 @@ const SCENARIOS: readonly EmotionScenario[] = [
         ["luka", "👟", "Luka je prvi put sam vezao pertle.", "Kad prvi put nešto uradimo sami, često smo ponosni."],
         ["ana", "🚲", "Ana je dugo vežbala. Sada vozi bicikl bez pomoćnih točkića.", "Kad dugo vežbamo i uspemo, često smo ponosni."],
         ["marko", "🖼️", "Marko je nacrtao crtež. Učiteljica je pokazala crtež celom razredu.", "Kad drugi vide naš trud, često smo ponosni."],
-        ["sara", "🛍️", "Sara je pomogla baki da ponese tešku kesu.", "Kad nekome pomognemo, često smo ponosni."],
+        ["sara", "🛍️", "Sara je pomogla baki da ponese tešku kesu.", "Kad nekome pomognemo, često smo ponosni.", "happy"],
         ["filip", "🧥", "Filip je sam obukao jaknu i sam je zakopčao.", "Kad nešto uradimo sami, često smo ponosni."],
         ["mila", "🔤", "Mila je naučila da napiše svoje ime.", "Kad naučimo nešto novo, često smo ponosni."],
         ["luka", "🏊", "Luka je dugo učio da pliva. Danas je sam preplivao bazen.", "Kad uspemo posle mnogo truda, često smo ponosni."],

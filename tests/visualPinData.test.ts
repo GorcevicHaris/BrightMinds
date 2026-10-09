@@ -1,5 +1,7 @@
 // lib/visualPinData.ts — sličice vizuelnog PIN-a. ID-jevi su deo PIN-a u bazi i ne smeju se menjati.
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 import { normalizeVisualPin } from "@/lib/validation";
 import { PIN_LENGTH, VISUAL_PIN_CATEGORIES, pinToItems } from "@/lib/visualPinData";
@@ -22,14 +24,16 @@ describe("visual PIN categories", () => {
         }
     });
 
-    it("gives every item a name, an emoji and its own picture inside the category folder", () => {
+    it("gives every item a name, an emoji and its own picture that exists on disk", () => {
         for (const category of VISUAL_PIN_CATEGORIES) {
             const images = category.items.map((item) => item.image);
             assert.equal(new Set(images).size, images.length, `${category.id}: repeated picture`);
             for (const item of category.items) {
                 assert.ok(item.name.trim().length > 0, `${category.id}/${item.id}: name`);
                 assert.ok(item.emoji.trim().length > 0, `${category.id}/${item.id}: emoji`);
-                assert.ok(item.image.startsWith(`/pins/${category.id}/`) && item.image.endsWith(".webp"), `${category.id}/${item.id}: image`);
+                // Životinje dele slike sa igrama (lib/pictures.ts), ostale kategorije imaju svoj folder
+                assert.ok(item.image.startsWith("/") && item.image.endsWith(".webp"), `${category.id}/${item.id}: image`);
+                assert.ok(existsSync(join(process.cwd(), "public", item.image)), `${category.id}/${item.id}: ${item.image} is missing`);
             }
         }
     });

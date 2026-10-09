@@ -5,6 +5,13 @@
    Miran, predvidljiv i čitljiv interfejs: malo vizuelnog šuma, veliki ciljevi
    za dodir, jasan kontrast. Sve boje/senke/animacije idu odavde.
    ────────────────────────────────────────────────────────────────────────── */
+/* Nizak ekran (položen telefon, manji tablet): uputstva se zbijaju, da zadatak stane bez skrolovanja */
+@custom-variant short {
+  @media (max-height: 820px) {
+    @slot;
+  }
+}
+
 @theme {
   --font-sans: var(--font-nunito), ui-rounded, "Segoe UI", system-ui, sans-serif;
   --font-display: var(--font-baloo), var(--font-nunito), ui-rounded, system-ui, sans-serif;

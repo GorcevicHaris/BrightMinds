@@ -35,15 +35,33 @@ const GameLoading = () => (
     </div>
 );
 
+// Svaka igra je zaseban deo koda: preuzima se tek kad zatreba, a počinje da se
+// preuzima čim dete otvori igru (dok bira težinu), pa nivo kreće bez čekanja.
+const GAME_LOADERS = {
+    shapes: () => import("@/app/components/games/ShapeMatchingGame"),
+    memory: () => import("@/app/components/games/MemoryGame"),
+    coloring: () => import("@/app/components/games/ColoringGame"),
+    "sound-to-image": () => import("@/app/components/games/SoundToImageGame"),
+    social: () => import("@/app/components/games/SocialCommunicationGame"),
+    "social-story": () => import("@/app/components/games/SocialStoryGame"),
+    emotions: () => import("@/app/components/games/EmotionsGame"),
+} satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
+
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
-    shapes: dynamic(() => import("@/app/components/games/ShapeMatchingGame"), { ssr: false, loading: GameLoading }),
-    memory: dynamic(() => import("@/app/components/games/MemoryGame"), { ssr: false, loading: GameLoading }),
-    coloring: dynamic(() => import("@/app/components/games/ColoringGame"), { ssr: false, loading: GameLoading }),
-    "sound-to-image": dynamic(() => import("@/app/components/games/SoundToImageGame"), { ssr: false, loading: GameLoading }),
-    social: dynamic(() => import("@/app/components/games/SocialCommunicationGame"), { ssr: false, loading: GameLoading }),
-    "social-story": dynamic(() => import("@/app/components/games/SocialStoryGame"), { ssr: false, loading: GameLoading }),
-    emotions: dynamic(() => import("@/app/components/games/EmotionsGame"), { ssr: false, loading: GameLoading }),
+    shapes: dynamic(GAME_LOADERS["shapes"], { ssr: false, loading: GameLoading }),
+    memory: dynamic(GAME_LOADERS["memory"], { ssr: false, loading: GameLoading }),
+    coloring: dynamic(GAME_LOADERS["coloring"], { ssr: false, loading: GameLoading }),
+    "sound-to-image": dynamic(GAME_LOADERS["sound-to-image"], { ssr: false, loading: GameLoading }),
+    social: dynamic(GAME_LOADERS["social"], { ssr: false, loading: GameLoading }),
+    "social-story": dynamic(GAME_LOADERS["social-story"], { ssr: false, loading: GameLoading }),
+    emotions: dynamic(GAME_LOADERS["emotions"], { ssr: false, loading: GameLoading }),
 };
+
+function preloadGame(id: GameId) {
+    void GAME_LOADERS[id]().catch(() => {
+        /* bez mreže: igra će pokušati ponovo kad se otvori nivo */
+    });
+}
 
 type Tier = "easy" | "medium" | "hard";
 type Screen = "picker" | "tiers" | "mood-before" | "playing" | "mood-after";
@@ -239,6 +257,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         // Dok plan traje, otvaraju se odigrane igre i ona koja je na redu
         if (planActive && id !== nextPlanned && !planDone.includes(id)) return;
         playSfx("tap");
+        preloadGame(id);
         setGameId(id);
         setOutcome(null);
         setScreen("tiers");
@@ -451,8 +470,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             aria-modal="true"
             aria-label={game.title}
         >
+            <GameBackdrop game={game} />
             {/* Zaglavlje igre — ista mesta dugmadi u svim igrama */}
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 sm:h-18 sm:gap-3 sm:px-5">
+            <header className="relative flex h-16 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 sm:h-18 sm:gap-3 sm:px-5">
                 {screen === "playing" ? (
                     <button
                         type="button"
@@ -548,6 +568,20 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 }
 
 // ── Igra (izdvojeno da se ne renderuje ponovo kad se promeni overlay) ─────────
+
+/**
+ * Pozadina u bojama igre: dva meka, nepomična oblaka boje iza sadržaja. Svaka igra
+ * tako ima svoj prepoznatljiv prostor, a ništa se ne kreće i ne odvlači pažnju.
+ */
+function GameBackdrop({ game }: { game: GameDefinition }) {
+    const cloud = "absolute rounded-full bg-gradient-to-br [mask-image:radial-gradient(closest-side,black,transparent)]";
+    return (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+            <div className={cn(cloud, "-left-40 top-0 h-[34rem] w-[34rem] opacity-25", game.accent.gradient)} />
+            <div className={cn(cloud, "-bottom-48 -right-40 h-[40rem] w-[40rem] opacity-20", game.accent.gradient)} />
+        </div>
+    );
+}
 
 function GameSlot({ gameId, ...props }: { gameId: GameId } & GameProps) {
     const Game = GAME_COMPONENTS[gameId];

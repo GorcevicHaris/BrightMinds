@@ -83,8 +83,10 @@ const POINTS = [100, 60, 30];
 
 /** Situacije nivoa kao zadaci. `randomize` meša redosled ponuđenih izbora. */
 function buildRounds(level: number, choiceLimit: number, maxRounds: number, randomize: boolean): Round[] {
-    return getSituationsForLevel(level)
-        .slice(0, Math.max(maxRounds, 1))
+    // Zastupanje sebe je drugo u nizu, pa ostaje u nivou i kad je on skraćen; tek onda se
+    // redosled meša, da isti nivo ne počinje uvek istom situacijom
+    const picked = getSituationsForLevel(level).slice(0, Math.max(maxRounds, 1));
+    return (randomize ? shuffle(picked) : picked)
         .map((situation) => {
             const offered = offeredOptions(situation, choiceLimit);
             return { situationId: situation.id, order: randomize ? shuffle(offered) : offered };
@@ -298,6 +300,8 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
             const how = attempt === 1 ? "" : ` iz ${attempt}. pokušaja${current.hint ? ", uz pomoć" : ""}`;
             commit(next, `Izbor koji pomaže${how}: ${label}`);
             playSfx("correct");
+            // Drugi dodir dvostrukog dodira ne sme da pritisne „Dalje” i preskoči objašnjenje
+            guard.hold();
             sayAll([explanationSpeech(target, index, current.order, female)], undefined, "happy");
             return;
         }
@@ -324,7 +328,6 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
             completedRef.current = true;
             const done: SocialView = { ...current, finished: true };
             commit(done, `Nivo završen: ${done.correctCount} od ${done.totalRounds} iz prvog izbora, ${done.promptedCount} uz pomoć`);
-            playSfx("win");
             finishTimer.current = window.setTimeout(() => {
                 finishTimer.current = null;
                 sync.complete(done);

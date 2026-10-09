@@ -189,9 +189,9 @@ interface GamePromptProps {
 
 export function GamePrompt({ title, subtitle, visual, className }: GamePromptProps) {
     return (
-        <div className={cn("flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-soft sm:gap-6 sm:p-6", className)}>
+        <div className={cn("flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-soft sm:gap-6 sm:p-6 short:sm:p-4", className)}>
             {visual && (
-                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-brand-50 text-5xl ring-1 ring-brand-100 sm:h-28 sm:w-28 sm:text-6xl">
+                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-brand-50 text-5xl ring-1 ring-brand-100 sm:h-28 sm:w-28 sm:text-6xl short:sm:h-20 short:sm:w-20 short:sm:text-5xl">
                     {visual}
                 </div>
             )}
@@ -199,6 +199,24 @@ export function GamePrompt({ title, subtitle, visual, className }: GamePromptPro
                 <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{title}</p>
                 {subtitle && <p className="mt-1 text-base font-bold text-ink-soft sm:text-lg">{subtitle}</p>}
             </div>
+        </div>
+    );
+}
+
+// ── PlayArea ──────────────────────────────────────────────────────────────────
+// Polje za igru u boji igre: zauzima sav preostali prostor i drži zadatak u sredini,
+// pa na velikom ekranu nema praznine ispod, a kartice mogu da budu velike.
+
+interface PlayAreaProps {
+    accent: GameAccent;
+    children: React.ReactNode;
+    className?: string;
+}
+
+export function PlayArea({ accent, children, className }: PlayAreaProps) {
+    return (
+        <div className={cn("flex min-h-0 flex-1 flex-col items-center justify-center rounded-card border p-3 sm:p-5", accent.border, accent.soft, className)}>
+            {children}
         </div>
     );
 }

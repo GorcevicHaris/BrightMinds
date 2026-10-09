@@ -12,10 +12,11 @@ import { AuthError, requireChildOwner } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { supabaseAdmin } from "@/lib/supabase";
 
-/** Samo ime: prezime se na ovim stranicama ne prikazuje, pa se i ne učitava. */
+/** Ime i pol (zbog oblika reči u igrama); prezime se na ovim stranicama ne prikazuje, pa se i ne učitava. */
 export interface OwnedChild {
     id: number;
     firstName: string;
+    gender?: string;
 }
 
 /**
@@ -34,11 +35,11 @@ export async function loadOwnedChild(idParam: string): Promise<OwnedChild> {
         throw error;
     }
 
-    const { data } = await supabaseAdmin.from("children").select("first_name").eq("id", childId).maybeSingle();
+    const { data } = await supabaseAdmin.from("children").select("first_name, gender").eq("id", childId).maybeSingle();
     const firstName = typeof data?.first_name === "string" ? data.first_name.trim() : "";
     if (!firstName) redirect("/dashboard");
 
-    return { id: childId, firstName };
+    return { id: childId, firstName, gender: typeof data?.gender === "string" ? data.gender : undefined };
 }
 
 type ChildView = "progress" | "monitor";

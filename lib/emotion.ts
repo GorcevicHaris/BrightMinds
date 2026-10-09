@@ -21,10 +21,10 @@ function simplify(text: string): string {
         .replace(/đ/g, "dj");
 }
 
-const GREETING = /^(zdravo|cao|dobro dos|dobar dan|dobro jutro|dobro vece)/;
+const GREETING = /^(zdravo|cao|dobro dos|dobar dan|dobro jutro|dobro vece)\b/;
 const PROUD = /(nivo je zavrsen|sve si (resi|zavrsi|uradi)|zavrsi(o|la) si|svaka cast)/;
-const PRAISE = /^(bravo|odlicno|super|sjajno|tako je|tacno|lepo|uspe(o|la)|pogodi(o|la))/;
-const GENTLE = /^(probaj|pokusaj|hajde|nije to|nije strasno|ne brini|polako|u redu je|skoro|nema veze|mozes ti)/;
+const PRAISE = /^(bravo|odlicno|super|sjajno|tako je|tacno|uspe(o|la)|pogodi(o|la))\b/;
+const GENTLE = /^(probaj|pokusaj|hajde|nije to|nije strasno|ne brini|u redu je|nema veze|mozes ti)\b/;
 
 const FEELINGS: { emotion: VoiceEmotion; pattern: RegExp }[] = [
     { emotion: "sad", pattern: /\b(tuzn|tuzan|place|plakal|plakao|rastuzi|usamljen|nedostaj|povredjen)/ },
@@ -49,8 +49,12 @@ export function emotionForText(text: string): VoiceEmotion {
     if (PROUD.test(plain)) return "proud";
     if (PRAISE.test(plain)) return "happy";
     if (GENTLE.test(plain)) return "gentle";
-    // Pitanje se postavlja radoznalo, i kad pominje osećanje („Da li je Mila tužna?”)
-    if (/\?\s*$/.test(plain)) return "curious";
+    if (/\?\s*$/.test(plain)) {
+        // Samo pitanje se postavlja radoznalo, i kad pominje osećanje („Da li je Mila tužna?”).
+        // Opis pa pitanje („Luka je pao. Kako se Luka oseća?”) čita se mirno: veseo ton uz tužan
+        // događaj bio bi pogrešan, a ton osećanja bi odao odgovor.
+        return /[.!]\s+\S/.test(plain) ? "neutral" : "curious";
+    }
 
     for (const { emotion, pattern } of FEELINGS) {
         const match = pattern.exec(plain);

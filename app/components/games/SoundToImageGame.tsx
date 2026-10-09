@@ -5,6 +5,7 @@ import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
+import { animalImage } from "@/lib/pictures";
 import { gameSoundsEnabled, playWithFade, useMuted } from "@/lib/sound";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
@@ -54,23 +55,23 @@ interface SoundItemBase {
 type SoundItem = SoundItemBase & ({ image: string; Art?: undefined } | { Art: SoundPicture; image?: undefined });
 
 const ITEMS: SoundItem[] = [
-    { id: "cat", label: "Mačka", image: "/soundImage/cat.webp", sound: "/sounds/macka.mp3", category: "animals", loud: false, level: 0.3 },
-    { id: "cow", label: "Krava", image: "/soundImage/cow.webp", sound: "/sounds/krava.wav", category: "animals", loud: false, level: 0.4 },
-    { id: "pig", label: "Svinja", image: "/soundImage/pigg.webp", sound: "/sounds/svinja.mp3", category: "animals", loud: false, level: 1 },
-    { id: "bird", label: "Ptica", image: "/soundImage/bird.webp", sound: "/sounds/ptica.mp3", category: "animals", loud: false, level: 1 },
-    { id: "dog", label: "Pas", image: "/soundImage/dog.webp", sound: "/sounds/pas.mp3", category: "animals", loud: true, level: 0.65 },
+    { id: "cat", label: "Mačka", image: animalImage("cat"), sound: "/sounds/macka.mp3", category: "animals", loud: false, level: 0.3 },
+    { id: "cow", label: "Krava", image: animalImage("cow"), sound: "/sounds/krava.wav", category: "animals", loud: false, level: 0.4 },
+    { id: "pig", label: "Svinja", image: animalImage("pig"), sound: "/sounds/svinja.mp3", category: "animals", loud: false, level: 1 },
+    { id: "bird", label: "Ptica", image: animalImage("bird"), sound: "/sounds/ptica.mp3", category: "animals", loud: false, level: 1 },
+    { id: "dog", label: "Pas", image: animalImage("dog"), sound: "/sounds/pas.mp3", category: "animals", loud: true, level: 0.65 },
     { id: "rain", label: "Kiša", image: "/soundImage/rain.webp", sound: "/sounds/kisa.mp3", category: "weather", loud: false, level: 1 },
     // Sova i vetar: NIKO IH JOŠ NIJE PRESLUŠAO. Jačina je namerno oprezna i određena samo merenjem fajla
     // (isti postupak kao za ostale: najglasnija sekunda na oko −20 dBFS; vetar se meri u prvih 6 s, koliko se
     // i pušta). Pre objave ih treba preslušati na uređaju i proveriti da nijedan ne počinje naglo.
     { id: "owl", label: "Sova", Art: OwlPicture, sound: "/sounds/sova.mp3", category: "animals", loud: false, level: 0.45 },
-    { id: "horse", label: "Konj", image: "/soundImage/horsee.webp", sound: "/sounds/konj.mp3", category: "animals", loud: true, level: 0.5 },
+    { id: "horse", label: "Konj", image: animalImage("horse"), sound: "/sounds/konj.mp3", category: "animals", loud: true, level: 0.5 },
     { id: "wind", label: "Vetar", Art: WindPicture, sound: "/sounds/vetar.mp3", category: "weather", loud: false, level: 0.35 },
-    { id: "rooster", label: "Petao", image: "/soundImage/cock.webp", sound: "/sounds/petao.wav", category: "animals", loud: true, level: 0.7 },
+    { id: "rooster", label: "Petao", image: animalImage("rooster"), sound: "/sounds/petao.wav", category: "animals", loud: true, level: 0.7 },
     { id: "car", label: "Auto", image: "/soundImage/car.webp", sound: "/sounds/sirenaAuta.mp3", category: "vehicles", loud: true, level: 0.55 },
     { id: "bell", label: "Zvono", image: "/soundImage/bell.webp", sound: "/sounds/zvonoKucno.mp3", category: "home", loud: true, level: 0.85 },
-    { id: "bear", label: "Medved", image: "/soundImage/bear.webp", sound: "/sounds/medved.mp3", category: "animals", loud: true, level: 1 },
-    { id: "monkey", label: "Majmun", image: "/soundImage/monkey.webp", sound: "/sounds/majmun.mp3", category: "animals", loud: true, level: 1 },
+    { id: "bear", label: "Medved", image: animalImage("bear"), sound: "/sounds/medved.mp3", category: "animals", loud: true, level: 1 },
+    { id: "monkey", label: "Majmun", image: animalImage("monkey"), sound: "/sounds/majmun.mp3", category: "animals", loud: true, level: 1 },
     { id: "police", label: "Policija", image: "/soundImage/policeCar.webp", sound: "/sounds/policija.mp3", category: "vehicles", loud: true, level: 1 },
     { id: "thunder", label: "Grmljavina", image: "/soundImage/thunder.webp", sound: "/sounds/grmljavina.mp3", category: "weather", loud: true, level: 0.7 },
 ];
@@ -95,6 +96,8 @@ function isNarrowScreen(): boolean {
 // Jedno uputstvo u jednom trenutku, kratko i doslovno.
 
 const SAY_LISTEN = "Dodirni dugme i poslušaj zvuk.";
+/** Od drugog zvuka dete već zna šta se radi — dovoljna je jedna reč */
+const SAY_LISTEN_SHORT = "Poslušaj zvuk.";
 const SAY_CHOOSE = "Šta čuješ? Dodirni sliku.";
 const SAY_LISTEN_FIRST = "Prvo pusti zvuk.";
 const WRONG_TEXT = "Nije to. Poslušaj još jednom.";
@@ -116,6 +119,8 @@ interface LevelConfig {
     pool: number;
     /** Pogrešne slike se biraju iz iste grupe kao tačna (životinje sa životinjama…) */
     similar?: boolean;
+    /** Ispod slika nema reči: prepoznaje se samo po slici */
+    noLabels?: boolean;
 }
 
 // Svaki nivo ima iste zvukove kao pre dodavanja sove i vetra, plus njih dva čim dođu na red
@@ -131,11 +136,13 @@ const LEVELS: LevelConfig[] = [
     { rounds: 6, options: 4, pool: 14 },
     { rounds: 6, options: 4, pool: 15 },
     { rounds: 6, options: 4, pool: 16 },
+    // Teško: svi zvuci su poznati, pa svaki nivo menja način biranja — više slika, slične slike,
+    // pa slike bez reči ispod (snimaka nema više, zato se ne dodaju novi zvuci)
     { rounds: 5, options: 6, pool: 16 },
     { rounds: 6, options: 6, pool: 16 },
     { rounds: 6, options: 6, pool: 16, similar: true },
-    { rounds: 6, options: 6, pool: 16, similar: true },
-    { rounds: 6, options: 6, pool: 16, similar: true },
+    { rounds: 6, options: 6, pool: 16, similar: true, noLabels: true },
+    { rounds: 7, options: 6, pool: 16, similar: true, noLabels: true },
 ];
 
 function levelIndex(level: number): number {
@@ -358,6 +365,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     /** Posle prvog odslušanog zvuka glas jednom kaže šta je sledeći korak */
     const chooseSaidRef = useRef(false);
     const cutTimerRef = useRef<TimerId | null>(null);
+    const introTimer = useRef<TimerId | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
     /** Raste pri svakom puštanju/gašenju, da zakasneli događaji starog puštanja ne diraju novo */
     const playIdRef = useRef(0);
@@ -367,6 +375,9 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     const target = ITEM_BY_ID[shown.targetId];
     const options = shown.optionIds.flatMap((id) => ITEM_BY_ID[id] ?? []);
     const solved = shown.feedback === "correct";
+    const showLabels = !LEVELS[levelIndex(level)].noLabels;
+    // Slike sledećeg zvuka se učitavaju dok dete rešava tekući, da nova runda ne „iskače” deo po deo
+    const upcomingImages = isMonitor ? [] : (rounds[shown.round]?.optionIds ?? []).flatMap((id) => ITEM_BY_ID[id]?.image ?? []);
     const interactive = !isMonitor && !shown.done;
 
     // ── Zvuk ──────────────────────────────────────────────────────────────────
@@ -421,8 +432,9 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
             setPlaying(true);
 
             // Bez naglog početka: zvuk kreće tiho i pojačava se do jačine koju je izabrao roditelj
+            // Ni tada dete ne ostaje bez traga: umesto zvuka čuje reč
             playWithFade(current, item.level).catch(() => {
-                release();
+                if (release()) void say(item.label);
             });
         },
         [after, haltSound, say, stopSpeech]
@@ -468,7 +480,11 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     const levelDone = view.done;
     useEffect(() => {
         if (isMonitor || levelDone) return;
-        const id = after(SPEAK_DELAY_MS, () => void say(soundOff ? SOUND_OFF_TEXT : SAY_LISTEN));
+        const id = after(SPEAK_DELAY_MS, () => {
+            introTimer.current = null;
+            void say(soundOff ? SOUND_OFF_TEXT : round > 1 ? SAY_LISTEN_SHORT : SAY_LISTEN);
+        });
+        introTimer.current = id;
         return () => cancel(id);
     }, [isMonitor, round, soundOff, levelDone, after, cancel, say]);
 
@@ -526,6 +542,9 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         }
         // Kratka pauza unosa: slučajan drugi dodir ne sme da izabere sliku pre nego što se zvuk čuje
         guard.hold();
+        // Uputstvo koje tek treba da krene ne sme da se izgovori preko zvuka
+        cancel(introTimer.current);
+        introTimer.current = null;
         playSound(item);
         commit({ ...current, heard: true, pickedId: null, feedback: null }, current.heard ? "Ponovo pušta zvuk" : "Pušta zvuk");
     };
@@ -687,6 +706,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                                         state={state}
                                         disabled={!interactive || solved || state === "dimmed" || state === "wrong"}
                                         onClick={() => pick(item.id)}
+                                        aria-label={item.label}
                                         className="flex-col gap-2"
                                     >
                                         <span className="relative block aspect-[5/4] w-full overflow-hidden rounded-xl bg-brand-50 sm:aspect-square">
@@ -696,7 +716,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                                                 <Image src={item.image} alt="" fill sizes={IMAGE_SIZES[columns]} className="object-cover" draggable={false} />
                                             )}
                                         </span>
-                                        <span className="text-base leading-tight sm:text-lg">{item.label}</span>
+                                        {showLabels && <span className="text-base leading-tight sm:text-lg">{item.label}</span>}
                                     </ChoiceCard>
                                 );
                             })}
@@ -708,6 +728,18 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                         correctText={target ? correctText(target) : undefined}
                         wrongText={shown.hint ? WRONG_HINT_TEXT : WRONG_TEXT}
                     />
+
+                    {upcomingImages.length > 0 && (
+                        <div aria-hidden="true" className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0">
+                            <div className={cn("grid w-screen max-w-4xl gap-2 sm:gap-4", GRID[columns])}>
+                                {upcomingImages.map((src) => (
+                                    <span key={src} className="relative block aspect-square w-full">
+                                        <Image src={src} alt="" fill sizes={IMAGE_SIZES[columns]} loading="eager" />
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </GameStage>

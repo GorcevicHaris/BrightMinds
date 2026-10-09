@@ -219,6 +219,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
     const [view, setView] = useState(() => initialView(rounds));
     const viewRef = useRef(view);
     const startedRef = useRef(false);
+    const promptTimer = useRef<number | null>(null);
     const completedRef = useRef(false);
     const nextButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -249,7 +250,11 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
 
     useEffect(() => {
         if (isMonitor || !prompt) return;
-        const timer = window.setTimeout(() => void say(prompt), SPEAK_DELAY_MS);
+        const timer = window.setTimeout(() => {
+            promptTimer.current = null;
+            void say(prompt);
+        }, SPEAK_DELAY_MS);
+        promptTimer.current = timer;
         return () => window.clearTimeout(timer);
     }, [isMonitor, say, prompt]);
 
@@ -280,8 +285,11 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
         // Kratka pauza da uzastopni dodiri (ili držanje tastera) ne preskoče objašnjenje
         guard.hold();
         playSfx(pickedCommon ? "correct" : "tap");
-        // Objašnjenje se čita tonom izabranog osećanja: glas i lice učitelja pokazuju kako ono zvuči i izgleda
-        void say(explanation(target, current.options, id, current.round >= current.totalRounds).join(" "), undefined, id);
+        // Uputstvo koje tek treba da krene ne sme da preseče objašnjenje
+        if (promptTimer.current !== null) window.clearTimeout(promptTimer.current);
+        promptTimer.current = null;
+        // Objašnjenje se čita blago: „Sva osećanja su u redu” ne sme da zvuči ljutito ni uplašeno
+        void say(explanation(target, current.options, id, current.round >= current.totalRounds).join(" "), undefined, "gentle");
     };
 
     const handleNext = () => {
@@ -358,7 +366,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                                     onClick={() => handlePick(id)}
                                     className={cn("grow-0 flex-col gap-1.5 px-1.5", OPTION_BASIS[shown.options.length] ?? OPTION_BASIS[4])}
                                 >
-                                    <span className={cn("block h-16 w-16 rounded-2xl p-1 sm:h-20 sm:w-20", EMOTION_TINT[id])}>
+                                    <span className={cn("block h-20 w-20 rounded-2xl p-1 sm:h-28 sm:w-28 short:sm:h-24 short:sm:w-24", EMOTION_TINT[id])}>
                                         <EmotionFace emotion={id} className="h-full w-full" />
                                     </span>
                                     <span className="text-base leading-tight sm:text-lg">{emotion.label}</span>

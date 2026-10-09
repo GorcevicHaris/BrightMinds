@@ -56,14 +56,64 @@ export function useSayAll(say: Say) {
  * ne javi. Samo stanje „sluša se” ostaje u view-u igre (vidi ga i monitor); `narrate` obično sam
  * zove `unlock` čim čitanje završi, pa `unlock` mora da podnese i drugi poziv.
  */
-export function useListenGate(enabled: boolean, resetKey: unknown, narrate: () => void, unlock: () => void) {
+export function useListenGate(enabled: boolean, resetKey: unknown, narrate: () => void, unlock: () => void, maxMs = LISTEN_MAX_MS) {
     useEffect(() => {
         if (!enabled) return;
         const speakTimer = window.setTimeout(narrate, NARRATION_DELAY_MS);
-        const unlockTimer = window.setTimeout(unlock, LISTEN_MAX_MS);
+        const unlockTimer = window.setTimeout(unlock, maxMs);
         return () => {
             window.clearTimeout(speakTimer);
             window.clearTimeout(unlockTimer);
         };
-    }, [enabled, resetKey, narrate, unlock]);
+    }, [enabled, resetKey, narrate, unlock, maxMs]);
+}
+
+/**
+ * Koliko najduže vredi čekati da se tekst pročita: oko pola sekunde po reči, u granicama 6–16 s.
+ * Za duže stranice (priče) — da se izbori ne otključaju usred rečenice, pre samog pitanja.
+ */
+export function listenLimitFor(text: string): number {
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    return Math.min(16000, Math.max(LISTEN_MAX_MS, words * 500 + 2000));
+}
+
+/** Najkraće trajanje povratne poruke: i kad je glas isključen, dete stigne da vidi šta se desilo */
+export const FEEDBACK_MIN_MS = 1200;
+/** Najduže čekanje na kraj rečenice (glas iz mreže ume da zakasni ili da se ne javi) */
+export const FEEDBACK_MAX_MS = 4500;
+
+interface SayThenOptions {
+    min?: number;
+    max?: number;
+    emotion?: VoiceEmotion;
+}
+
+/**
+ * Izgovori pa nastavi: `proceed` se zove kad glas završi rečenicu, ali ne pre `min` i ne posle `max`.
+ * Tako se „To je zvezda.” nikad ne preseče sledećim pitanjem, a igra ne čeka duže nego što treba.
+ * `after` je iz `useTimers` (tajmeri se sami čiste kad igra nestane).
+ *
+ *   const sayThen = useSayThen(say, after);
+ *   sayThen("To je zvezda.", () => startRound(next), { emotion: "happy" });
+ */
+export function useSayThen(say: Say, after: (ms: number, fn: () => void) => unknown) {
+    return useCallback(
+        (text: string, proceed: () => void, { min = FEEDBACK_MIN_MS, max = FEEDBACK_MAX_MS, emotion }: SayThenOptions = {}) => {
+            let waiting = 2;
+            let finished = false;
+            const finish = () => {
+                if (finished) return;
+                finished = true;
+                proceed();
+            };
+            const step = () => {
+                waiting -= 1;
+                if (waiting === 0) finish();
+            };
+            after(min, step);
+            after(max, finish);
+            void say(text, step, emotion);
+        },
+        [say, after]
+    );
 }

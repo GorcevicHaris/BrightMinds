@@ -14,12 +14,15 @@ import {
     GameHud,
     GamePrompt,
     GameStage,
+    hintDue,
+    PlayArea,
     playSfx,
     shuffle,
     PULSE_ONCE,
     useDemo,
     useGameSync,
     useInputGuard,
+    useSayThen,
     useTimers,
     type BaseView,
     type ChoiceState,
@@ -424,14 +427,15 @@ const LEVELS: LevelConfig[] = [
     // Srednje: senke i obrisi, boja više ne pomaže, sličniji ometači
     { rounds: 6, options: 4, pool: 15, look: "shadow", coloring: "natural", similar: 1, rotate: false },
     { rounds: 7, options: 4, pool: 15, look: "shadow", coloring: "uniform", similar: 2, rotate: false },
-    { rounds: 7, options: 6, pool: 15, look: "color", coloring: "uniform", similar: 2, rotate: false },
-    { rounds: 7, options: 6, pool: 15, look: "shadow", coloring: "natural", similar: 3, rotate: false },
+    { rounds: 7, options: 6, pool: 15, look: "shadow", coloring: "natural", similar: 2, rotate: false },
+    { rounds: 7, options: 6, pool: 15, look: "shadow", coloring: "uniform", similar: 3, rotate: false },
     { rounds: 7, options: 6, pool: 15, look: "outline", coloring: "uniform", similar: 3, rotate: false },
-    // Teško: isti oblik u drugoj boji (uz mamac u boji uzorka) i okrenuti oblici
+    // Teško: isti oblik u drugoj boji (uz mamac u boji uzorka) i okrenuti oblici.
+    // Svaki nivo menja nešto što se vidi i kad je broj ponuđenih oblika ograničen podešavanjima.
     { rounds: 7, options: 4, pool: 15, look: "color", coloring: "mixed", similar: 2, rotate: false },
-    { rounds: 8, options: 6, pool: 15, look: "color", coloring: "mixed", similar: 3, rotate: false },
-    { rounds: 8, options: 6, pool: 15, look: "shadow", coloring: "uniform", similar: 3, rotate: true },
     { rounds: 8, options: 6, pool: 15, look: "color", coloring: "mixed", similar: 3, rotate: true },
+    { rounds: 8, options: 6, pool: 15, look: "shadow", coloring: "uniform", similar: 3, rotate: true },
+    { rounds: 8, options: 6, pool: 15, look: "outline", coloring: "uniform", similar: 3, rotate: true },
     { rounds: 8, options: 6, pool: 15, look: "outline", coloring: "mixed", similar: 4, rotate: true },
 ];
 
@@ -506,8 +510,14 @@ function buildPlan(cfg: LevelConfig, limits: PlanLimits): RoundPlan[] {
         .slice(0, limits.rounds)
         .map((target, round) => {
             const count = limits.warmUp && round === 0 ? Math.min(limits.options, WARM_UP_OPTIONS) : limits.options;
-            const similar = shuffle(SHAPES[target].similar.filter((shape) => pool.includes(shape))).slice(0, cfg.similar);
-            const others = shuffle(pool.filter((shape) => shape !== target && !similar.includes(shape)));
+            const lookAlikes = SHAPES[target].similar.filter((shape) => pool.includes(shape));
+            const similar = shuffle(lookAlikes).slice(0, cfg.similar);
+            let others = shuffle(pool.filter((shape) => shape !== target && !similar.includes(shape)));
+            // Dok se slični oblici još ne traže, ometači se jasno razlikuju: ni sličan oblik ni ista boja
+            if (cfg.similar === 0 && cfg.coloring === "natural") {
+                const distinct = others.filter((shape) => !lookAlikes.includes(shape) && SHAPES[shape].color !== SHAPES[target].color);
+                if (distinct.length >= count - 1) others = distinct;
+            }
             const distractors = [...similar, ...others].slice(0, count - 1);
 
             const shared = pickOne(COLOR_IDS);
@@ -587,7 +597,7 @@ function promptFor(view: ShapesView): { title: string; subtitle: string } {
     } else if (view.look === "outline") {
         title = "Koji je ovo oblik?";
     }
-    if (recolored) steps.push("Boja može biti druga.");
+    if (recolored) steps.push("Boja može biti drugačija.");
     if (rotated) steps.push("Oblik može biti okrenut.");
     return { title, subtitle: steps.join(" ") };
 }
@@ -636,7 +646,7 @@ const LAYOUT: Record<number, string> = {
 
 const BOARD_STYLE = {
     // ≈23rem zauzimaju zaglavlje, traka napretka, uputstvo i poruka
-    "--tile": "clamp(5rem, calc((100dvh - 23rem) / var(--rows) - var(--gap)), 11rem)",
+    "--tile": "clamp(5rem, calc((100dvh - 23rem) / var(--rows) - var(--gap)), 15rem)",
     gap: "var(--gap)",
     gridTemplateColumns: "repeat(var(--cols), minmax(0, 1fr))",
     maxWidth: "calc(var(--cols) * var(--tile) + (var(--cols) - 1) * var(--gap))",
@@ -645,9 +655,6 @@ const BOARD_STYLE = {
 // ── Igra ──────────────────────────────────────────────────────────────────────
 
 const GAME = getGame("shapes");
-/** Dovoljno dugo da se čuje „To je …” pre sledećeg pitanja */
-const NEXT_ROUND_MS = 1700;
-const CELEBRATE_MS = 1400;
 const WRONG_FEEDBACK_MS = 1400;
 
 export default function ShapeMatchingGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<ShapesView>) {
@@ -657,6 +664,8 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
     const sync = useGameSync<ShapesView>({ childId, gameId: "shapes", level, isMonitor });
     const { say } = useSpeech(gender);
     const { after, cancel } = useTimers();
+    // Sledeći zadatak čeka da glas izgovori „To je …” — ni kraće ni duže nego što treba
+    const sayThen = useSayThen(say, after);
     const guard = useInputGuard();
     const demo = useDemo(!isMonitor);
 
@@ -756,15 +765,15 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
             };
             const how = firstTry ? "iz prvog pokušaja" : prompted ? "uz pomoć" : `iz ${current.wrong.length + 1}. pokušaja`;
             commit(solved, `Tačno ${how}: ${targetName}`);
-            playSfx(isLast ? "win" : "correct");
-            say(feedbackText(solved), undefined, "happy");
-            if (isLast) after(CELEBRATE_MS, finish);
-            else after(NEXT_ROUND_MS, () => startRound(current.round));
+            // Zvuk kraja nivoa pušta strana koja prikazuje rezultat — ovde samo potvrda tačnog odgovora
+            playSfx("correct");
+            sayThen(feedbackText(solved), isLast ? finish : () => startRound(current.round), { emotion: "happy" });
             return;
         }
 
         const wrong = [...current.wrong, index];
-        const hint = settings.hintAfter > 0 && wrong.length >= settings.hintAfter;
+        // Pomoć stiže posle zadatog broja grešaka, a najkasnije kad ostane samo tačan oblik
+        const hint = hintDue(settings.hintAfter, wrong.length, current.options.length - 1);
         const missed: ShapesView = { ...current, picked: index, feedback: "wrong", wrong, hint, incorrectCount: current.incorrectCount + 1 };
         commit(
             missed,
@@ -821,13 +830,13 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                             color={shown.targetColor}
                             look={shown.look}
                             label={TARGET_LABEL[shown.look](SHAPES[shown.target].name)}
-                            className="h-16 w-16 sm:h-24 sm:w-24"
+                            className="h-16 w-16 sm:h-24 sm:w-24 short:sm:h-16 short:sm:w-16"
                         />
                     </span>
                 }
             />
 
-            <div className={cn("rounded-card border p-3 sm:p-5", GAME.accent.border, GAME.accent.soft)}>
+            <PlayArea accent={GAME.accent}>
                 <div
                     key={`options-${shown.round}`}
                     role="group"
@@ -857,7 +866,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                         );
                     })}
                 </div>
-            </div>
+            </PlayArea>
 
             <Feedback kind={shown.feedback} correctText={message} wrongText={message} />
         </GameStage>

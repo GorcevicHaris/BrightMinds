@@ -1,6 +1,7 @@
 // Vizuelni PIN: dete bira po jednu sličicu iz svake kategorije, redom.
 // VAŽNO: `id` vrednosti se čuvaju u bazi kao deo PIN-a — ne menjati ih.
 // (Neki ID-jevi u kategoriji hrane istorijski ne odgovaraju slici; naziv i slika su tačni.)
+import { animalImage } from "./pictures";
 
 export interface VisualPinItem {
     id: string;
@@ -25,16 +26,16 @@ export const VISUAL_PIN_CATEGORIES: VisualPinCategory[] = [
         name: 'Životinje',
         prompt: 'životinju',
         items: [
-            { id: 'dog', emoji: '🐶', name: 'Pas', image: '/pins/animals/dog.webp' },
-            { id: 'cat', emoji: '🐱', name: 'Maca', image: '/pins/animals/cat.webp' },
-            { id: 'lion', emoji: '🦁', name: 'Lav', image: '/pins/animals/lion.webp' },
-            { id: 'tiger', emoji: '🐯', name: 'Tigar', image: '/pins/animals/tiger.webp' },
-            { id: 'bear', emoji: '🐻', name: 'Meda', image: '/pins/animals/bear.webp' },
-            { id: 'cow', emoji: '🐮', name: 'Krava', image: '/pins/animals/cow.webp' },
-            { id: 'crocodile', emoji: '🐊', name: 'Krokodil', image: '/pins/animals/crocodile.webp' },
-            { id: 'zebra', emoji: '🦓', name: 'Zebra', image: '/pins/animals/zebra.webp' },
-            { id: 'horse', emoji: '🐴', name: 'Konj', image: '/pins/animals/horse.webp' },
-            { id: 'puma', emoji: '🐆', name: 'Puma', image: '/pins/animals/puma.webp' },
+            { id: 'dog', emoji: '🐶', name: 'Pas', image: animalImage('dog') },
+            { id: 'cat', emoji: '🐱', name: 'Maca', image: animalImage('cat') },
+            { id: 'lion', emoji: '🦁', name: 'Lav', image: animalImage('lion') },
+            { id: 'tiger', emoji: '🐯', name: 'Tigar', image: animalImage('tiger') },
+            { id: 'bear', emoji: '🐻', name: 'Meda', image: animalImage('bear') },
+            { id: 'cow', emoji: '🐮', name: 'Krava', image: animalImage('cow') },
+            { id: 'crocodile', emoji: '🐊', name: 'Krokodil', image: animalImage('crocodile') },
+            { id: 'zebra', emoji: '🦓', name: 'Zebra', image: animalImage('zebra') },
+            { id: 'horse', emoji: '🐴', name: 'Konj', image: animalImage('horse') },
+            { id: 'puma', emoji: '🐆', name: 'Puma', image: animalImage('puma') },
         ]
     },
     {

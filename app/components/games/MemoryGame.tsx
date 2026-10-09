@@ -11,12 +11,14 @@ import {
     Feedback,
     GameHud,
     GameStage,
+    PlayArea,
     playSfx,
     PULSE_ONCE,
     shuffle,
     useDemo,
     useGameSync,
     useInputGuard,
+    useSayThen,
     useTimers,
     type BaseView,
     type FeedbackKind,
@@ -24,7 +26,8 @@ import {
     type TimerId,
 } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
-import { getGame, LEVELS_PER_TIER } from "@/lib/games";
+import { getGame } from "@/lib/games";
+import { ANIMAL_PICTURES, type AnimalId } from "@/lib/pictures";
 import { useSpeech } from "@/lib/speech";
 
 // ── Sličice ───────────────────────────────────────────────────────────────────
@@ -34,22 +37,21 @@ interface Animal {
     src: string;
 }
 
-const ANIMALS: Record<string, Animal> = {
-    kokoska: { name: "Kokoška", src: "/memoryGameImages/kokoska.webp" },
-    krava: { name: "Krava", src: "/memoryGameImages/kravaa.webp" },
-    krokodil: { name: "Krokodil", src: "/memoryGameImages/krokodill.webp" },
-    lav: { name: "Lav", src: "/memoryGameImages/lavv.webp" },
-    lisica: { name: "Lisica", src: "/memoryGameImages/lisica.webp" },
-    macka: { name: "Mačka", src: "/memoryGameImages/mackaa.webp" },
-    mis: { name: "Miš", src: "/memoryGameImages/miss.webp" },
-    morskikonj: { name: "Morski konj", src: "/memoryGameImages/morskikonj.webp" },
-    panda: { name: "Panda", src: "/memoryGameImages/panda.webp" },
-    pas: { name: "Pas", src: "/memoryGameImages/pass.webp" },
-    sova: { name: "Sova", src: "/memoryGameImages/sovaa.webp" },
-    tigar: { name: "Tigar", src: "/memoryGameImages/tigar.webp" },
-};
+// Iste slike kao u ostatku aplikacije (lib/pictures.ts). Redosled je od životinja koje se jasno
+// razlikuju ka onima koje liče jedna na drugu (lav, tigar, mačka, puma): male table koriste
+// samo početak liste, a slične životinje stižu tek na većim tablama, gde otežavaju pamćenje.
+const MEMORY_ORDER: AnimalId[] = ["dog", "cow", "pig", "bird", "zebra", "crocodile", "monkey", "rooster", "bear", "horse", "lion", "tiger", "cat", "puma"];
 
-const ANIMAL_IDS = Object.keys(ANIMALS);
+const ANIMALS: Record<string, Animal> = Object.fromEntries(
+    MEMORY_ORDER.map((id) => [id, { name: ANIMAL_PICTURES[id].name, src: ANIMAL_PICTURES[id].image }])
+);
+
+/** Koliko životinja sa početka liste ulazi u izbor za tablu sa `pairs` parova */
+function poolSize(pairs: number): number {
+    return Math.min(MEMORY_ORDER.length, Math.max(pairs + 3, 7));
+}
+
+const ANIMAL_IDS: string[] = MEMORY_ORDER;
 
 function animalOf(id: string | undefined): Animal | undefined {
     return id !== undefined && Object.prototype.hasOwnProperty.call(ANIMALS, id) ? ANIMALS[id] : undefined;
@@ -63,11 +65,9 @@ interface LevelConfig {
     pairs: number;
     /** Sve kartice su na početku nakratko otkrivene (mlađoj deci uvek, bez obzira na nivo) */
     peek: boolean;
-    /** Koliko dugo promašen par ostaje otkriven */
-    flipBackMs: number;
 }
 
-const BOARDS: { pairs: number; peek: boolean }[] = [
+const LEVELS: LevelConfig[] = [
     { pairs: 2, peek: true },
     { pairs: 3, peek: true },
     { pairs: 3, peek: false },
@@ -85,22 +85,51 @@ const BOARDS: { pairs: number; peek: boolean }[] = [
     { pairs: 10, peek: false },
 ];
 
-/** Lako / srednje / teško: promašen par se brže vraća. */
-const FLIP_BACK_MS = [1300, 1100, 900];
+/**
+ * Promašen par ostaje otkriven dovoljno dugo da se obe slike stvarno vide (okretanje traje pola
+ * sekunde). Isto na svim nivoima: težinu čini broj kartica, a ne brzina. Dete koje je već
+ * zapamtilo ne mora da čeka — sledeći dodir odmah vraća par.
+ */
+const FLIP_BACK_MS = 2000;
+/** Toliko posle promašaja dodir još ne vraća par (druga kartica se tek okreće) */
+const MISMATCH_MIN_MS = 800;
 
-const LEVELS: LevelConfig[] = BOARDS.map((board, index) => ({
-    ...board,
-    flipBackMs: FLIP_BACK_MS[Math.min(Math.floor(index / LEVELS_PER_TIER), FLIP_BACK_MS.length - 1)],
-}));
+function levelIndex(level: number): number {
+    return Math.min(Math.max(Math.round(level) || 1, 1), LEVELS.length) - 1;
+}
 
 function configFor(level: number): LevelConfig {
-    const index = Math.min(Math.max(Math.round(level) || 1, 1), LEVELS.length) - 1;
-    return LEVELS[index];
+    return LEVELS[levelIndex(level)];
+}
+
+interface Deal {
+    pairs: number;
+    peek: boolean;
+    /** Trajanje zavirivanja u odnosu na puno (1 = puno) */
+    peekScale: number;
+}
+
+/**
+ * Šta se stvarno deli detetu. Broj parova ograničava uzrast (`maxPairs`), pa kad se on dostigne
+ * nivoi i dalje moraju da se razlikuju:
+ *  • mlađi uvek zaviruju, ali sve kraće — svaki nivo sa istim brojem parova skraćuje gledanje;
+ *  • ostali zaviruju samo dok tabla još raste; kad je najveća, zavirivanja više nema
+ *    (nivo sa zavirivanjem nikad ne dolazi posle istog bez njega).
+ */
+function dealFor(level: number, maxPairs: number, young: boolean): Deal {
+    const index = levelIndex(level);
+    const pairs = Math.min(LEVELS[index].pairs, maxPairs);
+    if (young) {
+        const first = LEVELS.findIndex((cfg) => Math.min(cfg.pairs, maxPairs) === pairs);
+        return { pairs, peek: true, peekScale: Math.max(0.4, 1 - 0.08 * (index - first)) };
+    }
+    const capped = LEVELS[index].pairs > maxPairs;
+    return { pairs, peek: LEVELS[index].peek && !capped, peekScale: 1 };
 }
 
 /** Koliko dugo traje zavirivanje: više kartica, više vremena */
-function peekMsFor(pairs: number): number {
-    return 2000 + pairs * 400;
+function peekMsFor(pairs: number, scale = 1): number {
+    return Math.round((2400 + pairs * 450) * scale);
 }
 
 // ── Raspored ──────────────────────────────────────────────────────────────────
@@ -141,7 +170,7 @@ const TAIL_START = "col-start-2 landscape:col-start-auto";
 
 const BOARD_STYLE = {
     // ≈17rem zauzimaju zaglavlje, traka napretka i uputstvo
-    "--card": "clamp(4rem, calc((100dvh - 17rem) / var(--rows) - var(--gap)), 10rem)",
+    "--card": "clamp(4rem, calc((100dvh - 17rem) / var(--rows) - var(--gap)), 14rem)",
     gap: "var(--gap)",
     gridTemplateColumns: "repeat(var(--cols), minmax(0, 1fr))",
     maxWidth: "calc(var(--cols) * var(--card) + (var(--cols) - 1) * var(--gap))",
@@ -235,7 +264,7 @@ function emptyView(pairs: number): MemoryView {
 }
 
 function dealCards(pairs: number, peek: boolean): MemoryView {
-    const chosen = shuffle(ANIMAL_IDS).slice(0, pairs);
+    const chosen = shuffle(ANIMAL_IDS.slice(0, poolSize(pairs))).slice(0, pairs);
     const cards = shuffle([...chosen, ...chosen]);
     // Posle zavirivanja dete je videlo sve kartice
     return { ...emptyView(pairs), cards, peek, seen: peek ? cards.map((_, index) => index) : [] };
@@ -325,8 +354,7 @@ function MemoryCard({ position, animal, open, matched, hinted, disabled, classNa
                             src={animal.src}
                             alt={animal.name}
                             fill
-                            // Slika je položena (≈1,8:1) i iseca se na kvadrat, pa je šira od same kartice
-                            sizes="(min-width: 640px) 320px, 50vw"
+                            sizes="(min-width: 640px) 224px, 45vw"
                             loading="eager"
                             draggable={false}
                             onLoad={onImageSettled}
@@ -355,9 +383,8 @@ const TEXT_PEEK = "Pogledaj slike i zapamti gde su.";
 const TEXT_FIND = "Pronađi dve iste slike.";
 const TEXT_HINT = "Dodirni karticu koja svetli.";
 /** Ako se slike sporo učitavaju, zavirivanje se ipak završava posle ovoliko dodatnog čekanja */
-const PEEK_GRACE_MS = 3000;
+const PEEK_GRACE_MS = 5000;
 const MATCH_FEEDBACK_MS = 1600;
-const CELEBRATE_MS = 1400;
 
 export default function MemoryGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<MemoryView>) {
     const cfg = configFor(level);
@@ -366,14 +393,15 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
     const sync = useGameSync<MemoryView>({ childId, gameId: "memory", level, isMonitor });
     const { say } = useSpeech(gender);
     const { after, cancel } = useTimers();
+    const sayThen = useSayThen(say, after);
     const guard = useInputGuard();
     const demo = useDemo(!isMonitor);
 
+    const [deal] = useState<Deal>(() => dealFor(level, settings.preset.memoryMaxPairs, settings.activeBand === "young"));
     // Monitor nema podešavanja deteta ni njegov ekran: tabla stiže u `monitorState`
     const [view, setView] = useState<MemoryView>(() => {
         if (isMonitor) return emptyView(cfg.pairs);
-        const pairs = pairsForScreen(Math.min(cfg.pairs, settings.preset.memoryMaxPairs));
-        return dealCards(pairs, cfg.peek || settings.activeBand === "young");
+        return dealCards(pairsForScreen(deal.pairs), deal.peek);
     });
 
     // Poslednje stanje za rukovaoce i tajmere (dva brza dodira ne vide zastarelo stanje)
@@ -382,7 +410,12 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
     const feedbackTimer = useRef<TimerId | null>(null);
     const peekTimer = useRef<TimerId | null>(null);
     const peekArmed = useRef(false);
+    /** Zavirivanje se meri tek kad je uputstvo izgovoreno — dok glas govori, dete još ne gleda kartice */
+    const peekSpoken = useRef(false);
     const settledImages = useRef(new Set<number>());
+    const flipBackTimer = useRef<TimerId | null>(null);
+    /** Promašen par sme da se vrati dodirom tek kad se druga kartica okrenula do kraja */
+    const mismatchSettled = useRef(false);
     const onCompleteRef = useRef(onComplete);
 
     useEffect(() => {
@@ -416,28 +449,41 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
         sync.start(viewRef.current);
     }, [isMonitor, sync, guard]);
 
-    useEffect(() => {
-        if (!isMonitor) say(viewRef.current.peek ? TEXT_PEEK : TEXT_FIND);
-    }, [isMonitor, say]);
+    /** Zavirivanje se meri tek kad su sve slike na ekranu i uputstvo izgovoreno: dete ne gleda prazne kartice ni dok još sluša. */
+    const armPeek = useCallback(() => {
+        const current = viewRef.current;
+        if (!current.peek || peekArmed.current) return;
+        if (!peekSpoken.current || settledImages.current.size < current.cards.length) return;
+        peekArmed.current = true;
+        cancel(peekTimer.current);
+        peekTimer.current = after(peekMsFor(current.totalRounds, deal.peekScale), endPeek);
+    }, [after, cancel, deal.peekScale, endPeek]);
 
-    // Rezervni kraj zavirivanja; čim se sve slike učitaju, zamenjuje ga tačno odmereni tajmer (handleImageSettled)
+    useEffect(() => {
+        if (isMonitor) return;
+        if (!viewRef.current.peek) {
+            say(TEXT_FIND);
+            return;
+        }
+        say(TEXT_PEEK, () => {
+            peekSpoken.current = true;
+            armPeek();
+        });
+    }, [isMonitor, say, armPeek]);
+
+    // Rezervni kraj zavirivanja (slike ili glas se ne jave); inače ga zamenjuje tačno odmereni tajmer iz `armPeek`
     useEffect(() => {
         const current = viewRef.current;
         if (isMonitor || !current.peek || peekArmed.current) return;
-        const id = after(peekMsFor(current.totalRounds) + PEEK_GRACE_MS, endPeek);
+        const id = after(peekMsFor(current.totalRounds, deal.peekScale) + PEEK_GRACE_MS, endPeek);
         peekTimer.current = id;
         return () => cancel(id);
-    }, [isMonitor, after, cancel, endPeek]);
+    }, [isMonitor, after, cancel, deal.peekScale, endPeek]);
 
-    /** Zavirivanje se meri tek kad su sve slike na ekranu, da dete ne gleda prazne kartice. */
     const handleImageSettled = (index: number) => {
         if (isMonitor) return;
         settledImages.current.add(index);
-        const current = viewRef.current;
-        if (!current.peek || peekArmed.current || settledImages.current.size < current.cards.length) return;
-        peekArmed.current = true;
-        cancel(peekTimer.current);
-        peekTimer.current = after(peekMsFor(current.totalRounds), endPeek);
+        armPeek();
     };
 
     const finish = () => {
@@ -445,7 +491,8 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
         finishedRef.current = true;
         const final = viewRef.current;
         sync.complete(final);
-        // total    = broj parova
+        // total    = broj parova bez poslednjeg (kad ostanu dve kartice, par se ne može promašiti,
+        //            pa nije mera pamćenja i ne broji se ni kao samostalan ni kao uz pomoć)
         // correct  = parovi pronađeni samostalno iz prve prilike: bez pomoći i bez greške pamćenja od
         //            prethodnog para (otvaranje još neviđenih kartica se ne računa kao greška)
         // prompted = parovi pronađeni dok je par otvorene kartice svetleo kao pomoć
@@ -454,21 +501,33 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
             score: final.score,
             durationSec: sync.elapsedSec(),
             correct: final.correctCount,
-            total: final.totalRounds,
+            total: Math.max(final.totalRounds - 1, 1),
             prompted: final.promptedCount,
         });
     };
 
     const handleFlip = (index: number) => {
         if (isMonitor || finishedRef.current || guard.blocked()) return;
-        const current = viewRef.current;
+        let current = viewRef.current;
         const id = current.cards[index];
         const animal = animalOf(id);
-        // Zaključano: zavirivanje, dve otvorene kartice koje čekaju da se vrate, već otvorena ili spojena kartica
-        // (zato se ni ponovljeni dodir iste kartice nikad ne računa kao potez)
-        if (!animal || current.peek || current.flipped.length >= 2 || current.flipped.includes(index) || current.matched.includes(id)) {
-            return;
+        if (!animal || current.peek || current.matched.includes(id)) return;
+
+        // Promašen par još stoji otkriven: dodir ga odmah vraća (dete koje je zapamtilo ne čeka),
+        // ali ne pre nego što se druga kartica okrenula do kraja
+        if (current.flipped.length >= 2) {
+            if (!mismatchSettled.current) return;
+            cancel(flipBackTimer.current);
+            flipBackTimer.current = null;
+            const wasOpen = current.flipped.includes(index);
+            current = { ...current, flipped: [] };
+            if (wasOpen) {
+                commit(current);
+                return;
+            }
         }
+        // Već otvorena kartica: ponovljeni dodir se nikad ne računa kao potez
+        if (current.flipped.includes(index)) return;
 
         cancel(feedbackTimer.current);
         feedbackTimer.current = null;
@@ -494,9 +553,11 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
             const matched = [...current.matched, id];
             const pairs = current.totalRounds;
             const allFound = matched.length >= pairs;
-            const prompted = current.hint !== null;
-            const firstTry = !prompted && current.streak === 0;
-            const how = firstTry ? "iz prve prilike" : prompted ? "uz pomoć" : "posle greške";
+            // Poslednji par se ne može promašiti, pa se ne boduje kao pamćenje
+            const forced = allFound;
+            const prompted = !forced && current.hint !== null;
+            const firstTry = !forced && !prompted && current.streak === 0;
+            const how = forced ? "poslednji" : firstTry ? "iz prve prilike" : prompted ? "uz pomoć" : "posle greške";
             commit(
                 {
                     ...current,
@@ -514,12 +575,13 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
                 },
                 `Pronađen par ${how}: ${animal.name} (${matched.length} od ${pairs})`
             );
-            playSfx(allFound ? "win" : "correct");
-            say(`${animal.name}.`, undefined, "happy");
+            // Zvuk kraja nivoa pušta strana koja prikazuje rezultat — ovde samo potvrda para
+            playSfx("correct");
             if (allFound) {
-                after(CELEBRATE_MS, finish);
+                sayThen(`${animal.name}.`, finish, { emotion: "happy" });
                 return;
             }
+            say(`${animal.name}.`, undefined, "happy");
             feedbackTimer.current = after(MATCH_FEEDBACK_MS, () => {
                 feedbackTimer.current = null;
                 commit({ ...viewRef.current, feedback: null });
@@ -543,7 +605,14 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
             },
             `Nije par: ${animalOf(firstId)?.name ?? "kartica"} i ${animal.name}${avoidable ? "" : " (istraživanje)"}`
         );
-        after(cfg.flipBackMs, () => commit({ ...viewRef.current, flipped: [] }));
+        mismatchSettled.current = false;
+        after(MISMATCH_MIN_MS, () => {
+            mismatchSettled.current = true;
+        });
+        flipBackTimer.current = after(FLIP_BACK_MS, () => {
+            flipBackTimer.current = null;
+            commit({ ...viewRef.current, flipped: [] });
+        });
     };
 
     const repeatInstruction = () => {
@@ -563,7 +632,7 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
     else if (shown.hint !== null) instruction = TEXT_HINT;
 
     const foundName = lastFound?.name.toLowerCase();
-    const correctText = foundName ? `Par: ${foundName} i ${foundName}.` : "Par je pronađen.";
+    const correctText = foundName ? `Par: ${foundName}.` : "Par je pronađen.";
 
     return (
         <GameStage width="wide">
@@ -596,7 +665,7 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
                 <Feedback kind={shown.feedback} correctText={correctText} />
             </div>
 
-            <div className={cn("relative rounded-card border p-3 sm:p-5", GAME.accent.border, GAME.accent.soft)}>
+            <PlayArea accent={GAME.accent} className="relative">
                 {demo.on && (
                     <span
                         key={demo.run}
@@ -630,7 +699,7 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
                         );
                     })}
                 </div>
-            </div>
+            </PlayArea>
         </GameStage>
     );
 }

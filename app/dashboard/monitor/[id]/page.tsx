@@ -17,7 +17,7 @@ export default async function MonitorPage({ params }: { params: Promise<{ id: st
             title="Praćenje uživo"
             description="Gledajte igru zajedno sa detetom: isti ekran, u istom trenutku."
         >
-            <LiveMonitor childId={child.id} childName={child.firstName} topic={realtimeTopicFor(child.id)} />
+            <LiveMonitor childId={child.id} childName={child.firstName} gender={child.gender} topic={realtimeTopicFor(child.id)} />
         </ChildPageShell>
     );
 }

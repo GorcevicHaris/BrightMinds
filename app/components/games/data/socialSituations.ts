@@ -201,12 +201,12 @@ const GROUPS: Draft[][] = [
             id: 8,
             kind: "polite",
             scene: "🍽️",
-            model: "Mama daje Nini ručak. Nina kaže: „Hvala za ručak!”",
+            model: "Mama daje Nini ručak. Nina kaže: „Hvala na ručku!”",
             text: "Mama ti daje ručak.",
             ask: ASK_SAY,
-            script: "Hvala za ručak!",
+            script: "Hvala na ručku!",
             good: [
-                say("🙏", "Hvala za ručak!", "Mama je kuvala. „Hvala” joj kaže da to vidimo."),
+                say("🙏", "Hvala na ručku!", "Mama je kuvala. „Hvala” joj kaže da to vidimo."),
                 say("🙂", "Ovo ne volim. Mogu li nešto drugo?", "Smeš da kažeš šta ne voliš. Kad to kažeš mirno, mama te razume."),
             ],
             other: [
@@ -552,7 +552,7 @@ const ADVOCACY: Draft[] = [
         kind: "advocacy",
         scene: "🗯️",
         model: "Dečak zove Taru ružnim nadimkom. Tara kaže: „Stani. To mi se ne sviđa.”",
-        text: "Jedan dečak te zove ružnim nadimkom. To te boli.",
+        text: "Jedan dečak te zove ružnim nadimkom. To ti se ne sviđa.",
         ask: ASK_SAY_OR_DO,
         script: "Stani. To mi se ne sviđa.",
         good: [
@@ -560,7 +560,7 @@ const ADVOCACY: Draft[] = [
             act("🙋", "Odem i kažem učiteljici.", "Učiteljica može da pomogne. Reći odrasloj osobi je u redu."),
         ],
         other: [
-            act("😅", "Smejem se, iako me to boli.", "Kad se smejemo, dečak misli da nam je zabavno. Tada može da nastavi."),
+            act("😅", "Smejem se, iako mi se to ne sviđa.", "Kad se smejemo, dečak misli da nam je zabavno. Tada može da nastavi."),
             act("👊", "Udarim ga.", "Udarac boli. Posle udarca su oba deteta tužna."),
         ],
     },
@@ -606,13 +606,17 @@ function toSituation({ good, other, ...base }: Draft): SocialSituation {
     return { ...base, options: [...good, ...other], acceptable: good.map((_, i) => i) };
 }
 
-/** Situacija koja se ponavlja: laka težina nudi 1 + 1 izbor, srednja 2 + 1, teška 2 + 2. */
+/**
+ * Situacija koja se ponavlja: laka težina nudi 1 + 1 izbor, srednja 1 + 2, teška 2 + 2.
+ * Broj ponuđenih izbora raste (2 → 3 → 4), pa nijedna težina nije lakša od prethodne;
+ * na teškoj dete uz to uči da više od jednog odgovora može da pomogne.
+ */
 function forTier(draft: Draft, tier: number): SocialSituation {
     return toSituation({
         ...draft,
         id: draft.id + tier * REPEATED_PER_TIER,
-        good: draft.good.slice(0, tier === 0 ? 1 : 2),
-        other: draft.other.slice(0, tier === TIER_COUNT - 1 ? 2 : 1),
+        good: draft.good.slice(0, tier === TIER_COUNT - 1 ? 2 : 1),
+        other: draft.other.slice(0, tier === 0 ? 1 : 2),
     });
 }
 

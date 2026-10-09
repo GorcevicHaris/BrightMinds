@@ -51,7 +51,7 @@ export function playSfx(name: Sfx) {
             tone(audio, 783.99, 0.11, 0.24);
             break;
         case "wrong":
-            tone(audio, 233.08, 0, 0.2, 0.05, "triangle");
+            // Namerno bez zvuka: greška nije kazna (pogrešan odgovor se samo utiša na ekranu)
             break;
         case "win":
             [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(audio, f, i * 0.11, 0.28));

@@ -19,6 +19,8 @@ import type { GameUpdate } from "@/lib/types";
 interface LiveMonitorProps {
     childId: number;
     childName: string;
+    /** Pol deteta: prikaz koristi iste oblike reči („gladna”, „pročitala”) koje vidi dete */
+    gender?: string;
     /** Tajna tema kanala koju je napravio server; null u probnom prikazu bez praćenja */
     topic: string | null;
 }
@@ -163,12 +165,12 @@ function monitorReducer(state: MonitorState, { update, receivedAt }: MonitorActi
 
 // ── Komponenta ────────────────────────────────────────────────────────────────
 
-export default function LiveMonitor({ childId, childName, topic }: LiveMonitorProps) {
+export default function LiveMonitor({ childId, childName, gender, topic }: LiveMonitorProps) {
     // `key` garantuje čisto stanje ako se promeni dete koje se prati
-    return <MonitorSession key={childId} childId={childId} childName={childName} topic={topic} />;
+    return <MonitorSession key={childId} childId={childId} childName={childName} gender={gender} topic={topic} />;
 }
 
-function MonitorSession({ childId, childName, topic }: LiveMonitorProps) {
+function MonitorSession({ childId, childName, gender, topic }: LiveMonitorProps) {
     const [state, dispatch] = useReducer(monitorReducer, INITIAL_STATE);
 
     const handleUpdate = useCallback(
@@ -205,7 +207,7 @@ function MonitorSession({ childId, childName, topic }: LiveMonitorProps) {
                     {active ? (
                         <>
                             <NowPlaying active={active} />
-                            <GameMirror active={active} childId={childId} />
+                            <GameMirror active={active} childId={childId} gender={gender} />
                         </>
                     ) : (
                         <IdleCard childName={childName} isWaitingForConnection={isConfigured && !isConnected} />
@@ -284,7 +286,7 @@ function NowPlaying({ active }: { active: ActiveGame }) {
     );
 }
 
-function GameMirror({ active, childId }: { active: ActiveGame; childId: number }) {
+function GameMirror({ active, childId, gender }: { active: ActiveGame; childId: number; gender?: string }) {
     const Game = GAME_COMPONENTS[active.game.gameType];
     const finished = active.phase === "finished";
 
@@ -310,6 +312,7 @@ function GameMirror({ active, childId }: { active: ActiveGame; childId: number }
                 <Game
                     key={`${active.game.id}:${active.session}`}
                     childId={childId}
+                    gender={gender}
                     level={levelOf(active.view)}
                     onComplete={noop}
                     isMonitor
