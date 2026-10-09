@@ -312,6 +312,24 @@ describe("emotion scenarios", () => {
         }
     });
 
+    it("brings other scenarios when a level is replayed with a different shift, under the same rules", () => {
+        for (const level of [1, 6, 11, 15]) {
+            const base = getEmotionLevel(level, { emotionCount: 6, maxRounds: 8 });
+            const seen = new Set(base.scenarios.map((scenario) => scenario.id));
+            for (let shift = 1; shift <= 12; shift += 1) {
+                const again = getEmotionLevel(level, { emotionCount: 6, maxRounds: 8, shift });
+                assert.equal(again.scenarios.length, base.scenarios.length, `level ${level}, shift ${shift}`);
+                assert.deepEqual(again.palette, base.palette);
+                assert.equal(new Set(again.scenarios.map((scenario) => scenario.id)).size, again.scenarios.length, "repeated scenario");
+                for (const scenario of again.scenarios) {
+                    assert.ok(scenario.common.every((id) => again.palette.includes(id)));
+                    seen.add(scenario.id);
+                }
+            }
+            assert.ok(seen.size > base.scenarios.length, `level ${level}: replay never changes the scenarios`);
+        }
+    });
+
     it("picks the same scenarios every time for the same level and settings", () => {
         const first = getEmotionLevel(7, { emotionCount: 5, maxRounds: 6 });
         assert.deepEqual(getEmotionLevel(7, { emotionCount: 5, maxRounds: 6 }), first);

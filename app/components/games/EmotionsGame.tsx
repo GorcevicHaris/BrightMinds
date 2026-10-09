@@ -121,7 +121,9 @@ interface RoundLimits {
  * drugo najčešće se izostavlja samo kad bi inače sve ponuđeno bilo „najčešće”.
  */
 function buildRounds(level: number, { emotionCount, maxRounds, choiceLimit, childName }: RoundLimits): Round[] {
-    const { scenarios, choices, palette } = getEmotionLevel(level, { emotionCount, maxRounds });
+    // Nasumičan pomeraj: ponovljen nivo ne donosi iste priče
+    const shift = Math.floor(Math.random() * 1000);
+    const { scenarios, choices, palette } = getEmotionLevel(level, { emotionCount, maxRounds, shift });
     const size = Math.min(choices, choiceLimit, palette.length);
     return shuffle(scenarios).map((scenario) => {
         const common = scenario.common.length < size ? scenario.common : scenario.common.slice(0, 1);

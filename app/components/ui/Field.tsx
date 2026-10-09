@@ -21,7 +21,7 @@ function FieldShell({ id, label, hint, error, optional, children }: FieldShellPr
             {label && (
                 <label htmlFor={id} className="mb-1.5 flex items-baseline justify-between gap-2 text-sm font-bold text-ink-soft">
                     <span>{label}</span>
-                    {optional && <span className="text-xs font-semibold text-ink-faint">opciono</span>}
+                    {optional && <span className="text-xs font-semibold text-ink-faint">nije obavezno</span>}
                 </label>
             )}
             {children}

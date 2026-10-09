@@ -349,6 +349,11 @@ interface EmotionLevelOptions {
     emotionCount: number;
     /** Najviše zadataka u nivou za ovaj uzrast */
     maxRounds: number;
+    /**
+     * Pomeraj u redovima scenarija (0 = uvek isti izbor). Igra ga bira nasumično pri svakom
+     * pokretanju nivoa, pa ponovljen nivo donosi druge priče i svi scenariji dođu na red.
+     */
+    shift?: number;
 }
 
 interface Rotation<T> {
@@ -357,8 +362,8 @@ interface Rotation<T> {
 }
 
 /** Kružni red čekanja: svako uzimanje pomera pokazivač, pa se stavke ne ponavljaju dok se sve ne potroše. */
-function rotation<T>(items: readonly T[]): Rotation<T> {
-    let cursor = 0;
+function rotation<T>(items: readonly T[], start = 0): Rotation<T> {
+    let cursor = items.length > 0 ? Math.abs(Math.floor(start)) % items.length : 0;
     return {
         next: (accept = () => true) => {
             for (let step = 0; step < items.length; step += 1) {
@@ -379,19 +384,19 @@ function clampLevel(level: number): number {
 /**
  * Scenariji i pravila za nivo, prilagođeni osećanjima koja dete poznaje.
  *
- * Izbor je determinisan. Nivoi iste težine dele redove čekanja po osećanju, pa se
+ * Izbor je determinisan za dati `shift`. Nivoi iste težine dele redove čekanja po osećanju, pa se
  * raspored računa redom od prvog nivoa te težine: susedni nivoi tako dobijaju različite
  * scenarije, a osećanja se smenjuju ravnomerno. Koriste se samo scenariji čija su sva
  * najčešća osećanja među onima koja se detetu nude na tom nivou.
  */
-export function getEmotionLevel(level: number, { emotionCount, maxRounds }: EmotionLevelOptions): EmotionLevel {
+export function getEmotionLevel(level: number, { emotionCount, maxRounds, shift = 0 }: EmotionLevelOptions): EmotionLevel {
     const safe = clampLevel(level);
     const rule = RULES.find((r) => safe >= r.first && safe <= r.last) ?? RULES[0];
     const allowed = allowedEmotions(emotionCount);
     const roundLimit = Math.max(1, Number.isFinite(maxRounds) ? Math.floor(maxRounds) : 1);
 
     const queues = new Map<EmotionId, Rotation<EmotionScenario>>(
-        allowed.map((emotion) => [emotion, rotation(SCENARIOS.filter((s) => s.tier === rule.tier && s.common[0] === emotion))])
+        allowed.map((emotion) => [emotion, rotation(SCENARIOS.filter((s) => s.tier === rule.tier && s.common[0] === emotion), shift)])
     );
     // Redosled smenjivanja osećanja se nastavlja iz nivoa u nivo
     const turns = rotation(allowed);

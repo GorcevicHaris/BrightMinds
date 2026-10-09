@@ -1063,6 +1063,10 @@ interface GameCardProps {
 function GameCard({ game: progress, timeZone, windowDays, onSelect }: GameCardProps) {
     const game = getGame(progress.gameId);
     const played = progress.plays > 0;
+    // Na telefonu kartica prvo pokazuje samo najvažnije (status i nivoe); ostalo se otvara dodirom,
+    // da sedam igara ne bude sedam ekrana skrolovanja. Na širem ekranu je sve odmah vidljivo.
+    const [open, setOpen] = useState(false);
+    const moreId = useId();
     return (
         <Card className="flex flex-col gap-4 p-5">
             <div className="flex items-start gap-3">
@@ -1076,15 +1080,30 @@ function GameCard({ game: progress, timeZone, windowDays, onSelect }: GameCardPr
             <MasteryStatusLine game={game} progress={progress} />
             <LevelSummary game={game} progress={progress} />
 
-            {played && (
+            {played ? (
                 <>
-                    <SupportSplit independent={progress.independentRate30d} prompted={progress.promptedRate30d} windowDays={windowDays} />
-                    <TrendChart game={game} trend={progress.trend} />
                     {progress.needsSupport && <SupportSuggestion />}
+                    <div id={moreId} className={cn("flex-col gap-4", open ? "flex" : "hidden sm:flex")}>
+                        <SupportSplit independent={progress.independentRate30d} prompted={progress.promptedRate30d} windowDays={windowDays} />
+                        <TrendChart game={game} trend={progress.trend} />
+                        <OffscreenTip game={game} heading="h4" />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setOpen((value) => !value)}
+                        aria-expanded={open}
+                        aria-controls={moreId}
+                        className="-my-1 inline-flex min-h-11 items-center justify-center gap-1.5 self-start rounded-xl px-2 text-sm font-extrabold text-brand-700 hover:bg-brand-50 sm:hidden"
+                    >
+                        {open ? "Prikaži manje" : "Samostalnost i predlog za vežbu"}
+                        <span aria-hidden="true" className={cn("transition-transform duration-200", open && "rotate-180")}>
+                            ▾
+                        </span>
+                    </button>
                 </>
+            ) : (
+                <OffscreenTip game={game} heading="h4" />
             )}
-
-            <OffscreenTip game={game} heading="h4" />
 
             {played ? (
                 <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">

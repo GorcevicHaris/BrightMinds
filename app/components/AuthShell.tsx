@@ -1,6 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { Logo } from "./ui/Logo";
+import TeacherAvatar from "./avatar/TeacherAvatar";
 
 const HIGHLIGHTS = [
     { icon: "🎮", title: "Sedam igara", text: "Oblici, pamćenje, zvuci, emocije i socijalne priče." },
@@ -16,11 +17,16 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
             <aside className="relative hidden overflow-hidden bg-brand-600 p-12 text-white lg:flex lg:flex-col lg:justify-between">
                 <div className="absolute -left-24 -top-24 h-80 w-80 rounded-full bg-brand-500" aria-hidden="true" />
                 <div className="absolute -bottom-32 -right-20 h-96 w-96 rounded-full bg-brand-700" aria-hidden="true" />
-                <div className="absolute right-16 top-24 h-24 w-24 rounded-3xl bg-sun-400/90 rotate-12" aria-hidden="true" />
-
-                <div className="relative">
-                    <p className="font-display text-3xl font-extrabold">Bright Minds</p>
-                    <p className="mt-1 text-sm font-bold text-brand-100">Učimo kroz igru</p>
+                {/* Učiteljica koja maše (isti lik koji dete posle sreće u igrama) stoji u redu sa nazivom,
+                    pa je naslov ispod nikad ne dodiruje, ni na nižem ekranu */}
+                <div className="relative flex items-start justify-between gap-6">
+                    <div>
+                        <p className="font-display text-3xl font-extrabold">Bright Minds</p>
+                        <p className="mt-1 text-sm font-bold text-brand-100">Učimo kroz igru</p>
+                    </div>
+                    <div className="h-40 w-36 shrink-0 overflow-hidden rounded-[2rem] bg-white/10 ring-1 ring-white/20 xl:h-48 xl:w-44" aria-hidden="true">
+                        <TeacherAvatar gender="female" emotion="hello" className="h-full w-full translate-y-2" />
+                    </div>
                 </div>
 
                 <div className="relative max-w-md">
