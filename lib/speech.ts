@@ -23,8 +23,9 @@ const MAX_CACHED = 60;
 const audioCache = new Map<string, string>();
 let ttsUnavailable = false;
 let currentAudio: HTMLAudioElement | null = null;
-let currentAbort: AbortController | null = null;
 let generation = 0;
+// Zahtevi u toku, po tekstu: isti tekst se ne naručuje dvaput dok prvi odgovor ne stigne
+const inflight = new Map<string, Promise<string | null>>();
 
 // Emodžiji i simboli ne treba da se čitaju naglas
 const PICTOGRAPHS = new RegExp("[\\p{Extended_Pictographic}\\uFE0F\\u200D→]", "gu");
@@ -44,8 +45,8 @@ function once(fn?: () => void): () => void {
 
 export function stopSpeaking() {
     generation += 1;
-    currentAbort?.abort();
-    currentAbort = null;
+    // Zahtev koji je već otišao se NE prekida: sinteza je već plaćena, pa odgovor ide u
+    // keš i sledeći put se pušta odmah. Zakasneli zvuk se ne pušta (provera `generation`).
     if (currentAudio) {
         currentAudio.pause();
         currentAudio = null;
@@ -56,21 +57,23 @@ export function stopSpeaking() {
     }
 }
 
-async function fetchAudio(text: string, gender?: string): Promise<string | null> {
-    if (ttsUnavailable) return null;
+function rememberAudio(key: string, url: string) {
+    audioCache.set(key, url);
+    if (audioCache.size > MAX_CACHED) {
+        const oldest = audioCache.keys().next().value;
+        if (oldest !== undefined) {
+            URL.revokeObjectURL(audioCache.get(oldest)!);
+            audioCache.delete(oldest);
+        }
+    }
+}
 
-    const key = `${gender?.toLowerCase() ?? ""}|${text}`;
-    const cached = audioCache.get(key);
-    if (cached) return cached;
-
-    const controller = new AbortController();
-    currentAbort = controller;
+async function requestAudio(key: string, text: string, gender?: string): Promise<string | null> {
     try {
         const res = await fetch("/api/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ text, gender }),
-            signal: controller.signal,
         });
         if (!res.ok) {
             // 503 = ključ nije podešen; ne pokušavamo ponovo u ovoj sesiji
@@ -78,20 +81,28 @@ async function fetchAudio(text: string, gender?: string): Promise<string | null>
             return null;
         }
         const url = URL.createObjectURL(await res.blob());
-        audioCache.set(key, url);
-        if (audioCache.size > MAX_CACHED) {
-            const oldest = audioCache.keys().next().value;
-            if (oldest !== undefined) {
-                URL.revokeObjectURL(audioCache.get(oldest)!);
-                audioCache.delete(oldest);
-            }
-        }
+        rememberAudio(key, url);
         return url;
     } catch {
         return null;
     } finally {
-        if (currentAbort === controller) currentAbort = null;
+        inflight.delete(key);
     }
+}
+
+function fetchAudio(text: string, gender?: string): Promise<string | null> {
+    if (ttsUnavailable) return Promise.resolve(null);
+
+    const key = `${gender?.toLowerCase() ?? ""}|${text}`;
+    const cached = audioCache.get(key);
+    if (cached) return Promise.resolve(cached);
+
+    let pending = inflight.get(key);
+    if (!pending) {
+        pending = requestAudio(key, text, gender);
+        inflight.set(key, pending);
+    }
+    return pending;
 }
 
 function findLocalVoice(): SpeechSynthesisVoice | null {

@@ -2,9 +2,13 @@
 // Live praćenje igre preko Supabase Realtime Broadcast-a.
 // Jedan kanal po detetu, pretplata se radi tačno jednom, a poruke poslate pre
 // nego što se kanal poveže čekaju u redu (ranije su se gubile ili bacale grešku).
+//
+// Naziv kanala (tema) NIJE javan: Supabase Broadcast kanal može da sluša svako ko zna
+// njegov naziv i javni ključ, pa temu pravi server (lib/realtimeTopic.ts) i daje je samo
+// stranicama kojima je pristup već proveren. Bez teme praćenje jednostavno ne radi.
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { createClient, type RealtimeChannel, type SupabaseClient } from "@supabase/supabase-js";
 import type { GameUpdate } from "./types";
 
@@ -18,7 +22,15 @@ const EVENT_SYNC = "monitor:request-sync";
 // Monitor se javlja na svakih nekoliko sekundi, da dete vidi znak „neko gleda”
 const EVENT_WATCHING = "monitor:watching";
 const WATCH_PING_MS = 15_000;
-const WATCH_TIMEOUT_MS = 40_000;
+// Duže od minuta: pregledači usporavaju tajmere u kartici koja nije u prvom planu
+const WATCH_TIMEOUT_MS = 75_000;
+// Kanal se gasi tek malo posle poslednjeg korisnika: brzo vraćanje na stranicu inače
+// dobije kanal koji se upravo zatvara i više se ne poveže
+const REMOVE_DELAY_MS = 5_000;
+
+/** Tema kanala za dete čija se stranica prikazuje; postavlja je serverska stranica. */
+const TopicContext = createContext<string | null>(null);
+export const RealtimeTopicProvider = TopicContext.Provider;
 
 type Listener = (payload: GameUpdate) => void;
 
@@ -31,10 +43,11 @@ interface ChannelEntry {
     syncListeners: Set<() => void>;
     watchListeners: Set<() => void>;
     statusListeners: Set<(ready: boolean) => void>;
+    removeTimer: ReturnType<typeof setTimeout> | null;
 }
 
 let client: SupabaseClient | null = null;
-const entries = new Map<number, ChannelEntry>();
+const entries = new Map<string, ChannelEntry>();
 
 function getClient(): SupabaseClient {
     if (!client) {
@@ -46,16 +59,18 @@ function getClient(): SupabaseClient {
     return client;
 }
 
-function acquire(childId: number): ChannelEntry | null {
-    if (!realtimeConfigured) return null;
+function acquire(topic: string | null): ChannelEntry | null {
+    if (!realtimeConfigured || !topic) return null;
 
-    const existing = entries.get(childId);
+    const existing = entries.get(topic);
     if (existing) {
+        if (existing.removeTimer) clearTimeout(existing.removeTimer);
+        existing.removeTimer = null;
         existing.refs += 1;
         return existing;
     }
 
-    const channel = getClient().channel(`child:${childId}`, { config: { broadcast: { self: false } } });
+    const channel = getClient().channel(topic, { config: { broadcast: { self: false } } });
     const entry: ChannelEntry = {
         channel,
         ready: false,
@@ -65,8 +80,9 @@ function acquire(childId: number): ChannelEntry | null {
         syncListeners: new Set(),
         watchListeners: new Set(),
         statusListeners: new Set(),
+        removeTimer: null,
     };
-    entries.set(childId, entry);
+    entries.set(topic, entry);
 
     channel
         .on("broadcast", { event: EVENT_UPDATE }, ({ payload }) => {
@@ -92,14 +108,16 @@ function acquire(childId: number): ChannelEntry | null {
     return entry;
 }
 
-function release(childId: number) {
-    const entry = entries.get(childId);
-    if (!entry) return;
+function release(topic: string | null) {
+    const entry = topic ? entries.get(topic) : undefined;
+    if (!topic || !entry) return;
     entry.refs -= 1;
-    if (entry.refs <= 0) {
-        entries.delete(childId);
+    if (entry.refs > 0 || entry.removeTimer) return;
+    entry.removeTimer = setTimeout(() => {
+        if (entry.refs > 0) return;
+        entries.delete(topic);
         void getClient().removeChannel(entry.channel);
-    }
+    }, REMOVE_DELAY_MS);
 }
 
 function send(entry: ChannelEntry, event: string, payload: unknown) {
@@ -114,7 +132,7 @@ function send(entry: ChannelEntry, event: string, payload: unknown) {
 
 // ── Monitor (roditelj/terapeut) ───────────────────────────────────────────────
 
-export function useGameMonitor(childId: number, onUpdate: Listener) {
+export function useGameMonitor(childId: number, onUpdate: Listener, topic: string | null) {
     const [isConnected, setIsConnected] = useState(false);
     const onUpdateRef = useRef(onUpdate);
     useEffect(() => {
@@ -122,10 +140,14 @@ export function useGameMonitor(childId: number, onUpdate: Listener) {
     }, [onUpdate]);
 
     useEffect(() => {
-        const entry = acquire(childId);
+        const entry = acquire(topic);
         if (!entry) return;
 
-        const listener: Listener = (update) => onUpdateRef.current(update);
+        const listener: Listener = (update) => {
+            // Dete koje je upravo krenulo odmah saznaje da ga odrasli gleda (ne čeka sledeći otkucaj)
+            if (update.event === "started" && !update.isSync) send(entry, EVENT_WATCHING, { childId });
+            onUpdateRef.current(update);
+        };
         const onStatus = (ready: boolean) => {
             setIsConnected(ready);
             // Čim se povežemo, tražimo trenutno stanje od igre koja je možda već u toku
@@ -144,11 +166,11 @@ export function useGameMonitor(childId: number, onUpdate: Listener) {
             entry.updateListeners.delete(listener);
             entry.statusListeners.delete(onStatus);
             setIsConnected(false);
-            release(childId);
+            release(topic);
         };
-    }, [childId]);
+    }, [childId, topic]);
 
-    return { isConnected, isConfigured: realtimeConfigured };
+    return { isConnected, isConfigured: realtimeConfigured && Boolean(topic) };
 }
 
 // ── Emiter (dete koje igra) ───────────────────────────────────────────────────
@@ -158,12 +180,13 @@ export function useGameMonitor(childId: number, onUpdate: Listener) {
  * Pamti poslednje stanje da bi monitor koji se naknadno poveže odmah dobio sliku.
  */
 export function useGameBroadcast(childId: number, enabled = true) {
+    const topic = useContext(TopicContext);
     const entryRef = useRef<ChannelEntry | null>(null);
     const lastRef = useRef<GameUpdate | null>(null);
 
     useEffect(() => {
         if (!enabled) return;
-        const entry = acquire(childId);
+        const entry = acquire(topic);
         if (!entry) return;
         entryRef.current = entry;
 
@@ -176,9 +199,9 @@ export function useGameBroadcast(childId: number, enabled = true) {
         return () => {
             entry.syncListeners.delete(onSync);
             entryRef.current = null;
-            release(childId);
+            release(topic);
         };
-    }, [childId, enabled]);
+    }, [topic, enabled]);
 
     return useCallback((update: GameUpdate) => {
         if (update.event === "completed") {
@@ -198,12 +221,13 @@ export function useGameBroadcast(childId: number, enabled = true) {
  * True dok je roditelj ili terapeut povezan na praćenje uživo.
  * Dete ima pravo da zna da ga neko gleda, pa se na osnovu ovoga prikazuje stalni znak.
  */
-export function useWatcherPresence(childId: number, enabled = true): boolean {
+export function useWatcherPresence(enabled = true): boolean {
+    const topic = useContext(TopicContext);
     const [watching, setWatching] = useState(false);
 
     useEffect(() => {
         if (!enabled) return;
-        const entry = acquire(childId);
+        const entry = acquire(topic);
         if (!entry) return;
 
         let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -218,9 +242,9 @@ export function useWatcherPresence(childId: number, enabled = true): boolean {
             entry.watchListeners.delete(onPing);
             if (timeout) clearTimeout(timeout);
             setWatching(false);
-            release(childId);
+            release(topic);
         };
-    }, [childId, enabled]);
+    }, [topic, enabled]);
 
     return watching;
 }

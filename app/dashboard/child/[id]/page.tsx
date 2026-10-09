@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthError, requireChildAccess } from "@/lib/auth";
 import { resolveSettings, type ResolvedSettings } from "@/lib/childSettings";
+import { realtimeTopicFor } from "@/lib/realtimeTopic";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buttonClasses } from "@/app/components/ui/Button";
 import ChildPageClient from "./ChildPageClient";
@@ -80,5 +81,5 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
         return <Problem title="Profil nije pronađen" text="Ovaj profil ne postoji ili je obrisan." />;
     }
 
-    return <ChildPageClient child={child} viewer={viewer} settings={settings} />;
+    return <ChildPageClient child={child} viewer={viewer} settings={settings} realtimeTopic={realtimeTopicFor(child.id)} />;
 }

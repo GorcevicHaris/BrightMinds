@@ -79,6 +79,11 @@ function ChildLogin() {
         if (resetTimer.current) clearTimeout(resetTimer.current);
     }, []);
 
+    const cancelReset = () => {
+        if (resetTimer.current) clearTimeout(resetTimer.current);
+        resetTimer.current = null;
+    };
+
     const verify = useCallback(
         async (code: string[]) => {
             setStatus("checking");
@@ -100,7 +105,9 @@ function ChildLogin() {
                 setMessage("Nema veze sa internetom. Probaj ponovo.");
             }
             setStatus("error");
+            if (resetTimer.current) clearTimeout(resetTimer.current);
             resetTimer.current = setTimeout(() => {
+                resetTimer.current = null;
                 setPin([]);
                 setStatus("idle");
             }, 1600);
@@ -110,6 +117,9 @@ function ChildLogin() {
 
     const handleChange = (next: string[]) => {
         if (status === "checking" || status === "success") return;
+        cancelReset();
+        // Posle pogrešnog koda novi dodir počinje novi kod (stari se ne dopunjava)
+        if (status === "error" && next.length > pin.length) next = next.slice(-1);
         setPin(next);
         setStatus("idle");
         setMessage("");

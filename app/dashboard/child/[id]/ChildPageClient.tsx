@@ -15,7 +15,7 @@ import { Modal } from "@/app/components/ui/Modal";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import type { ResolvedSettings } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
-import { useWatcherPresence } from "@/lib/realtime";
+import { RealtimeTopicProvider, useWatcherPresence } from "@/lib/realtime";
 import { speak, stopSpeaking } from "@/lib/speech";
 import type { ChildProfile } from "./page";
 
@@ -29,6 +29,8 @@ interface Props {
     /** Ko gleda stranicu: dete prijavljeno kodom ili roditelj iz svog panela */
     viewer: "child" | "parent";
     settings: ResolvedSettings;
+    /** Tajna tema kanala za praćenje uživo (pravi je server); bez nje nema praćenja */
+    realtimeTopic?: string | null;
     /** Probni režim (razvoj): bez mreže */
     preview?: boolean;
 }
@@ -38,14 +40,24 @@ const TABS: { id: View; label: string; Icon: typeof Gamepad2 }[] = [
     { id: "progress", label: "Napredak", Icon: Trophy },
 ];
 
-export default function ChildPageClient({ child, viewer, settings, preview = false }: Props) {
+export default function ChildPageClient({ realtimeTopic = null, ...props }: Props) {
+    return (
+        <RealtimeTopicProvider value={realtimeTopic}>
+            <ChildPage {...props} />
+        </RealtimeTopicProvider>
+    );
+}
+
+function ChildPage({ child, viewer, settings, preview = false }: Omit<Props, "realtimeTopic">) {
     const router = useRouter();
     const [view, setView] = useState<View>("games");
     const [points, setPoints] = useState(child.experience_points ?? 0);
     const [confirmExit, setConfirmExit] = useState(false);
+    // Dok je igra otvorena preko cele strane, zaglavlje i navigacija ispod nje nisu dostupni
+    const [gameOpen, setGameOpen] = useState(false);
     const [isLeaving, setIsLeaving] = useState(false);
     const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const watched = useWatcherPresence(child.id, !preview);
+    const watched = useWatcherPresence(!preview);
 
     const firstName = child.first_name || "Druže";
     const gender = child.gender ?? undefined;
@@ -116,7 +128,7 @@ export default function ChildPageClient({ child, viewer, settings, preview = fal
 
     return (
         <ChildSettingsProvider settings={settings} className="min-h-dvh bg-canvas pb-24 md:pb-10">
-            <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
+            <header inert={gameOpen} className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
                 <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:h-18 sm:gap-3 sm:px-6 lg:px-8">
                     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-base font-extrabold text-white" aria-hidden="true">
                         {initials || "🙂"}
@@ -178,6 +190,7 @@ export default function ChildPageClient({ child, viewer, settings, preview = fal
                             gender={gender}
                             watched={watched}
                             onExperienceChange={setPoints}
+                            onOverlayChange={setGameOpen}
                             preview={preview}
                         />
 
@@ -193,7 +206,7 @@ export default function ChildPageClient({ child, viewer, settings, preview = fal
             </main>
 
             {/* Donja navigacija — telefon. Dugmad su iznad same ivice ekrana, gde deca često naslanjaju dlan. */}
-            <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[max(env(safe-area-inset-bottom),0.5rem)] backdrop-blur md:hidden" aria-label="Glavna navigacija">
+            <nav inert={gameOpen} className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[max(env(safe-area-inset-bottom),0.5rem)] backdrop-blur md:hidden" aria-label="Glavna navigacija">
                 <div className="mx-auto grid max-w-md grid-cols-2">
                     {TABS.map(({ id, label, Icon }) => (
                         <button

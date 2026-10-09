@@ -6,7 +6,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, RotateCcw, X } from "lucide-react";
-import { SpeakButton, playSfx } from "@/app/components/games/kit";
+import { SpeakButton, playSfx, useInputGuard } from "@/app/components/games/kit";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import { cn } from "@/lib/cn";
 import {
@@ -220,23 +220,29 @@ function StoryReader({ story, onSpeak, onClose }: ReaderProps) {
     const isLast = index === total - 1;
     const emoji = story.emoji ?? STORY_FALLBACK_EMOJI;
 
+    // Dugme ostaje na istom mestu na svakoj strani: drugi dodir dvostrukog dodira ne sme da preskoči stranu
+    const guard = useInputGuard(500);
+
     const show = (next: number) => {
+        guard.hold();
         setFinished(false);
         setIndex(next);
         onSpeak(story.steps[next].text);
     };
 
     const goNext = () => {
+        if (guard.blocked()) return;
         if (!isLast) {
             show(index + 1);
             return;
         }
+        guard.hold();
         setFinished(true);
         onSpeak(FINISHED_TEXT);
     };
 
     const goBack = () => {
-        if (isFirst) return;
+        if (isFirst || guard.blocked()) return;
         // Na prvom koraku nema dugmeta „Nazad”, pa fokus prelazi na „Dalje”
         if (index === 1) nextRef.current?.focus();
         show(index - 1);

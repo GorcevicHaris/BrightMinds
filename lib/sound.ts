@@ -10,8 +10,12 @@ import { getChildSettings } from "./settingsStore";
 const STORAGE_KEY = "bm:muted";
 const CHANGE_EVENT = "bm:mute-change";
 
+/** Kada pregledač ne da skladište (privatni režim), prekidač se pamti dok je stranica otvorena */
+let memoryMuted: boolean | null = null;
+
 export function isMuted(): boolean {
     if (typeof window === "undefined") return false;
+    if (memoryMuted !== null) return memoryMuted;
     try {
         return window.localStorage.getItem(STORAGE_KEY) === "1";
     } catch {
@@ -23,8 +27,9 @@ export function setMuted(muted: boolean): void {
     try {
         if (muted) window.localStorage.setItem(STORAGE_KEY, "1");
         else window.localStorage.removeItem(STORAGE_KEY);
+        memoryMuted = null;
     } catch {
-        /* privatni režim: prekidač važi samo dok je stranica otvorena */
+        memoryMuted = muted;
     }
     window.dispatchEvent(new Event(CHANGE_EVENT));
 }

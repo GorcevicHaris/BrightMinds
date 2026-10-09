@@ -1,8 +1,11 @@
 "use client";
 
+import { useRef } from "react";
 import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { PIN_LENGTH, VISUAL_PIN_CATEGORIES } from "@/lib/visualPinData";
+
+const PICK_GUARD_MS = 350;
 
 interface VisualPinPadProps {
     /** Izabrani ID-jevi, redom po kategorijama (0–4 komada) */
@@ -22,6 +25,15 @@ export default function VisualPinPad({ value, onChange, status = "idle", disable
     const complete = value.length >= PIN_LENGTH;
     const category = VISUAL_PIN_CATEGORIES[step];
     const locked = disabled || status === "checking";
+
+    // Posle svakog izbora mreža se menja pod prstom: drugi dodir dvostrukog dodira
+    // ne sme da izabere sličicu i za sledeće polje.
+    const lastPick = useRef(-PICK_GUARD_MS);
+    const pick = (id: string, at: number) => {
+        if (at - lastPick.current < PICK_GUARD_MS) return;
+        lastPick.current = at;
+        onChange([...value, id]);
+    };
 
     return (
         <div className={cn("flex w-full flex-col items-center", className)}>
@@ -69,7 +81,7 @@ export default function VisualPinPad({ value, onChange, status = "idle", disable
                                 key={item.id}
                                 type="button"
                                 disabled={locked}
-                                onClick={() => onChange([...value, item.id])}
+                                onClick={(e) => pick(item.id, e.timeStamp)}
                                 aria-label={item.name}
                                 title={item.name}
                                 className="group relative aspect-square overflow-hidden rounded-xl border-2 border-b-4 border-line bg-surface transition-[transform,border-color] hover:border-brand-400 active:translate-y-0.5 active:border-b-2 disabled:opacity-50 sm:rounded-2xl"

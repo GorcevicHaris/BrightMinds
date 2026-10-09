@@ -2,8 +2,9 @@
 
 import { Component, Suspense, useEffect, useRef, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Environment, useAnimations, useGLTF } from "@react-three/drei";
+import { useAnimations, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { useAvatarAudio } from "@/lib/useAvatarAudio";
 import { cn } from "@/lib/cn";
 
@@ -71,7 +72,19 @@ function TeacherModel({ mouthRef, isSpeaking, female }: ModelProps) {
             // Dok učitelj ćuti, scena se ne iscrtava stalno — tražimo jedan frejm sa novom pozom
             invalidate();
         }
-        action.setEffectiveTimeScale(isSpeaking ? 1 : 0);
+        if (isSpeaking) {
+            action.setEffectiveTimeScale(1);
+        } else {
+            // Kraj govora: nazad u prirodnu pozu i zatvorena usta. Iscrtavanje tada staje,
+            // pa bi bez ovoga učitelj ostao zamrznut usred pokreta, sa poluotvorenim ustima.
+            action.setEffectiveTimeScale(1);
+            mixer.setTime(Math.min(REST_POSE_TIME, action.getClip().duration / 2));
+            action.setEffectiveTimeScale(0);
+            for (const { influences, indices } of morphTargets.current) {
+                // eslint-disable-next-line react-hooks/immutability
+                for (const idx of indices) influences[idx] = 0;
+            }
+        }
         invalidate();
     }, [isSpeaking, names, actions, mixer, invalidate]);
 
@@ -91,6 +104,34 @@ function TeacherModel({ mouthRef, isSpeaking, female }: ModelProps) {
             <primitive object={scene} scale={female ? 0.9 : 2.5} position={[0, female ? -1.83 : -0.8, 0]} />
         </group>
     );
+}
+
+/**
+ * Odsjaj okoline za materijale modela, napravljen na samom uređaju.
+ * (Gotove „preset” okoline se preuzimaju sa tuđeg servera — dečja strana to ne sme da radi.)
+ */
+function LocalEnvironment() {
+    const gl = useThree((state) => state.gl);
+    const scene = useThree((state) => state.scene);
+    const invalidate = useThree((state) => state.invalidate);
+
+    useEffect(() => {
+        const generator = new THREE.PMREMGenerator(gl);
+        const room = new RoomEnvironment();
+        const target = generator.fromScene(room, 0.04);
+        const previous = scene.environment;
+        // eslint-disable-next-line react-hooks/immutability
+        scene.environment = target.texture;
+        invalidate();
+        return () => {
+            scene.environment = previous;
+            target.dispose();
+            generator.dispose();
+            room.dispose();
+        };
+    }, [gl, scene, invalidate]);
+
+    return null;
 }
 
 /** Ako WebGL ili model ne mogu da se učitaju, aplikacija radi dalje bez avatara. */
@@ -161,7 +202,7 @@ export default function Professor3D({ gender, className }: Professor3DProps) {
                     <pointLight position={[-3, 3, 2]} intensity={0.8} color="#c4b5fd" />
                     <Suspense fallback={null}>
                         <TeacherModel mouthRef={mouthRef} isSpeaking={isPlaying} female={female} />
-                        <Environment preset="apartment" />
+                        <LocalEnvironment />
                     </Suspense>
                 </Canvas>
             </AvatarBoundary>

@@ -57,6 +57,7 @@ lib/
   progress.ts                statistika: samostalno / uz pomoć, savladanost
   auth.ts                    sesije i provera pristupa (roditeljska i dečja sesija)
   realtime.ts                praćenje uživo preko Supabase Realtime Broadcast-a
+  realtimeTopic.ts           tajno ime kanala po detetu (HMAC od JWT_SECRET) — zna ga samo prijavljeni roditelj ili dete
   speech.ts                  govor (ElevenLabs + rezervni glas pregledača)
 ```
 

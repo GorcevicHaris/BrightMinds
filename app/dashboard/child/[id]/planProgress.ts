@@ -5,6 +5,8 @@ import { useCallback, useSyncExternalStore } from "react";
 import type { GameId } from "@/lib/games";
 
 const listeners = new Set<() => void>();
+/** Kada pregledač ne da skladište (privatni režim), plan se pamti dok je stranica otvorena */
+const memory = new Map<number, { day: string; done: string[] }>();
 
 function today(): string {
     const now = new Date();
@@ -16,6 +18,8 @@ function storageKey(childId: number): string {
 }
 
 function read(childId: number): string[] {
+    const kept = memory.get(childId);
+    if (kept) return kept.day === today() ? kept.done : [];
     try {
         const raw = window.localStorage.getItem(storageKey(childId));
         if (!raw) return [];
@@ -29,8 +33,15 @@ function read(childId: number): string[] {
 
 function subscribe(listener: () => void): () => void {
     listeners.add(listener);
+    // Novi dan ili promena u drugoj kartici: stanje se čita ponovo kad se dete vrati na stranicu
+    window.addEventListener("storage", listener);
+    window.addEventListener("focus", listener);
+    document.addEventListener("visibilitychange", listener);
     return () => {
         listeners.delete(listener);
+        window.removeEventListener("storage", listener);
+        window.removeEventListener("focus", listener);
+        document.removeEventListener("visibilitychange", listener);
     };
 }
 
@@ -48,10 +59,12 @@ export function usePlanProgress(childId: number): [GameId[], (gameId: GameId) =>
         (gameId: GameId) => {
             const current = read(childId);
             if (current.includes(gameId)) return;
+            const record = { day: today(), done: [...current, gameId] };
             try {
-                window.localStorage.setItem(storageKey(childId), JSON.stringify({ day: today(), done: [...current, gameId] }));
+                window.localStorage.setItem(storageKey(childId), JSON.stringify(record));
+                memory.delete(childId);
             } catch {
-                /* bez skladišta plan važi samo dok je stranica otvorena */
+                memory.set(childId, record);
             }
             listeners.forEach((listener) => listener());
         },

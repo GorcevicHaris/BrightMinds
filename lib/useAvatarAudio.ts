@@ -21,6 +21,10 @@ export function useAvatarAudio() {
     const ctxRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
     const sourceRef = useRef<AudioBufferSourceNode | null>(null);
+    /** Rezervni način puštanja kada Web Audio ne uspe (običan zvučni element) */
+    const elementRef = useRef<HTMLAudioElement | null>(null);
+    /** Ako pregledač nikad ne javi kraj zvuka, igra ne sme da ostane da čeka */
+    const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const rafRef = useRef<number | null>(null);
     const playingRef = useRef(false);
     /** Raste pri svakom play/stop — stari asinhroni pozivi se po tome prepoznaju i odbacuju */
@@ -40,6 +44,8 @@ export function useAvatarAudio() {
         return () => {
             window.removeEventListener("pointerdown", unlock);
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
+            if (watchdogRef.current) clearTimeout(watchdogRef.current);
+            elementRef.current?.pause();
             try {
                 sourceRef.current?.stop();
             } catch {
@@ -55,6 +61,17 @@ export function useAvatarAudio() {
         if (rafRef.current) {
             cancelAnimationFrame(rafRef.current);
             rafRef.current = null;
+        }
+        if (watchdogRef.current) {
+            clearTimeout(watchdogRef.current);
+            watchdogRef.current = null;
+        }
+        const element = elementRef.current;
+        elementRef.current = null;
+        if (element) {
+            element.onended = null;
+            element.onerror = null;
+            element.pause();
         }
         const source = sourceRef.current;
         sourceRef.current = null;
@@ -77,14 +94,20 @@ export function useAvatarAudio() {
             playingRef.current = true;
             setIsPlaying(true);
 
+            const startedAt = performance.now();
+            const simulate = () => {
+                if (!playingRef.current || tokenRef.current !== token) return;
+                mouthRef.current = 0.3 + Math.sin((performance.now() - startedAt) * 0.012) * 0.3;
+                rafRef.current = requestAnimationFrame(simulate);
+            };
+            const finish = () => {
+                if (tokenRef.current !== token) return;
+                stop();
+                onEnded?.();
+            };
+
             // Bez zvučnog fajla (govor iz pregledača): samo simuliramo pokret usta do `stop()`
             if (!url) {
-                const startedAt = performance.now();
-                const simulate = () => {
-                    if (!playingRef.current || tokenRef.current !== token) return;
-                    mouthRef.current = 0.3 + Math.sin((performance.now() - startedAt) * 0.012) * 0.3;
-                    rafRef.current = requestAnimationFrame(simulate);
-                };
                 simulate();
                 return;
             }
@@ -121,17 +144,26 @@ export function useAvatarAudio() {
                     rafRef.current = requestAnimationFrame(analyse);
                 };
 
-                source.onended = () => {
-                    if (tokenRef.current !== token) return;
-                    stop();
-                    onEnded?.();
-                };
+                source.onended = finish;
                 source.start(0);
+                watchdogRef.current = setTimeout(finish, decoded.duration * 1000 + 2000);
                 analyse();
             } catch {
                 if (tokenRef.current !== token) return;
-                stop();
-                onEnded?.();
+                // Web Audio nije uspeo (stariji tablet, zaključan kontekst): običan zvučni
+                // element pušta isti snimak, a usta se pomeraju približno.
+                try {
+                    const element = new Audio(url);
+                    element.volume = masterVolume();
+                    element.onended = finish;
+                    element.onerror = finish;
+                    elementRef.current = element;
+                    await element.play();
+                    if (tokenRef.current !== token) return;
+                    simulate();
+                } catch {
+                    finish();
+                }
             }
         },
         [getContext, stop]

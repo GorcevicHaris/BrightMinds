@@ -1,6 +1,7 @@
 // app/dashboard/monitor/[id]/page.tsx
 import type { Metadata } from "next";
 import LiveMonitor from "@/app/components/LiveMonitor";
+import { realtimeTopicFor } from "@/lib/realtimeTopic";
 import { ChildPageShell, loadOwnedChild } from "../../_shared/childPage";
 
 export const metadata: Metadata = { title: "Praćenje uživo" };
@@ -16,7 +17,7 @@ export default async function MonitorPage({ params }: { params: Promise<{ id: st
             title="Praćenje uživo"
             description="Gledajte igru zajedno sa detetom: isti ekran, u istom trenutku."
         >
-            <LiveMonitor childId={child.id} childName={child.firstName} />
+            <LiveMonitor childId={child.id} childName={child.firstName} topic={realtimeTopicFor(child.id)} />
         </ChildPageShell>
     );
 }

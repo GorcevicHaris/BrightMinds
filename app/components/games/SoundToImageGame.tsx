@@ -5,7 +5,7 @@ import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
-import { gameSoundsEnabled, playWithFade } from "@/lib/sound";
+import { gameSoundsEnabled, playWithFade, useMuted } from "@/lib/sound";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
@@ -479,6 +479,20 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         setView(next);
         sync.update(next, log);
     };
+
+    // Dugme sa zvučnikom gasi i zvuk zadatka koji upravo svira — odmah, ne tek pri sledećem dodiru
+    const [muted] = useMuted();
+    const muteRef = useRef({ haltSound, commit });
+    useEffect(() => {
+        muteRef.current = { haltSound, commit };
+    });
+    useEffect(() => {
+        if (isMonitor || !muted) return;
+        const current = viewRef.current;
+        muteRef.current.haltSound();
+        if (current.done || current.soundOff || current.feedback === "correct") return;
+        muteRef.current.commit({ ...current, soundOff: true, pickedId: null, feedback: null }, "Zvuk je isključen — igra čeka");
+    }, [isMonitor, muted]);
 
     /** Nastavlja kad prođe najkraća pauza i kad glas završi rečenicu (ili posle najdužeg čekanja). */
     const sayThen = (text: string, proceed: () => void) => {

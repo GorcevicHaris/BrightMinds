@@ -1,14 +1,14 @@
 // app/dashboard/child/[id]/GameContainer.tsx
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { ArrowLeft, Check, Eye, Lock, X } from "lucide-react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
-import { playSfx, type GameProps, type GameResult } from "@/app/components/games/kit";
+import { playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import {
     ADVANCE_RATIO,
@@ -107,11 +107,38 @@ interface GameContainerProps {
     watched?: boolean;
     /** Javlja roditeljskoj komponenti novi zbir poena posle sačuvanog nivoa */
     onExperienceChange?: (points: number) => void;
+    /** Javlja stranici da je otvoren ekran igre preko cele strane (ostatak postaje neaktivan) */
+    onOverlayChange?: (open: boolean) => void;
     /** Probni režim (razvoj): bez mreže, svi nivoi otključani, bez dnevnog ograničenja */
     preview?: boolean;
 }
 
-export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, preview = false }: GameContainerProps) {
+/** Čuva rezultat nivoa; kod prekida mreže ili greške servera pokušava još dva puta. */
+async function saveResult(payload: Record<string, unknown>): Promise<{ logId?: unknown; sessionId?: unknown; experiencePoints?: unknown }> {
+    const delays = [0, 1500, 4000];
+    let lastError: unknown = new Error("save_failed");
+    for (const delay of delays) {
+        if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+        try {
+            const res = await fetch("/api/activities/complete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                keepalive: true,
+            });
+            if (res.ok) return await res.json();
+            // Greška u zahtevu (4xx) se ponavljanjem ne popravlja
+            if (res.status < 500) throw new Error(`save_rejected_${res.status}`);
+            lastError = new Error(`save_failed_${res.status}`);
+        } catch (error) {
+            if (error instanceof Error && error.message.startsWith("save_rejected")) throw error;
+            lastError = error;
+        }
+    }
+    throw lastError;
+}
+
+export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, onOverlayChange, preview = false }: GameContainerProps) {
     const settings = useChildSettings();
     const { say } = useSpeech(gender);
     const publish = useGameBroadcast(childId, !preview);
@@ -128,6 +155,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         preview ? Object.fromEntries(GAMES.map((g) => [g.id, MAX_LEVEL + 1])) : {}
     );
     const [levelsLoading, setLevelsLoading] = useState(!preview);
+    const [levelsError, setLevelsError] = useState(false);
+    const [levelsAttempt, setLevelsAttempt] = useState(0);
 
     // Raspoloženje (ako je uključeno) pitamo jednom po poseti i posle odigrane igre; uvek može da se preskoči
     const askMood = settings.moodCheck !== "off" && !preview;
@@ -137,11 +166,17 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     /** Jedna poseta = jedna sesija igre u bazi (raspoloženje se čuva jednom, ne uz svaki nivo) */
     const sessionIdRef = useRef<number | null>(null);
     const completingRef = useRef(false);
+    /** Čuvanja koja još traju — da izlazak iz igre ne preskoči pitanje o raspoloženju */
+    const pendingSaves = useRef(0);
+    const overlayRef = useRef<HTMLDivElement>(null);
 
     // Dnevni plan „prvo–zatim”: igre se otvaraju redom; igra je odigrana kad dete završi bar jedan nivo
-    const plan = settings.plan;
+    // Igra zvukova ne može da se igra kad su zvuci u igri isključeni — u planu bi zaključala sve ostalo
+    const plan = useMemo(
+        () => settings.plan.filter((id) => id !== "sound-to-image" || settings.gameSounds),
+        [settings.plan, settings.gameSounds]
+    );
     const [planDone, markPlanDone] = usePlanProgress(childId);
-    const levelsFinishedInGame = useRef(0);
     const nextPlanned = plan.find((id) => !planDone.includes(id)) ?? null;
     const planActive = plan.length > 0 && nextPlanned !== null;
 
@@ -158,13 +193,22 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             .then((res) => (res.ok ? res.json() : null))
             .then((data) => {
                 if (data?.unlockedLevels) setUnlocked(data.unlockedLevels);
+                else setLevelsError(true);
             })
-            .catch(() => {})
+            .catch(() => {
+                if (!controller.signal.aborted) setLevelsError(true);
+            })
             .finally(() => {
                 if (!controller.signal.aborted) setLevelsLoading(false);
             });
         return () => controller.abort();
-    }, [childId, preview]);
+    }, [childId, preview, levelsAttempt]);
+
+    const retryLevels = () => {
+        setLevelsError(false);
+        setLevelsLoading(true);
+        setLevelsAttempt((n) => n + 1);
+    };
 
     // Dok je igra otvorena, stranica ispod se ne skroluje
     useEffect(() => {
@@ -176,13 +220,23 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         };
     }, [screen]);
 
+    // Ekran igre je preko cele strane: fokus ulazi u njega, a stranica ispod postaje neaktivna
+    const overlayOpen = screen !== "picker" && gameId !== null;
+    useEffect(() => {
+        onOverlayChange?.(overlayOpen);
+        if (overlayOpen) overlayRef.current?.focus();
+        return () => {
+            if (overlayOpen) onOverlayChange?.(false);
+        };
+    }, [overlayOpen, onOverlayChange]);
+
     // ── Navigacija ─────────────────────────────────────────────────────────────
 
     const openGame = (id: GameId) => {
-        if (clock.limitReached) return;
+        // Dok se ne zna dokle je dete stiglo, igra bi krenula od prvog nivoa
+        if (clock.limitReached || levelsLoading || levelsError) return;
         // Dok plan traje, otvaraju se odigrane igre i ona koja je na redu
         if (planActive && id !== nextPlanned && !planDone.includes(id)) return;
-        levelsFinishedInGame.current = 0;
         playSfx("tap");
         setGameId(id);
         setOutcome(null);
@@ -190,6 +244,13 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     };
 
     const startLevel = (nextTier: Tier, nextLevel: number) => {
+        // Kad dnevno vreme istekne, novi nivo ne kreće ni kroz strelicu „nazad”
+        if (clock.limitReached) {
+            setScreen("picker");
+            setGameId(null);
+            setOutcome(null);
+            return;
+        }
         completingRef.current = false;
         setTierId(nextTier);
         setLevel(nextLevel);
@@ -202,7 +263,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         if (!gameId || !isTierUnlocked(next, unlockedFor(gameId))) return;
         playSfx("tap");
         const nextLevel = startLevelFor(next, unlockedFor(gameId));
-        if (askMood && !moodAsked) {
+        if (clock.limitReached) {
+            startLevel(next.id, nextLevel); // vraća na početni ekran sa porukom o kraju za danas
+        } else if (askMood && !moodAsked) {
             setTierId(next.id);
             setLevel(nextLevel);
             setScreen("mood-before");
@@ -217,21 +280,28 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         setOutcome(null);
     }, []);
 
+    /** Roditelju koji prati uživo javljamo da dete više nije u igri. */
+    const announceExit = () => {
+        if (screen !== "playing" || !game) return;
+        publish({
+            childId,
+            activityId: game.activityId,
+            gameType: game.gameType,
+            event: "completed",
+            data: { reason: "manual_exit", level },
+            timestamp: new Date().toISOString(),
+        });
+    };
+
     /** Izlaz iz igre: ako je nešto odigrano (i pitanje je uključeno), pitamo kako se dete sada oseća. */
     const leaveGame = () => {
-        if (game && levelsFinishedInGame.current > 0 && plan.includes(game.id)) markPlanDone(game.id);
-        // Roditelju koji prati uživo javljamo da je dete izašlo (i posle završenog nivoa)
-        if (screen === "playing" && game) {
-            publish({
-                childId,
-                activityId: game.activityId,
-                gameType: game.gameType,
-                event: "completed",
-                data: { reason: "manual_exit", level },
-                timestamp: new Date().toISOString(),
-            });
+        // „Zatvori” na pitanju o raspoloženju znači: preskoči
+        if (screen === "mood-after") {
+            handleMoodAfter(null);
+            return;
         }
-        if (askMood && sessionLogIds.current.length > 0) {
+        announceExit();
+        if (askMood && (sessionLogIds.current.length > 0 || pendingSaves.current > 0)) {
             setOutcome(null);
             setScreen("mood-after");
         } else {
@@ -252,6 +322,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 body: JSON.stringify({ childId, moodAfter: mood, ...target }),
             }).catch(() => {});
         }
+        // Sledeća igra dobija novu posetu, da njen odgovor ne prepiše ovaj
+        sessionIdRef.current = null;
         backToPicker();
     };
 
@@ -261,7 +333,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         async (result: GameResult) => {
             if (completingRef.current || !game) return;
             completingRef.current = true;
-            levelsFinishedInGame.current += 1;
+            // Plan se beleži odmah: rezultat je sačuvan i ako se stranica zatvori na ekranu sa zvezdicama
+            if (plan.includes(game.id)) markPlanDone(game.id);
 
             // Završen nivo uvek donosi bar jednu zvezdicu; sledeći nivo se predlaže
             // kada je bar polovina zadataka rešena samostalno
@@ -290,34 +363,31 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             void say(practice ? "Pročitano." : advance ? `Nivo je završen. ${starWords}.` : `Nivo je završen. ${starWords}. Hajde još jednom.`);
 
             if (preview) return;
+            pendingSaves.current += 1;
             try {
-                const res = await fetch("/api/activities/complete", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        childId,
-                        activityId: game.activityId,
-                        level,
-                        score: result.score,
-                        correct: result.correct,
-                        total: result.total,
-                        prompted: result.prompted ?? 0,
-                        durationSec: result.durationSec,
-                        moodBefore,
-                        sessionId: sessionIdRef.current,
-                    }),
+                const data = await saveResult({
+                    childId,
+                    activityId: game.activityId,
+                    level,
+                    score: result.score,
+                    correct: result.correct,
+                    total: result.total,
+                    prompted: result.prompted ?? 0,
+                    durationSec: result.durationSec,
+                    moodBefore,
+                    sessionId: sessionIdRef.current,
                 });
-                if (!res.ok) throw new Error("save_failed");
-                const data = await res.json();
                 if (typeof data.logId === "number") sessionLogIds.current.push(data.logId);
                 if (typeof data.sessionId === "number") sessionIdRef.current = data.sessionId;
                 if (typeof data.experiencePoints === "number") onExperienceChange?.(data.experiencePoints);
                 setOutcome((prev) => (prev ? { ...prev, saved: "ok" } : prev));
             } catch {
                 setOutcome((prev) => (prev ? { ...prev, saved: "failed" } : prev));
+            } finally {
+                pendingSaves.current -= 1;
             }
         },
-        [game, level, childId, moodBefore, onExperienceChange, preview, say]
+        [game, level, childId, moodBefore, onExperienceChange, preview, say, plan, markPlanDone]
     );
 
     // ── Ekrani ─────────────────────────────────────────────────────────────────
@@ -334,6 +404,14 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 <h2 id="games-heading" className="text-xl font-extrabold text-ink sm:text-2xl">
                     {planActive ? "Tvoj plan za danas" : plan.length > 0 ? "Plan je završen. Izaberi igru." : "Izaberi igru"}
                 </h2>
+                {levelsError && (
+                    <div className="flex flex-wrap items-center gap-3 rounded-card border border-sun-300 bg-sun-50 p-4" role="alert">
+                        <p className="min-w-0 flex-1 text-base font-extrabold text-sun-700">Igre se nisu učitale. Probaj ponovo.</p>
+                        <Button chunky variant="sun" onClick={retryLevels}>
+                            Probaj ponovo
+                        </Button>
+                    </div>
+                )}
                 <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
                     {shown.map((g, index) => {
                         const status = !planActive ? undefined : planDone.includes(g.id) ? "done" : g.id === nextPlanned ? "now" : "later";
@@ -343,6 +421,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                                     game={g}
                                     unlocked={unlockedFor(g.id)}
                                     loading={levelsLoading}
+                                    unavailable={levelsLoading || levelsError}
                                     priority={index < 3}
                                     status={status}
                                     onOpen={() => openGame(g.id)}
@@ -359,13 +438,21 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const lastLevelSoon = clock.remainingSec !== null && clock.remainingSec <= LAST_LEVEL_WARNING_SEC;
 
     return (
-        <div className="fixed inset-0 z-[6000] flex flex-col bg-canvas" role="dialog" aria-modal="true" aria-label={game.title}>
+        <div
+            ref={overlayRef}
+            tabIndex={-1}
+            className="fixed inset-0 z-[6000] flex flex-col bg-canvas outline-none"
+            role="dialog"
+            aria-modal="true"
+            aria-label={game.title}
+        >
             {/* Zaglavlje igre — ista mesta dugmadi u svim igrama */}
             <header className="flex h-16 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 sm:h-18 sm:gap-3 sm:px-5">
                 {screen === "playing" ? (
                     <button
                         type="button"
                         onClick={() => {
+                            if (!outcome) announceExit();
                             setOutcome(null);
                             setScreen("tiers");
                         }}
@@ -488,14 +575,16 @@ interface GameCardProps {
     priority: boolean;
     /** Mesto igre u dnevnom planu (bez plana: undefined) */
     status?: PlanStatus;
+    /** Napredak još nije učitan (ili učitavanje nije uspelo) — igra se još ne otvara */
+    unavailable?: boolean;
     onOpen: () => void;
 }
 
-function GameCard({ game, unlocked, loading, priority, status, onOpen }: GameCardProps) {
+function GameCard({ game, unlocked, loading, priority, status, unavailable = false, onOpen }: GameCardProps) {
     // `unlocked` = poslednji položeni nivo + 1 (16 znači da je položeno svih 15)
     const done = Math.min(Math.max(unlocked - 1, 0), MAX_LEVEL);
     const allDone = done >= MAX_LEVEL;
-    const waiting = status === "later";
+    const waiting = status === "later" || unavailable;
     return (
         <button
             type="button"
@@ -622,6 +711,8 @@ function RestCard({ childName, onExtend }: { childName: string; onExtend: () => 
 /** Dugme koje se aktivira tek posle držanja — malo dete ga neće slučajno pritisnuti. */
 function HoldButton({ label, onConfirm, holdMs = 2000 }: { label: string; onConfirm: () => void; holdMs?: number }) {
     const [holding, setHolding] = useState(false);
+    // Čitači ekrana i prekidači šalju samo „klik” bez držanja: tada se potvrda traži u dva koraka
+    const [armed, setArmed] = useState(false);
     const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const cancel = () => {
@@ -654,6 +745,16 @@ function HoldButton({ label, onConfirm, holdMs = 2000 }: { label: string; onConf
                 if ((e.key === "Enter" || e.key === " ") && !e.repeat) start();
             }}
             onKeyUp={cancel}
+            onClick={(e) => {
+                if (e.detail !== 0) return; // pravi dodir ili miš: važi samo držanje
+                if (armed) {
+                    setArmed(false);
+                    onConfirm();
+                } else {
+                    setArmed(true);
+                }
+            }}
+            onBlur={() => setArmed(false)}
             onContextMenu={(e) => e.preventDefault()}
             className="relative inline-flex min-h-11 select-none items-center overflow-hidden rounded-xl border border-line bg-canvas px-4 text-sm font-extrabold text-ink-soft"
         >
@@ -662,7 +763,7 @@ function HoldButton({ label, onConfirm, holdMs = 2000 }: { label: string; onConf
                 style={{ width: holding ? "100%" : "0%", transition: holding ? `width ${holdMs}ms linear` : "none" }}
                 aria-hidden="true"
             />
-            <span className="relative">{label}</span>
+            <span className="relative">{armed ? "Pritisnite još jednom za potvrdu" : label}</span>
         </button>
     );
 }
@@ -724,6 +825,16 @@ function TierPicker({ game, unlocked, onChoose }: { game: GameDefinition; unlock
 // Tri lica (mlađa deca ne razlikuju pouzdano više stupnjeva); uvek može da se preskoči.
 
 function MoodPicker({ title, subtitle, onSelect }: { title: string; subtitle: string; onSelect: (mood: Mood | null) => void }) {
+    // Drugi dodir dvostrukog dodira sa prethodnog ekrana ne sme da odgovori na pitanje
+    const guard = useInputGuard(600);
+    useEffect(() => {
+        guard.hold();
+    }, [guard]);
+    const choose = (mood: Mood | null) => {
+        if (guard.blocked()) return;
+        if (mood) playSfx("tap");
+        onSelect(mood);
+    };
     return (
         <div className="mx-auto flex w-full max-w-2xl flex-1 animate-fade-up flex-col items-center justify-center text-center">
             <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">{title}</h2>
@@ -733,10 +844,7 @@ function MoodPicker({ title, subtitle, onSelect }: { title: string; subtitle: st
                     <li key={mood.value}>
                         <button
                             type="button"
-                            onClick={() => {
-                                playSfx("tap");
-                                onSelect(mood.value);
-                            }}
+                            onClick={() => choose(mood.value)}
                             className="flex w-full flex-col items-center gap-2 rounded-tile border-2 border-b-[5px] border-line bg-surface px-2 py-5 shadow-soft transition-[transform,border-color] hover:border-brand-300 hover:bg-brand-50 active:translate-y-[3px] active:border-b-2 sm:py-8"
                         >
                             <span className="text-6xl sm:text-7xl" aria-hidden="true">{mood.emoji}</span>
@@ -747,7 +855,7 @@ function MoodPicker({ title, subtitle, onSelect }: { title: string; subtitle: st
             </ul>
             <button
                 type="button"
-                onClick={() => onSelect(null)}
+                onClick={() => choose(null)}
                 className="mt-6 min-h-12 rounded-xl px-5 text-base font-extrabold text-ink-soft hover:bg-brand-50 hover:text-ink"
             >
                 Preskoči
@@ -794,9 +902,19 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
     }
     if (limitReached) text = "Za danas smo završili. Vidimo se sledeći put.";
 
+    // Fokus ulazi u prozor sa rezultatom (tastatura i čitači ekrana)
+    const panelRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        panelRef.current?.focus();
+    }, []);
+
     return (
         <div className="absolute inset-0 z-10 flex items-end justify-center bg-ink/55 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="alertdialog" aria-modal="true" aria-label={title}>
-            <div className="max-h-full w-full max-w-md animate-fade-up overflow-y-auto rounded-t-[2rem] bg-surface p-6 text-center shadow-pop sm:rounded-[2rem] sm:p-9">
+            <div
+                ref={panelRef}
+                tabIndex={-1}
+                className="max-h-full w-full max-w-md animate-fade-up overflow-y-auto rounded-t-[2rem] bg-surface p-6 text-center shadow-pop outline-none sm:rounded-[2rem] sm:p-9"
+            >
                 <div className="mb-4 flex justify-center gap-2 sm:gap-3" aria-label={`${outcome.stars} od 3 zvezdice`}>
                     {[1, 2, 3].map((s) => (
                         <span key={s} className={cn("text-5xl sm:text-6xl", s <= outcome.stars ? "animate-pop" : "opacity-20 grayscale")} aria-hidden="true">

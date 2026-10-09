@@ -19,6 +19,8 @@ import type { GameUpdate } from "@/lib/types";
 interface LiveMonitorProps {
     childId: number;
     childName: string;
+    /** Tajna tema kanala koju je napravio server; null u probnom prikazu bez praćenja */
+    topic: string | null;
 }
 
 // ── Komponente igara ──────────────────────────────────────────────────────────
@@ -161,12 +163,12 @@ function monitorReducer(state: MonitorState, { update, receivedAt }: MonitorActi
 
 // ── Komponenta ────────────────────────────────────────────────────────────────
 
-export default function LiveMonitor({ childId, childName }: LiveMonitorProps) {
+export default function LiveMonitor({ childId, childName, topic }: LiveMonitorProps) {
     // `key` garantuje čisto stanje ako se promeni dete koje se prati
-    return <MonitorSession key={childId} childId={childId} childName={childName} />;
+    return <MonitorSession key={childId} childId={childId} childName={childName} topic={topic} />;
 }
 
-function MonitorSession({ childId, childName }: LiveMonitorProps) {
+function MonitorSession({ childId, childName, topic }: LiveMonitorProps) {
     const [state, dispatch] = useReducer(monitorReducer, INITIAL_STATE);
 
     const handleUpdate = useCallback(
@@ -176,7 +178,7 @@ function MonitorSession({ childId, childName }: LiveMonitorProps) {
         },
         [childId]
     );
-    const { isConnected, isConfigured } = useGameMonitor(childId, handleUpdate);
+    const { isConnected, isConfigured } = useGameMonitor(childId, handleUpdate, topic);
     const { active, feed } = state;
 
     return (

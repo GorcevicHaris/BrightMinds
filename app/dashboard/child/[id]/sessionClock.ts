@@ -6,6 +6,8 @@ import { useCallback, useEffect, useSyncExternalStore } from "react";
 
 const TICK_SEC = 5;
 const listeners = new Set<() => void>();
+/** Kada pregledač ne da skladište (privatni režim), vreme se pamti dok je stranica otvorena */
+const memory = new Map<number, DayRecord>();
 
 interface DayRecord {
     day: string;
@@ -24,6 +26,8 @@ function storageKey(childId: number): string {
 
 function read(childId: number): DayRecord {
     const fresh: DayRecord = { day: today(), sec: 0, bonusMin: 0 };
+    const kept = memory.get(childId);
+    if (kept) return kept.day === fresh.day ? kept : fresh;
     try {
         const raw = window.localStorage.getItem(storageKey(childId));
         if (!raw) return fresh;
@@ -38,16 +42,24 @@ function read(childId: number): DayRecord {
 function write(childId: number, record: DayRecord) {
     try {
         window.localStorage.setItem(storageKey(childId), JSON.stringify(record));
+        memory.delete(childId);
     } catch {
-        /* bez skladišta ograničenje važi samo dok je stranica otvorena */
+        memory.set(childId, record);
     }
     listeners.forEach((listener) => listener());
 }
 
 function subscribe(listener: () => void): () => void {
     listeners.add(listener);
+    // Novi dan ili promena u drugoj kartici: stanje se čita ponovo kad se dete vrati na stranicu
+    window.addEventListener("storage", listener);
+    window.addEventListener("focus", listener);
+    document.addEventListener("visibilitychange", listener);
     return () => {
         listeners.delete(listener);
+        window.removeEventListener("storage", listener);
+        window.removeEventListener("focus", listener);
+        document.removeEventListener("visibilitychange", listener);
     };
 }
 
