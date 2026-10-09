@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
+import type { VoiceEmotion } from "@/lib/emotion";
 
 // Čitanje naglas u igrama gde se prvo sluša, pa bira (situacije, priče).
 
@@ -9,7 +10,7 @@ export const NARRATION_DELAY_MS = 400;
 /** Ako se kraj čitanja ne javi, izbori se ipak otključaju posle ovoliko vremena */
 export const LISTEN_MAX_MS = 6000;
 
-type Say = (text: string, onEnd?: () => void) => unknown;
+type Say = (text: string, onEnd?: () => void, emotion?: VoiceEmotion) => unknown;
 
 /**
  * Izgovara delove jedan za drugim. Svaki novi `sayAll` ili `cancel` poništava započeti niz
@@ -17,6 +18,8 @@ type Say = (text: string, onEnd?: () => void) => unknown;
  *
  *   const { sayAll, cancel } = useSayAll(say);
  *   sayAll([pitanje, ...izbori], () => otključaj());
+ *
+ * `emotion` važi za ceo niz (npr. "happy" za pohvalu); bez nje se ton prepoznaje iz svake rečenice.
  */
 export function useSayAll(say: Say) {
     const run = useRef(0);
@@ -26,7 +29,7 @@ export function useSayAll(say: Say) {
     }, []);
 
     const sayAll = useCallback(
-        (parts: string[], onDone?: () => void) => {
+        (parts: string[], onDone?: () => void, emotion?: VoiceEmotion) => {
             run.current += 1;
             const mine = run.current;
             const step = (i: number) => {
@@ -35,7 +38,7 @@ export function useSayAll(say: Say) {
                     onDone?.();
                     return;
                 }
-                void say(parts[i], () => step(i + 1));
+                void say(parts[i], () => step(i + 1), emotion);
             };
             step(0);
         },

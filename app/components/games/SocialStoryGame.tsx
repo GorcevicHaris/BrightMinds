@@ -343,7 +343,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
             const how = attempt === 1 ? "" : ` iz ${attempt}. pokušaja${currentRecord.hint ? ", uz pomoć" : ""}`;
             playSfx("correct");
             commit(next, `${place}: izbor koji pomaže${how}: ${label}`);
-            sayAll([explanationSpeech(currentDecision, picked, optionIndex, female)]);
+            sayAll([explanationSpeech(currentDecision, picked, optionIndex, female)], undefined, "happy");
         } else {
             const tried = [...currentRecord.tried, optionIndex];
             const lessHelpfulOffered = currentRecord.order.filter((i) => !currentDecision.acceptable.includes(i)).length;
@@ -355,7 +355,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
             };
             playSfx("tap");
             commit(next, `${place}: izbor koji manje pomaže: ${label}${hint && !currentRecord.hint ? " (prikazana pomoć)" : ""}`);
-            sayAll([`${t(option.why)} ${hint ? HINT_TEXT : RETRY_TEXT}`]);
+            sayAll([`${t(option.why)} ${hint ? HINT_TEXT : RETRY_TEXT}`], undefined, "gentle");
         }
         // Na telefonu: objašnjenje i dugmad ne ostaju ispod ivice ekrana
         after(SCROLL_DELAY_MS, () => scrollIntoViewGently(bottomRef.current));

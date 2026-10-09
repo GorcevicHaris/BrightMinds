@@ -280,7 +280,8 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
         // Kratka pauza da uzastopni dodiri (ili držanje tastera) ne preskoče objašnjenje
         guard.hold();
         playSfx(pickedCommon ? "correct" : "tap");
-        void say(explanation(target, current.options, id, current.round >= current.totalRounds).join(" "));
+        // Objašnjenje se čita tonom izabranog osećanja: glas i lice učitelja pokazuju kako ono zvuči i izgleda
+        void say(explanation(target, current.options, id, current.round >= current.totalRounds).join(" "), undefined, id);
     };
 
     const handleNext = () => {

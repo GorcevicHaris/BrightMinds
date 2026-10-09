@@ -1020,7 +1020,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
               { ...current, correctCount: current.totalRounds, feedback: "correct", done: true };
         commit(final, `Slika je gotova: ${picture.name.toLowerCase()}`);
         playSfx("win");
-        say(TEXT_DONE);
+        say(TEXT_DONE, undefined, "happy");
 
         after(FINISH_MS, () => {
             sync.complete(final);
@@ -1072,7 +1072,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
         if (next.correctCount === picture.zones.length && !announcedRef.current) {
             announcedRef.current = true;
-            say(TEXT_ALL_COLORED);
+            say(TEXT_ALL_COLORED, undefined, "happy");
         }
     };
 
@@ -1117,7 +1117,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
             commit(solved, log);
             playSfx("correct");
-            say(feedbackText(solved, round));
+            say(feedbackText(solved, round), undefined, "happy");
             after(NEXT_TASK_MS, () => {
                 const latest = viewRef.current;
                 // Dodir koji je ostao od prethodnog zadatka ne sme da odgovori na novi
@@ -1161,7 +1161,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
             }`
         );
         clearFeedbackSoon();
-        say(feedbackText(missed, round));
+        say(feedbackText(missed, round), undefined, "gentle");
         // Kratka pauza: nekoliko brzih dodira zaredom ne postaje nekoliko grešaka
         guard.hold();
     };

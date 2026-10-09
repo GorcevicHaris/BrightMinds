@@ -298,7 +298,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
             const how = attempt === 1 ? "" : ` iz ${attempt}. pokušaja${current.hint ? ", uz pomoć" : ""}`;
             commit(next, `Izbor koji pomaže${how}: ${label}`);
             playSfx("correct");
-            sayAll([explanationSpeech(target, index, current.order, female)]);
+            sayAll([explanationSpeech(target, index, current.order, female)], undefined, "happy");
             return;
         }
 
@@ -308,7 +308,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
         const next: SocialView = { ...current, tried, hint, incorrectCount: current.incorrectCount + 1 };
         commit(next, `Izbor koji manje pomaže: ${label}${hint && !current.hint ? " (prikazana pomoć)" : ""}`);
         playSfx("tap");
-        sayAll([`${genderText(option.note, female)} ${hint ? HINT_TEXT : RETRY_TEXT}`]);
+        sayAll([`${genderText(option.note, female)} ${hint ? HINT_TEXT : RETRY_TEXT}`], undefined, "gentle");
     };
 
     const handleNext = () => {

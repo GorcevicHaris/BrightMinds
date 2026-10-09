@@ -8,7 +8,8 @@ import { ArrowLeft, Check, Eye, Lock, X } from "lucide-react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
-import { playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
+import { GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
+import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import { cn } from "@/lib/cn";
 import {
     ADVANCE_RATIO,
@@ -360,7 +361,11 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 }));
             }
             const starWords = stars === 1 ? "Jedna zvezdica" : stars === 2 ? "Dve zvezdice" : "Tri zvezdice";
-            void say(practice ? "Pročitano." : advance ? `Nivo je završen. ${starWords}.` : `Nivo je završen. ${starWords}. Hajde još jednom.`);
+            void say(
+                practice ? "Pročitano." : advance ? `Nivo je završen. ${starWords}.` : `Nivo je završen. ${starWords}. Hajde još jednom.`,
+                undefined,
+                practice ? "happy" : "proud"
+            );
 
             if (preview) return;
             pendingSaves.current += 1;
@@ -535,6 +540,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     onNextTier={(next) => startLevel(next.id, next.min)}
                     onRetry={() => startLevel(tierId, level)}
                     onLeave={leaveGame}
+                    teacher={settings.avatar ? gender : null}
                 />
             )}
         </div>
@@ -545,7 +551,13 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
 function GameSlot({ gameId, ...props }: { gameId: GameId } & GameProps) {
     const Game = GAME_COMPONENTS[gameId];
-    return <Game {...props} />;
+    // Učitelj istog pola kao glas koji čita zadatke
+    const teacher = useMemo(() => ({ gender: props.gender }), [props.gender]);
+    return (
+        <GameTeacherContext value={teacher}>
+            <Game {...props} />
+        </GameTeacherContext>
+    );
 }
 
 /** Stalan znak detetu da ga odrasli gleda uživo (dete ima pravo da to zna). */
@@ -881,9 +893,11 @@ interface LevelResultProps {
     onNextTier: (tier: TierConfig) => void;
     onRetry: () => void;
     onLeave: () => void;
+    /** Pol učitelja koji se raduje sa detetom; null = bez učitelja */
+    teacher: string | undefined | null;
 }
 
-function LevelResult({ outcome, childName, game, tier, level, showNumbers, limitReached, lastLevelSoon, onNext, onNextTier, onRetry, onLeave }: LevelResultProps) {
+function LevelResult({ outcome, childName, game, tier, level, showNumbers, limitReached, lastLevelSoon, onNext, onNextTier, onRetry, onLeave, teacher }: LevelResultProps) {
     const lastInTier = level >= tierMax(tier);
     const nextTier = TIERS[TIERS.findIndex((t) => t.id === tier.id) + 1] ?? null;
     const champion = outcome.advance && lastInTier && !nextTier;
@@ -915,6 +929,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                 tabIndex={-1}
                 className="max-h-full w-full max-w-md animate-fade-up overflow-y-auto rounded-t-[2rem] bg-surface p-6 text-center shadow-pop outline-none sm:rounded-[2rem] sm:p-9"
             >
+                {teacher !== null && <TeacherAvatar gender={teacher} className="mx-auto -mt-1 mb-1 h-24 w-20 sm:h-28 sm:w-24" />}
                 <div className="mb-4 flex justify-center gap-2 sm:gap-3" aria-label={`${outcome.stars} od 3 zvezdice`}>
                     {[1, 2, 3].map((s) => (
                         <span key={s} className={cn("text-5xl sm:text-6xl", s <= outcome.stars ? "animate-pop" : "opacity-20 grayscale")} aria-hidden="true">

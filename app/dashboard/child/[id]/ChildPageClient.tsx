@@ -2,7 +2,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Gamepad2, LogOut, Trophy } from "lucide-react";
@@ -17,10 +16,8 @@ import type { ResolvedSettings } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
 import { RealtimeTopicProvider, useWatcherPresence } from "@/lib/realtime";
 import { speak, stopSpeaking } from "@/lib/speech";
+import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import type { ChildProfile } from "./page";
-
-// Three.js radi samo u pregledaču
-const Professor3D = dynamic(() => import("@/app/components/Professor3D"), { ssr: false });
 
 type View = "games" | "progress";
 
@@ -63,21 +60,14 @@ function ChildPage({ child, viewer, settings, preview = false }: Omit<Props, "re
     const gender = child.gender ?? undefined;
     const isFemale = gender?.toLowerCase() === "female";
     const initials = `${child.first_name?.charAt(0) ?? ""}${child.last_name?.charAt(0) ?? ""}`.toUpperCase();
-    // 3D učitelj je veliki fajl: učitava se tek kad je stranica spremna, a nikad uz štednju podataka
-    const [avatarReady, setAvatarReady] = useState(false);
-    useEffect(() => {
-        const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
-        if (connection?.saveData) return;
-        const timer = setTimeout(() => setAvatarReady(true), 1500);
-        return () => clearTimeout(timer);
-    }, []);
-    const showAvatar = settings.avatar && !settings.reduceMotion && avatarReady;
+    // Učitelj je crtež (SVG): bez animacija ostaje na ekranu, samo miruje
+    const showAvatar = settings.avatar;
 
     // Pozdrav pri ulasku (jedna kratka rečenica)
     useEffect(() => {
         const timer = setTimeout(() => {
             // Ime deteta se ne šalje servisu za govor (najmanje podataka o detetu)
-            void speak(`Zdravo. ${isFemale ? "Dobro došla" : "Dobro došao"}.`, { gender });
+            void speak(`Zdravo. ${isFemale ? "Dobro došla" : "Dobro došao"}.`, { gender, emotion: "hello" });
         }, 1200);
         return () => {
             clearTimeout(timer);
@@ -180,7 +170,7 @@ function ChildPage({ child, viewer, settings, preview = false }: Omit<Props, "re
                                     <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl">Zdravo, {firstName}!</h1>
                                     <p className="mt-1 text-base font-semibold text-brand-100 sm:text-lg">Izaberi igru.</p>
                                 </div>
-                                {showAvatar && <Professor3D gender={gender} className="h-32 w-28 shrink-0 self-end sm:h-44 sm:w-48" />}
+                                {showAvatar && <TeacherAvatar gender={gender} className="mr-2 h-32 w-28 shrink-0 self-end sm:mr-6 sm:h-44 sm:w-40" />}
                             </div>
                         </section>
 

@@ -258,15 +258,15 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                 <Section title="Mir i tempo">
                     <Switch
                         label="Manje animacija"
-                        description="Gasi kretanje na ekranu i 3D učitelja."
+                        description="Gasi kretanje na ekranu. Učitelj ostaje, ali miruje."
                         checked={settings.reduceMotion}
                         onChange={(v) => set("reduceMotion", v)}
                     />
                     <Switch
-                        label="3D učitelj na početnom ekranu"
-                        checked={settings.avatar && !settings.reduceMotion}
+                        label="Učitelj na ekranu"
+                        description="Lik koji čita zadatke: izraz lica prati ton rečenice."
+                        checked={settings.avatar}
                         onChange={(v) => set("avatar", v)}
-                        disabled={settings.reduceMotion}
                     />
                     <div className="mt-2 grid gap-4 sm:grid-cols-2">
                         <Select

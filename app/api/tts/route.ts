@@ -3,6 +3,7 @@
 // sesiju (roditeljsku ili dečju) i ograničava dužinu teksta i učestalost.
 import { ElevenLabsClient, ElevenLabsError } from "@elevenlabs/elevenlabs-js";
 import { getSession } from "@/lib/auth";
+import { isVoiceEmotion, TTS_DELIVERY, type VoiceEmotion } from "@/lib/emotion";
 import { takeAttempt, type RateLimitRule } from "@/lib/rateLimit";
 import { asTrimmedString } from "@/lib/validation";
 import { enforceRateLimit, errorResponse, HttpError, readJsonObject } from "../_lib/http";
@@ -10,6 +11,8 @@ import { enforceRateLimit, errorResponse, HttpError, readJsonObject } from "../_
 const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
 const DEFAULT_FEMALE_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 const MAX_TEXT_LENGTH = 400;
+/** Podrazumevani model; `ELEVENLABS_MODEL=eleven_v3` daje izražajniji glas (oznake emocija u tekstu) */
+const DEFAULT_MODEL = "eleven_multilingual_v2";
 
 /** Po sesiji; igra izgovara kratke rečenice, pa je ovo daleko iznad normalne upotrebe. */
 const TTS_RULE: RateLimitRule = { limit: 120, windowMs: 60 * 1000 };
@@ -37,22 +40,38 @@ export async function POST(request: Request) {
             ? process.env.ELEVENLABS_FEMALE_VOICE_ID || DEFAULT_FEMALE_VOICE_ID
             : process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
 
-        // Ženski glas: pauze samo IZMEĐU rečenica (gde postoji razmak), da ne bi
-        // nastali artefakti na samom kraju snimka.
-        const spokenText = isFemale ? text.replace(/([.?!,])\s+/g, "$1... ") : text;
+        // Ton rečenice: emocija menja živost, naglašenost i brzinu glasa — nikad jačinu
+        const emotion: VoiceEmotion = isVoiceEmotion(body.emotion) ? body.emotion : "neutral";
+        const delivery = TTS_DELIVERY[emotion];
+        const modelId = process.env.ELEVENLABS_MODEL?.trim() || DEFAULT_MODEL;
+        const tagged = modelId.startsWith("eleven_v3");
 
         const elevenlabs = new ElevenLabsClient({ apiKey });
-        const stream = await elevenlabs.textToSpeech.convert(voiceId, {
-            text: spokenText,
-            modelId: "eleven_multilingual_v2",
-            outputFormat: "mp3_44100_128",
-            voiceSettings: {
-                stability: isFemale ? 1.0 : 0.5,
-                similarityBoost: isFemale ? 0.5 : 0.8,
-                style: 0.0,
-                useSpeakerBoost: true,
-            },
-        });
+        const stream = await elevenlabs.textToSpeech.convert(
+            voiceId,
+            tagged
+                ? {
+                      // v3 čita oznaku u uglastim zagradama kao uputstvo za ton, ne kao tekst
+                      text: delivery.tag ? `${delivery.tag} ${text}` : text,
+                      modelId,
+                      outputFormat: "mp3_44100_128",
+                      voiceSettings: { stability: 0.5, similarityBoost: 0.8, useSpeakerBoost: true },
+                  }
+                : {
+                      text,
+                      modelId,
+                      outputFormat: "mp3_44100_128",
+                      // Nastavak koji se ne izgovara („…, rekla je veselo.”) modelu kaže kojim tonom da čita
+                      nextText: delivery.hint ? delivery.hint[isFemale ? "female" : "male"] : undefined,
+                      voiceSettings: {
+                          stability: delivery.stability,
+                          similarityBoost: 0.8,
+                          style: delivery.style,
+                          speed: delivery.speed,
+                          useSpeakerBoost: true,
+                      },
+                  }
+        );
 
         const audio = await new Response(stream).arrayBuffer();
         if (audio.byteLength === 0) throw new Error("ElevenLabs je vratio prazan audio");

@@ -757,7 +757,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
             const how = firstTry ? "iz prvog pokušaja" : prompted ? "uz pomoć" : `iz ${current.wrong.length + 1}. pokušaja`;
             commit(solved, `Tačno ${how}: ${targetName}`);
             playSfx(isLast ? "win" : "correct");
-            say(feedbackText(solved));
+            say(feedbackText(solved), undefined, "happy");
             if (isLast) after(CELEBRATE_MS, finish);
             else after(NEXT_ROUND_MS, () => startRound(current.round));
             return;
@@ -771,7 +771,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
             `Greška: izabrano ${SHAPES[option.shape].name.toLowerCase()}, traži se ${targetName}${hint && !current.hint ? " (prikazana pomoć)" : ""}`
         );
         playSfx("wrong");
-        say(feedbackText(missed));
+        say(feedbackText(missed), undefined, "gentle");
         // Kratka pauza: nekoliko brzih dodira zaredom ne postaje nekoliko grešaka
         guard.hold();
         feedbackTimer.current = after(WRONG_FEEDBACK_MS, () => {

@@ -7,6 +7,7 @@ export { useSayAll, useListenGate, NARRATION_DELAY_MS, LISTEN_MAX_MS } from "./u
 export { playSfx, type Sfx } from "./sfx";
 export { finiteOr, genderText, hintDue, isFemale, offeredOptions, shuffle, toCount, toIndexList } from "./utils";
 export {
+    GameTeacherContext,
     GameStage,
     GameHud,
     GamePrompt,

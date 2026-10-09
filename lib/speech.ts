@@ -2,27 +2,25 @@
 // Jedno mesto za govor u aplikaciji.
 //  1) ElevenLabs preko /api/tts (keširano po tekstu, da ponavljanje ne troši kvotu)
 //  2) ako TTS nije podešen ili padne — govor iz pregledača (ako postoji naš glas)
-// Kada je 3D avatar na ekranu, on preuzima reprodukciju i pomera usta.
+// Svaka rečenica nosi emociju (navedenu ili prepoznatu iz teksta): po njoj se bira
+// boja glasa, a lice učitelja (lib/voice.ts) dobija isti izraz i pomera usta.
 "use client";
 
 import { useCallback, useEffect } from "react";
+import { BROWSER_PROSODY, emotionForText, type VoiceEmotion } from "./emotion";
 import { masterVolume, voiceEnabled } from "./sound";
+import { mimeVoice, playVoice, showEmotion, stopVoice } from "./voice";
 
 export interface SpeakOptions {
     gender?: string;
+    /** Bez ovoga emocija se prepoznaje iz teksta (pohvala, pitanje, osećanje u priči…) */
+    emotion?: VoiceEmotion;
     onEnd?: () => void;
-}
-
-interface AvatarSpeakDetail {
-    url: string | null;
-    text: string;
-    onEnd: () => void;
 }
 
 const MAX_CACHED = 60;
 const audioCache = new Map<string, string>();
 let ttsUnavailable = false;
-let currentAudio: HTMLAudioElement | null = null;
 let generation = 0;
 // Zahtevi u toku, po tekstu: isti tekst se ne naručuje dvaput dok prvi odgovor ne stigne
 const inflight = new Map<string, Promise<string | null>>();
@@ -47,13 +45,9 @@ export function stopSpeaking() {
     generation += 1;
     // Zahtev koji je već otišao se NE prekida: sinteza je već plaćena, pa odgovor ide u
     // keš i sledeći put se pušta odmah. Zakasneli zvuk se ne pušta (provera `generation`).
-    if (currentAudio) {
-        currentAudio.pause();
-        currentAudio = null;
-    }
     if (typeof window !== "undefined") {
         window.speechSynthesis?.cancel();
-        window.dispatchEvent(new Event("avatar:stop"));
+        stopVoice();
     }
 }
 
@@ -68,12 +62,12 @@ function rememberAudio(key: string, url: string) {
     }
 }
 
-async function requestAudio(key: string, text: string, gender?: string): Promise<string | null> {
+async function requestAudio(key: string, text: string, emotion: VoiceEmotion, gender?: string): Promise<string | null> {
     try {
         const res = await fetch("/api/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text, gender }),
+            body: JSON.stringify({ text, gender, emotion }),
         });
         if (!res.ok) {
             // 503 = ključ nije podešen; ne pokušavamo ponovo u ovoj sesiji
@@ -90,16 +84,16 @@ async function requestAudio(key: string, text: string, gender?: string): Promise
     }
 }
 
-function fetchAudio(text: string, gender?: string): Promise<string | null> {
+function fetchAudio(text: string, emotion: VoiceEmotion, gender?: string): Promise<string | null> {
     if (ttsUnavailable) return Promise.resolve(null);
 
-    const key = `${gender?.toLowerCase() ?? ""}|${text}`;
+    const key = `${gender?.toLowerCase() ?? ""}|${emotion}|${text}`;
     const cached = audioCache.get(key);
     if (cached) return Promise.resolve(cached);
 
     let pending = inflight.get(key);
     if (!pending) {
-        pending = requestAudio(key, text, gender);
+        pending = requestAudio(key, text, emotion, gender);
         inflight.set(key, pending);
     }
     return pending;
@@ -110,27 +104,28 @@ function findLocalVoice(): SpeechSynthesisVoice | null {
     return voices.find((v) => /^(sr|hr|bs)([-_]|$)/i.test(v.lang)) ?? null;
 }
 
-function speakWithBrowser(text: string, done: () => void) {
+function speakWithBrowser(text: string, emotion: VoiceEmotion, done: () => void) {
     const voice = findLocalVoice();
-    // Bez našeg glasa tekst bi zvučao pogrešno — tada radije ćutimo
+    // Bez našeg glasa tekst bi zvučao pogrešno — tada radije ćutimo (lice ipak pokaže izraz)
     if (!voice) {
+        showEmotion(emotion);
         done();
         return;
     }
+    const prosody = BROWSER_PROSODY[emotion];
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.voice = voice;
     utterance.lang = voice.lang;
-    utterance.rate = 0.9;
+    utterance.rate = prosody.rate;
+    utterance.pitch = prosody.pitch;
     utterance.volume = masterVolume();
+    const endMime = mimeVoice(emotion);
     const finish = () => {
-        window.dispatchEvent(new Event("avatar:stop"));
+        endMime();
         done();
     };
     utterance.onend = finish;
     utterance.onerror = finish;
-    window.dispatchEvent(
-        new CustomEvent<AvatarSpeakDetail>("avatar:speak", { detail: { url: null, text, onEnd: () => {} }, cancelable: true })
-    );
     window.speechSynthesis.speak(utterance);
 }
 
@@ -144,46 +139,36 @@ export async function speak(text: string, options: SpeakOptions = {}): Promise<v
         return;
     }
 
+    const emotion = options.emotion ?? emotionForText(spoken);
+
     stopSpeaking();
-    // Zvuk je isključen: ništa ne puštamo (i ne trošimo TTS), ali tok igre ide dalje
+    // Zvuk je isključen: ništa ne puštamo (i ne trošimo TTS), ali tok igre ide dalje,
+    // a lice učitelja i bez glasa pokaže kako je rečenica mišljena
     if (!voiceEnabled()) {
+        showEmotion(emotion);
         done();
         return;
     }
     const mine = generation;
 
-    const url = await fetchAudio(spoken, options.gender);
+    const url = await fetchAudio(spoken, emotion, options.gender);
     if (mine !== generation) return; // u međuvremenu je pokrenut drugi govor
 
     if (!url) {
-        speakWithBrowser(spoken, done);
+        speakWithBrowser(spoken, emotion, done);
         return;
     }
-
-    const event = new CustomEvent<AvatarSpeakDetail>("avatar:speak", {
-        detail: { url, text, onEnd: done },
-        cancelable: true,
-    });
-    const handledByAvatar = !window.dispatchEvent(event);
-    if (handledByAvatar) return;
-
-    const audio = new Audio(url);
-    audio.volume = masterVolume();
-    currentAudio = audio;
-    audio.onended = done;
-    audio.onerror = done;
-    try {
-        await audio.play();
-    } catch {
-        done();
-    }
+    await playVoice(url, emotion, done);
 }
 
 /** Hook: `say(text)` sa polom deteta, govor se prekida kad komponenta nestane. */
 export function useSpeech(gender?: string) {
     useEffect(() => stopSpeaking, []);
 
-    const say = useCallback((text: string, onEnd?: () => void) => speak(text, { gender, onEnd }), [gender]);
+    const say = useCallback(
+        (text: string, onEnd?: () => void, emotion?: VoiceEmotion) => speak(text, { gender, onEnd, emotion }),
+        [gender]
+    );
 
     return { say, stop: stopSpeaking };
 }

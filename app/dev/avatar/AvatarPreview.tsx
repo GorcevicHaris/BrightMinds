@@ -1,0 +1,77 @@
+"use client";
+
+import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
+import { VOICE_EMOTIONS, type VoiceEmotion } from "@/lib/emotion";
+import { speak } from "@/lib/speech";
+import { mimeVoice, playVoice } from "@/lib/voice";
+
+/** Bilo koji snimak iz aplikacije: proverava puštanje kroz analizator i pomeranje usta */
+const SAMPLE_SOUND = "/sounds/ptica.mp3";
+
+const SAMPLES: Record<VoiceEmotion, string> = {
+    neutral: "Dodirni isti oblik.",
+    hello: "Zdravo. Dobro došla.",
+    happy: "Bravo. To je tačno.",
+    proud: "Nivo je završen.",
+    gentle: "Probaj ponovo. Polako.",
+    curious: "Šta misliš, kako se oseća?",
+    sad: "Mila je tužna jer je izgubila loptu.",
+    angry: "Marko je ljut jer mu je kula pala.",
+    scared: "Ana se uplašila grmljavine.",
+    surprised: "Luka je iznenađen poklonom.",
+};
+
+export default function AvatarPreview() {
+    return (
+        <main className="min-h-screen bg-canvas p-6">
+            {(["male", "female"] as const).map((gender) => (
+                <section key={gender} className="mb-8">
+                    <div className="mb-3 flex items-center gap-4 rounded-card bg-brand-600 p-4">
+                        <TeacherAvatar gender={gender} className="h-40 w-36" />
+                        <TeacherAvatar gender={gender} variant="face" className="h-16 w-16 rounded-full bg-brand-50" />
+                        <div className="flex flex-wrap gap-2">
+                            {VOICE_EMOTIONS.map((emotion) => (
+                                <button
+                                    key={emotion}
+                                    type="button"
+                                    data-say={`${gender}-${emotion}`}
+                                    onClick={() => void speak(SAMPLES[emotion], { gender, emotion })}
+                                    className="rounded-xl bg-white px-3 py-2 text-sm font-extrabold text-ink"
+                                >
+                                    {emotion}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                data-mime={gender}
+                                onClick={() => {
+                                    const end = mimeVoice("happy");
+                                    setTimeout(end, 4000);
+                                }}
+                                className="rounded-xl bg-sun-300 px-3 py-2 text-sm font-extrabold text-ink"
+                            >
+                                usta (4 s)
+                            </button>
+                            <button
+                                type="button"
+                                data-play={gender}
+                                onClick={() => void playVoice(SAMPLE_SOUND, "proud", () => document.body.setAttribute("data-voice-ended", "1"))}
+                                className="rounded-xl bg-sun-300 px-3 py-2 text-sm font-extrabold text-ink"
+                            >
+                                snimak
+                            </button>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-5 gap-3">
+                        {VOICE_EMOTIONS.map((emotion) => (
+                            <figure key={emotion} className="rounded-card border border-line bg-surface p-2 text-center">
+                                <TeacherAvatar gender={gender} emotion={emotion} className="mx-auto h-36 w-32" />
+                                <figcaption className="text-sm font-extrabold text-ink-soft">{emotion}</figcaption>
+                            </figure>
+                        ))}
+                    </div>
+                </section>
+            ))}
+        </main>
+    );
+}

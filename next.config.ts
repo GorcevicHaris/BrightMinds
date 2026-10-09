@@ -1,7 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["three"],
   images: {
     // Slike u /public su velike (1–3 MB PNG); služimo ih smanjene i u modernom formatu
     formats: ["image/avif", "image/webp"],

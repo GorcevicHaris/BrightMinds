@@ -509,7 +509,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         };
         after(MIN_FEEDBACK_MS, step);
         after(MAX_FEEDBACK_MS, finish);
-        void say(text, step);
+        void say(text, step, "happy");
     };
 
     const play = () => {

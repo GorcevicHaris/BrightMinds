@@ -515,7 +515,7 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
                 `Pronađen par ${how}: ${animal.name} (${matched.length} od ${pairs})`
             );
             playSfx(allFound ? "win" : "correct");
-            say(`${animal.name}.`);
+            say(`${animal.name}.`, undefined, "happy");
             if (allFound) {
                 after(CELEBRATE_MS, finish);
                 return;

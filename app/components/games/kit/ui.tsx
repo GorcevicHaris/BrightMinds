@@ -4,6 +4,14 @@ import React from "react";
 import { cn } from "@/lib/cn";
 import { IDLE_HINT_MS, useIdle } from "./useIdle";
 import type { GameAccent } from "@/lib/games";
+import TeacherAvatar from "../../avatar/TeacherAvatar";
+import { useChildSettings } from "../../ChildSettingsProvider";
+
+/**
+ * Ko čita zadatke detetu. Postavlja ga strana na kojoj dete igra; bez njega
+ * (npr. roditeljski prikaz uživo, gde niko ne govori) lice učitelja se ne crta.
+ */
+export const GameTeacherContext = React.createContext<{ gender?: string } | null>(null);
 
 // ── GameStage ─────────────────────────────────────────────────────────────────
 // Okvir igre: centrira sadržaj, drži istu širinu i razmake u svim igrama.
@@ -90,7 +98,20 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
                 </div>
             )}
             {onSpeak && <SpeakButton onClick={onSpeak} className={idle ? "animate-soft-pulse" : undefined} />}
+            <HudTeacher />
         </div>
+    );
+}
+
+/** Lice učitelja koji čita zadatke: izraz prati ton rečenice, usta se pomeraju dok govori */
+function HudTeacher() {
+    const settings = useChildSettings();
+    const teacher = React.useContext(GameTeacherContext);
+    if (!teacher || !settings.avatar) return null;
+    return (
+        <span className="grid h-12 w-12 shrink-0 place-items-end overflow-hidden rounded-full bg-brand-50 ring-1 ring-brand-100 sm:h-14 sm:w-14">
+            <TeacherAvatar gender={teacher.gender} variant="face" className="h-full w-full" />
+        </span>
     );
 }
 

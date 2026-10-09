@@ -32,7 +32,7 @@ export interface ChildSettings {
     volume: number;
     /** Manje animacija (dodatno uz sistemsko podešavanje) */
     reduceMotion: boolean;
-    /** 3D učitelj na početnom ekranu */
+    /** Učitelj (crtani lik) na početnom ekranu i u igrama */
     avatar: boolean;
     /** Najviše ponuđenih odgovora; 0 = prema uzrastu */
     maxChoices: 0 | 2 | 3 | 4 | 6;
