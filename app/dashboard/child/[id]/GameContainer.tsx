@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { ArrowLeft, Check, Eye, Lock, X } from "lucide-react";
+import { ArrowLeft, Check, Eye, Lock, Star, X } from "lucide-react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
@@ -75,12 +75,49 @@ interface TierConfig {
     lockedHint: string | null;
     dot: string;
     badge: string;
+    /** Broj zvezdica na znački težine (1–3) */
+    stars: 1 | 2 | 3;
+    /** Boje težine na mapi nivoa */
+    look: { solid: string; edge: string; ring: string; text: string; soft: string; track: string };
 }
 
 const TIERS: TierConfig[] = [
-    { id: "easy", label: "Lako", hint: "Za početak", emoji: "🌱", min: 1, lockedHint: null, dot: "bg-emerald-500", badge: "bg-emerald-100 text-emerald-800" },
-    { id: "medium", label: "Srednje", hint: "Malo teže", emoji: "⚡", min: 6, lockedHint: "Prvo završi lake nivoe", dot: "bg-sun-500", badge: "bg-sun-100 text-sun-700" },
-    { id: "hard", label: "Teško", hint: "Najteže", emoji: "🚀", min: 11, lockedHint: "Prvo završi srednje nivoe", dot: "bg-rose-500", badge: "bg-rose-100 text-rose-700" },
+    {
+        id: "easy",
+        label: "Lako",
+        hint: "Za početak",
+        emoji: "🌱",
+        min: 1,
+        lockedHint: null,
+        dot: "bg-emerald-500",
+        badge: "bg-emerald-100 text-emerald-800",
+        stars: 1,
+        look: { solid: "bg-emerald-500", edge: "border-emerald-700", ring: "ring-emerald-200", text: "text-emerald-700", soft: "bg-emerald-50", track: "bg-emerald-400" },
+    },
+    {
+        id: "medium",
+        label: "Srednje",
+        hint: "Malo teže",
+        emoji: "⚡",
+        min: 6,
+        lockedHint: "Prvo završi lake nivoe",
+        dot: "bg-sun-500",
+        badge: "bg-sun-100 text-sun-700",
+        stars: 2,
+        look: { solid: "bg-sun-400", edge: "border-sun-600", ring: "ring-sun-200", text: "text-sun-700", soft: "bg-sun-50", track: "bg-sun-400" },
+    },
+    {
+        id: "hard",
+        label: "Teško",
+        hint: "Najteže",
+        emoji: "🚀",
+        min: 11,
+        lockedHint: "Prvo završi srednje nivoe",
+        dot: "bg-rose-500",
+        badge: "bg-rose-100 text-rose-700",
+        stars: 3,
+        look: { solid: "bg-rose-500", edge: "border-rose-700", ring: "ring-rose-200", text: "text-rose-700", soft: "bg-rose-50", track: "bg-rose-400" },
+    },
 ];
 
 const tierOf = (id: Tier) => TIERS.find((t) => t.id === id)!;
@@ -130,6 +167,8 @@ interface GameContainerProps {
     onOverlayChange?: (open: boolean) => void;
     /** Probni režim (razvoj): bez mreže, svi nivoi otključani, bez dnevnog ograničenja */
     preview?: boolean;
+    /** Samo u probnom prikazu: sledeći otključani nivo u svim igrama (podrazumevano je sve otključano) */
+    previewUnlocked?: number;
 }
 
 /** Čuva rezultat nivoa; kod prekida mreže ili greške servera pokušava još dva puta. */
@@ -157,7 +196,7 @@ async function saveResult(payload: Record<string, unknown>): Promise<{ logId?: u
     throw lastError;
 }
 
-export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, onOverlayChange, preview = false }: GameContainerProps) {
+export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, onOverlayChange, preview = false, previewUnlocked = MAX_LEVEL + 1 }: GameContainerProps) {
     const settings = useChildSettings();
     const { say } = useSpeech(gender);
     const publish = useGameBroadcast(childId, !preview);
@@ -171,7 +210,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const [outcome, setOutcome] = useState<LevelOutcome | null>(null);
 
     const [unlocked, setUnlocked] = useState<Record<string, number>>(() =>
-        preview ? Object.fromEntries(GAMES.map((g) => [g.id, MAX_LEVEL + 1])) : {}
+        preview ? Object.fromEntries(GAMES.map((g) => [g.id, previewUnlocked])) : {}
     );
     const [levelsLoading, setLevelsLoading] = useState(!preview);
     const [levelsError, setLevelsError] = useState(false);
@@ -279,10 +318,13 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         setScreen("playing");
     };
 
-    const chooseTier = (next: TierConfig) => {
+    /** Pokreće izabrani nivo. Bez `wanted` kreće sledeći nezavršeni nivo te težine. */
+    const chooseTier = (next: TierConfig, wanted?: number) => {
         if (!gameId || !isTierUnlocked(next, unlockedFor(gameId))) return;
+        // Nivo koji još nije otključan ne može da se izabere ni sa mape
+        if (wanted !== undefined && (wanted < next.min || wanted > tierMax(next) || wanted > unlockedFor(gameId))) return;
         playSfx("tap");
-        const nextLevel = startLevelFor(next, unlockedFor(gameId));
+        const nextLevel = wanted ?? startLevelFor(next, unlockedFor(gameId));
         if (clock.limitReached) {
             startLevel(next.id, nextLevel); // vraća na početni ekran sa porukom o kraju za danas
         } else if (askMood && !moodAsked) {
@@ -517,7 +559,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             </header>
 
             <div className="scroll-soft relative flex flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
-                {screen === "tiers" && <TierPicker game={game} unlocked={maxUnlocked} onChoose={chooseTier} />}
+                {screen === "tiers" && <LevelMap game={game} unlocked={maxUnlocked} teacher={settings.avatar ? gender : null} onChoose={chooseTier} />}
 
                 {screen === "mood-before" && (
                     <MoodPicker
@@ -814,56 +856,155 @@ function HoldButton({ label, onConfirm, holdMs = 2000 }: { label: string; onConf
     );
 }
 
-// ── Izbor težine ──────────────────────────────────────────────────────────────
+// ── Mapa nivoa ────────────────────────────────────────────────────────────────
+// Ulaz u igru: gore slika igre i jedno veliko dugme „Igraj” (nastavlja tamo gde je dete stalo),
+// ispod put od 15 nivoa u tri težine. Završeni nivoi su obojeni, sledeći svetli, ostali su zaključani.
+// Svaki otključan nivo može da se dodirne — dete vidi dokle je stiglo i šta je sledeće.
 
-function TierPicker({ game, unlocked, onChoose }: { game: GameDefinition; unlocked: number; onChoose: (tier: TierConfig) => void }) {
+interface LevelMapProps {
+    game: GameDefinition;
+    /** Sledeći otključani nivo (1–16; 16 = sve je završeno) */
+    unlocked: number;
+    /** Pol učitelja; null = bez učitelja */
+    teacher: string | undefined | null;
+    onChoose: (tier: TierConfig, level?: number) => void;
+}
+
+function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
+    const allDone = unlocked > MAX_LEVEL;
+    // Gde dete nastavlja: sledeći nezavršeni nivo; kad je sve završeno, najteža težina ispočetka
+    const nextTier = allDone ? TIERS[TIERS.length - 1] : (TIERS.find((t) => unlocked <= tierMax(t)) ?? TIERS[0]);
+    const nextLevel = startLevelFor(nextTier, unlocked);
+    const started = unlocked > 1;
+
     return (
-        <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center">
-            <div className="mb-6 text-center sm:mb-10">
-                <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">Izaberi težinu</h2>
-                <p className="mt-1 text-base font-semibold text-ink-soft sm:text-lg">{game.description}</p>
+        <div className="mx-auto flex w-full max-w-5xl flex-1 animate-fade-up flex-col justify-center gap-4 sm:gap-6">
+            {/* Igra + veliko dugme */}
+            <section className="relative overflow-hidden rounded-card border border-line bg-surface shadow-lift">
+                <div className={cn("absolute inset-x-0 top-0 h-2 bg-gradient-to-r", game.accent.gradient)} aria-hidden="true" />
+                <div className="flex flex-col gap-4 p-4 pt-6 sm:flex-row sm:items-center sm:gap-7 sm:p-7 sm:pt-9">
+                    <div className="relative hidden aspect-[16/10] w-64 shrink-0 overflow-hidden rounded-2xl ring-1 ring-line sm:block lg:w-80">
+                        <Image src={game.image} alt="" fill sizes="320px" className="object-cover" priority />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-3">
+                            {teacher !== null && (
+                                <span className={cn("grid h-16 w-16 shrink-0 place-items-end overflow-hidden rounded-2xl ring-1 sm:h-20 sm:w-20", game.accent.soft, game.accent.ring)}>
+                                    <TeacherAvatar gender={teacher} variant="face" className="h-full w-full" />
+                                </span>
+                            )}
+                            <div className="min-w-0">
+                                <h2 className="font-display text-2xl font-extrabold leading-tight text-ink sm:text-4xl">{game.title}</h2>
+                                <p className="mt-0.5 text-base font-semibold text-ink-soft sm:text-lg">{game.description}</p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => onChoose(nextTier, nextLevel)}
+                            className="mt-4 flex min-h-16 w-full items-center gap-4 rounded-2xl border-2 border-b-[6px] border-emerald-900 bg-emerald-700 px-5 text-left text-white shadow-soft transition-[transform,background-color,border-width] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 sm:mt-6 sm:min-h-20 sm:px-7"
+                        >
+                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/20 sm:h-12 sm:w-12" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" className="h-5 w-5 translate-x-0.5 sm:h-6 sm:w-6" fill="currentColor">
+                                    <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" />
+                                </svg>
+                            </span>
+                            <span className="min-w-0">
+                                <span className="block font-display text-xl font-extrabold leading-tight sm:text-2xl">{allDone ? "Igraj ponovo" : started ? "Nastavi" : "Igraj"}</span>
+                                <span className="block text-sm font-bold text-emerald-50 sm:text-base">
+                                    {nextTier.label} · nivo {nextLevel - nextTier.min + 1} od {LEVELS_PER_TIER}
+                                </span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            {/* Put kroz nivoe */}
+            <section aria-label="Svi nivoi" className="rounded-card border border-line bg-surface p-3 shadow-soft sm:p-5">
+                <ul className="grid gap-2 sm:gap-3">
+                    {TIERS.map((tier) => (
+                        <TierRow key={tier.id} tier={tier} unlocked={unlocked} next={allDone ? null : unlocked} onChoose={onChoose} />
+                    ))}
+                </ul>
+            </section>
+        </div>
+    );
+}
+
+interface TierRowProps {
+    tier: TierConfig;
+    unlocked: number;
+    /** Nivo koji je sledeći na redu (svetli); null kad je sve završeno */
+    next: number | null;
+    onChoose: (tier: TierConfig, level?: number) => void;
+}
+
+function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
+    const open = isTierUnlocked(tier, unlocked);
+    const done = completedInTier(tier, unlocked);
+    const status = !open ? tier.lockedHint : done === LEVELS_PER_TIER ? "Sve završeno" : done === 0 ? tier.hint : `Završeno ${done} od ${LEVELS_PER_TIER}`;
+
+    return (
+        <li className={cn("flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center sm:gap-5 sm:p-4", open ? tier.look.soft : "bg-canvas")}>
+            <div className="flex items-center gap-3 sm:w-52 sm:shrink-0">
+                <span
+                    className={cn(
+                        "flex h-12 w-12 shrink-0 items-center justify-center gap-px rounded-2xl border-2 border-b-4 sm:h-14 sm:w-14",
+                        open ? cn(tier.look.solid, tier.look.edge, "text-white") : "border-line bg-surface text-ink-faint"
+                    )}
+                    aria-hidden="true"
+                >
+                    {open ? (
+                        Array.from({ length: tier.stars }, (_, i) => <Star key={i} className={tier.stars === 3 ? "h-3.5 w-3.5" : "h-4 w-4"} fill="currentColor" strokeWidth={0} />)
+                    ) : (
+                        <Lock className="h-5 w-5" />
+                    )}
+                </span>
+                <div className="min-w-0">
+                    <h3 className={cn("font-display text-lg font-extrabold leading-tight sm:text-xl", open ? "text-ink" : "text-ink-faint")}>{tier.label}</h3>
+                    <p className={cn("text-sm font-bold", open ? tier.look.text : "text-ink-faint")}>{status}</p>
+                </div>
             </div>
-            <ul className="grid gap-4 sm:grid-cols-3 sm:gap-5">
-                {TIERS.map((t) => {
-                    const open = isTierUnlocked(t, unlocked);
-                    const done = completedInTier(t, unlocked);
-                    const complete = done === LEVELS_PER_TIER;
+
+            {/* Pet nivoa na traci; popunjeni deo trake pokazuje dokle je dete stiglo */}
+            <ol className="relative grid flex-1 grid-cols-5 items-center">
+                <span className="absolute inset-x-[10%] top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-line/70" aria-hidden="true" />
+                <span
+                    className={cn("absolute left-[10%] top-1/2 h-1.5 -translate-y-1/2 rounded-full", tier.look.track)}
+                    style={{ width: `${Math.max(0, Math.min(done, LEVELS_PER_TIER - 1)) * 20}%` }}
+                    aria-hidden="true"
+                />
+                {Array.from({ length: LEVELS_PER_TIER }, (_, i) => {
+                    const level = tier.min + i;
+                    const isDone = level < unlocked;
+                    const isNext = level === next;
+                    const locked = !isDone && !isNext;
                     return (
-                        <li key={t.id}>
+                        <li key={level} className="relative grid place-items-center">
                             <button
                                 type="button"
-                                disabled={!open}
-                                onClick={() => onChoose(t)}
+                                disabled={locked}
+                                onClick={() => onChoose(tier, level)}
+                                aria-label={`${tier.label}, nivo ${i + 1}${isDone ? ", završen" : isNext ? ", sledeći" : ", zaključan"}`}
                                 className={cn(
-                                    "flex w-full items-center gap-4 rounded-card border-2 border-b-[6px] p-4 text-left transition-[transform,border-color,box-shadow] sm:flex-col sm:gap-3 sm:p-7 sm:text-center",
-                                    open
-                                        ? "border-line bg-surface shadow-soft hover:border-brand-300 hover:shadow-lift active:translate-y-[3px] active:border-b-2"
-                                        : "cursor-not-allowed border-line bg-canvas"
+                                    "relative grid h-12 w-12 place-items-center rounded-full border-2 border-b-4 font-display text-lg font-extrabold transition-[transform,border-width] sm:h-14 sm:w-14 sm:text-xl",
+                                    isDone && cn(tier.look.solid, tier.look.edge, "text-white active:translate-y-[2px] active:border-b-2"),
+                                    isNext && cn("bg-surface ring-4 active:translate-y-[2px] active:border-b-2", tier.look.edge, tier.look.text, tier.look.ring, "animate-soft-pulse"),
+                                    locked && "cursor-not-allowed border-line bg-surface text-ink-faint"
                                 )}
                             >
-                                <span
-                                    className={cn("grid h-16 w-16 shrink-0 place-items-center rounded-full text-4xl sm:h-24 sm:w-24 sm:text-5xl", open ? "bg-brand-50" : "bg-line/60")}
-                                    aria-hidden="true"
-                                >
-                                    {open ? t.emoji : <Lock className="h-7 w-7 text-ink-faint sm:h-9 sm:w-9" />}
-                                </span>
-                                <span className="min-w-0 flex-1 sm:flex-none">
-                                    <span className={cn("block font-display text-xl font-extrabold sm:text-2xl", open ? "text-ink" : "text-ink-faint")}>{t.label}</span>
-                                    <span className="block text-sm font-semibold text-ink-soft">
-                                        {open ? (complete ? "Sve završeno. Igraj ponovo." : t.hint) : t.lockedHint}
+                                {locked ? <Lock className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" /> : i + 1}
+                                {isDone && (
+                                    <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-emerald-700 shadow-soft ring-1 ring-line" aria-hidden="true">
+                                        <Check className="h-3.5 w-3.5" strokeWidth={3.5} />
                                     </span>
-                                    <span className="mt-2.5 flex gap-1.5 sm:justify-center" aria-label={`Završeno ${done} od ${LEVELS_PER_TIER} nivoa`}>
-                                        {Array.from({ length: LEVELS_PER_TIER }, (_, i) => (
-                                            <span key={i} className={cn("h-3 w-3 rounded-full sm:h-3.5 sm:w-3.5", i < done ? t.dot : "bg-brand-100")} />
-                                        ))}
-                                    </span>
-                                </span>
+                                )}
                             </button>
                         </li>
                     );
                 })}
-            </ul>
-        </div>
+            </ol>
+        </li>
     );
 }
 

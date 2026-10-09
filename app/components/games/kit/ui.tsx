@@ -6,6 +6,7 @@ import { IDLE_HINT_MS, useIdle } from "./useIdle";
 import type { GameAccent } from "@/lib/games";
 import TeacherAvatar from "../../avatar/TeacherAvatar";
 import { useChildSettings } from "../../ChildSettingsProvider";
+import { useVoiceState } from "@/lib/voice";
 
 /**
  * Ko čita zadatke detetu. Postavlja ga strana na kojoj dete igra; bez njega
@@ -59,6 +60,7 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
     const idle = useIdle(IDLE_HINT_MS, round);
     return (
         <div className={cn("flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 shadow-soft sm:gap-4 sm:px-5 sm:py-3", className)}>
+            <HudTeacher />
             <div className="min-w-0 flex-1">
                 <p className="mb-1.5 text-xs font-extrabold text-ink-soft sm:text-sm">
                     {unit} {current} od {total}
@@ -98,18 +100,26 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
                 </div>
             )}
             {onSpeak && <SpeakButton onClick={onSpeak} className={idle ? "animate-soft-pulse" : undefined} />}
-            <HudTeacher />
         </div>
     );
 }
 
-/** Lice učitelja koji čita zadatke: izraz prati ton rečenice, usta se pomeraju dok govori */
+/**
+ * Učitelj koji čita zadatke: veliko lice na početku trake, izraz prati ton rečenice, usta se
+ * pomeraju dok govori. Dok govori, oko njega svetli prsten — jasno je ko se obraća detetu.
+ */
 function HudTeacher() {
     const settings = useChildSettings();
     const teacher = React.useContext(GameTeacherContext);
+    const { speaking } = useVoiceState();
     if (!teacher || !settings.avatar) return null;
     return (
-        <span className="grid h-12 w-12 shrink-0 place-items-end overflow-hidden rounded-full bg-brand-50 ring-1 ring-brand-100 sm:h-14 sm:w-14">
+        <span
+            className={cn(
+                "-my-1 grid h-14 w-14 shrink-0 place-items-end overflow-hidden rounded-2xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 transition-shadow duration-200 sm:h-[4.5rem] sm:w-[4.5rem] short:sm:h-16 short:sm:w-16",
+                speaking ? "ring-brand-400 shadow-[0_0_0_4px_var(--color-brand-100)]" : "ring-brand-100"
+            )}
+        >
             <TeacherAvatar gender={teacher.gender} variant="face" className="h-full w-full" />
         </span>
     );
@@ -188,8 +198,19 @@ interface GamePromptProps {
 }
 
 export function GamePrompt({ title, subtitle, visual, className }: GamePromptProps) {
+    const settings = useChildSettings();
+    const teacher = React.useContext(GameTeacherContext);
+    // Uputstvo je „oblačić” onoga ko govori: repić pokazuje na učitelja u traci iznad
+    const bubble = teacher !== null && settings.avatar;
     return (
-        <div className={cn("flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-soft sm:gap-6 sm:p-6 short:sm:p-4", className)}>
+        <div
+            className={cn(
+                "relative flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-soft sm:gap-6 sm:p-6 short:sm:p-4",
+                bubble &&
+                    "before:absolute before:-top-[9px] before:left-8 before:h-4 before:w-4 before:rotate-45 before:rounded-tl-[4px] before:border-l before:border-t before:border-line before:bg-surface sm:before:left-11",
+                className
+            )}
+        >
             {visual && (
                 <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-brand-50 text-5xl ring-1 ring-brand-100 sm:h-28 sm:w-28 sm:text-6xl short:sm:h-20 short:sm:w-20 short:sm:text-5xl">
                     {visual}

@@ -4,7 +4,9 @@
 //  • izraz lica prati emociju rečenice (lib/emotion.ts)
 //  • usta se pomeraju po jačini glasa (lib/voice.ts), oči povremeno trepnu
 //  • jednostavno, čitljivo lice — bez sitnih detalja koji odvlače pažnju
-// Sve se crta u SVG-u: nema učitavanja modela, radi i na starijim tabletima.
+// Sve se crta u SVG-u, ali sa svetlom i senkom kao kod 3D lika (oblina lica, sjaj u očima,
+// odsjaj na kosi, senka ispod brade) — u istom duhu kao 3D slike životinja u igrama.
+// Nema učitavanja modela, pa radi i na starijim tabletima.
 
 import { useEffect, useId, useRef } from "react";
 import { cn } from "@/lib/cn";
@@ -52,9 +54,12 @@ const POSES: Record<FaceExpression, Pose> = {
 const EYE_Y = 114;
 const EYE_LX = 92;
 const EYE_RX = 148;
-const EYE_RADIUS_X = 9.5;
-const EYE_RADIUS_Y = 13;
-const BROW_Y = EYE_Y - 25;
+/** Beonjača */
+const EYE_RADIUS_X = 14;
+const EYE_RADIUS_Y = 15.5;
+const BROW_Y = EYE_Y - 29;
+/** Koliko je donji kapak ispod oka dok lice miruje */
+const LID_REST = 30;
 const MOUTH_X = 120;
 const MOUTH_Y = 156;
 /** Tačka oko koje se glava naginje (vrat) */
@@ -78,22 +83,24 @@ function mouthPath(w: number, smile: number, open: number): string {
 // ── Izgled likova ─────────────────────────────────────────────────────────────
 
 interface Look {
-    skin: string;
-    shade: string;
-    hair: string;
-    top: string;
-    topShade: string;
+    /** Koža: osvetljeni deo, osnovna boja i senka */
+    skin: [string, string, string];
+    /** Kosa: odsjaj, osnovna boja i senka */
+    hair: [string, string, string];
+    /** Odeća: svetlo i senka */
+    top: [string, string];
+    /** Dužica oka: svetlo i tamno */
+    iris: [string, string];
 }
 
 const LOOKS: Record<"male" | "female", Look> = {
-    male: { skin: "#F1C29C", shade: "#E0A57E", hair: "#49301F", top: "#FFB920", topShade: "#E79C0A" },
-    female: { skin: "#F6CDAB", shade: "#E7B08C", hair: "#7A4326", top: "#FF7A70", topShade: "#EC5F55" },
+    male: { skin: ["#FFE3C8", "#F4C39C", "#D99870"], hair: ["#8A5B3C", "#5C3A25", "#3A2316"], top: ["#FFD15C", "#EE9A06"], iris: ["#9A6A3A", "#3F2410"] },
+    female: { skin: ["#FFE8D4", "#F8CEAC", "#E0A481"], hair: ["#B86B3C", "#8A4A26", "#5E2E15"], top: ["#FFA097", "#EC5B52"], iris: ["#7A9A4A", "#2F4016"] },
 };
 
 const MOUTH_STROKE = "#6E2B2B";
 const MOUTH_FILL = "#8F3333";
 const TONGUE = "#F27C92";
-const EYE_COLOR = "#2B1F1A";
 const BLUSH = "#F58F8F";
 
 // ── Komponenta ────────────────────────────────────────────────────────────────
@@ -118,7 +125,7 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
     const look = LOOKS[female ? "female" : "male"];
     const voice = useVoiceState();
     const settings = useChildSettings();
-    const clipId = useId();
+    const uid = useId();
 
     const emotion = fixedEmotion ?? voice.emotion;
     const speaking = fixedEmotion ? false : voice.speaking;
@@ -143,10 +150,8 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
             head: part<SVGGElement>("head"),
             browL: part<SVGGElement>("brow-l"),
             browR: part<SVGGElement>("brow-r"),
-            eyeL: part<SVGEllipseElement>("eye-l"),
-            eyeR: part<SVGEllipseElement>("eye-r"),
-            shineL: part<SVGCircleElement>("shine-l"),
-            shineR: part<SVGCircleElement>("shine-r"),
+            eyeL: part<SVGGElement>("eye-l"),
+            eyeR: part<SVGGElement>("eye-r"),
             lidL: part<SVGEllipseElement>("lid-l"),
             lidR: part<SVGEllipseElement>("lid-r"),
             blushL: part<SVGCircleElement>("blush-l"),
@@ -178,15 +183,12 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
 
             const blinking = now - blinkAt < 130;
             const eye = blinking ? 0.08 : live.eye;
-            for (const [ellipse, shine] of [
-                [parts.eyeL, parts.shineL],
-                [parts.eyeR, parts.shineR],
-            ] as const) {
-                ellipse?.setAttribute("ry", String(r1(EYE_RADIUS_Y * eye)));
-                shine?.setAttribute("opacity", eye < 0.5 ? "0" : "1");
-            }
-            parts.lidL?.setAttribute("cy", String(r1(EYE_Y + 25 - live.lid * 10)));
-            parts.lidR?.setAttribute("cy", String(r1(EYE_Y + 25 - live.lid * 10)));
+            // Oko je grupa (beonjača, dužica, sjaj): treptaj i širenje su sabijanje po visini
+            const squeeze = Math.round(eye * 100) / 100;
+            parts.eyeL?.setAttribute("transform", `translate(${EYE_LX} ${EYE_Y}) scale(1 ${squeeze})`);
+            parts.eyeR?.setAttribute("transform", `translate(${EYE_RX} ${EYE_Y}) scale(1 ${squeeze})`);
+            parts.lidL?.setAttribute("cy", String(r1(EYE_Y + LID_REST - live.lid * 12)));
+            parts.lidR?.setAttribute("cy", String(r1(EYE_Y + LID_REST - live.lid * 12)));
 
             parts.browL?.setAttribute("transform", `translate(${EYE_LX} ${r1(BROW_Y + live.browL)}) rotate(${r1(-live.browTilt)})`);
             parts.browR?.setAttribute("transform", `translate(${EYE_RX} ${r1(BROW_Y + live.browR)}) rotate(${r1(live.browTilt)})`);
@@ -218,6 +220,9 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
             const rightX = HAND_RX + (move === "wave" ? sway * 8 * live.armR : 0);
             parts.armL?.setAttribute("transform", `translate(${HAND_LX} ${r1(leftY)})`);
             parts.armR?.setAttribute("transform", `translate(${r1(rightX)} ${r1(rightY)})`);
+            // Rukav se vidi tek kad se ruka diže (spušten bi virio kao tamna mrlja na ramenu)
+            parts.sleeveL?.setAttribute("opacity", String(Math.min(1, r1(live.armL * 4))));
+            parts.sleeveR?.setAttribute("opacity", String(Math.min(1, r1(live.armR * 4))));
             parts.sleeveL?.setAttribute("x2", String(HAND_LX));
             parts.sleeveL?.setAttribute("y2", String(r1(leftY + 14)));
             parts.sleeveR?.setAttribute("x2", String(r1(rightX)));
@@ -294,74 +299,147 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
 
     const rest = POSES.neutral;
     const restMouth = mouthPath(rest.mouthW, rest.smile, rest.open);
+    // Preliv kože je zadat u koordinatama crteža: sve što je u boji kože (lice, uši, kapci)
+    // deli isto svetlo, pa se kapak koji prekriva oko ne vidi kao zakrpa.
+    const id = (name: string) => `${uid}-${name}`;
+    const fill = (name: string) => `url(#${id(name)})`;
+    const [skinLight, skinMid, skinDark] = look.skin;
+    const [hairLight, hairMid, hairDark] = look.hair;
+
+    const eye = (x: number, part: string) => (
+        <g data-part={part} transform={`translate(${x} ${EYE_Y})`}>
+            <ellipse rx={EYE_RADIUS_X} ry={EYE_RADIUS_Y} fill={fill("white")} />
+            <circle cy="1" r="11" fill={fill("iris")} />
+            <circle cy="1" r="5.6" fill="#1B120D" />
+            <circle cx="-4" cy="-3.6" r="3.8" fill="#fff" />
+            <circle cx="4" cy="5" r="1.7" fill="#fff" opacity="0.75" />
+            {/* Senka gornjeg kapka na oku i linija trepavica */}
+            <path d={`M${-EYE_RADIUS_X} -2A${EYE_RADIUS_X} ${EYE_RADIUS_Y} 0 0 1 ${EYE_RADIUS_X} -2A${EYE_RADIUS_X} 11 0 0 0 ${-EYE_RADIUS_X} -2Z`} fill="#2B1F1A" opacity="0.14" />
+            <path d={`M${-EYE_RADIUS_X - 1} -3A${EYE_RADIUS_X + 1} ${EYE_RADIUS_Y + 0.5} 0 0 1 ${EYE_RADIUS_X + 1} -3`} fill="none" stroke="#2B1F1A" strokeWidth="3" strokeLinecap="round" />
+        </g>
+    );
 
     return (
         <svg
             ref={svgRef}
-            viewBox={variant === "face" ? "36 16 168 176" : "0 0 240 280"}
+            viewBox={variant === "face" ? "36 14 168 178" : "0 0 240 280"}
             className={cn("pointer-events-none block select-none", className)}
             aria-hidden="true"
             focusable="false"
         >
             <defs>
-                <clipPath id={clipId}>
+                <clipPath id={id("frame")}>
+                    <rect width="240" height="280" />
+                </clipPath>
+                <clipPath id={id("mouth")}>
                     <path data-part="mouth-clip" d={restMouth} />
                 </clipPath>
+                <radialGradient id={id("skin")} gradientUnits="userSpaceOnUse" cx="96" cy="84" r="128">
+                    <stop offset="0" stopColor={skinLight} />
+                    <stop offset="0.55" stopColor={skinMid} />
+                    <stop offset="1" stopColor={skinDark} />
+                </radialGradient>
+                <radialGradient id={id("hand")} cx="0.35" cy="0.3" r="0.8">
+                    <stop offset="0" stopColor={skinLight} />
+                    <stop offset="1" stopColor={skinMid} />
+                </radialGradient>
+                <linearGradient id={id("neck")} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor={skinDark} />
+                    <stop offset="1" stopColor={skinMid} />
+                </linearGradient>
+                <linearGradient id={id("hair")} gradientUnits="userSpaceOnUse" x1="70" y1="24" x2="170" y2="200">
+                    <stop offset="0" stopColor={hairLight} />
+                    <stop offset="0.45" stopColor={hairMid} />
+                    <stop offset="1" stopColor={hairDark} />
+                </linearGradient>
+                <linearGradient id={id("top")} gradientUnits="userSpaceOnUse" x1="60" y1="200" x2="180" y2="290">
+                    <stop offset="0" stopColor={look.top[0]} />
+                    <stop offset="1" stopColor={look.top[1]} />
+                </linearGradient>
+                <radialGradient id={id("iris")} cx="0.5" cy="0.62" r="0.6">
+                    <stop offset="0" stopColor={look.iris[0]} />
+                    <stop offset="1" stopColor={look.iris[1]} />
+                </radialGradient>
+                <radialGradient id={id("white")} cx="0.45" cy="0.4" r="0.7">
+                    <stop offset="0.5" stopColor="#fff" />
+                    <stop offset="1" stopColor="#DDE4EE" />
+                </radialGradient>
+                <radialGradient id={id("blush")}>
+                    <stop offset="0" stopColor={BLUSH} stopOpacity="0.9" />
+                    <stop offset="1" stopColor={BLUSH} stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id={id("shade")}>
+                    <stop offset="0" stopColor="#3A1E12" stopOpacity="0.38" />
+                    <stop offset="1" stopColor="#3A1E12" stopOpacity="0" />
+                </radialGradient>
+                <radialGradient id={id("glow")}>
+                    <stop offset="0" stopColor="#fff" stopOpacity="0.55" />
+                    <stop offset="1" stopColor="#fff" stopOpacity="0" />
+                </radialGradient>
+                <linearGradient id={id("inside")} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0" stopColor="#5E1F22" />
+                    <stop offset="1" stopColor={MOUTH_FILL} />
+                </linearGradient>
             </defs>
 
             {/* Kosa iza glave (učiteljica) */}
             {female && (
-                <path
-                    d="M40 122C36 58 76 22 120 22s84 36 80 100v54c0 20-14 28-27 24l-3-78H70l-3 78c-13 4-27-4-27-24z"
-                    fill={look.hair}
-                />
+                <path d="M38 122C34 56 76 20 120 20s86 36 82 102v56c0 21-15 29-28 25l-3-80H69l-3 80c-13 4-28-4-28-25z" fill={fill("hair")} />
             )}
 
-            {/* Telo */}
-            <path d="M26 282c0-54 38-78 94-78s94 24 94 78z" fill={look.top} />
-            <path d="M26 282c0-22 6-39 17-52 4 20 8 36 10 52zM214 282c0-22-6-39-17-52-4 20-8 36-10 52z" fill={look.topShade} opacity="0.55" />
-            <rect x="104" y="166" width="32" height="48" rx="13" fill={look.shade} />
-            <path d="M96 205q24 34 48 0-24 13-48 0z" fill="#fff" />
+            {/* Telo: svetlo pada sleva odozgo, ramena su zaobljena */}
+            <path d="M24 284c0-56 38-80 96-80s96 24 96 80z" fill={fill("top")} />
+            <ellipse cx="78" cy="232" rx="46" ry="20" fill={fill("glow")} opacity="0.5" />
+            <ellipse cx="120" cy="214" rx="62" ry="20" fill={fill("shade")} opacity="0.75" />
+            <rect x="103" y="164" width="34" height="50" rx="14" fill={fill("neck")} />
+            <ellipse cx="120" cy="178" rx="24" ry="13" fill={fill("shade")} />
+            <path d="M95 204q25 36 50 0-25 14-50 0z" fill="#fff" />
+            <path d="M95 204q25 14 50 0-25 9-50 0z" fill="#C9D2E0" opacity="0.7" />
 
-            {/* Ruke (vide se samo kad su podignute) */}
-            <line data-part="sleeve-l" x1="50" y1="262" x2={HAND_LX} y2={HAND_DOWN_Y + 14} stroke={look.top} strokeWidth="26" strokeLinecap="round" />
-            <line data-part="sleeve-r" x1="190" y1="262" x2={HAND_RX} y2={HAND_DOWN_Y + 14} stroke={look.top} strokeWidth="26" strokeLinecap="round" />
-            <g data-part="arm-l" transform={`translate(${HAND_LX} ${HAND_DOWN_Y})`}>
-                <circle r="17" fill={look.skin} />
-                <circle cx="13" cy="-9" r="7" fill={look.skin} />
-            </g>
-            <g data-part="arm-r" transform={`translate(${HAND_RX} ${HAND_DOWN_Y})`}>
-                <circle r="17" fill={look.skin} />
-                <circle cx="-13" cy="-9" r="7" fill={look.skin} />
+            {/* Ruke (vide se samo kad su podignute). Isečene su na okvir crteža: kad je mesto za
+                lik uže od crteža, spuštene šake ne smeju da provire ispod ramena. */}
+            <g clipPath={`url(#${id("frame")})`}>
+            <line data-part="sleeve-l" x1="50" y1="262" x2={HAND_LX} y2={HAND_DOWN_Y + 14} stroke={look.top[1]} strokeWidth="27" strokeLinecap="round" opacity="0" />
+                <line data-part="sleeve-r" x1="190" y1="262" x2={HAND_RX} y2={HAND_DOWN_Y + 14} stroke={look.top[1]} strokeWidth="27" strokeLinecap="round" opacity="0" />
+                <g data-part="arm-l" transform={`translate(${HAND_LX} ${HAND_DOWN_Y})`}>
+                    <circle r="17" fill={fill("hand")} />
+                    <circle cx="13" cy="-9" r="7" fill={fill("hand")} />
+                </g>
+                <g data-part="arm-r" transform={`translate(${HAND_RX} ${HAND_DOWN_Y})`}>
+                    <circle r="17" fill={fill("hand")} />
+                    <circle cx="-13" cy="-9" r="7" fill={fill("hand")} />
+                </g>
             </g>
 
             {/* Glava */}
             <g data-part="head">
-                <circle cx="55" cy="120" r="12" fill={look.skin} />
-                <circle cx="185" cy="120" r="12" fill={look.skin} />
-                <circle cx="55" cy="120" r="5.5" fill={look.shade} />
-                <circle cx="185" cy="120" r="5.5" fill={look.shade} />
+                <circle cx="55" cy="122" r="13" fill={fill("skin")} />
+                <circle cx="185" cy="122" r="13" fill={fill("skin")} />
+                <circle cx="56" cy="122" r="6" fill={skinDark} opacity="0.7" />
+                <circle cx="184" cy="122" r="6" fill={skinDark} opacity="0.85" />
                 {female && (
                     <>
-                        <circle cx="55" cy="136" r="4.5" fill="#FFCD4D" />
-                        <circle cx="185" cy="136" r="4.5" fill="#FFCD4D" />
+                        <circle cx="54" cy="139" r="5" fill="#FFCD4D" />
+                        <circle cx="186" cy="139" r="5" fill="#FFCD4D" />
+                        <circle cx="52.5" cy="137.5" r="1.6" fill="#fff" opacity="0.8" />
+                        <circle cx="184.5" cy="137.5" r="1.6" fill="#fff" opacity="0.8" />
                     </>
                 )}
-                <rect x="54" y="40" width="132" height="142" rx="62" fill={look.skin} />
+                <rect x="54" y="40" width="132" height="142" rx="62" fill={fill("skin")} />
+                {/* Odsjaj na čelu i obrazu daje licu oblinu */}
+                <ellipse cx="92" cy="74" rx="34" ry="20" fill={fill("glow")} opacity="0.55" />
 
                 {/* Oči */}
-                <ellipse data-part="eye-l" cx={EYE_LX} cy={EYE_Y} rx={EYE_RADIUS_X} ry={EYE_RADIUS_Y} fill={EYE_COLOR} />
-                <ellipse data-part="eye-r" cx={EYE_RX} cy={EYE_Y} rx={EYE_RADIUS_X} ry={EYE_RADIUS_Y} fill={EYE_COLOR} />
-                <circle data-part="shine-l" cx={EYE_LX + 3} cy={EYE_Y - 4} r="3" fill="#fff" />
-                <circle data-part="shine-r" cx={EYE_RX + 3} cy={EYE_Y - 4} r="3" fill="#fff" />
+                {eye(EYE_LX, "eye-l")}
+                {eye(EYE_RX, "eye-r")}
                 {/* Donji kapci: u boji kože, podižu se kad se lice smeje */}
-                <ellipse data-part="lid-l" cx={EYE_LX} cy={EYE_Y + 25} rx="15" ry="10" fill={look.skin} />
-                <ellipse data-part="lid-r" cx={EYE_RX} cy={EYE_Y + 25} rx="15" ry="10" fill={look.skin} />
+                <ellipse data-part="lid-l" cx={EYE_LX} cy={EYE_Y + LID_REST} rx="19" ry="12" fill={fill("skin")} />
+                <ellipse data-part="lid-r" cx={EYE_RX} cy={EYE_Y + LID_REST} rx="19" ry="12" fill={fill("skin")} />
                 {female && (
                     <path
-                        d={`M${EYE_LX - 9} ${EYE_Y - 8}l-6-4M${EYE_RX + 9} ${EYE_Y - 8}l6-4`}
-                        stroke={EYE_COLOR}
-                        strokeWidth="3"
+                        d={`M${EYE_LX - 13} ${EYE_Y - 9}l-7-5M${EYE_LX - 9} ${EYE_Y - 13}l-4-6M${EYE_RX + 13} ${EYE_Y - 9}l7-5M${EYE_RX + 9} ${EYE_Y - 13}l4-6`}
+                        stroke="#2B1F1A"
+                        strokeWidth="2.6"
                         strokeLinecap="round"
                         fill="none"
                     />
@@ -369,29 +447,38 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
 
                 {/* Obrve */}
                 <g data-part="brow-l" transform={`translate(${EYE_LX} ${BROW_Y})`}>
-                    <path d="M-13 2Q0-4 13 2" stroke={look.hair} strokeWidth="5.5" strokeLinecap="round" fill="none" />
+                    <path d="M-14 2Q0-5 14 2" stroke={hairDark} strokeWidth="6" strokeLinecap="round" fill="none" />
                 </g>
                 <g data-part="brow-r" transform={`translate(${EYE_RX} ${BROW_Y})`}>
-                    <path d="M-13 2Q0-4 13 2" stroke={look.hair} strokeWidth="5.5" strokeLinecap="round" fill="none" />
+                    <path d="M-14 2Q0-5 14 2" stroke={hairDark} strokeWidth="6" strokeLinecap="round" fill="none" />
                 </g>
 
-                {/* Nos i obrazi */}
-                <path d="M115 134q5 6 11 0" stroke={look.shade} strokeWidth="4" strokeLinecap="round" fill="none" />
-                <circle data-part="blush-l" cx="77" cy="143" r="11" fill={BLUSH} opacity={rest.blush} />
-                <circle data-part="blush-r" cx="163" cy="143" r="11" fill={BLUSH} opacity={rest.blush} />
+                {/* Nos: senka ispod i tačka svetla */}
+                <path d="M113 137q7 8 14 0" stroke={skinDark} strokeWidth="4.5" strokeLinecap="round" fill="none" />
+                <ellipse cx="118" cy="129" rx="4" ry="3" fill="#fff" opacity="0.45" />
+
+                {/* Obrazi */}
+                <circle data-part="blush-l" cx="76" cy="146" r="16" fill={fill("blush")} opacity={rest.blush} />
+                <circle data-part="blush-r" cx="164" cy="146" r="16" fill={fill("blush")} opacity={rest.blush} />
 
                 {/* Usta */}
-                <path data-part="mouth" d={restMouth} fill={MOUTH_FILL} stroke={MOUTH_STROKE} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
-                <g clipPath={`url(#${clipId})`}>
+                <path data-part="mouth" d={restMouth} fill={fill("inside")} stroke={MOUTH_STROKE} strokeWidth="5" strokeLinejoin="round" strokeLinecap="round" />
+                <g clipPath={`url(#${id("mouth")})`}>
                     <rect data-part="teeth" x={MOUTH_X - 26} y={MOUTH_Y - 6} width="52" height="0" fill="#fff" />
                     <ellipse data-part="tongue" cx={MOUTH_X} cy={MOUTH_Y + 10} rx="11" ry="0" fill={TONGUE} />
                 </g>
 
-                {/* Kosa */}
+                {/* Kosa sa odsjajem */}
                 {female ? (
-                    <path d="M52 110C46 60 82 30 122 30c42 0 72 30 66 80-6-22-18-34-34-40-22 22-70 22-102 40z" fill={look.hair} />
+                    <>
+                        <path d="M50 112C44 58 82 28 122 28c44 0 74 30 68 82-6-23-18-35-34-41-22 23-72 23-106 43z" fill={fill("hair")} />
+                        <path d="M70 66c14-18 36-27 58-26" stroke="#fff" strokeOpacity="0.28" strokeWidth="9" strokeLinecap="round" fill="none" />
+                    </>
                 ) : (
-                    <path d="M50 106C44 52 80 26 122 26c44 0 76 28 68 80-4-20-18-36-38-40-24-4-48 6-68-2-18 10-30 24-34 42z" fill={look.hair} />
+                    <>
+                        <path d="M49 108C43 52 80 24 122 24c46 0 78 28 70 84-4-21-18-37-38-41-24-5-48 6-69-2-18 10-32 24-36 43z" fill={fill("hair")} />
+                        <path d="M72 60c14-16 34-23 56-22" stroke="#fff" strokeOpacity="0.25" strokeWidth="9" strokeLinecap="round" fill="none" />
+                    </>
                 )}
             </g>
         </svg>

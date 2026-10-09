@@ -30,6 +30,7 @@ interface Props {
     realtimeTopic?: string | null;
     /** Probni režim (razvoj): bez mreže */
     preview?: boolean;
+    previewUnlocked?: number;
 }
 
 const TABS: { id: View; label: string; Icon: typeof Gamepad2 }[] = [
@@ -45,7 +46,7 @@ export default function ChildPageClient({ realtimeTopic = null, ...props }: Prop
     );
 }
 
-function ChildPage({ child, viewer, settings, preview = false }: Omit<Props, "realtimeTopic">) {
+function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }: Omit<Props, "realtimeTopic">) {
     const router = useRouter();
     const [view, setView] = useState<View>("games");
     const [points, setPoints] = useState(child.experience_points ?? 0);
@@ -182,6 +183,7 @@ function ChildPage({ child, viewer, settings, preview = false }: Omit<Props, "re
                             onExperienceChange={setPoints}
                             onOverlayChange={setGameOpen}
                             preview={preview}
+                            previewUnlocked={previewUnlocked}
                         />
 
                         {/* Priče koje je odrasli napisao baš za ovo dete (ne prikazuje se ako ih nema) */}

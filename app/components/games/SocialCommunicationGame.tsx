@@ -74,7 +74,7 @@ const ACCENT = getGame("social").accent;
 const MODEL_LABEL = "Primer";
 const LISTENING_TEXT = "Slušamo…";
 const HELPS_TEXT = "To pomaže.";
-const RETRY_TEXT = "Probajmo drugi način.";
+const RETRY_TEXT = "Probaj nešto drugo.";
 const HINT_TEXT = "Pogledaj karticu koja svetli.";
 const KIND_LABEL: Record<SituationKind, string> = { polite: "učtivost", advocacy: "zastupanje sebe" };
 const CELEBRATE_MS = 1000;
@@ -367,7 +367,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                 round={shown.round}
                 totalRounds={shown.totalRounds}
                 score={isMonitor || settings.preset.showPoints ? shown.score : undefined}
-                unit="Situacija"
+                unit="Zadatak"
                 onSpeak={isMonitor ? undefined : handleRepeat}
             />
 
