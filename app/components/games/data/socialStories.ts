@@ -761,14 +761,14 @@ const STORIES: readonly Story[] = [
         steps: [
             {
                 scene: ["🎨", "🖍️"],
-                text: "U radionici svako crta svoju sliku. Miriše na boje i lepak. Želim crvenu bojicu. Crvenu sada koristi Ana.",
+                text: "U radionici svako crta svoju sliku. Miriše na boje i lepak. Želim crvenu bojicu. Crvenu sada koristi drugarica.",
                 decision: choice(
                     "Šta možeš da uradiš kad neko koristi ono što ti treba?",
                     [
-                        o("🙋", "Pitam: „Ana, mogu li posle tebe?”", "Ana sada zna da čekam crvenu. Daje mi je kad završi."),
+                        o("🙋", "Pitam: „Mogu li posle tebe?”", "Drugarica sada zna da čekam crvenu. Daje mi je kad završi."),
                         o("🖍️", "Crtam drugom bojom dok čekam", "Dok čekam crvenu, crtež raste i sa drugim bojama."),
                     ],
-                    [o("✊", "Uzmem joj bojicu iz ruke", "Ako uzmem bojicu bez pitanja, Ana se može rastužiti.")]
+                    [o("✊", "Uzmem joj bojicu iz ruke", "Ako uzmem bojicu bez pitanja, drugarica se može rastužiti.")]
                 ),
             },
             {
@@ -806,7 +806,7 @@ const STORIES: readonly Story[] = [
                 decision: choice(
                     "Šta možeš da uradiš kad je izabran tuđi crtež?",
                     [
-                        o("👏", "Kažem Ani: „Bravo!”", "Ana se raduje. Moj crtež je i dalje moj."),
+                        o("👏", "Kažem drugarici: „Bravo!”", "Drugarica se raduje. Moj crtež je i dalje moj."),
                         o("🏠", "Odnesem svoj crtež kući", "Kod kuće crtež može na moj zid ili na frižider."),
                     ],
                     [o("📄", "Pocepam svoj crtež", "Pocepan crtež ne mogu da pokažem mami i tati.")]

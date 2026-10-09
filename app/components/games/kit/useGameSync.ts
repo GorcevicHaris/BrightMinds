@@ -45,6 +45,8 @@ export function useGameSync<V extends BaseView>({ childId, gameId, level, isMoni
     return useMemo(
         () => ({
             start: (view: V) => {
+                // Jednom po nivou: React u razvoju pokreće efekte dvaput, pa bi roditelj video dva početka
+                if (startedAt.current !== null) return;
                 startedAt.current = Date.now();
                 emit("started", view);
             },

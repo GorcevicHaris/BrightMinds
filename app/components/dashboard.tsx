@@ -368,7 +368,7 @@ function ChildCard({ child, onEdit, onConfigure, onStories, onDelete }: ChildCar
                     {isGirl ? "👧" : child.gender === "male" ? "👦" : "🧒"}
                 </span>
                 <div className="min-w-0 flex-1">
-                    <h2 className="truncate text-lg font-extrabold text-ink sm:text-xl">
+                    <h2 className="line-clamp-2 break-words text-lg font-extrabold leading-tight text-ink sm:text-xl">
                         {child.first_name} {child.last_name}
                     </h2>
                     <p className="text-sm font-semibold text-ink-soft">{age || "—"}</p>
@@ -452,7 +452,7 @@ function ChildCard({ child, onEdit, onConfigure, onStories, onDelete }: ChildCar
                     </Link>
                     <button type="button" onClick={onStories} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
                         <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        Moje priče
+                        Priče
                     </button>
                     <button type="button" onClick={onConfigure} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
                         <Settings2 className="h-4 w-4 shrink-0" aria-hidden="true" />

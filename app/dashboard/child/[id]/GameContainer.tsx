@@ -220,7 +220,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     /** Izlaz iz igre: ako je nešto odigrano (i pitanje je uključeno), pitamo kako se dete sada oseća. */
     const leaveGame = () => {
         if (game && levelsFinishedInGame.current > 0 && plan.includes(game.id)) markPlanDone(game.id);
-        if (screen === "playing" && game && !outcome) {
+        // Roditelju koji prati uživo javljamo da je dete izašlo (i posle završenog nivoa)
+        if (screen === "playing" && game) {
             publish({
                 childId,
                 activityId: game.activityId,

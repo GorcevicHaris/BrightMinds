@@ -1237,7 +1237,10 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                 className="block h-10 w-10 rounded-full border-4 border-white shadow-soft ring-1 ring-line sm:h-14 sm:w-14"
                                 style={{ background: round.color.hex }}
                             />
-                            <span className="whitespace-nowrap text-xs font-extrabold leading-none tracking-tight text-ink sm:text-sm sm:tracking-normal">{round.color.nom}</span>
+                            {/* Duga imena (npr. „svetlozelena” velikim slovima) prelaze u drugi red na mestu spoja reči */}
+                            <span className="max-w-full text-center text-xs font-extrabold leading-tight tracking-tight text-ink sm:text-sm sm:tracking-normal">
+                                {round.color.nom.replace(/^(svetlo|tamno)(?=.)/, "$1\u00AD")}
+                            </span>
                         </span>
                     ) : (
                         <span aria-hidden="true">{picture.emoji}</span>

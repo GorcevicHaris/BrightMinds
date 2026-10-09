@@ -241,10 +241,26 @@ export async function POST(request: Request) {
             { ...legacyRow, ...structured },
             legacyRow,
         ];
-        const { data, variant } = await withSchemaFallback<unknown>(
-            rows.map((row) => () => supabaseAdmin.from("progress_logs").insert(row).select("id").single()),
-            "progress_logs.insert"
-        );
+        // Poseta napravljena baš za ovu partiju ne sme da ostane prazna ako se partija ne veže za nju
+        const createdSessionId = sessionId !== null && sessionId !== game.sessionId ? sessionId : null;
+        const dropUnusedSession = async () => {
+            if (createdSessionId === null) return;
+            const { error } = await supabaseAdmin.from(PLAY_SESSIONS_TABLE).delete().eq("id", createdSessionId).eq("child_id", childId);
+            if (error) console.error("[api] POST /api/activities/complete: prazna poseta nije obrisana:", error);
+        };
+
+        let inserted: { data: unknown; variant: number };
+        try {
+            inserted = await withSchemaFallback<unknown>(
+                rows.map((row) => () => supabaseAdmin.from("progress_logs").insert(row).select("id").single()),
+                "progress_logs.insert"
+            );
+        } catch (error) {
+            await dropUnusedSession();
+            throw error;
+        }
+        const { data, variant } = inserted;
+        if (variant !== 0) await dropUnusedSession();
         const logId = (data as { id: number }).id;
 
         const experiencePoints = await awardExperience(childId, stars * POINTS_PER_STAR);
