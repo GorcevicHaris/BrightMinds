@@ -99,13 +99,43 @@ function fetchAudio(text: string, emotion: VoiceEmotion, gender?: string): Promi
     return pending;
 }
 
-function findLocalVoice(): SpeechSynthesisVoice | null {
-    const voices = window.speechSynthesis?.getVoices() ?? [];
-    return voices.find((v) => /^(sr|hr|bs)([-_]|$)/i.test(v.lang)) ?? null;
+/** Srpski glas ima prednost; bosanski i hrvatski su rezerva kad srpskog nema na uređaju */
+const VOICE_LANGUAGES = ["sr", "bs", "hr"];
+/** Pregledač glasove učitava sa zakašnjenjem — toliko najduže čekamo na prvi spisak */
+const VOICES_WAIT_MS = 700;
+
+function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+    for (const language of VOICE_LANGUAGES) {
+        const pattern = new RegExp(`^${language}([-_]|$)`, "i");
+        const matches = voices.filter((v) => pattern.test(v.lang));
+        // Glas sa samog uređaja radi i bez interneta, pa ima prednost nad mrežnim
+        const voice = matches.find((v) => v.localService) ?? matches[0];
+        if (voice) return voice;
+    }
+    return null;
 }
 
-function speakWithBrowser(text: string, emotion: VoiceEmotion, done: () => void) {
-    const voice = findLocalVoice();
+async function findLocalVoice(): Promise<SpeechSynthesisVoice | null> {
+    const synth = window.speechSynthesis;
+    if (!synth) return null;
+    let voices = synth.getVoices();
+    if (voices.length === 0) {
+        await new Promise<void>((resolve) => {
+            const finish = () => {
+                synth.removeEventListener("voiceschanged", finish);
+                resolve();
+            };
+            synth.addEventListener("voiceschanged", finish);
+            setTimeout(finish, VOICES_WAIT_MS);
+        });
+        voices = synth.getVoices();
+    }
+    return pickVoice(voices);
+}
+
+async function speakWithBrowser(text: string, emotion: VoiceEmotion, mine: number, done: () => void) {
+    const voice = await findLocalVoice();
+    if (mine !== generation) return; // dok su se glasovi učitavali, pokrenut je drugi govor
     // Bez našeg glasa tekst bi zvučao pogrešno — tada radije ćutimo (lice ipak pokaže izraz)
     if (!voice) {
         showEmotion(emotion);
@@ -155,7 +185,7 @@ export async function speak(text: string, options: SpeakOptions = {}): Promise<v
     if (mine !== generation) return; // u međuvremenu je pokrenut drugi govor
 
     if (!url) {
-        speakWithBrowser(spoken, emotion, done);
+        await speakWithBrowser(spoken, emotion, mine, done);
         return;
     }
     await playVoice(url, emotion, done);

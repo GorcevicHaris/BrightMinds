@@ -29,7 +29,7 @@ Aplikacija je na [http://localhost:3000](http://localhost:3000). Drugi port: `np
 | `JWT_SECRET` | da | potpisivanje sesija (`openssl rand -hex 48`) |
 | `ELEVENLABS_API_KEY` | ne | glas učitelja; bez njega se koristi glas pregledača |
 | `ELEVENLABS_VOICE_ID`, `ELEVENLABS_FEMALE_VOICE_ID` | ne | muški / ženski glas |
-| `ELEVENLABS_MODEL` | ne | model glasa; podrazumevano `eleven_multilingual_v2`, a `eleven_v3` je izražajniji |
+| `ELEVENLABS_MODEL` | ne | model glasa; podrazumevano `eleven_v3` (zna srpski i emocije). Ako nalog nema pristup, koristi se `eleven_multilingual_v2`, koji srpski čita hrvatskim izgovorom |
 
 ### Baza
 

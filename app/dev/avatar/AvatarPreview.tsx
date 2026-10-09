@@ -21,6 +21,19 @@ const SAMPLES: Record<VoiceEmotion, string> = {
     surprised: "Luka je iznenađen poklonom.",
 };
 
+const NAMES: Record<VoiceEmotion, string> = {
+    neutral: "mirno",
+    hello: "pozdrav",
+    happy: "veselo",
+    proud: "ponosno",
+    gentle: "nežno",
+    curious: "radoznalo",
+    sad: "tužno",
+    angry: "ljutnja u priči",
+    scared: "strah u priči",
+    surprised: "iznenađeno",
+};
+
 export default function AvatarPreview() {
     return (
         <main className="min-h-screen bg-canvas p-6">
@@ -38,7 +51,7 @@ export default function AvatarPreview() {
                                     onClick={() => void speak(SAMPLES[emotion], { gender, emotion })}
                                     className="rounded-xl bg-white px-3 py-2 text-sm font-extrabold text-ink"
                                 >
-                                    {emotion}
+                                    {NAMES[emotion]}
                                 </button>
                             ))}
                             <button
@@ -66,7 +79,7 @@ export default function AvatarPreview() {
                         {VOICE_EMOTIONS.map((emotion) => (
                             <figure key={emotion} className="rounded-card border border-line bg-surface p-2 text-center">
                                 <TeacherAvatar gender={gender} emotion={emotion} className="mx-auto h-36 w-32" />
-                                <figcaption className="text-sm font-extrabold text-ink-soft">{emotion}</figcaption>
+                                <figcaption className="text-sm font-extrabold text-ink-soft">{NAMES[emotion]}</figcaption>
                             </figure>
                         ))}
                     </div>
