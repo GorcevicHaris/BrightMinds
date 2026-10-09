@@ -7,7 +7,8 @@
 //    jedna informacija po rečenici. Bez ironije, prenesenog značenja i retorskih pitanja.
 //  • Pretežno opis: šta vidim, čujem i osećam, ko je tu, ko pomaže, koliko traje,
 //    šta sledi i da se završava. Čulne činjenice su važne („Bušilica zuji. Zvuk je glasan, ali kratko traje.”).
-//  • Korak sa izborom pita „Šta može da pomogne?” ili „Šta možeš da uradiš?”. Obično pomažu DVA izbora,
+//  • Korak sa izborom pita „Šta može da pomogne?” ili „Šta možeš da uradiš?”. Obično pomažu DVA izbora
+//    (od nivoa 6 uz njih stoje DVA izbora koja manje pomažu, pa priče postaju zahtevnije),
 //    a jedan je zastupanje sebe: tražim pomoć ili pauzu, kažem da je preglasno, držim mamu za ruku, nosim omiljenu igračku.
 //  • Izbor koji manje pomaže dobija mirnu rečenicu o tome šta bi se verovatno desilo — bez osude.
 //    Ono što je tipično za neurodivergentnu decu nikad nije takav izbor: pokrivanje ušiju,
@@ -324,7 +325,10 @@ const STORIES: readonly Story[] = [
                         o("🗣️", "Kažem mami: „Boli me grlo.”", "Mama sada zna šta me boli. Može da mi pomogne."),
                         o("👉", "Pokažem mami gde me boli", "I pokazivanje kaže mami šta me boli."),
                     ],
-                    [o("🤐", "Ne kažem nikome", "Ako ne kažem, niko ne zna da me boli. Grlo i dalje boli.")]
+                    [
+                        o("🤐", "Ne kažem nikome", "Ako ne kažem, niko ne zna da me boli. Grlo i dalje boli."),
+                        o("🎮", "Igram se kao da me ništa ne boli", "Tada mama ne zna da me boli. Grlo i dalje boli."),
+                    ]
                 ),
             },
             {
@@ -336,7 +340,10 @@ const STORIES: readonly Story[] = [
                         o("📚", "Gledam slikovnicu", "Uz slikovnicu vreme brže prolazi. Moj red dolazi."),
                         o("🎧", "Stavim slušalice ako je preglasno", "Slušalice stišaju plač i kašalj. Tako je lakše čekati."),
                     ],
-                    [o("🚪", "Uđem kod doktora preko reda", "Doktor prima decu po redu. Kod njega je sada drugo dete.")]
+                    [
+                        o("🚪", "Uđem kod doktora preko reda", "Doktor prima decu po redu. Kod njega je sada drugo dete."),
+                        o("🧸", "Uzmem igračku drugom detetu", "To dete se tada rastuži. Mogu da pitam ili da gledam svoju slikovnicu."),
+                    ]
                 ),
             },
             {
@@ -348,7 +355,10 @@ const STORIES: readonly Story[] = [
                         o("😮", "Otvorim usta i kažem „A”", "Doktor sada vidi grlo. Za nekoliko sekundi je gotovo."),
                         o("🤝", "Držim mamu za ruku", "Mamina ruka pomaže dok doktor gleda grlo."),
                     ],
-                    [o("🤐", "Stisnem usta", "Kad su usta zatvorena, doktor ne vidi grlo. Tada pregled duže traje.")]
+                    [
+                        o("🤐", "Stisnem usta", "Kad su usta zatvorena, doktor ne vidi grlo. Tada pregled duže traje."),
+                        o("🖐️", "Odgurnem doktorovu ruku", "Štapić tada može da me ogrebe. Kad sam {miran|mirna}, brzo je gotovo."),
+                    ]
                 ),
             },
             {
@@ -360,7 +370,10 @@ const STORIES: readonly Story[] = [
                         o("🥄", "Popijem kašiku koju mi mama da", "Lek pomaže grlu. Lek pijem samo kad mi ga da odrasla osoba."),
                         o("💧", "Posle leka popijem vodu", "Voda spere ukus leka."),
                     ],
-                    [o("🥤", "Popijem ceo sirup bez mame", "Previše leka nije dobro za telo. Mama zna koliko leka treba.")]
+                    [
+                        o("🥤", "Popijem ceo sirup bez mame", "Previše leka nije dobro za telo. Mama zna koliko leka treba."),
+                        o("🚰", "Prospem lek u lavabo", "Lek pomaže samo kad ga popijem. U lavabou ne leči grlo."),
+                    ]
                 ),
             },
             {
@@ -386,7 +399,10 @@ const STORIES: readonly Story[] = [
                         o("🪑", "Sednem za naš sto", "Za stolom sedim sa porodicom. Tu čekamo ručak."),
                         o("🙋", "Zamolim da sednemo u tiši ugao", "U uglu je manje buke. Smem da pitam za tiše mesto."),
                     ],
-                    [o("🏃", "Trčim između stolova", "Konobari nose toplu hranu. Kad trčim, možemo da se sudarimo.")]
+                    [
+                        o("🏃", "Trčim između stolova", "Konobari nose toplu hranu. Kad trčim, možemo da se sudarimo."),
+                        o("🪑", "Sednem za tuđi sto", "Za tim stolom sede drugi ljudi. Naš sto nam je pokazao konobar."),
+                    ]
                 ),
             },
             {
@@ -398,7 +414,10 @@ const STORIES: readonly Story[] = [
                         o("🙂", "Kažem: „Supu, molim vas.”", "Konobar sada zna šta želim. „Molim vas” je lep način da tražimo."),
                         o("👉", "Pokažem jelo na jelovniku", "I pokazivanje je naručivanje. Konobar vidi šta želim."),
                     ],
-                    [o("📣", "Viknem: „Daj supu!”", "Vika može da uplaši ljude za drugim stolovima.")]
+                    [
+                        o("📣", "Viknem: „Daj supu!”", "Vika može da uplaši ljude za drugim stolovima."),
+                        o("🍰", "Uzmem hranu sa tuđeg stola", "To je hrana drugih gostiju. Naša hrana stiže kad je naručimo."),
+                    ]
                 ),
             },
             {
@@ -407,7 +426,10 @@ const STORIES: readonly Story[] = [
                 decision: choice(
                     "Šta može da pomogne dok čekaš?",
                     [o("🖍️", "Crtam", "Dok crtam, čekanje brže prolazi."), o("❓", "Pitam: „Koliko još čekamo?”", "Kad znam koliko još, lakše je čekati.")],
-                    [o("🥄", "Lupam kašikom o sto", "Lupanje je glasno. Smeta ljudima za drugim stolovima.")]
+                    [
+                        o("🥄", "Lupam kašikom o sto", "Lupanje je glasno. Smeta ljudima za drugim stolovima."),
+                        o("🚶", "Odem u kuhinju da vidim hranu", "U kuhinji su vruće šerpe. Tamo ulaze samo kuvari."),
+                    ]
                 ),
             },
             {
@@ -433,7 +455,10 @@ const STORIES: readonly Story[] = [
                         o("🙋", "Pitam mamu: „Da li je vruće?”", "Odrasli znaju šta je vruće. Kad pitam, ruke ostaju zdrave."),
                         o("↔️", "Stojim jedan korak dalje od šporeta", "Jedan korak dalje para i ringla ne mogu da me opeku."),
                     ],
-                    [o("🤚", "Dotaknem ringlu da proverim", "Vruća ringla može da opeče ruku. Opekotina boli.")]
+                    [
+                        o("🤚", "Dotaknem ringlu da proverim", "Vruća ringla može da opeče ruku. Opekotina boli."),
+                        o("🥄", "Podignem poklopac da vidim ručak", "Ispod poklopca je vrela para. Para može da opeče ruku."),
+                    ]
                 ),
             },
             {
@@ -445,7 +470,10 @@ const STORIES: readonly Story[] = [
                         o("🚶", "Stanem u red i pratim učiteljicu", "Učiteljica zna put napolje. U redu izlazimo mirno."),
                         o("🙉", "Pokrijem uši i hodam u redu", "Ako je preglasno, mogu da pokrijem uši. I dalje hodam sa odeljenjem."),
                     ],
-                    [o("🎒", "Pakujem sve stvari u ranac", "Pakovanje dugo traje. Stvari čekaju u učionici dok se ne vratimo.")]
+                    [
+                        o("🎒", "Pakujem sve stvari u ranac", "Pakovanje dugo traje. Stvari čekaju u učionici dok se ne vratimo."),
+                        o("🏃", "Istrčim napolje ispred svih", "U gužvi mogu da padnem. U redu svi izlazimo bezbedno."),
+                    ]
                 ),
             },
             {
@@ -457,7 +485,10 @@ const STORIES: readonly Story[] = [
                         o("🚪", "Izađem napolje", "Napolju je vazduh čist. Tu sam {bezbedan|bezbedna}."),
                         o("📣", "Glasno zovem odrasle", "Odrasli tada znaju za dim. Oni zovu pomoć."),
                     ],
-                    [o("🧸", "Idem po svoje igračke", "Igračke mogu da sačekaju. Najvažnije je da ja budem napolju.")]
+                    [
+                        o("🧸", "Idem po svoje igračke", "Igračke mogu da sačekaju. Najvažnije je da ja budem napolju."),
+                        o("🚪", "Sakrijem se u ormar", "Dim može da uđe svuda u kući. Napolju je vazduh čist."),
+                    ]
                 ),
             },
             {
@@ -469,7 +500,10 @@ const STORIES: readonly Story[] = [
                         o("🤝", "Stojim uz odraslu osobu", "Uz odraslu osobu sam na sigurnom. Zajedno čekamo."),
                         o("🙉", "Pokrijem uši kad čujem sirenu", "Sirena je vrlo glasna. Pokrivene uši je stišaju."),
                     ],
-                    [o("🏠", "Vratim se u kuću", "U kući je dim. Unutra ulaze samo vatrogasci.")]
+                    [
+                        o("🏠", "Vratim se u kuću", "U kući je dim. Unutra ulaze samo vatrogasci."),
+                        o("🏃", "Otrčim daleko niz ulicu", "Tada odrasli ne znaju gde sam. Uz njih sam na sigurnom."),
+                    ]
                 ),
             },
             {
@@ -494,7 +528,10 @@ const STORIES: readonly Story[] = [
                         o("👋", "Kažem „Zdravo” ili mahnem", "Pozdrav kaže gostima da ih vidim. Mahanje je isto pozdrav."),
                         o("🤝", "Stojim uz mamu dok gosti ulaze", "Uz mamu je lakše kad ulazi mnogo ljudi."),
                     ],
-                    [o("📺", "Pojačam televizor najjače", "Tada je u sobi još glasnije. Gosti i ja se ne čujemo.")]
+                    [
+                        o("📺", "Pojačam televizor najjače", "Tada je u sobi još glasnije. Gosti i ja se ne čujemo."),
+                        o("🎁", "Odmah tražim poklone", "Gosti prvo žele da me pozdrave. Pokloni dolaze posle pozdrava."),
+                    ]
                 ),
             },
             {
@@ -506,7 +543,10 @@ const STORIES: readonly Story[] = [
                         o("🙏", "„Hvala, Mila!”", "Mila je birala poklon za mene. „Hvala” joj kaže da to vidim."),
                         o("📖", "„Hvala. Pogledaću knjigu kasnije.”", "To je istina i mirno je rečeno. Mila zna da sam {dobio|dobila} poklon."),
                     ],
-                    [o("🗑️", "Bacim poklon", "Knjiga može da se pocepa. Mila može da se rastuži.")]
+                    [
+                        o("🗑️", "Bacim poklon", "Knjiga može da se pocepa. Mila može da se rastuži."),
+                        o("😶", "Kažem: „Ovo ne volim.”", "Mila je birala poklon za mene. Te reči mogu da je rastuže."),
+                    ]
                 ),
             },
             {
@@ -518,7 +558,10 @@ const STORIES: readonly Story[] = [
                         o("🙉", "Pokrijem uši dok traje pesma", "Ako je preglasno, mogu da pokrijem uši. Pesma se brzo završi."),
                         o("💨", "Sačekam kraj pesme, pa dunem svećice", "Posle pesme duvam svećice. Onda mama seče tortu."),
                     ],
-                    [o("☝️", "Gurnem prst u tortu", "Torta je za sve goste. Jedemo je kad je mama iseče.")]
+                    [
+                        o("☝️", "Gurnem prst u tortu", "Torta je za sve goste. Jedemo je kad je mama iseče."),
+                        o("💨", "Dunem svećice usred pesme", "Svećice se duvaju na kraju pesme. Tada svi tapšu."),
+                    ]
                 ),
             },
             {
@@ -530,7 +573,10 @@ const STORIES: readonly Story[] = [
                         o("🛏️", "Odem u svoju sobu da se odmorim", "U sobi je tiho. Posle odmora mogu da se vratim gostima."),
                         o("🗣️", "Kažem mami: „Treba mi pauza.”", "Mama tada zna kako mi je. Pomaže mi da nađem mirno mesto."),
                     ],
-                    [o("😣", "Ostanem i trpim buku", "Kad trpim, postaje mi sve teže. Smem da tražim pauzu.")]
+                    [
+                        o("😣", "Ostanem i trpim buku", "Kad trpim, postaje mi sve teže. Smem da tražim pauzu."),
+                        o("📢", "Vičem na decu da ućute", "Vika pravi još više buke. Deca ne znaju da mi treba pauza."),
+                    ]
                 ),
             },
             {
@@ -556,7 +602,10 @@ const STORIES: readonly Story[] = [
                         o("🦴", "Sipam mu hranu za pse", "Hrana za pse je zdrava za Žuću."),
                         o("💧", "Sipam mu svežu vodu", "Psi piju vodu uz jelo. Sveža voda mu prija."),
                     ],
-                    [o("🍫", "Dam mu čokoladu", "Čokolada je opasna za pse. Od nje ih boli stomak.")]
+                    [
+                        o("🍫", "Dam mu čokoladu", "Čokolada je opasna za pse. Od nje ih boli stomak."),
+                        o("🍽️", "Dam mu svoj ručak", "Naša hrana je preslana za pse. Žuća ima svoju hranu."),
+                    ]
                 ),
             },
             {
@@ -568,7 +617,10 @@ const STORIES: readonly Story[] = [
                         o("🦮", "Idemo u šetnju na povocu", "Na povocu je Žuća bezbedan. Šetnja traje oko pola sata."),
                         o("🗣️", "Kažem tati: „Žuća hoće napolje.”", "Tata tada zna. Zajedno izvodimo Žuću."),
                     ],
-                    [o("🚪", "Pustim ga samog napolje", "Sam na ulici pas može da se izgubi.")]
+                    [
+                        o("🚪", "Pustim ga samog napolje", "Sam na ulici pas može da se izgubi."),
+                        o("🤫", "Kažem mu da ćuti", "Žuća lavežom kaže šta mu treba. I dalje mora napolje."),
+                    ]
                 ),
             },
             {
@@ -580,7 +632,10 @@ const STORIES: readonly Story[] = [
                         o("🙋", "Pitam vlasnika: „Smem li da ga pomazim?”", "Vlasnik zna da li pas voli maženje."),
                         o("👀", "Gledam psa iz daljine", "I gledanje je lepo. Ne moram da ga dodirnem."),
                     ],
-                    [o("🤗", "Odmah ga zagrlim", "Pas kog ne poznajem može da se uplaši. Uplašen pas može da ugrize.")]
+                    [
+                        o("🤗", "Odmah ga zagrlim", "Pas kog ne poznajem može da se uplaši. Uplašen pas može da ugrize."),
+                        o("🦴", "Dam mu svoju užinu", "Ne znam šta taj pas sme da jede. To zna njegov vlasnik."),
+                    ]
                 ),
             },
             {
@@ -592,7 +647,10 @@ const STORIES: readonly Story[] = [
                         o("🤫", "Pustim ga da spava", "I psima treba odmor. Kad se naspava, opet se igramo."),
                         o("🧩", "Igram se tiho pored njega", "Tiha igra ne budi Žuću."),
                     ],
-                    [o("🔊", "Probudim ga da se igramo", "Umoran pas želi da spava. Može da se uplaši kad ga naglo probudim.")]
+                    [
+                        o("🔊", "Probudim ga da se igramo", "Umoran pas želi da spava. Može da se uplaši kad ga naglo probudim."),
+                        o("📺", "Pojačam crtani film", "Glasan zvuk budi Žuću. Umornom psu treba mir."),
+                    ]
                 ),
             },
             {
@@ -620,7 +678,10 @@ const STORIES: readonly Story[] = [
                         o("🪑", "Sednem na klupu sa tatom", "Vozovi nekad kasne. To nije ničija greška. Na klupi je čekanje lakše."),
                         o("⏱️", "Zamolim tatu da uključi sat koji odbrojava", "Kad vidim koliko još minuta, lakše čekam."),
                     ],
-                    [o("🛤️", "Priđem šinama da vidim voz", "Blizu šina je opasno. Voz je brz i težak. Stojimo iza žute linije.")]
+                    [
+                        o("🛤️", "Priđem šinama da vidim voz", "Blizu šina je opasno. Voz je brz i težak. Stojimo iza žute linije."),
+                        o("🚶", "Odem da šetam po stanici bez tate", "Na stanici je gužva. Bez tate mogu da se izgubim."),
+                    ]
                 ),
             },
             {
@@ -632,7 +693,10 @@ const STORIES: readonly Story[] = [
                         o("🎟️", "Pokažem svoju kartu", "Karta pokazuje da smem da putujem ovim vozom. Kondukter je označi i vrati."),
                         o("🤝", "Dam kartu tati da je on pokaže", "Tata može da pokaže kartu umesto mene. To je u redu."),
                     ],
-                    [o("🙈", "Sakrijem kartu", "Kondukter mora da vidi kartu. To je njegov posao.")]
+                    [
+                        o("🙈", "Sakrijem kartu", "Kondukter mora da vidi kartu. To je njegov posao."),
+                        o("😴", "Pravim se da spavam", "Kondukter i dalje čeka kartu. Brže je kad je odmah pokažem."),
+                    ]
                 ),
             },
             {
@@ -644,7 +708,10 @@ const STORIES: readonly Story[] = [
                         o("🗣️", "Kažem tati: „Na mom mestu neko sedi.”", "Tata mirno pita baku. Baka je možda pogrešila mesto."),
                         o("🎟️", "Pokažem baki broj na karti", "Na karti piše broj sedišta. Baka tada vidi čije je mesto."),
                     ],
-                    [o("👉", "Povučem baku za rukav", "Povlačenje može da uplaši baku. Ona ne zna šta želim.")]
+                    [
+                        o("👉", "Povučem baku za rukav", "Povlačenje može da uplaši baku. Ona ne zna šta želim."),
+                        o("📢", "Viknem: „Ustani!”", "Vika može da uplaši baku. Kad mirno pokažem kartu, ona razume."),
+                    ]
                 ),
             },
             {
@@ -656,7 +723,10 @@ const STORIES: readonly Story[] = [
                         o("🪟", "Gledam kroz prozor", "Kroz prozor vidim polja, kuće i reke."),
                         o("🎧", "Slušam muziku na slušalice", "Sa slušalicama muziku čujem samo ja. Putnici mogu da se odmaraju."),
                     ],
-                    [o("🤸", "Skačem po sedištu", "Voz se ljulja. Na sedištu mogu da padnem.")]
+                    [
+                        o("🤸", "Skačem po sedištu", "Voz se ljulja. Na sedištu mogu da padnem."),
+                        o("🎵", "Pustim muziku glasno, bez slušalica", "Glasna muzika smeta putnicima koji čitaju ili spavaju."),
+                    ]
                 ),
             },
             {
@@ -668,7 +738,10 @@ const STORIES: readonly Story[] = [
                         o("🙋", "Kažem tati: „Moram u toalet.”", "Tata zna gde je toalet u vozu. Ide sa mnom."),
                         o("🖼️", "Pokažem tati sličicu toaleta", "Sličica kaže isto što i reči. Tata razume."),
                     ],
-                    [o("😣", "Trpim i ne kažem ništa", "Od trpljenja boli stomak. Uvek smem da kažem da moram u toalet.")]
+                    [
+                        o("😣", "Trpim i ne kažem ništa", "Od trpljenja boli stomak. Uvek smem da kažem da moram u toalet."),
+                        o("🚶", "Odem da tražim toalet bez tate", "U vozu je mnogo vagona. Bez tate mogu da se izgubim."),
+                    ]
                 ),
             },
             {
@@ -694,7 +767,10 @@ const STORIES: readonly Story[] = [
                         o("🧸", "Držim svoju omiljenu igračku", "Omiljena igračka sme da ide sa mnom. Uz nju je čekanje lakše."),
                         o("🔢", "Brojim koliko je dece ispred mene", "Kad znam ko je ispred mene, znam kad sam ja na redu."),
                     ],
-                    [o("🚪", "Uđem odmah, pre svih", "Deca koja su došla ranije čekaju duže. Lekar ih prima po redu.")]
+                    [
+                        o("🚪", "Uđem odmah, pre svih", "Deca koja su došla ranije čekaju duže. Lekar ih prima po redu."),
+                        o("🏃", "Trčim po čekaonici", "U čekaonici su bolesna deca. Njima treba mir."),
+                    ]
                 ),
             },
             {
@@ -706,7 +782,10 @@ const STORIES: readonly Story[] = [
                         o("🌬️", "Udahnem duboko tri puta", "Duboko disanje smiruje telo."),
                         o("❓", "Pitam mamu: „Koliko još?”", "Kad znam koliko još, lakše je čekati."),
                     ],
-                    [o("✊", "Lupam na doktorova vrata", "Doktor sada pregleda drugo dete. Lupanje ga prekida, pa pregled duže traje.")]
+                    [
+                        o("✊", "Lupam na doktorova vrata", "Doktor sada pregleda drugo dete. Lupanje ga prekida, pa pregled duže traje."),
+                        o("🚪", "Izađem iz čekaonice bez mame", "Tada mama ne zna gde sam. Sestra ne može da me prozove."),
+                    ]
                 ),
             },
             {
@@ -718,7 +797,10 @@ const STORIES: readonly Story[] = [
                         o("😌", "Dišem duboko i polako", "Kad dišem duboko, doktor dobro čuje pluća."),
                         o("🗣️", "Kažem: „Hladno mi je.”", "Doktor tada zagreje stetoskop rukom."),
                     ],
-                    [o("🏃", "Ustanem i odem sa stolice", "Tada doktor ne može da čuje pluća. Pregled počinje ispočetka.")]
+                    [
+                        o("🏃", "Ustanem i odem sa stolice", "Tada doktor ne može da čuje pluća. Pregled počinje ispočetka."),
+                        o("🗣️", "Pričam dok doktor sluša", "Kad pričam, doktor ne čuje disanje. Čuje ga samo kad ćutim."),
+                    ]
                 ),
             },
             {
@@ -730,7 +812,10 @@ const STORIES: readonly Story[] = [
                         o("🗣️", "Kažem: „Strah me je.”", "Strah je u redu. Kad kažem, mama i doktor mi pomažu."),
                         o("🤝", "Držim mamu za ruku i gledam u stranu", "Mamina ruka pomaže. Ne moram da gledam u iglu."),
                     ],
-                    [o("🙅", "Naglo povučem ruku", "Kad se ruka pomera, ubod može više da zaboli. Kad je ruka mirna, brzo je gotovo.")]
+                    [
+                        o("🙅", "Naglo povučem ruku", "Kad se ruka pomera, ubod može više da zaboli. Kad je ruka mirna, brzo je gotovo."),
+                        o("🫣", "Sakrijem ruku iza leđa", "Sestra tada ne može da da vakcinu. Čekanje i strah traju duže."),
+                    ]
                 ),
             },
             {
@@ -742,7 +827,10 @@ const STORIES: readonly Story[] = [
                         o("🥤", "Popijem lek, pa vodu", "Voda spere gorak ukus."),
                         o("🗣️", "Kažem mami: „Gorko mi je.”", "Mama tada zna. Može da mi da vodu ili sok posle leka."),
                     ],
-                    [o("🌱", "Sipam lek u saksiju", "Lek pomaže samo kad ga popijem. U saksiji ne može da mi pomogne.")]
+                    [
+                        o("🌱", "Sipam lek u saksiju", "Lek pomaže samo kad ga popijem. U saksiji ne može da mi pomogne."),
+                        o("🤐", "Stisnem usta i odbijem lek", "Bez leka sporije ozdravim. Gorak ukus brzo prođe uz vodu."),
+                    ]
                 ),
             },
             {
@@ -768,7 +856,10 @@ const STORIES: readonly Story[] = [
                         o("🙋", "Pitam: „Mogu li posle tebe?”", "Drugarica sada zna da čekam crvenu. Daje mi je kad završi."),
                         o("🖍️", "Crtam drugom bojom dok čekam", "Dok čekam crvenu, crtam dalje drugim bojama."),
                     ],
-                    [o("✊", "Uzmem joj bojicu iz ruke", "Ako uzmem bojicu bez pitanja, drugarica se može rastužiti.")]
+                    [
+                        o("✊", "Uzmem joj bojicu iz ruke", "Ako uzmem bojicu bez pitanja, drugarica se može rastužiti."),
+                        o("😠", "Kažem: „Daj mi to odmah!”", "Oštre reči mogu da uplaše drugaricu. Lepo pitanje brže pomaže."),
+                    ]
                 ),
             },
             {
@@ -785,7 +876,10 @@ const STORIES: readonly Story[] = [
                         o("🙋", "Kažem učiteljici: „Treba mi pomoć.”", "Svakome nekad treba pomoć. Učiteljica pokaže kako da držim papir."),
                         o("🔁", "Uzmem nov papir i probam opet", "Sečenje se uči polako. Svaki novi krug je malo lakši."),
                     ],
-                    [o("🗑️", "Zgužvam i bacim sve", "Tada nemam ni krug ni papir. Krug može da se popravi.")]
+                    [
+                        o("🗑️", "Zgužvam i bacim sve", "Tada nemam ni krug ni papir. Krug može da se popravi."),
+                        o("✏️", "Škrabam preko celog crteža", "Tada se krug više ne vidi. Krug može da se popravi."),
+                    ]
                 ),
             },
             {
@@ -797,7 +891,10 @@ const STORIES: readonly Story[] = [
                         o("🤝", "„U redu je, bilo je slučajno.”", "Luka nije hteo da pokvasi crtež. Crtež se osuši."),
                         o("😟", "„{Tužan|Tužna} sam zbog crteža. Pomozi mi da ga osušim.”", "Smem da kažem kako se osećam. Luka može da pomogne papirnim ubrusom."),
                     ],
-                    [o("💦", "Prospem vodu na njegov crtež", "Tada su dva crteža mokra. I Luka i ja smo tužni.")]
+                    [
+                        o("💦", "Prospem vodu na njegov crtež", "Tada su dva crteža mokra. I Luka i ja smo tužni."),
+                        o("🙅", "Kažem: „Više nisi moj drug.”", "Luka nije hteo da prospe vodu. Te reči mogu da ga rastuže."),
+                    ]
                 ),
             },
             {
@@ -809,7 +906,10 @@ const STORIES: readonly Story[] = [
                         o("👏", "Kažem drugarici: „Bravo!”", "Drugarica se raduje. Moj crtež je i dalje moj."),
                         o("🏠", "Odnesem svoj crtež kući", "Kod kuće crtež može na moj zid ili na frižider."),
                     ],
-                    [o("📄", "Pocepam svoj crtež", "Pocepan crtež ne mogu da pokažem mami i tati.")]
+                    [
+                        o("📄", "Pocepam svoj crtež", "Pocepan crtež ne mogu da pokažem mami i tati."),
+                        o("😤", "Kažem: „Anin crtež je ružan.”", "Te reči mogu da rastuže Anu. Moj crtež i dalje vredi."),
+                    ]
                 ),
             },
             {
@@ -821,7 +921,10 @@ const STORIES: readonly Story[] = [
                         o("🧹", "Bacim papiriće u kantu", "Sto je čist i spreman za sledeću radionicu."),
                         o("🖍️", "Vratim bojice u kutiju", "Bojice u kutiji čekaju sledeću radionicu."),
                     ],
-                    [o("💥", "Gurnem sve na pod", "Na podu se bojice lome i gube.")]
+                    [
+                        o("💥", "Gurnem sve na pod", "Na podu se bojice lome i gube."),
+                        o("🚶", "Odem i ostavim sve na stolu", "Tada neko drugi mora da sprema moje stvari."),
+                    ]
                 ),
             },
         ],
@@ -842,7 +945,10 @@ const STORIES: readonly Story[] = [
                         o("🚿", "Istuširam se", "Tuš spira prašinu i znoj. Voda u bazenu ostaje čista."),
                         o("🥽", "Stavim naočare za plivanje", "Sa naočarima voda ne peče oči."),
                     ],
-                    [o("👟", "Uđem u vodu u patikama", "Mokre patike su teške. U vodu ulazimo bosi.")]
+                    [
+                        o("👟", "Uđem u vodu u patikama", "Mokre patike su teške. U vodu ulazimo bosi."),
+                        o("🏊", "Skočim u vodu bez tuširanja", "Tuširanje čuva vodu čistom za sve plivače."),
+                    ]
                 ),
             },
             {
@@ -854,7 +960,10 @@ const STORIES: readonly Story[] = [
                         o("🚶", "Hodam polako", "Na mokrom podu hodanje je bezbedno. Drug može da sačeka."),
                         o("🖐️", "Mahnem drugu da on dođe do mene", "Drug vidi mahanje. Tada on dolazi polako."),
                     ],
-                    [o("🏃", "Trčim", "Mokar pod je klizav. Kad trčim, mogu da padnem.")]
+                    [
+                        o("🏃", "Trčim", "Mokar pod je klizav. Kad trčim, mogu da padnem."),
+                        o("🤸", "Skočim u vodu da preplivam do njega", "Skakanje pored druge dece je opasno. Mogu nekoga da udarim."),
+                    ]
                 ),
             },
             {
@@ -866,7 +975,10 @@ const STORIES: readonly Story[] = [
                         o("☝️", "Kažem: „Ja čekam red. Ti si posle mene.”", "Dečak sada zna gde je kraj reda."),
                         o("🙋", "Kažem tati ili spasiocu", "Odrasli pomažu oko reda."),
                     ],
-                    [o("👊", "Gurnem dečaka", "Guranje pored vode je opasno. Neko može da padne.")]
+                    [
+                        o("👊", "Gurnem dečaka", "Guranje pored vode je opasno. Neko može da padne."),
+                        o("😠", "Vičem na dečaka", "Vika ne vraća moje mesto. Mirne reči ili odrasli brže pomažu."),
+                    ]
                 ),
             },
             {
@@ -878,7 +990,10 @@ const STORIES: readonly Story[] = [
                         o("🌬️", "Udahnem duboko i odmorim se uz ivicu", "Duboko disanje smiruje telo. Ljutnja polako prolazi."),
                         o("🤝", "Kažem: „Bravo! Hoćemo opet?”", "Drug se raduje. U novoj trci opet imam priliku."),
                     ],
-                    [o("💦", "Prskam ga u lice", "Voda u očima peče. Drug može da se naljuti.")]
+                    [
+                        o("💦", "Prskam ga u lice", "Voda u očima peče. Drug može da se naljuti."),
+                        o("🙅", "Kažem: „Varao si!”", "Drug je plivao pošteno. Te reči mogu da ga naljute."),
+                    ]
                 ),
             },
             {
@@ -890,7 +1005,10 @@ const STORIES: readonly Story[] = [
                         o("🙋", "Uhvatim se za ivicu i zovem tatu", "Uz ivicu sam {bezbedan|bezbedna}. Tata odmah dolazi."),
                         o("🧖", "Izađem iz vode i obrišem lice peškirom", "Peškir je suv i mek. Oči prestanu da peku."),
                     ],
-                    [o("🏊", "Plivam dalje ka dubokom", "Kad oči peku, ne vidim dobro. U dubokoj vodi je tada teško.")]
+                    [
+                        o("🏊", "Plivam dalje ka dubokom", "Kad oči peku, ne vidim dobro. U dubokoj vodi je tada teško."),
+                        o("😣", "Trljam oči i ostanem u vodi", "Od trljanja oči još više peku. Na suvom je lakše."),
+                    ]
                 ),
             },
             {
@@ -902,7 +1020,10 @@ const STORIES: readonly Story[] = [
                         o("🏊", "Plivam još pet minuta, pa izađem", "To je dogovor. Poslednji minuti su moji."),
                         o("🤿", "Izaberem poslednju igru u vodi", "Poslednja igra je kraj plivanja za danas. Na bazen dolazimo opet."),
                     ],
-                    [o("🙈", "Pravim se da ne čujem", "Tata tada zove više puta i brine. Dogovor je pet minuta.")]
+                    [
+                        o("🙈", "Pravim se da ne čujem", "Tata tada zove više puta i brine. Dogovor je pet minuta."),
+                        o("🤿", "Zaronim da me tata ne vidi", "Tata se tada uplaši jer me ne vidi. Dogovor je pet minuta."),
+                    ]
                 ),
             },
         ],
@@ -928,7 +1049,10 @@ const STORIES: readonly Story[] = [
                         o("🤝", "Predložim: nos šargarepa, dugmad šišarke", "To je dogovor. Sneško je tada i moj i Sarin."),
                         o("⛄", "Predložim da napravimo dva Sneška", "Tada svako ima svog Sneška i svoj nos."),
                     ],
-                    [o("💥", "Srušim Sneška", "Tada nema Sneška ni za mene ni za Saru.")]
+                    [
+                        o("💥", "Srušim Sneška", "Tada nema Sneška ni za mene ni za Saru."),
+                        o("🥕", "Stavim šargarepu bez pitanja", "Sara tada nije birala ništa. Sneško je zajednički."),
+                    ]
                 ),
             },
             {
@@ -940,7 +1064,10 @@ const STORIES: readonly Story[] = [
                         o("✋", "Kažem: „Stani, ne volim grudvanje.”", "Deca sada znaju da ne želim. Kad neko drugi kaže „Stani”, i ja stanem."),
                         o("⛄", "Odem da pravim Sneška", "Mogu da izaberem drugu igru na snegu."),
                     ],
-                    [o("❄️", "Bacim grudvu nekome u lice", "Grudva u lice boli. Lice je osetljivo.")]
+                    [
+                        o("❄️", "Bacim grudvu nekome u lice", "Grudva u lice boli. Lice je osetljivo."),
+                        o("😢", "Stojim i trpim grudve", "Deca ne znaju da mi smeta. Kad kažem „Stani”, prestanu."),
+                    ]
                 ),
             },
             {
@@ -952,19 +1079,25 @@ const STORIES: readonly Story[] = [
                         o("🔢", "Brojim do dvadeset dok se Sara spušta", "Dok brojim, čekanje brže prolazi. Onda je moj red."),
                         o("🗣️", "Pitam: „Saro, mogu li ja posle tebe?”", "Sara tada zna da čekam. Menjamo se: jednom ona, jednom ja."),
                     ],
-                    [o("✊", "Uzmem joj sanke", "Ako uzmem sanke bez pitanja, Sara se može rastužiti.")]
+                    [
+                        o("✊", "Uzmem joj sanke", "Ako uzmem sanke bez pitanja, Sara se može rastužiti."),
+                        o("📢", "Vičem: „Požuri!”", "Vika ne ubrzava sanke. Sara može da se uplaši."),
+                    ]
                 ),
             },
             {
                 scene: ["🥶", "🧤"],
-                text: "Rukavice su mi mokre. Prsti su crveni i bole od hladnoće. Igra je zabavna. To znači da mi je previše hladno.",
+                text: "Rukavice su mi mokre. Prsti su crveni i bole od hladnoće. To znači da mi je previše hladno. Igra je i dalje zabavna.",
                 decision: choice(
                     "Šta možeš da uradiš kad ti je mnogo hladno?",
                     [
                         o("🏠", "Kažem: „Hladno mi je” i uđem da se ugrejem", "U kući se prsti zagreju. Posle mogu opet napolje."),
                         o("🧤", "Zamolim za suve rukavice", "Suve rukavice opet greju prste."),
                     ],
-                    [o("🤐", "Ćutim i igram se dalje", "Promrzli prsti jako bole. Kad kažem, odrasli mi pomognu.")]
+                    [
+                        o("🤐", "Ćutim i igram se dalje", "Promrzli prsti jako bole. Kad kažem, odrasli mi pomognu."),
+                        o("🧤", "Skinem mokre rukavice i igram se", "Bez rukavica su prsti još hladniji."),
+                    ]
                 ),
             },
             {
@@ -973,7 +1106,10 @@ const STORIES: readonly Story[] = [
                 decision: choice(
                     "Šta može da te ugreje?",
                     [o("🍵", "Topao čaj", "Topao čaj greje iznutra."), o("🥛", "Toplo mleko", "Toplo mleko greje stomak.")],
-                    [o("🍦", "Sladoled", "Sladoled je hladan. Posle njega mi je još hladnije.")]
+                    [
+                        o("🍦", "Sladoled", "Sladoled je hladan. Posle njega mi je još hladnije."),
+                        o("🥤", "Hladan sok", "Hladan sok ne greje. Toplo piće greje stomak i ruke."),
+                    ]
                 ),
             },
         ],

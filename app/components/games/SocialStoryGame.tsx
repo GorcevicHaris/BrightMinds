@@ -555,7 +555,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                             <section aria-label="Pitanje i izbori" className="flex min-w-0 flex-col gap-3">
                                 <GamePrompt title={t(decision.question)} />
 
-                                <p role="status" className="flex min-h-8 items-center gap-2 text-lg font-extrabold text-ink-soft">
+                                <p role="status" className="flex min-h-8 items-center gap-2 text-lg font-extrabold text-ink-soft short:min-h-6 short:text-base">
                                     {shown.listening && (
                                         <>
                                             <span aria-hidden="true">👂</span>
@@ -564,7 +564,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                     )}
                                 </p>
 
-                                <ul className="grid gap-3">
+                                <ul className="grid gap-3 short:gap-2">
                                     {record.order.map((optionIndex) => {
                                         const option = decision.options[optionIndex];
                                         const label = t(option.label);
@@ -579,7 +579,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                                     disabled={locked}
                                                     onClick={() => choose(optionIndex)}
                                                     aria-label={`${label}${status}`}
-                                                    className="min-w-0 flex-1"
+                                                    className="min-w-0 flex-1 short:min-h-16 short:sm:py-2.5"
                                                 >
                                                     <span className="flex w-full items-center gap-3 text-left sm:gap-4">
                                                         <span

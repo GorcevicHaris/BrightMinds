@@ -146,6 +146,17 @@ describe("social stories", () => {
         }
     });
 
+    it("offers two less helpful choices from level 6 on, so later stories ask for more", () => {
+        for (const { level, story } of STORIES) {
+            for (const step of story.steps) {
+                if (!step.decision) continue;
+                const others = step.decision.options.length - step.decision.acceptable.length;
+                if (level >= 6) assert.equal(others, 2, `level ${level}: ${step.decision.question}`);
+                else assert.equal(others, 1, `level ${level}: ${step.decision.question}`);
+            }
+        }
+    });
+
     it("has at least two decisions in every story, so a level can be scored", () => {
         for (const { level, story } of STORIES) {
             assert.ok(decisionCount(story) >= 2, `level ${level}`);
