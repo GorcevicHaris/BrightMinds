@@ -267,6 +267,16 @@ export function starsFor(correct: number, total: number): 0 | 1 | 2 | 3 {
     return 1;
 }
 
+/**
+ * Zvezdice za završen nivo određene igre. U igri bez pogrešnih odgovora (osećanja) svaki
+ * završen nivo donosi sve tri: tamo „1 od 3” ne bi značilo ništa osim da je dete izabralo
+ * ređe osećanje, a to nije greška.
+ */
+export function starsForGame(graded: boolean, correct: number, total: number): 0 | 1 | 2 | 3 {
+    if (total <= 0) return 0;
+    return graded ? starsFor(correct, total) : 3;
+}
+
 /** Da li se u igri sa ovim ID-jem aktivnosti nivoi „polažu” (nepoznata aktivnost: da). */
 export function isGradedActivity(activityId: number): boolean {
     return GAMES.find((g) => g.activityId === activityId)?.graded ?? true;

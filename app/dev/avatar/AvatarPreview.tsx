@@ -1,6 +1,8 @@
 "use client";
 
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
+import { EmotionFace } from "@/app/components/games/EmotionFace";
+import { MoodFace } from "@/app/components/games/MoodFace";
 import { VOICE_EMOTIONS, type VoiceEmotion } from "@/lib/emotion";
 import { speak } from "@/lib/speech";
 import { mimeVoice, playVoice } from "@/lib/voice";
@@ -37,6 +39,16 @@ const NAMES: Record<VoiceEmotion, string> = {
 export default function AvatarPreview() {
     return (
         <main className="min-h-screen bg-canvas p-6">
+            {/* Lica za pitanje „Kako si?” i za igru emocija */}
+            <section className="mb-8 flex flex-wrap items-end gap-4 rounded-card border border-line bg-surface p-4">
+                {(["upset", "neutral", "happy"] as const).map((mood) => (
+                    <MoodFace key={mood} mood={mood} className="h-24 w-24" />
+                ))}
+                <span className="mx-2 h-16 w-px bg-line" />
+                {(["happy", "sad", "angry", "scared", "surprised", "proud"] as const).map((emotion) => (
+                    <EmotionFace key={emotion} emotion={emotion} className="h-20 w-20" />
+                ))}
+            </section>
             {(["male", "female"] as const).map((gender) => (
                 <section key={gender} className="mb-8">
                     <div className="mb-3 flex items-center gap-4 rounded-card bg-brand-600 p-4">

@@ -16,6 +16,7 @@ import {
     isGradedActivity,
     starsFor,
     successLevelFor,
+    starsForGame,
 } from "@/lib/games";
 import { toCyrillic } from "@/lib/script";
 
@@ -79,6 +80,14 @@ describe("isGradedActivity", () => {
         for (const game of GAMES) {
             assert.equal(isGradedActivity(game.activityId), game.id !== "emotions", game.id);
         }
+    });
+
+    it("gives all three stars for a finished level of a game with no wrong answers", () => {
+        assert.equal(starsForGame(false, 0, 4), 3);
+        assert.equal(starsForGame(false, 4, 4), 3);
+        assert.equal(starsForGame(false, 0, 0), 0);
+        assert.equal(starsForGame(true, 1, 4), 1);
+        assert.equal(starsForGame(true, 4, 4), 3);
     });
 
     it("treats an unknown activity as graded", () => {

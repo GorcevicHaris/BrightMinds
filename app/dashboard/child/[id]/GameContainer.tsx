@@ -10,6 +10,7 @@ import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import { GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
+import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
 import { cn } from "@/lib/cn";
 import {
     ADVANCE_RATIO,
@@ -18,7 +19,7 @@ import {
     MAX_LEVEL,
     MOODS_THREE,
     getGame,
-    starsFor,
+    starsForGame,
     type GameDefinition,
     type GameId,
     type Mood,
@@ -400,7 +401,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
             // Završen nivo uvek donosi bar jednu zvezdicu; sledeći nivo se predlaže
             // kada je bar polovina zadataka rešena samostalno
-            const stars = Math.max(1, starsFor(result.correct, result.total)) as 1 | 2 | 3;
+            const stars = Math.max(1, starsForGame(game.graded, result.correct, result.total)) as 1 | 2 | 3;
             // U igrama bez pogrešnih odgovora (osećanja) svaki završen nivo vodi dalje
             const practice = result.total === 0;
             const advance = !practice && (!game.graded || result.correct / result.total >= ADVANCE_RATIO);
@@ -1011,6 +1012,8 @@ function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
 // ── Raspoloženje ──────────────────────────────────────────────────────────────
 // Tri lica (mlađa deca ne razlikuju pouzdano više stupnjeva); uvek može da se preskoči.
 
+const MOOD_FACE: Partial<Record<Mood, MoodFaceKind>> = { upset: "upset", neutral: "neutral", happy: "happy" };
+
 function MoodPicker({ title, subtitle, onSelect }: { title: string; subtitle: string; onSelect: (mood: Mood | null) => void }) {
     // Drugi dodir dvostrukog dodira sa prethodnog ekrana ne sme da odgovori na pitanje
     const guard = useInputGuard(600);
@@ -1034,7 +1037,12 @@ function MoodPicker({ title, subtitle, onSelect }: { title: string; subtitle: st
                             onClick={() => choose(mood.value)}
                             className="flex w-full flex-col items-center gap-2 rounded-tile border-2 border-b-[5px] border-line bg-surface px-2 py-5 shadow-soft transition-[transform,border-color] hover:border-brand-300 hover:bg-brand-50 active:translate-y-[3px] active:border-b-2 sm:py-8"
                         >
-                            <span className="text-6xl sm:text-7xl" aria-hidden="true">{mood.emoji}</span>
+                            {/* Crtano lice: isto na svakom uređaju (emodži se razlikuju od telefona do telefona) */}
+                            {MOOD_FACE[mood.value] ? (
+                                <MoodFace mood={MOOD_FACE[mood.value]!} className="h-20 w-20 sm:h-28 sm:w-28" />
+                            ) : (
+                                <span className="text-6xl sm:text-7xl" aria-hidden="true">{mood.emoji}</span>
+                            )}
                             <span className="text-lg font-extrabold text-ink sm:text-xl">{mood.label}</span>
                         </button>
                     </li>

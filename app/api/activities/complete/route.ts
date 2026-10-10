@@ -11,7 +11,7 @@ import {
     MAX_LEVEL,
     MOODS,
     isGradedActivity,
-    starsFor,
+    starsForGame,
     successLevelFor,
     type Mood,
 } from "@/lib/games";
@@ -197,7 +197,7 @@ export async function POST(request: Request) {
         // Zvezdice zavise samo od SAMOSTALNO tačnih odgovora; završen nivo donosi bar jednu.
         // Aktivnost bez ocenjivanih zadataka (npr. priča u režimu samo čitanja) je završena,
         // ali nije učinak: jedna zvezdica, bez uticaja na statistiku tačnosti i otključavanje.
-        const stars = game.total === 0 ? 1 : starsFor(game.correct, game.total);
+        const stars = game.total === 0 ? 1 : starsForGame(isGradedActivity(game.activityId), game.correct, game.total);
         const successLevel = successLevelFor(stars);
         // Odluka „nivo položen” se donosi ovde, jednom, i čuva uz partiju.
         const passed = isLevelPassed(

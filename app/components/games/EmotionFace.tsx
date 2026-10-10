@@ -1,23 +1,10 @@
 import type { ReactNode } from "react";
 import { EMOTIONS, type EmotionId } from "./data/emotionScenarios";
+import { Cheeks, FaceBase, INK, LINE, MOUTH } from "./faceParts";
 
 // Šest lica u istom stilu: ista glava i boje, a razlikuju se samo obrve, oči i usta.
 // Crtaju se kao SVG da bi na svakom uređaju izgledala isto (emodži lica se razlikuju
 // od telefona do telefona i često su dvosmislena).
-
-const INK = "#3b2a1a";
-const MOUTH = "#7a2a2a";
-
-const LINE = { fill: "none", stroke: INK, strokeWidth: 4, strokeLinecap: "round", strokeLinejoin: "round" } as const;
-
-function Cheeks() {
-    return (
-        <g fill="#ff9e80" opacity={0.55}>
-            <circle cx={24} cy={62} r={6} />
-            <circle cx={76} cy={62} r={6} />
-        </g>
-    );
-}
 
 /** Široko otvorene oči: bela beonjača i zenica date veličine. */
 function WideEyes({ y, radius, pupil }: { y: number; radius: number; pupil: number }) {
@@ -111,7 +98,7 @@ interface EmotionFaceProps {
 export function EmotionFace({ emotion, className }: EmotionFaceProps) {
     return (
         <svg viewBox="0 0 100 100" role="img" aria-label={EMOTIONS[emotion].label} focusable="false" className={className}>
-            <circle cx={50} cy={52} r={43} fill="#ffd75e" stroke="#c98a12" strokeWidth={3} />
+            <FaceBase />
             {FEATURES[emotion]}
         </svg>
     );

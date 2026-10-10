@@ -172,7 +172,8 @@ describe("POST /api/activities/complete — saving a result", () => {
     it("passes any finished emotions level, where no answer is wrong", async () => {
         await post(result({ activityId: EMOTIONS, correct: 0, total: 4, prompted: 0 }));
         assert.equal(logs()[0].passed, true);
-        assert.equal(logs()[0].stars, 1);
+        // Bez pogrešnih odgovora nema ni „slabijeg” rezultata: završen nivo donosi sve tri zvezdice
+        assert.equal(logs()[0].stars, 3);
     });
 
     it("leaves the prompted column out when the client did not send it", async () => {
