@@ -14,6 +14,7 @@ import {
     finiteOr,
     GameHud,
     GameStage,
+    useBubbleTail,
     hintDue,
     playSfx,
     shuffle,
@@ -266,15 +267,15 @@ function mergeMonitor(incoming: Partial<SoundToImageView> | null | undefined): S
 
 // Raspored i veličine slika po broju ponuđenih odgovora (potpune klase, bez sklapanja).
 const GRID: Record<number, string> = {
-    2: "mx-auto max-w-xl grid-cols-2",
-    3: "mx-auto max-w-2xl grid-cols-3",
+    2: "mx-auto max-w-xl grid-cols-2 xl:max-w-2xl",
+    3: "mx-auto max-w-2xl grid-cols-3 xl:max-w-4xl",
     4: "grid-cols-2 md:grid-cols-4",
     6: "mx-auto max-w-3xl grid-cols-2 sm:grid-cols-3 lg:max-w-none lg:grid-cols-6",
 };
 
 const IMAGE_SIZES: Record<number, string> = {
-    2: "(min-width: 640px) 260px, 45vw",
-    3: "(min-width: 640px) 200px, 30vw",
+    2: "(min-width: 1280px) 320px, (min-width: 640px) 260px, 45vw",
+    3: "(min-width: 1280px) 280px, (min-width: 640px) 200px, 30vw",
     4: "(min-width: 768px) 200px, 45vw",
     6: "(min-width: 1024px) 130px, (min-width: 640px) 230px, 45vw",
 };
@@ -374,6 +375,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     const shown = isMonitor ? mergeMonitor(monitorState) : view;
     const target = ITEM_BY_ID[shown.targetId];
     const options = shown.optionIds.flatMap((id) => ITEM_BY_ID[id] ?? []);
+    const tail = useBubbleTail();
     const solved = shown.feedback === "correct";
     const showLabels = !LEVELS[levelIndex(level)].noLabels;
     // Slike sledećeg zvuka se učitavaju dok dete rešava tekući, da nova runda ne „iskače” deo po deo
@@ -683,7 +685,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                 </section>
             ) : (
                 <>
-                    <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-card border-2 bg-surface p-3 shadow-soft sm:gap-6 sm:p-6", accent.border)}>
+                    <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-card border-2 bg-surface p-3 shadow-soft sm:gap-6 sm:p-6 short:sm:p-4", accent.border, tail)}>
                         <p className="min-w-0 flex-1 basis-40 font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{instruction}</p>
                         {isMonitor ? (
                             <p className={cn("rounded-2xl px-4 py-3 text-base font-extrabold", accent.soft, accent.text)}>

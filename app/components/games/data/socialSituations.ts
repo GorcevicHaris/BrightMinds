@@ -460,17 +460,17 @@ const ADVOCACY: Draft[] = [
         id: 53,
         kind: "advocacy",
         scene: "🩺",
-        model: "Lekar pregleda Marka. Marko kaže: „Boli me ovde.”",
-        text: "Kod lekara si. Lekar ti pregleda stomak. Na jednom mestu te boli.",
+        model: "Doktor pregleda Marka. Marko kaže: „Boli me ovde.”",
+        text: "Kod doktora si. Doktor ti pregleda stomak. Na jednom mestu te boli.",
         ask: ASK_SAY_OR_DO,
         script: "Boli me ovde.",
         good: [
-            say("🩹", "Boli me ovde.", "Kad kažemo gde boli, lekar zna kako da pomogne."),
-            act("👉", "Pokažem rukom gde me boli.", "I pokazivanje kaže lekaru gde boli."),
+            say("🩹", "Boli me ovde.", "Kad kažemo gde boli, doktor zna kako da pomogne."),
+            act("👉", "Pokažem rukom gde me boli.", "I kad pokažemo, doktor zna gde boli."),
         ],
         other: [
-            act("🤐", "Trpim i ništa ne kažem.", "Ako ne kažemo, lekar ne zna gde boli. Tada mu je teže da pomogne."),
-            act("💢", "Odgurnem lekarovu ruku.", "Lekar tada ne zna šta se desilo. Kad kažemo „Boli me”, on zastane."),
+            act("🤐", "Trpim i ništa ne kažem.", "Ako ne kažemo, doktor ne zna gde boli. Tada mu je teže da pomogne."),
+            act("💢", "Odgurnem doktorovu ruku.", "Doktor tada ne zna šta se desilo. Kad kažemo „Boli me”, on zastane."),
         ],
     },
     {

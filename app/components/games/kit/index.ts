@@ -8,6 +8,7 @@ export { playSfx, type Sfx } from "./sfx";
 export { finiteOr, genderText, hintDue, isFemale, offeredOptions, shuffle, toCount, toIndexList } from "./utils";
 export {
     GameTeacherContext,
+    useBubbleTail,
     GameStage,
     PlayArea,
     GameHud,

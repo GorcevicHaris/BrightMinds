@@ -18,6 +18,7 @@ import {
     useDemo,
     useGameSync,
     useInputGuard,
+    useBubbleTail,
     useSayThen,
     useTimers,
     type BaseView,
@@ -152,8 +153,9 @@ const DEFAULT_LAYOUT: BoardLayout = { vars: "[--cols:4] [--rows:5]", cols: { por
 const LAYOUT: Record<number, BoardLayout> = {
     4: { vars: "[--cols:2] [--rows:2] landscape:[--cols:4] landscape:[--rows:1]", cols: { portrait: 2, landscape: 4 } },
     6: {
-        vars: "[--cols:3] [--rows:2] [@media(max-height:480px)]:[--cols:6] [@media(max-height:480px)]:[--rows:1]",
-        cols: { portrait: 3, landscape: 3, short: 6 },
+        // Uspravno dve kolone: šest kartica tada popuni ekran telefona umesto da ostanu male u dva reda
+        vars: "[--cols:2] [--rows:3] landscape:[--cols:3] landscape:[--rows:2] [@media(max-height:480px)]:[--cols:6] [@media(max-height:480px)]:[--rows:1]",
+        cols: { portrait: 2, landscape: 3, short: 6 },
     },
     8: {
         vars: "[--cols:4] [--rows:2] [@media(max-height:480px)]:[--cols:8] [@media(max-height:480px)]:[--rows:1]",
@@ -338,7 +340,12 @@ function MemoryCard({ position, animal, open, matched, hinted, disabled, classNa
                         GAME.accent.gradient
                     )}
                 >
-                    <span aria-hidden="true" className="font-display text-3xl font-extrabold text-white/90 sm:text-4xl">
+                    {/* Poleđina: unutrašnji okvir i znak u krugu — kartica izgleda kao prava, a ne kao prazno polje */}
+                    <span aria-hidden="true" className="absolute inset-[7%] rounded-[1rem] border-2 border-white/25" />
+                    <span
+                        aria-hidden="true"
+                        className="grid aspect-square w-[42%] place-items-center rounded-full bg-white/20 font-display text-[clamp(1.5rem,6cqw,3rem)] font-extrabold text-white ring-2 ring-white/30"
+                    >
                         ?
                     </span>
                 </span>
@@ -620,6 +627,7 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
         say(viewRef.current.peek ? TEXT_PEEK : TEXT_FIND);
     };
 
+    const tail = useBubbleTail();
     const shown = isMonitor ? toShown(emptyView(cfg.pairs), monitorState) : view;
     const pairs = Math.max(shown.totalRounds, 1);
     const lastFound = animalOf(shown.matched[shown.matched.length - 1]);
@@ -652,7 +660,7 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
             />
 
             {/* Uputstvo i povratna poruka dele isto mesto, da tabla ne skače */}
-            <div className="grid min-h-12 place-items-center *:col-start-1 *:row-start-1">
+            <div className={cn("grid min-h-14 place-items-center rounded-2xl border border-line bg-surface px-4 py-2 shadow-soft *:col-start-1 *:row-start-1", tail)}>
                 <p
                     aria-hidden={shown.feedback ? true : undefined}
                     className={cn(

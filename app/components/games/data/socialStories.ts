@@ -166,11 +166,11 @@ const STORIES: readonly Story[] = [
         ],
     },
     {
-        title: "Stomatolog",
+        title: "Kod zubara",
         icon: "🦷",
         tone: "aqua",
         cover: ["🦷", "🪥", "😁"],
-        intro: "Ovo je priča o stomatologu. Stomatolog je zubar. On čuva naše zube.",
+        intro: "Ovo je priča o zubaru. Zubar čuva naše zube.",
         steps: [
             {
                 scene: ["🪥", "🦷"],
@@ -348,7 +348,7 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["👨‍⚕️", "🩺"],
-                text: "Doktor me zove u ordinaciju. Kaže: „Otvori usta i reci A.” Gleda grlo malom lampom. Drveni štapić mi pritiska jezik. To je neprijatno i traje nekoliko sekundi.",
+                text: "Doktor me zove u svoju sobu. Kaže: „Otvori usta i reci A.” Gleda grlo malom lampom. Drveni štapić mi pritiska jezik. To nije prijatno. Traje samo nekoliko sekundi.",
                 decision: choice(
                     "Šta može da pomogne dok doktor gleda grlo?",
                     [
@@ -440,23 +440,23 @@ const STORIES: readonly Story[] = [
         ],
     },
     {
-        title: "Vatra i bezbednost",
+        title: "Vatra",
         icon: "🚒",
         tone: "rose",
         cover: ["🚒", "👨‍🚒", "🔔"],
-        intro: "Ovo je priča o vatri. Kad znamo šta da radimo, ostajemo bezbedni.",
+        intro: "Ovo je priča o vatri. Dobro je da znamo šta da radimo.",
         steps: [
             {
                 scene: ["🍳", "♨️"],
                 text: "Mama kuva ručak. Šporet je uključen. Iz šerpe izlazi para. Ringla je vruća i kad nije crvena.",
                 decision: choice(
-                    "Šta može da pomogne da ostaneš {bezbedan|bezbedna}?",
+                    "Šta može da pomogne da se ne opečeš?",
                     [
                         o("🙋", "Pitam mamu: „Da li je vruće?”", "Odrasli znaju šta je vruće. Kad pitam, ruke ostaju zdrave."),
                         o("↔️", "Stojim jedan korak dalje od šporeta", "Jedan korak dalje para i ringla ne mogu da me opeku."),
                     ],
                     [
-                        o("🤚", "Dotaknem ringlu da proverim", "Vruća ringla može da opeče ruku. Opekotina boli."),
+                        o("🤚", "Dotaknem ringlu da proverim", "Vruća ringla može da opeče ruku. To boli."),
                         o("🥄", "Podignem poklopac da vidim ručak", "Ispod poklopca je vrela para. Para može da opeče ruku."),
                     ]
                 ),
@@ -472,7 +472,7 @@ const STORIES: readonly Story[] = [
                     ],
                     [
                         o("🎒", "Pakujem sve stvari u ranac", "Pakovanje dugo traje. Stvari čekaju u učionici dok se ne vratimo."),
-                        o("🏃", "Istrčim napolje ispred svih", "U gužvi mogu da padnem. U redu svi izlazimo bezbedno."),
+                        o("🏃", "Istrčim napolje ispred svih", "U gužvi mogu da padnem. U redu niko ne pada."),
                     ]
                 ),
             },
@@ -482,7 +482,7 @@ const STORIES: readonly Story[] = [
                 decision: choice(
                     "Šta možeš da uradiš ako vidiš dim?",
                     [
-                        o("🚪", "Izađem napolje", "Napolju je vazduh čist. Tu sam {bezbedan|bezbedna}."),
+                        o("🚪", "Izađem napolje", "Napolju je vazduh čist. Tu mi je dobro."),
                         o("📣", "Glasno zovem odrasle", "Odrasli tada znaju za dim. Oni zovu pomoć."),
                     ],
                     [
@@ -508,7 +508,7 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🚒", "👨‍🚒"],
-                text: "Vatrogasci stižu brzo. Nose šlemove i velika creva. Oni gase vatru. Svi su bezbedni. Sada znam šta mogu da uradim.",
+                text: "Vatrogasci stižu brzo. Nose šlemove i velika creva. Oni gase vatru. Svi su dobro. Sada znam šta mogu da uradim.",
             },
         ],
     },
@@ -587,7 +587,7 @@ const STORIES: readonly Story[] = [
         ],
     },
     {
-        title: "Kućni ljubimac",
+        title: "Moj pas",
         icon: "🐶",
         tone: "leaf",
         cover: ["🐶", "🦴", "❤️"],
@@ -614,7 +614,7 @@ const STORIES: readonly Story[] = [
                 decision: choice(
                     "Šta može da pomogne Žući?",
                     [
-                        o("🦮", "Idemo u šetnju na povocu", "Na povocu je Žuća bezbedan. Šetnja traje oko pola sata."),
+                        o("🦮", "Idemo u šetnju na povocu", "Na povocu Žuća ne može da pobegne. Šetnja traje oko pola sata."),
                         o("🗣️", "Kažem tati: „Žuća hoće napolje.”", "Tata tada zna. Zajedno izvodimo Žuću."),
                     ],
                     [
@@ -671,12 +671,12 @@ const STORIES: readonly Story[] = [
         steps: [
             {
                 scene: ["🚉", "🕐"],
-                text: "Sa tatom čekam voz na stanici. Na stanici je mnogo ljudi. Zvučnik glasno najavljuje vozove. Na tabli piše: naš voz kasni deset minuta.",
+                text: "Sa tatom čekam voz na stanici. Na stanici je mnogo ljudi. Iz zvučnika se čuje glas. Glas kaže koji voz dolazi. Na tabli piše: naš voz kasni deset minuta.",
                 decision: choice(
                     "Šta može da pomogne dok čekaš voz?",
                     [
                         o("🪑", "Sednem na klupu sa tatom", "Vozovi nekad kasne. To nije ničija greška. Na klupi je čekanje lakše."),
-                        o("⏱️", "Zamolim tatu da uključi sat koji odbrojava", "Kad vidim koliko još minuta, lakše čekam."),
+                        o("⏱️", "Zamolim tatu da uključi sat", "Kad vidim koliko još minuta, lakše čekam."),
                     ],
                     [
                         o("🛤️", "Priđem šinama da vidim voz", "Blizu šina je opasno. Voz je brz i težak. Stojimo iza žute linije."),
@@ -686,16 +686,16 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🚆", "🎫"],
-                text: "Voz stiže. Kočnice škripe. Vrata se otvaraju uz pisak. Ulazimo. Kroz vagon ide kondukter i gleda karte.",
+                text: "Voz stiže. Kočnice škripe. Vrata se otvaraju uz pisak. Ulazimo. Kroz voz ide čovek koji gleda karte.",
                 decision: choice(
-                    "Šta možeš da uradiš kad kondukter dođe?",
+                    "Šta možeš da uradiš kad on dođe?",
                     [
-                        o("🎟️", "Pokažem svoju kartu", "Karta pokazuje da smem da putujem ovim vozom. Kondukter je označi i vrati."),
+                        o("🎟️", "Pokažem svoju kartu", "Karta pokazuje da smem da putujem ovim vozom. Čovek pogleda kartu i vrati je."),
                         o("🤝", "Dam kartu tati da je on pokaže", "Tata može da pokaže kartu umesto mene. To je u redu."),
                     ],
                     [
-                        o("🙈", "Sakrijem kartu", "Kondukter mora da vidi kartu. To je njegov posao."),
-                        o("😴", "Pravim se da spavam", "Kondukter i dalje čeka kartu. Brže je kad je odmah pokažem."),
+                        o("🙈", "Sakrijem kartu", "Čovek mora da vidi kartu. To je njegov posao."),
+                        o("😴", "Pravim se da spavam", "Čovek i dalje čeka kartu. Brže je kad je odmah pokažem."),
                     ]
                 ),
             },
@@ -716,7 +716,7 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🤫", "😴"],
-                text: "Voz kreće. Točkovi ravnomerno lupkaju. Voz se blago ljulja. Putnici oko mene čitaju ili spavaju.",
+                text: "Voz kreće. Točkovi tiho lupkaju. Voz se blago ljulja. Putnici oko mene čitaju ili spavaju.",
                 decision: choice(
                     "Šta možeš da radiš u vozu?",
                     [
@@ -739,7 +739,7 @@ const STORIES: readonly Story[] = [
                         o("🖼️", "Pokažem tati sličicu toaleta", "Sličica kaže isto što i reči. Tata razume."),
                     ],
                     [
-                        o("😣", "Trpim i ne kažem ništa", "Od trpljenja boli stomak. Uvek smem da kažem da moram u toalet."),
+                        o("😣", "Trpim i ne kažem ništa", "Kad dugo čekam, zaboli me stomak. Uvek smem da kažem da moram u toalet."),
                         o("🚶", "Odem da tražim toalet bez tate", "U vozu je mnogo vagona. Bez tate mogu da se izgubim."),
                     ]
                 ),
@@ -752,11 +752,11 @@ const STORIES: readonly Story[] = [
         ],
     },
     {
-        title: "Pregled kod lekara",
+        title: "Vakcina",
         icon: "👨‍⚕️",
         tone: "aqua",
         cover: ["👨‍⚕️", "🩺", "💉"],
-        intro: "Ovo je priča o pregledu kod lekara. Na pregledu nekad osetimo strah. To je u redu.",
+        intro: "Ovo je priča o vakcini kod doktora. Kod doktora nekad osetimo strah. To je u redu.",
         steps: [
             {
                 scene: ["🏥", "🪑"],
@@ -768,14 +768,14 @@ const STORIES: readonly Story[] = [
                         o("🔢", "Brojim koliko je dece ispred mene", "Kad znam ko je ispred mene, znam kad sam ja na redu."),
                     ],
                     [
-                        o("🚪", "Uđem odmah, pre svih", "Deca koja su došla ranije čekaju duže. Lekar ih prima po redu."),
+                        o("🚪", "Uđem odmah, pre svih", "Deca koja su došla ranije čekaju duže. Doktor ih prima po redu."),
                         o("🏃", "Trčim po čekaonici", "U čekaonici su bolesna deca. Njima treba mir."),
                     ]
                 ),
             },
             {
                 scene: ["🕐", "👩‍⚕️"],
-                text: "Sestra izlazi i kaže: „Doktor kasni. Čekaćete još malo.” Plan se promenio. To može da bude neprijatno.",
+                text: "Sestra izlazi i kaže: „Doktor kasni. Čekaćete još malo.” Plan se promenio. To nije lako.",
                 decision: choice(
                     "Šta može da pomogne kad se plan promeni?",
                     [
@@ -790,12 +790,12 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🩺", "👨‍⚕️"],
-                text: "Došao je moj red. Doktor stavlja stetoskop na moja leđa. Stetoskop je hladan nekoliko sekundi. Doktor sluša kako dišem. To ne boli.",
+                text: "Došao je moj red. Doktor stavlja hladnu slušalicu na moja leđa. Hladna je nekoliko sekundi. Doktor sluša kako dišem. To ne boli.",
                 decision: choice(
                     "Šta možeš da uradiš dok doktor sluša?",
                     [
                         o("😌", "Dišem duboko i polako", "Kad dišem duboko, doktor dobro čuje pluća."),
-                        o("🗣️", "Kažem: „Hladno mi je.”", "Doktor tada zagreje stetoskop rukom."),
+                        o("🗣️", "Kažem: „Hladno mi je.”", "Doktor tada zagreje slušalicu rukom."),
                     ],
                     [
                         o("🏃", "Ustanem i odem sa stolice", "Tada doktor ne može da čuje pluća. Pregled počinje ispočetka."),
@@ -841,15 +841,15 @@ const STORIES: readonly Story[] = [
         ],
     },
     {
-        title: "Likovna radionica",
+        title: "Crtanje",
         icon: "🎨",
         tone: "lilac",
         cover: ["🎨", "🖍️", "✂️"],
-        intro: "Ovo je priča o likovnoj radionici. Tu crtamo, sečemo i delimo pribor.",
+        intro: "Ovo je priča o času crtanja. Tu crtamo, sečemo i delimo bojice.",
         steps: [
             {
                 scene: ["🎨", "🖍️"],
-                text: "U radionici svako crta svoju sliku. Miriše na boje i lepak. Želim crvenu bojicu. Crvenu sada koristi drugarica.",
+                text: "Na času crtanja svako crta svoju sliku. Miriše na boje i lepak. Želim crvenu bojicu. Crvenu sada koristi drugarica.",
                 decision: choice(
                     "Šta možeš da uradiš kad neko koristi ono što ti treba?",
                     [
@@ -914,12 +914,12 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🧹", "🗑️"],
-                text: "Radionica je gotova. Na stolu su papirići, bojice i lepak.",
+                text: "Čas je gotov. Na stolu su papirići, bojice i lepak.",
                 decision: choice(
-                    "Šta možeš da uradiš na kraju radionice?",
+                    "Šta možeš da uradiš na kraju časa?",
                     [
-                        o("🧹", "Bacim papiriće u kantu", "Sto je čist i spreman za sledeću radionicu."),
-                        o("🖍️", "Vratim bojice u kutiju", "Bojice u kutiji čekaju sledeću radionicu."),
+                        o("🧹", "Bacim papiriće u kantu", "Sto je čist i spreman za sledeći čas."),
+                        o("🖍️", "Vratim bojice u kutiju", "Bojice u kutiji čekaju sledeći čas."),
                     ],
                     [
                         o("💥", "Gurnem sve na pod", "Na podu se bojice lome i gube."),
@@ -938,7 +938,7 @@ const STORIES: readonly Story[] = [
         steps: [
             {
                 scene: ["🩱", "🚿"],
-                text: "Dolazim sa tatom na bazen. U svlačionici oblačim kupaći. Bazen miriše na hlor. Glasovi odjekuju. Pre plivanja se tuširamo.",
+                text: "Dolazim sa tatom na bazen. U sobi za presvlačenje oblačim kupaći. Bazen miriše na hlor. Glasovi odjekuju. Pre plivanja se tuširamo.",
                 decision: choice(
                     "Šta može da pomogne pre ulaska u vodu?",
                     [
@@ -957,7 +957,7 @@ const STORIES: readonly Story[] = [
                 decision: choice(
                     "Kako možeš da stigneš do druga?",
                     [
-                        o("🚶", "Hodam polako", "Na mokrom podu hodanje je bezbedno. Drug može da sačeka."),
+                        o("🚶", "Hodam polako", "Kad hodam polako, ne padam. Drug može da sačeka."),
                         o("🖐️", "Mahnem drugu da on dođe do mene", "Drug vidi mahanje. Tada on dolazi polako."),
                     ],
                     [
@@ -1002,7 +1002,7 @@ const STORIES: readonly Story[] = [
                 decision: choice(
                     "Šta možeš da uradiš kad ti u vodi nije dobro?",
                     [
-                        o("🙋", "Uhvatim se za ivicu i zovem tatu", "Uz ivicu sam {bezbedan|bezbedna}. Tata odmah dolazi."),
+                        o("🙋", "Uhvatim se za ivicu i zovem tatu", "Uz ivicu se držim čvrsto. Tata odmah dolazi."),
                         o("🧖", "Izađem iz vode i obrišem lice peškirom", "Peškir je suv i mek. Oči prestanu da peku."),
                     ],
                     [
@@ -1051,7 +1051,7 @@ const STORIES: readonly Story[] = [
                     ],
                     [
                         o("💥", "Srušim Sneška", "Tada nema Sneška ni za mene ni za Saru."),
-                        o("🥕", "Stavim šargarepu bez pitanja", "Sara tada nije birala ništa. Sneško je zajednički."),
+                        o("🥕", "Stavim šargarepu bez pitanja", "Sara tada nije birala ništa. Sneško je i moj i Sarin."),
                     ]
                 ),
             },
@@ -1065,7 +1065,7 @@ const STORIES: readonly Story[] = [
                         o("⛄", "Odem da pravim Sneška", "Mogu da izaberem drugu igru na snegu."),
                     ],
                     [
-                        o("❄️", "Bacim grudvu nekome u lice", "Grudva u lice boli. Lice je osetljivo."),
+                        o("❄️", "Bacim grudvu nekome u lice", "Grudva u lice boli. Lice lako zaboli."),
                         o("😢", "Stojim i trpim grudve", "Deca ne znaju da mi smeta. Kad kažem „Stani”, prestanu."),
                     ]
                 ),

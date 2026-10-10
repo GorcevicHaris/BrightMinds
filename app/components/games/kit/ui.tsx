@@ -197,17 +197,28 @@ interface GamePromptProps {
     className?: string;
 }
 
-export function GamePrompt({ title, subtitle, visual, className }: GamePromptProps) {
+/**
+ * Repić „oblačića”: kartica sa uputstvom pokazuje na učitelja u traci iznad sebe.
+ * Dodaje se kartici koja stoji odmah ispod `GameHud` (boja ivice repića prati `border-color` kartice).
+ */
+const BUBBLE_TAIL =
+    "relative before:absolute before:-top-[9px] before:left-8 before:h-4 before:w-4 before:rotate-45 before:rounded-tl-[4px] before:border-l before:border-t before:border-inherit before:bg-surface sm:before:left-11";
+
+/** Klase za repić oblačića — prazno kad učitelj nije na ekranu (npr. roditeljski prikaz). */
+export function useBubbleTail(): string {
     const settings = useChildSettings();
     const teacher = React.useContext(GameTeacherContext);
-    // Uputstvo je „oblačić” onoga ko govori: repić pokazuje na učitelja u traci iznad
-    const bubble = teacher !== null && settings.avatar;
+    return teacher !== null && settings.avatar ? BUBBLE_TAIL : "";
+}
+
+export function GamePrompt({ title, subtitle, visual, className }: GamePromptProps) {
+    // Uputstvo je „oblačić” onoga ko govori
+    const tail = useBubbleTail();
     return (
         <div
             className={cn(
                 "relative flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-soft sm:gap-6 sm:p-6 short:sm:p-4",
-                bubble &&
-                    "before:absolute before:-top-[9px] before:left-8 before:h-4 before:w-4 before:rotate-45 before:rounded-tl-[4px] before:border-l before:border-t before:border-line before:bg-surface sm:before:left-11",
+                tail,
                 className
             )}
         >
