@@ -191,7 +191,7 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                     </div>
                 ) : (
                     <div className="space-y-5 sm:space-y-6">
-                        <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">Tvoj napredak</h1>
+                        <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">{viewer === "parent" ? `Napredak: ${firstName}` : "Tvoj napredak"}</h1>
                         <ProgressDashboard childId={child.id} childName={firstName} audience={viewer} />
                     </div>
                 )}

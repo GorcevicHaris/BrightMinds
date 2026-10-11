@@ -3,6 +3,7 @@
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import { EmotionFace } from "@/app/components/games/EmotionFace";
 import { MoodFace } from "@/app/components/games/MoodFace";
+import { OwlPicture, WindPicture } from "@/app/components/games/SoundPictures";
 import { VOICE_EMOTIONS, type VoiceEmotion } from "@/lib/emotion";
 import { speak } from "@/lib/speech";
 import { mimeVoice, playVoice } from "@/lib/voice";
@@ -48,6 +49,12 @@ export default function AvatarPreview() {
                 {(["happy", "sad", "angry", "scared", "surprised", "proud"] as const).map((emotion) => (
                     <EmotionFace key={emotion} emotion={emotion} className="h-20 w-20" />
                 ))}
+                <span className="mx-2 h-16 w-px bg-line" />
+                {/* Crtane slike zvukova pored jedne 3D slike, radi poređenja stila */}
+                <OwlPicture className="h-28 w-28 rounded-xl" />
+                <WindPicture className="h-28 w-28 rounded-xl" />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/soundImage/bird.webp" alt="" className="h-28 w-28 rounded-xl object-cover" />
             </section>
             {(["male", "female"] as const).map((gender) => (
                 <section key={gender} className="mb-8">

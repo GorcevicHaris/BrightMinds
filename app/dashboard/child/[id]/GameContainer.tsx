@@ -488,7 +488,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                                     game={g}
                                     unlocked={unlockedFor(g.id)}
                                     loading={levelsLoading}
-                                    unavailable={levelsLoading || levelsError}
+                                    pending={levelsLoading}
+                                    unavailable={levelsError}
                                     priority={index < 3}
                                     status={status}
                                     onOpen={() => openGame(g.id)}
@@ -566,6 +567,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     <MoodPicker
                         title="Kako si danas?"
                         subtitle="Dodirni lice"
+                        teacher={settings.avatar ? (gender ?? undefined) : null}
                         onSelect={(mood) => {
                             setMoodBefore(mood);
                             setMoodAsked(true);
@@ -574,7 +576,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     />
                 )}
 
-                {screen === "mood-after" && <MoodPicker title="Kako si sada?" subtitle="Dodirni lice" onSelect={handleMoodAfter} />}
+                {screen === "mood-after" && (
+                    <MoodPicker title="Kako si sada?" subtitle="Dodirni lice" teacher={settings.avatar ? (gender ?? undefined) : null} onSelect={handleMoodAfter} />
+                )}
 
                 {screen === "playing" && (
                     <GameSlot
@@ -664,12 +668,14 @@ interface GameCardProps {
     priority: boolean;
     /** Mesto igre u dnevnom planu (bez plana: undefined) */
     status?: PlanStatus;
-    /** Napredak još nije učitan (ili učitavanje nije uspelo) — igra se još ne otvara */
+    /** Učitavanje napretka nije uspelo — igra se ne otvara dok se ne pokuša ponovo */
     unavailable?: boolean;
+    /** Napredak se još učitava: kartica izgleda uobičajeno (nije „zaključana”), samo se još ne otvara */
+    pending?: boolean;
     onOpen: () => void;
 }
 
-function GameCard({ game, unlocked, loading, priority, status, unavailable = false, onOpen }: GameCardProps) {
+function GameCard({ game, unlocked, loading, priority, status, unavailable = false, pending = false, onOpen }: GameCardProps) {
     // `unlocked` = poslednji položeni nivo + 1 (16 znači da je položeno svih 15)
     const done = Math.min(Math.max(unlocked - 1, 0), MAX_LEVEL);
     const allDone = done >= MAX_LEVEL;
@@ -678,12 +684,14 @@ function GameCard({ game, unlocked, loading, priority, status, unavailable = fal
         <button
             type="button"
             onClick={onOpen}
-            disabled={waiting}
+            disabled={waiting || pending}
             className={cn(
                 "group relative flex w-full flex-col overflow-hidden rounded-card border-2 border-b-[6px] bg-surface text-left shadow-soft transition-[transform,border-color,box-shadow]",
                 waiting
                     ? "cursor-not-allowed border-line"
-                    : "hover:border-brand-300 hover:shadow-lift active:translate-y-[3px] active:border-b-2",
+                    : pending
+                      ? "cursor-progress"
+                      : "hover:border-brand-300 hover:shadow-lift active:translate-y-[3px] active:border-b-2",
                 status === "now" ? "border-brand-500" : "border-line"
             )}
         >
@@ -1014,7 +1022,15 @@ function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
 
 const MOOD_FACE: Partial<Record<Mood, MoodFaceKind>> = { upset: "upset", neutral: "neutral", happy: "happy" };
 
-function MoodPicker({ title, subtitle, onSelect }: { title: string; subtitle: string; onSelect: (mood: Mood | null) => void }) {
+interface MoodPickerProps {
+    title: string;
+    subtitle: string;
+    /** Pol učitelja koji postavlja pitanje; null = bez učitelja */
+    teacher?: string | null;
+    onSelect: (mood: Mood | null) => void;
+}
+
+function MoodPicker({ title, subtitle, teacher = null, onSelect }: MoodPickerProps) {
     // Drugi dodir dvostrukog dodira sa prethodnog ekrana ne sme da odgovori na pitanje
     const guard = useInputGuard(600);
     useEffect(() => {
@@ -1027,9 +1043,14 @@ function MoodPicker({ title, subtitle, onSelect }: { title: string; subtitle: st
     };
     return (
         <div className="mx-auto flex w-full max-w-2xl flex-1 animate-fade-up flex-col items-center justify-center text-center">
+            {teacher !== null && (
+                <span className="mb-3 grid h-20 w-20 place-items-end overflow-hidden rounded-3xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-24 sm:w-24">
+                    <TeacherAvatar gender={teacher ?? undefined} variant="face" emotion="curious" className="h-full w-full" />
+                </span>
+            )}
             <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">{title}</h2>
             <p className="mt-1 text-base font-semibold text-ink-soft sm:text-lg">{subtitle}</p>
-            <ul className="mt-6 grid w-full grid-cols-3 gap-3 sm:mt-10 sm:gap-5">
+            <ul className="mt-6 grid w-full grid-cols-3 gap-3 sm:mt-8 sm:gap-5">
                 {MOODS_THREE.map((mood) => (
                     <li key={mood.value}>
                         <button

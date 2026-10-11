@@ -99,7 +99,7 @@ const GROUPS: Draft[][] = [
             script: "Dobar dan!",
             good: [
                 say("🙂", "Dobar dan!", "„Dobar dan” kažemo kad sretnemo odraslu osobu. To je pozdrav."),
-                act("👋", "Mahnem rukom.", "Mahanje je takođe pozdrav. Učiteljica vidi da je pozdravljaš."),
+                act("👋", "Mahnem rukom.", "I kad mahneš, to je pozdrav. Učiteljica vidi da je pozdravljaš."),
             ],
             other: [
                 say("😠", "Šta hoćeš?", "Te reči mogu da zvuče ljuto. Učiteljica može da se zbuni."),
@@ -136,7 +136,7 @@ const GROUPS: Draft[][] = [
             script: "Molim te, daj mi vodu.",
             good: [
                 say("💧", "Molim te, daj mi vodu.", "Kad kažemo šta želimo, drugi mogu da nam pomognu. „Molim te” je lep način da tražimo."),
-                act("👉", "Pokažem rukom na vodu.", "I pokazivanje je način da kažemo šta želimo."),
+                act("👉", "Pokažem rukom na vodu.", "I kad pokažemo, drugi znaju šta želimo."),
             ],
             other: [
                 act("🤐", "Čekam i ništa ne kažem.", "Ako ne kažemo, niko ne zna da smo žedni."),
@@ -170,7 +170,7 @@ const GROUPS: Draft[][] = [
             script: "Doviđenja!",
             good: [
                 say("🙂", "Doviđenja!", "„Doviđenja” kažemo kad odlazimo. Tako drugi znaju da idemo."),
-                act("👋", "Mahnem rukom.", "Mahanje je takođe pozdrav. Vaspitačica vidi da odlaziš."),
+                act("👋", "Mahnem rukom.", "I kad mahneš, to je pozdrav. Vaspitačica vidi da odlaziš."),
             ],
             other: [
                 act("🚪", "Zalupim vrata.", "Vrata glasno lupe. Taj zvuk može da uplaši drugu decu."),
@@ -224,11 +224,11 @@ const GROUPS: Draft[][] = [
             script: "Zdravo!",
             good: [
                 say("🙂", "Zdravo!", "Kad nas neko pozdravi, možemo i mi njega da pozdravimo."),
-                act("👋", "Mahnem rukom.", "Mahanje je takođe pozdrav. Mogu da pozdravim i kad ne gledam u oči."),
+                act("👋", "Mahnem rukom.", "I kad mahneš, to je pozdrav. Mogu da pozdravim i kad ne gledam u oči."),
             ],
             other: [
                 say("😠", "Beži odavde!", "Drug je hteo da te pozdravi. Posle tih reči može da se rastuži."),
-                act("💢", "Gurnem druga.", "Guranje boli. Drug može da padne."),
+                act("💢", "Gurnem druga.", "Kad guramo, to boli. Drug može da padne."),
             ],
         },
     ],
@@ -298,7 +298,7 @@ const GROUPS: Draft[][] = [
             script: "Jedan sladoled, molim vas.",
             good: [
                 say("🍦", "Jedan sladoled, molim vas.", "Prodavac sada zna šta želiš. „Molim vas” kažemo odraslima kad nešto tražimo."),
-                act("👉", "Pokažem prstom sladoled koji želim.", "I pokazivanje je način da kažemo šta želimo."),
+                act("👉", "Pokažem prstom sladoled koji želim.", "I kad pokažemo, drugi znaju šta želimo."),
             ],
             other: [
                 act("💢", "Guram se preko reda.", "Kad se guramo, neko može da padne. Deca koja čekaju mogu da se naljute."),
@@ -332,10 +332,10 @@ const GROUPS: Draft[][] = [
             script: "Izvinite, mogu li da prođem?",
             good: [
                 say("🙂", "Izvinite, mogu li da prođem?", "Kad pitamo, ljudi znaju da želimo da prođemo. Tada se pomere."),
-                act("⏳", "Sačekam da se ljudi pomere.", "Čekanje je u redu. Kad ima mesta, lako se prođe."),
+                act("⏳", "Sačekam da se ljudi pomere.", "U redu je da sačekamo. Kad ima mesta, lako se prođe."),
             ],
             other: [
-                act("💢", "Guram ljude.", "Guranje boli. Neko može da padne."),
+                act("💢", "Guram ljude.", "Kad guramo, to boli. Neko može da padne."),
                 say("😠", "Sklanjaj se!", "Te reči mogu da zvuče ljuto. Ljudi mogu da se uplaše."),
             ],
         },
@@ -374,7 +374,7 @@ const ADVOCACY: Draft[] = [
         script: "Preglasno je.",
         good: [
             say("🔊", "Preglasno je.", "Kad kažemo „Preglasno je”, odrasli mogu da utišaju muziku."),
-            act("🙉", "Pokrijem uši rukama.", "Pokrivanje ušiju pomaže kad je preglasno. To je u redu."),
+            act("🙉", "Pokrijem uši rukama.", "Kad pokrijemo uši, lakše je kad je preglasno. To je u redu."),
         ],
         other: [act("🤐", "Trpim buku i ništa ne kažem.", "Ako ne kažemo, niko ne zna da nam je preglasno. Buka i dalje smeta.")],
     },
@@ -415,7 +415,7 @@ const ADVOCACY: Draft[] = [
         ask: ASK_SAY_OR_DO,
         script: "Ne želim zagrljaj. Mogu da mahnem.",
         good: [
-            say("👋", "Ne želim zagrljaj. Mogu da mahnem.", "Tvoje telo je tvoje. Smeš da kažeš da ne želiš zagrljaj. Mahanje je takođe pozdrav."),
+            say("👋", "Ne želim zagrljaj. Mogu da mahnem.", "Tvoje telo je tvoje. Smeš da kažeš da ne želiš zagrljaj. I kad mahneš, to je pozdrav."),
             act("🖐️", "Ponudim: „Baci pet!”", "„Baci pet” je takođe pozdrav. Ti biraš kako pozdravljaš."),
         ],
         other: [act("😣", "Trpim zagrljaj, iako ga ne želim.", "Ne moraš da trpiš zagrljaj. Smeš da kažeš: „Ne želim zagrljaj.”")],
@@ -452,7 +452,7 @@ const ADVOCACY: Draft[] = [
             act("🟦", "Pokažem karticu za pauzu.", "Kartica za pauzu govori isto: „Treba mi pauza.”"),
         ],
         other: [
-            act("😣", "Pišem dalje, iako ne mogu više.", "Kad smo previše umorni, pisanje ide teško. Posle pauze ide lakše."),
+            act("😣", "Pišem dalje, iako ne mogu više.", "Kad smo previše umorni, teško je da pišemo. Posle pauze ide lakše."),
             act("📄", "Pocepam list iz sveske.", "List je pocepan, a ruka i dalje boli."),
         ],
     },
@@ -486,7 +486,7 @@ const ADVOCACY: Draft[] = [
             act("🙋", "Kažem odrasloj osobi.", "Odrasla osoba može da pomogne oko reda. Tražiti pomoć je u redu."),
         ],
         other: [
-            act("💢", "Gurnem dete.", "Na toboganu je guranje opasno. Neko može da padne."),
+            act("💢", "Gurnem dete.", "Na toboganu je opasno da se guramo. Neko može da padne."),
             act("🤐", "Ništa ne kažem i pustim sve ispred sebe.", "Tada dugo čekaš. I ti imaš svoj red."),
         ],
     },
