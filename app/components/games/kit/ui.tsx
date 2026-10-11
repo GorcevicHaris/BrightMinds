@@ -4,9 +4,8 @@ import React from "react";
 import { cn } from "@/lib/cn";
 import { IDLE_HINT_MS, useIdle } from "./useIdle";
 import type { GameAccent } from "@/lib/games";
-import TeacherAvatar from "../../avatar/TeacherAvatar";
+import SpeakingTeacher from "../../avatar/SpeakingTeacher";
 import { useChildSettings } from "../../ChildSettingsProvider";
-import { useVoiceState } from "@/lib/voice";
 
 /**
  * Ko čita zadatke detetu. Postavlja ga strana na kojoj dete igra; bez njega
@@ -109,20 +108,9 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
  * pomeraju dok govori. Dok govori, oko njega svetli prsten — jasno je ko se obraća detetu.
  */
 function HudTeacher() {
-    const settings = useChildSettings();
     const teacher = React.useContext(GameTeacherContext);
-    const { speaking } = useVoiceState();
-    if (!teacher || !settings.avatar) return null;
-    return (
-        <span
-            className={cn(
-                "-my-1 grid h-14 w-14 shrink-0 place-items-end overflow-hidden rounded-2xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 transition-shadow duration-200 sm:h-[4.5rem] sm:w-[4.5rem] short:sm:h-16 short:sm:w-16",
-                speaking ? "ring-brand-400 shadow-[0_0_0_4px_var(--color-brand-100)]" : "ring-brand-100"
-            )}
-        >
-            <TeacherAvatar gender={teacher.gender} variant="face" className="h-full w-full" />
-        </span>
-    );
+    if (!teacher) return null;
+    return <SpeakingTeacher gender={teacher.gender} className="-my-1 h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem] short:sm:h-16 short:sm:w-16" />;
 }
 
 // ── SpeakButton ───────────────────────────────────────────────────────────────

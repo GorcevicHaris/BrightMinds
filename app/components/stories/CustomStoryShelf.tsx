@@ -7,6 +7,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, RotateCcw, X } from "lucide-react";
 import { SpeakButton, playSfx, useInputGuard } from "@/app/components/games/kit";
+import SpeakingTeacher from "@/app/components/avatar/SpeakingTeacher";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import { cn } from "@/lib/cn";
 import {
@@ -100,7 +101,7 @@ export default function CustomStoryShelf({ childId, gender, initialStories, offl
             </section>
 
             {/* Čitač je van odeljka (i van svega što se animira), da `fixed` uvek pokrije ceo ekran */}
-            {openStory && <StoryReader key={openStory.id} story={openStory} onSpeak={(text) => void say(text)} onClose={closeReader} />}
+            {openStory && <StoryReader key={openStory.id} story={openStory} gender={gender} onSpeak={(text) => void say(text)} onClose={closeReader} />}
         </>
     );
 }
@@ -156,11 +157,13 @@ const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1
 
 interface ReaderProps {
     story: CustomStory;
+    /** Pol deteta: određuje ko čita (učitelj ili učiteljica) */
+    gender?: string;
     onSpeak: (text: string) => void;
     onClose: () => void;
 }
 
-function StoryReader({ story, onSpeak, onClose }: ReaderProps) {
+function StoryReader({ story, gender, onSpeak, onClose }: ReaderProps) {
     const [index, setIndex] = useState(0);
     const [finished, setFinished] = useState(false);
     const rootRef = useRef<HTMLDivElement>(null);
@@ -320,6 +323,7 @@ function StoryReader({ story, onSpeak, onClose }: ReaderProps) {
                 <footer className="shrink-0 border-t border-line bg-surface px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 sm:px-6">
                     <div className="mx-auto w-full max-w-2xl">
                         <div className="flex items-center gap-3">
+                            <SpeakingTeacher gender={gender} className="h-12 w-12 sm:h-14 sm:w-14" />
                             <StoryStepIndicator current={index + 1} total={total} className="min-w-0 flex-1" />
                             <SpeakButton onClick={() => onSpeak(step.text)} label="Pročitaj ponovo" />
                         </div>
