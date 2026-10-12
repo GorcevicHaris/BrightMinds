@@ -1186,7 +1186,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                     <span className="font-extrabold text-ink-soft">Za odrasle:</span> {game.offscreenTip}
                 </p>
                 <p className="mt-1 min-h-5 text-xs font-bold normal-case text-ink-faint" aria-live="polite">
-                    {outcome.saved === "failed" && "Rezultat nije sačuvan (nema veze sa serverom)."}
+                    {outcome.saved === "failed" && "Nema interneta. Rezultat nije sačuvan."}
                 </p>
             </div>
         </div>
