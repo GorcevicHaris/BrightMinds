@@ -50,8 +50,8 @@ export function emotionForText(text: string): VoiceEmotion {
     if (PRAISE.test(plain)) return "happy";
     if (GENTLE.test(plain)) return "gentle";
     if (/\?\s*$/.test(plain)) {
-        // Samo pitanje se postavlja radoznalo, i kad pominje osećanje („Da li je Mila tužna?”).
-        // Opis pa pitanje („Luka je pao. Kako se Luka oseća?”) čita se mirno: veseo ton uz tužan
+        // Samo pitanje se postavlja radoznalo, i kad pominje osećanje („Da li je Lejla tužna?”).
+        // Opis pa pitanje („Haris je pao. Kako se Haris oseća?”) čita se mirno: veseo ton uz tužan
         // događaj bio bi pogrešan, a ton osećanja bi odao odgovor.
         return /[.!]\s+\S/.test(plain) ? "neutral" : "curious";
     }
@@ -62,28 +62,6 @@ export function emotionForText(text: string): VoiceEmotion {
     }
     return "neutral";
 }
-
-// ── Glas iz pregledača ────────────────────────────────────────────────────────
-
-export interface BrowserProsody {
-    /** 1 = uobičajena brzina; govor za decu je uvek malo sporiji */
-    rate: number;
-    /** 1 = uobičajena visina glasa */
-    pitch: number;
-}
-
-export const BROWSER_PROSODY: Record<VoiceEmotion, BrowserProsody> = {
-    neutral: { rate: 0.9, pitch: 1 },
-    hello: { rate: 0.94, pitch: 1.12 },
-    happy: { rate: 0.95, pitch: 1.15 },
-    proud: { rate: 0.98, pitch: 1.2 },
-    gentle: { rate: 0.82, pitch: 0.96 },
-    curious: { rate: 0.9, pitch: 1.1 },
-    sad: { rate: 0.8, pitch: 0.86 },
-    angry: { rate: 0.88, pitch: 0.82 },
-    scared: { rate: 0.96, pitch: 1.08 },
-    surprised: { rate: 0.98, pitch: 1.22 },
-};
 
 // ── Sintetizovani glas (ElevenLabs) ───────────────────────────────────────────
 

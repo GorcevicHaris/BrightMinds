@@ -1,6 +1,7 @@
 // Kratki, tihi zvučni efekti sintetisani u pregledaču — bez fajlova i bez naglih zvukova.
 
 import { effectsEnabled, masterVolume } from "@/lib/sound";
+import { celebrate } from "./Celebration";
 
 export type Sfx = "tap" | "flip" | "correct" | "wrong" | "win";
 
@@ -36,6 +37,8 @@ function tone(audio: AudioContext, freq: number, offset: number, duration: numbe
 }
 
 export function playSfx(name: Sfx) {
+    // Tačan odgovor uvek dobija i zvezdice (i kad su zvučni efekti isključeni)
+    if (name === "correct") celebrate();
     if (!effectsEnabled()) return;
     const audio = getContext();
     if (!audio) return;

@@ -18,10 +18,10 @@ const SAMPLES: Record<VoiceEmotion, string> = {
     proud: "Nivo je završen.",
     gentle: "Probaj ponovo. Polako.",
     curious: "Šta misliš, kako se oseća?",
-    sad: "Mila je tužna jer je izgubila loptu.",
-    angry: "Marko je ljut jer mu je kula pala.",
-    scared: "Ana se uplašila grmljavine.",
-    surprised: "Luka je iznenađen poklonom.",
+    sad: "Lejla je tužna jer je izgubila loptu.",
+    angry: "Amar je ljut jer mu je kula pala.",
+    scared: "Amina se uplašila grmljavine.",
+    surprised: "Haris je iznenađen poklonom.",
 };
 
 const NAMES: Record<VoiceEmotion, string> = {

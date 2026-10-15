@@ -135,7 +135,7 @@ function ChildLogin() {
 
     // Dete koje ne čita čuje uputstvo kad dodirne zvučnik (pregledač ne pušta glas pre prvog dodira)
     const sayInstructions = () =>
-        void speak(`Dodirni svoje četiri sličice. ${pin.length === 0 ? "Prvo" : "Sada"} izaberi ${VISUAL_PIN_CATEGORIES[Math.min(pin.length, PIN_LENGTH - 1)].prompt}.`);
+        void speak(`${pin.length === 0 ? "Prvo" : "Sada"} izaberi ${VISUAL_PIN_CATEGORIES[Math.min(pin.length, PIN_LENGTH - 1)].prompt}.`);
 
     return (
         <div>

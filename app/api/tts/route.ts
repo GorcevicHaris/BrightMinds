@@ -5,6 +5,7 @@ import { ElevenLabsClient, ElevenLabsError } from "@elevenlabs/elevenlabs-js";
 import { getSession } from "@/lib/auth";
 import { isVoiceEmotion, TTS_DELIVERY, type VoiceEmotion } from "@/lib/emotion";
 import { takeAttempt, type RateLimitRule } from "@/lib/rateLimit";
+import { readCachedAudio, storeCachedAudio, ttsCacheKey } from "@/lib/ttsCache";
 import { asTrimmedString } from "@/lib/validation";
 import { enforceRateLimit, errorResponse, HttpError, readJsonObject } from "../_lib/http";
 
@@ -12,16 +13,28 @@ const DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
 const DEFAULT_FEMALE_VOICE_ID = "EXAVITQu4vr4xnSDxMaL";
 const MAX_TEXT_LENGTH = 400;
 /**
- * Aplikacija govori srpski. `eleven_v3` zna srpski i razume oznake emocija u tekstu;
- * stariji `eleven_multilingual_v2` nema srpski (čita ga hrvatskim izgovorom), pa je samo rezerva
- * kada nalog nema pristup novijem modelu. Može se zameniti kroz `ELEVENLABS_MODEL`.
+ * Izbor modela je izmeren, ne pretpostavljen: 53 rečenice iz aplikacije izgovorene su svakim modelom
+ * i vraćene u tekst prepoznavanjem govora. `eleven_flash_v2_5` sa hrvatskim (isti glasovi kao srpski:
+ * č, ć, dž, đ, j, lj, nj) izgovorio je tačno 50/53; `eleven_v3` sa srpskim 45/53, uz greške poput
+ * „Obođi” umesto „Oboji” i „kriven” umesto „crven”. Tekst ostaje ekavski — model samo izgovara slova.
+ * `ELEVENLABS_MODEL` / `ELEVENLABS_LANGUAGE` mogu da ga zamene.
  */
-const DEFAULT_MODEL = "eleven_v3";
+const DEFAULT_MODEL = "eleven_flash_v2_5";
 const FALLBACK_MODEL = "eleven_multilingual_v2";
-const LANGUAGE = "sr";
+const LANGUAGE = process.env.ELEVENLABS_LANGUAGE?.trim() || "hr";
 
 /** Šta je ElevenLabs odbio u ovom procesu — ne pokušavamo isto pri svakoj rečenici */
 const rejected = { language: false, model: false };
+
+/**
+ * Kada ElevenLabs odbije ključ (najčešće: potrošena mesečna kvota), toliko dugo se ne
+ * pokušava nova sinteza — snimci iz keša se i dalje puštaju.
+ */
+const KEY_REJECTED_PAUSE_MS = 10 * 60 * 1000;
+let keyRejectedAt = 0;
+
+/** Glas privremeno nije dostupan (kvota); klijent nastavlja da pita za druge rečenice, jer one mogu biti u kešu. */
+const UNAVAILABLE = "Glas trenutno nije dostupan";
 
 function isRequestProblem(error: unknown): boolean {
     return error instanceof ElevenLabsError && [400, 404, 422].includes(error.statusCode ?? 0);
@@ -57,6 +70,14 @@ export async function POST(request: Request) {
         const emotion: VoiceEmotion = isVoiceEmotion(body.emotion) ? body.emotion : "neutral";
         const delivery = TTS_DELIVERY[emotion];
         const preferredModel = process.env.ELEVENLABS_MODEL?.trim() || DEFAULT_MODEL;
+
+        // Ista rečenica se plaća samo jednom. Lični tekst (pozdrav sa imenom deteta) se ne čuva.
+        const personal = body.personal === true;
+        const cacheKey = ttsCacheKey([preferredModel, LANGUAGE, voiceId, emotion, text]);
+        const cached = personal ? null : await readCachedAudio(cacheKey);
+        if (cached) return audioResponse(cached);
+        if (Date.now() - keyRejectedAt < KEY_REJECTED_PAUSE_MS) throw new HttpError(502, UNAVAILABLE);
+
         const elevenlabs = new ElevenLabsClient({ apiKey });
 
         const synthesize = async (modelId: string, withLanguage: boolean) => {
@@ -120,20 +141,26 @@ export async function POST(request: Request) {
 
         if (audio.byteLength === 0) throw new Error("ElevenLabs je vratio prazan audio");
 
-        return new Response(audio, {
-            headers: {
-                "Content-Type": "audio/mpeg",
-                "Content-Length": String(audio.byteLength),
-                "Cache-Control": "private, max-age=86400",
-            },
-        });
+        if (!personal) await storeCachedAudio(cacheKey, audio);
+        return audioResponse(audio);
     } catch (error) {
-        // Neispravan ključ ili potrošena kvota: ponovni pokušaji nemaju smisla,
-        // pa klijent dobija isti 503 kao kada glas nije podešen.
+        // Neispravan ključ ili potrošena kvota: nova sinteza se neko vreme ne pokušava,
+        // a rečenice iz keša i dalje rade.
         if (error instanceof ElevenLabsError && (error.statusCode === 401 || error.statusCode === 403)) {
-            console.error("[api] POST /api/tts: ElevenLabs je odbio zahtev, status", error.statusCode);
-            return errorResponse(new HttpError(503, NOT_CONFIGURED), "POST /api/tts");
+            keyRejectedAt = Date.now();
+            console.error("[api] POST /api/tts: ElevenLabs je odbio zahtev (ključ ili kvota), status", error.statusCode);
+            return errorResponse(new HttpError(502, UNAVAILABLE), "POST /api/tts");
         }
         return errorResponse(error, "POST /api/tts");
     }
+}
+
+function audioResponse(audio: ArrayBuffer): Response {
+    return new Response(audio, {
+        headers: {
+            "Content-Type": "audio/mpeg",
+            "Content-Length": String(audio.byteLength),
+            "Cache-Control": "private, max-age=86400",
+        },
+    });
 }

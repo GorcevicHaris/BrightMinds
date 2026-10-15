@@ -24,3 +24,5 @@ export {
     type ChoiceState,
     type FeedbackKind,
 } from "./ui";
+export { usePraise } from "./praise";
+export { CelebrationLayer, celebrate } from "./Celebration";

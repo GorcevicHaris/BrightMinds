@@ -27,6 +27,7 @@ import {
     type FeedbackKind,
     type GameProps,
     useWaitHint,
+    usePraise,
 } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
@@ -224,6 +225,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
     // Komponenta se za svaki nivo pravi iznova, pa se izbori biraju i mešaju samo jednom, ovde.
     const [view, setView] = useState<StoryView>(() => createView(story, createRecords(story, settings.choiceLimit, !isMonitor)));
     const viewRef = useRef(view);
+    const praise = usePraise();
     const started = useRef(false);
     const finished = useRef(false);
     const topRef = useRef<HTMLSpanElement>(null);
@@ -265,7 +267,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
         // ne sme da oboji ceo tekst. Pitanje posle nje se pita radoznalo.
         if (current.phase === "cover") {
             // Na kraju naslovne strane glas kaže i šta je sledeće (dete koje ne čita ne zna šta piše na dugmetu)
-            sayAll([`Priča: ${story.title}. ${genderText(story.intro, female)}`, "Dodirni veliko dugme dole."], undefined, "neutral");
+            sayAll([`Priča: ${story.title}. ${genderText(story.intro, female)}`], undefined, "neutral");
             return;
         }
         if (current.phase !== "story") return;
@@ -372,7 +374,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
             commit(next, `${place}: izbor koji pomaže${how}: ${label}`);
             // Ekran se pomera ka objašnjenju: drugi dodir dvostrukog dodira ne sme da pritisne „Dalje”
             guard.hold();
-            sayAll([explanationSpeech(currentDecision, picked, optionIndex, female)], undefined, "happy");
+            sayAll([praise(explanationSpeech(currentDecision, picked, optionIndex, female), attempt === 1 && !currentRecord.hint)], undefined, "happy");
         } else {
             const tried = [...currentRecord.tried, optionIndex];
             const lessHelpfulOffered = currentRecord.order.filter((i) => !currentDecision.acceptable.includes(i)).length;

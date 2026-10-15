@@ -1,7 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
-    BROWSER_PROSODY,
     FACE_FOR_EMOTION,
     TTS_DELIVERY,
     VOICE_EMOTIONS,
@@ -18,16 +17,16 @@ describe("emotionForText", () => {
         ["Probaj opet.", "gentle"],
         ["Nije to. Poslušaj još jednom.", "gentle"],
         ["Šta čuješ? Dodirni sliku.", "neutral"],
-        ["Luka je pao i udario koleno. Kako se Luka oseća?", "neutral"],
+        ["Haris je pao i udario koleno. Kako se Haris oseća?", "neutral"],
         ["Polako pada mrak. Mama kaže da idemo kući.", "neutral"],
         ["Lepo oboji sliku.", "neutral"],
-        ["Kako se oseća Mila?", "curious"],
-        ["Da li je Mila tužna?", "curious"],
-        ["Mila je tužna jer je izgubila loptu.", "sad"],
-        ["Marko je ljut jer mu je kula pala.", "angry"],
-        ["Ana se uplašila grmljavine.", "scared"],
-        ["Luka je iznenađen poklonom.", "surprised"],
-        ["Sara je srećna jer je dobila psa.", "happy"],
+        ["Kako se oseća Lejla?", "curious"],
+        ["Da li je Lejla tužna?", "curious"],
+        ["Lejla je tužna jer je izgubila loptu.", "sad"],
+        ["Amar je ljut jer mu je kula pala.", "angry"],
+        ["Amina se uplašila grmljavine.", "scared"],
+        ["Haris je iznenađen poklonom.", "surprised"],
+        ["Selma je srećna jer je dobila psa.", "happy"],
         ["Dodirni isti oblik.", "neutral"],
         ["", "neutral"],
     ];
@@ -36,9 +35,9 @@ describe("emotionForText", () => {
     }
 
     it("odrečna rečenica ne nosi tu emociju", () => {
-        assert.equal(emotionForText("Mila nije tužna."), "neutral");
-        assert.equal(emotionForText("Marko se više ne plaši mraka."), "neutral");
-        assert.equal(emotionForText("Ana nije više ljuta."), "neutral");
+        assert.equal(emotionForText("Lejla nije tužna."), "neutral");
+        assert.equal(emotionForText("Amar se više ne plaši mraka."), "neutral");
+        assert.equal(emotionForText("Amina nije više ljuta."), "neutral");
     });
 
     it("radi i bez dijakritika i velikim slovima", () => {
@@ -49,7 +48,6 @@ describe("emotionForText", () => {
 describe("tabele emocija", () => {
     it("svaka emocija ima ton glasa i izraz lica", () => {
         for (const emotion of VOICE_EMOTIONS) {
-            assert.ok(BROWSER_PROSODY[emotion], emotion);
             assert.ok(TTS_DELIVERY[emotion], emotion);
             assert.ok(FACE_FOR_EMOTION[emotion], emotion);
         }
@@ -57,9 +55,6 @@ describe("tabele emocija", () => {
 
     it("glas ostaje u mirnim granicama (nikad brz, nikad piskav)", () => {
         for (const emotion of VOICE_EMOTIONS) {
-            const { rate, pitch } = BROWSER_PROSODY[emotion];
-            assert.ok(rate >= 0.75 && rate <= 1, `${emotion} rate`);
-            assert.ok(pitch >= 0.8 && pitch <= 1.25, `${emotion} pitch`);
             const { stability, style, speed } = TTS_DELIVERY[emotion];
             assert.ok(stability >= 0.35 && stability <= 0.75, `${emotion} stability`);
             assert.ok(style >= 0 && style <= 0.6, `${emotion} style`);

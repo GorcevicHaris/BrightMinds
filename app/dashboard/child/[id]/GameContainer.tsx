@@ -8,7 +8,8 @@ import { ArrowLeft, ArrowRight, Check, Eye, Lock, Pause, Play, RotateCcw, SkipFo
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
-import { GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
+import { CelebrationLayer, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
+import { useSpeakingLock } from "@/lib/voice";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
 import { cn } from "@/lib/cn";
@@ -246,6 +247,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const planActive = plan.length > 0 && nextPlanned !== null;
 
     const playKey = `${gameId}-${level}-${attempt}`;
+    const listening = useSpeakingLock();
     const onBreak = breakFor === playKey && screen === "playing" && !outcome;
     // Pauza se ne računa u dnevno vreme igre
     const clock = useSessionClock(childId, preview ? 0 : settings.sessionMinutes, screen === "playing" && !outcome && !onBreak);
@@ -329,15 +331,16 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     };
 
     const gameTitle = game?.title ?? null;
-    // Ekrani između igara se i izgovaraju: većina dece mlađe od 5 godina ne čita, pa im glas kaže šta da dodirnu
+    // Ekrani između igara se i izgovaraju, jer većina dece mlađe od 5 godina ne čita. Glas kaže
+    // samo o čemu se radi, nikad gde da se dodirne: dugmad i lica su velika i dete ih samo vidi.
     useEffect(() => {
         const line =
             screen === "tiers"
-                ? `${gameTitle ? `${gameTitle}. ` : ""}Dodirni zeleno dugme.`
+                ? gameTitle && `${gameTitle}.`
                 : screen === "mood-before"
-                  ? "Kako si danas? Dodirni lice."
+                  ? "Kako se osećaš danas?"
                   : screen === "mood-after"
-                    ? "Kako si sada? Dodirni lice."
+                    ? "Kako se osećaš sada?"
                     : null;
         if (!line) return;
         const timer = setTimeout(() => void say(line, undefined, line.startsWith("Kako") ? "curious" : "neutral"), 500);
@@ -553,6 +556,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             aria-label={game.title}
         >
             <GameBackdrop game={game} />
+            <CelebrationLayer disabled={settings.reduceMotion} />
             {/* Zaglavlje igre — ista mesta dugmadi u svim igrama */}
             <header className="relative flex h-16 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 sm:h-18 sm:gap-3 sm:px-5">
                 {screen === "playing" ? (
@@ -619,8 +623,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
                 {screen === "mood-before" && (
                     <MoodPicker
-                        title="Kako si danas?"
-                        subtitle="Dodirni lice"
+                        title="Kako se osećaš danas?"
                         teacher={settings.avatar ? (gender ?? undefined) : null}
                         onSelect={(mood) => {
                             setMoodBefore(mood);
@@ -631,19 +634,23 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 )}
 
                 {screen === "mood-after" && (
-                    <MoodPicker title="Kako si sada?" subtitle="Dodirni lice" teacher={settings.avatar ? (gender ?? undefined) : null} onSelect={handleMoodAfter} />
+                    <MoodPicker title="Kako se osećaš sada?" teacher={settings.avatar ? (gender ?? undefined) : null} onSelect={handleMoodAfter} />
                 )}
 
                 {screen === "playing" && (
-                    <GameSlot
-                        key={`${game.id}-${level}-${attempt}`}
-                        gameId={game.id}
-                        childId={childId}
-                        level={level}
-                        gender={gender}
-                        childName={childName}
-                        onComplete={handleComplete}
-                    />
+                    // Dok učitelj govori, igra ne prima dodire: rečenica se ne prekida, a dete ne bira pre
+                    // nego što čuje šta se traži. Dugmad u zaglavlju (pauza, zvuk, zatvori) i dalje rade.
+                    <div className={cn("flex flex-1 flex-col", listening && "pointer-events-none")} aria-busy={listening || undefined}>
+                        <GameSlot
+                            key={`${game.id}-${level}-${attempt}`}
+                            gameId={game.id}
+                            childId={childId}
+                            level={level}
+                            gender={gender}
+                            childName={childName}
+                            onComplete={handleComplete}
+                        />
+                    </div>
                 )}
             </div>
 
@@ -1014,7 +1021,7 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
     const started = unlocked > 1;
 
     return (
-        <div className="mx-auto flex w-full max-w-5xl flex-1 animate-fade-up flex-col justify-center gap-4 sm:gap-6">
+        <div className="mx-auto flex w-full max-w-5xl flex-1 animate-fade-up flex-col justify-center gap-4 sm:gap-6 xl:max-w-6xl 2xl:max-w-7xl">
             {/* Igra + veliko dugme */}
             <section className="relative overflow-hidden rounded-card border border-line bg-surface shadow-lift">
                 <div className={cn("absolute inset-x-0 top-0 h-2 bg-gradient-to-r", game.accent.gradient)} aria-hidden="true" />
@@ -1151,13 +1158,12 @@ const MOOD_FACE: Partial<Record<Mood, MoodFaceKind>> = { upset: "upset", neutral
 
 interface MoodPickerProps {
     title: string;
-    subtitle: string;
     /** Pol učitelja koji postavlja pitanje; null = bez učitelja */
     teacher?: string | null;
     onSelect: (mood: Mood | null) => void;
 }
 
-function MoodPicker({ title, subtitle, teacher = null, onSelect }: MoodPickerProps) {
+function MoodPicker({ title, teacher = null, onSelect }: MoodPickerProps) {
     // Drugi dodir dvostrukog dodira sa prethodnog ekrana ne sme da odgovori na pitanje
     const guard = useInputGuard(600);
     useEffect(() => {
@@ -1169,14 +1175,13 @@ function MoodPicker({ title, subtitle, teacher = null, onSelect }: MoodPickerPro
         onSelect(mood);
     };
     return (
-        <div className="mx-auto flex w-full max-w-2xl flex-1 animate-fade-up flex-col items-center justify-center text-center">
+        <div className="mx-auto flex w-full max-w-2xl flex-1 animate-fade-up flex-col items-center justify-center text-center xl:max-w-4xl">
             {teacher !== null && (
                 <span className="mb-3 grid h-20 w-20 place-items-end overflow-hidden rounded-3xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-24 sm:w-24">
                     <TeacherAvatar gender={teacher ?? undefined} variant="face" emotion="curious" className="h-full w-full" />
                 </span>
             )}
             <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">{title}</h2>
-            <p className="mt-1 text-base font-semibold text-ink-soft sm:text-lg">{subtitle}</p>
             <ul className="mt-6 grid w-full grid-cols-3 gap-3 sm:mt-8 sm:gap-5">
                 {MOODS_THREE.map((mood) => (
                     <li key={mood.value}>

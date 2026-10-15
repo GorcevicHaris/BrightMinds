@@ -105,10 +105,20 @@ describe("social situations", () => {
         }
     });
 
-    it("shows the sentence to repeat in the model that another child says first", () => {
+    it("gives an example in the model that is not the answer itself, so the child does not just copy it", () => {
+        const plain = (text: string) =>
+            text
+                .toLocaleLowerCase("sr")
+                .replace(/[^\p{L}\s]/gu, "")
+                .replace(/\s+/g, " ")
+                .trim();
         for (const { situation } of SITUATIONS) {
-            const spoken = [false, true].some((female) => situation.model.includes(genderText(situation.script, female)));
-            assert.ok(spoken, `situation ${situation.id}: model does not contain "${situation.script}"`);
+            const quotes = [...situation.model.matchAll(/„([^”]+)”/g)].map((match) => plain(match[1]));
+            assert.ok(quotes.length > 0, `situation ${situation.id}: the model has no example sentence`);
+            const answers = [situation.script, ...situation.options.map((option) => option.text)].flatMap((text) =>
+                [false, true].map((female) => plain(genderText(text, female)))
+            );
+            for (const quote of quotes) assert.ok(!answers.includes(quote), `situation ${situation.id}: example „${quote}” is an answer`);
         }
     });
 
@@ -355,20 +365,20 @@ describe("emotion scenarios", () => {
 
 describe("emotion scenarios for a child with the same name as the character", () => {
     it("recognise a namesake regardless of case, spaces and script", () => {
-        const mila = SCENARIOS.find((scenario) => scenario.who === "mila");
-        assert.ok(mila);
-        assert.equal(isNamesake(mila, "Mila"), true);
-        assert.equal(isNamesake(mila, "  mila "), true);
-        assert.equal(isNamesake(mila, "МИЛА"), true);
-        assert.equal(isNamesake(mila, "Milan"), false);
-        assert.equal(isNamesake(mila, "Ana"), false);
-        assert.equal(isNamesake(mila, ""), false);
-        assert.equal(isNamesake(mila, undefined), false);
+        const lejla = SCENARIOS.find((scenario) => scenario.who === "lejla");
+        assert.ok(lejla);
+        assert.equal(isNamesake(lejla, "Lejla"), true);
+        assert.equal(isNamesake(lejla, "  lejla "), true);
+        assert.equal(isNamesake(lejla, "ЛЕЈЛА"), true);
+        assert.equal(isNamesake(lejla, "Lejlana"), false);
+        assert.equal(isNamesake(lejla, "Amina"), false);
+        assert.equal(isNamesake(lejla, ""), false);
+        assert.equal(isNamesake(lejla, undefined), false);
     });
 
     it("tell every scenario about another character, with no form of the original name left", () => {
-        // Koren imena: svi padežni oblici („Mila, Mile, Mili, Milu, Milom”) počinju njime
-        const stems = { mila: "Mil", ana: "An", sara: "Sar", luka: "Luk", marko: "Mark", filip: "Filip" };
+        // Koren imena: svi padežni oblici („Lejla, Lejle, Lejli, Lejlu, Lejlom”) počinju njime
+        const stems = { lejla: "Lejl", amina: "Amin", selma: "Selm", haris: "Haris", amar: "Amar", tarik: "Tarik" };
         for (const scenario of SCENARIOS) {
             const standIn = getScenario(scenario.id, true);
             assert.ok(standIn, `scenario ${scenario.id}`);

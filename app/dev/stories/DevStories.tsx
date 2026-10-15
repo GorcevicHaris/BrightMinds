@@ -47,7 +47,7 @@ export default function DevStories({ settings, gender, empty, managerOpen }: Pro
             </ChildSettingsProvider>
 
             {showManager && (
-                <CustomStoriesManager childId={0} childName="Mila" onClose={() => setShowManager(false)} initialStories={stories} offline />
+                <CustomStoriesManager childId={0} childName="Lejla" onClose={() => setShowManager(false)} initialStories={stories} offline />
             )}
         </div>
     );

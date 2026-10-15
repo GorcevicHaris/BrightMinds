@@ -32,6 +32,7 @@ import {
     type FeedbackKind,
     type GameProps,
     useWaitHint,
+    usePraise,
 } from "@/app/components/games/kit";
 import {
     getSituation,
@@ -200,6 +201,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
     const [rounds] = useState(() => buildRounds(level, settings.choiceLimit, settings.preset.maxRounds, !isMonitor));
     const [view, setView] = useState(() => initialView(rounds));
     const viewRef = useRef(view);
+    const praise = usePraise();
     const finishTimer = useRef<number | null>(null);
     const startedRef = useRef(false);
     const completedRef = useRef(false);
@@ -315,7 +317,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
             playSfx("correct");
             // Drugi dodir dvostrukog dodira ne sme da pritisne „Dalje” i preskoči objašnjenje
             guard.hold();
-            sayAll([explanationSpeech(target, index, current.order, female)], undefined, "happy");
+            sayAll([praise(explanationSpeech(target, index, current.order, female), attempt === 1 && !current.hint && !modeled)], undefined, "happy");
             return;
         }
 

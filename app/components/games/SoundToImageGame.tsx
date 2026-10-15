@@ -25,6 +25,7 @@ import {
     useTimers,
     WaitingNote,
     useWaitHint,
+    usePraise,
 } from "@/app/components/games/kit";
 import type { BaseView, ChoiceState, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
 import { OwlPicture, WindPicture, type SoundPicture } from "./SoundPictures";
@@ -99,10 +100,16 @@ function isNarrowScreen(): boolean {
 // ── Tekstovi ──────────────────────────────────────────────────────────────────
 // Jedno uputstvo u jednom trenutku, kratko i doslovno.
 
-const SAY_LISTEN = "Dodirni dugme i poslušaj zvuk.";
-/** Od drugog zvuka dete već zna šta se radi — dovoljna je jedna reč */
-const SAY_LISTEN_SHORT = "Poslušaj zvuk.";
-const SAY_CHOOSE = "Šta čuješ? Dodirni sliku.";
+const SAY_LISTEN = "Poslušaj zvuk.";
+const SAY_CHOOSE = "Šta čuješ?";
+/**
+ * Od drugog zvuka dete već zna šta se radi: posle pohvale ne sledi isto uputstvo iznova.
+ * Glas se javlja tek ako dete posle NUDGE_MS ne pusti zvuk, i to svaki put drugačije.
+ */
+const NUDGES = ["Evo novog zvuka.", "Slušaj dalje.", "Šta li je sad?", "Hajde, sledeći zvuk."];
+const NUDGE_MS = 7000;
+/** Pitanje posle zvuka, takođe u nekoliko oblika */
+const CHOOSE_LINES = [SAY_CHOOSE, "Šta je to bilo?", "Šta se čulo?"];
 const SAY_LISTEN_FIRST = "Prvo pusti zvuk.";
 const WRONG_TEXT = "Nije to. Poslušaj još jednom.";
 const WRONG_HINT_TEXT = "Nije to. Pogledaj sliku koja svetli.";
@@ -270,16 +277,16 @@ function mergeMonitor(incoming: Partial<SoundToImageView> | null | undefined): S
 
 // Raspored i veličine slika po broju ponuđenih odgovora (potpune klase, bez sklapanja).
 const GRID: Record<number, string> = {
-    2: "mx-auto max-w-xl grid-cols-2 xl:max-w-2xl",
-    3: "mx-auto max-w-2xl grid-cols-3 xl:max-w-4xl",
+    2: "mx-auto max-w-xl grid-cols-2 xl:max-w-3xl 2xl:max-w-4xl",
+    3: "mx-auto max-w-2xl grid-cols-3 xl:max-w-5xl 2xl:max-w-6xl",
     4: "grid-cols-2 md:grid-cols-4",
     6: "mx-auto max-w-3xl grid-cols-2 sm:grid-cols-3 lg:max-w-none lg:grid-cols-6",
 };
 
 const IMAGE_SIZES: Record<number, string> = {
-    2: "(min-width: 1280px) 320px, (min-width: 640px) 260px, 45vw",
-    3: "(min-width: 1280px) 280px, (min-width: 640px) 200px, 30vw",
-    4: "(min-width: 768px) 200px, 45vw",
+    2: "(min-width: 1536px) 440px, (min-width: 1280px) 380px, (min-width: 640px) 260px, 45vw",
+    3: "(min-width: 1536px) 380px, (min-width: 1280px) 320px, (min-width: 640px) 200px, 30vw",
+    4: "(min-width: 1536px) 300px, (min-width: 1280px) 260px, (min-width: 768px) 200px, 45vw",
     6: "(min-width: 1024px) 130px, (min-width: 640px) 230px, 45vw",
 };
 
@@ -389,6 +396,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     // Slike sledećeg zvuka se učitavaju dok dete rešava tekući, da nova runda ne „iskače” deo po deo
     const upcomingImages = isMonitor ? [] : (rounds[shown.round]?.optionIds ?? []).flatMap((id) => ITEM_BY_ID[id]?.image ?? []);
     const interactive = !isMonitor && !shown.done;
+    const praise = usePraise();
 
     // ── Zvuk ──────────────────────────────────────────────────────────────────
 
@@ -428,7 +436,8 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
             const finish = () => {
                 if (!release() || chooseSaidRef.current) return;
                 chooseSaidRef.current = true;
-                void say(SAY_CHOOSE);
+                const round = viewRef.current.round;
+                void say(CHOOSE_LINES[(round - 1) % CHOOSE_LINES.length]);
             };
 
             audioRef.current = current;
@@ -490,9 +499,15 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     const levelDone = view.done;
     useEffect(() => {
         if (isMonitor || levelDone) return;
-        const id = after(SPEAK_DELAY_MS, () => {
+        const first = round === 1 || soundOff;
+        const id = after(first ? SPEAK_DELAY_MS : NUDGE_MS, () => {
             introTimer.current = null;
-            void say(soundOff ? SOUND_OFF_TEXT : round > 1 ? SAY_LISTEN_SHORT : SAY_LISTEN);
+            if (first) {
+                void say(soundOff ? SOUND_OFF_TEXT : SAY_LISTEN);
+                return;
+            }
+            // Dete je zvuk već pustilo samo — tada nema šta da se kaže
+            if (!viewRef.current.heard && viewRef.current.round === round) void say(NUDGES[(round - 2) % NUDGES.length]);
         });
         introTimer.current = id;
         return () => cancel(id);
@@ -632,7 +647,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
             finishedRef.current = true;
             const final: SoundToImageView = { ...answered, done: true };
             commit(final, `${log} — nivo je završen`);
-            sayThen(correctText(wanted), () => {
+            sayThen(praise(correctText(wanted), firstTry), () => {
                 sync.complete(final);
                 onComplete({
                     score: final.score,
@@ -646,7 +661,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         }
 
         commit(answered, log);
-        sayThen(correctText(wanted), () => {
+        sayThen(praise(correctText(wanted), firstTry), () => {
             const upcoming = rounds[current.round];
             guard.hold();
             commit({ ...viewRef.current, ...upcoming, round: current.round + 1, wrongIds: [], pickedId: null, feedback: null, heard: false, hint: false });

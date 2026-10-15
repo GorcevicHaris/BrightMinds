@@ -536,16 +536,16 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🎁", "📕"],
-                text: "Drugarica Mila mi daje poklon. Papir šuška dok ga otvaram. U poklonu je knjiga. {Želeo|Želela} sam nešto drugo.",
+                text: "Drugarica Lejla mi daje poklon. Papir šuška dok ga otvaram. U poklonu je knjiga. {Želeo|Želela} sam nešto drugo.",
                 decision: choice(
-                    "Šta možeš da kažeš Mili?",
+                    "Šta možeš da kažeš Lejli?",
                     [
-                        o("🙏", "„Hvala, Mila!”", "Mila je birala poklon za mene. „Hvala” joj kaže da to vidim."),
-                        o("📖", "„Hvala. Pogledaću knjigu kasnije.”", "To je istina i mirno je rečeno. Mila zna da sam {dobio|dobila} poklon."),
+                        o("🙏", "„Hvala, Lejla!”", "Lejla je birala poklon za mene. „Hvala” joj kaže da to vidim."),
+                        o("📖", "„Hvala. Pogledaću knjigu kasnije.”", "To je istina i mirno je rečeno. Lejla zna da sam {dobio|dobila} poklon."),
                     ],
                     [
-                        o("🗑️", "Bacim poklon", "Knjiga može da se pocepa. Mila može da se rastuži."),
-                        o("😶", "Kažem: „Ovo ne volim.”", "Mila je birala poklon za mene. Te reči mogu da je rastuže."),
+                        o("🗑️", "Bacim poklon", "Knjiga može da se pocepa. Lejla može da se rastuži."),
+                        o("😶", "Kažem: „Ovo ne volim.”", "Lejla je birala poklon za mene. Te reči mogu da je rastuže."),
                     ]
                 ),
             },
@@ -884,22 +884,22 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🖼️", "💧"],
-                text: "Drug Luka slučajno prospe vodu. Voda kvasi ugao mog crteža. Luka kaže: „Izvini!”",
+                text: "Drug Haris slučajno prospe vodu. Voda kvasi ugao mog crteža. Haris kaže: „Izvini!”",
                 decision: choice(
-                    "Šta možeš da kažeš Luki?",
+                    "Šta možeš da kažeš Harisu?",
                     [
-                        o("🤝", "„U redu je, bilo je slučajno.”", "Luka nije hteo da pokvasi crtež. Crtež se osuši."),
-                        o("😟", "„{Tužan|Tužna} sam zbog crteža. Pomozi mi da ga osušim.”", "Smem da kažem kako se osećam. Luka može da pomogne papirnim ubrusom."),
+                        o("🤝", "„U redu je, bilo je slučajno.”", "Haris nije hteo da pokvasi crtež. Crtež se osuši."),
+                        o("😟", "„{Tužan|Tužna} sam zbog crteža. Pomozi mi da ga osušim.”", "Smem da kažem kako se osećam. Haris može da pomogne papirnim ubrusom."),
                     ],
                     [
-                        o("💦", "Prospem vodu na njegov crtež", "Tada su dva crteža mokra. I Luka i ja smo tužni."),
-                        o("🙅", "Kažem: „Više nisi moj drug.”", "Luka nije hteo da prospe vodu. Te reči mogu da ga rastuže."),
+                        o("💦", "Prospem vodu na njegov crtež", "Tada su dva crteža mokra. I Haris i ja smo tužni."),
+                        o("🙅", "Kažem: „Više nisi moj drug.”", "Haris nije hteo da prospe vodu. Te reči mogu da ga rastuže."),
                     ]
                 ),
             },
             {
                 scene: ["🖼️", "👏"],
-                text: "Crteži su gotovi. Učiteljica danas bira Anin crtež za zid. Moj crtež nije izabran. Mogu da budem {tužan|tužna}. To je u redu.",
+                text: "Crteži su gotovi. Učiteljica danas bira Aminin crtež za zid. Moj crtež nije izabran. Mogu da budem {tužan|tužna}. To je u redu.",
                 decision: choice(
                     "Šta možeš da uradiš kad je izabran tuđi crtež?",
                     [
@@ -908,7 +908,7 @@ const STORIES: readonly Story[] = [
                     ],
                     [
                         o("📄", "Pocepam svoj crtež", "Pocepan crtež ne mogu da pokažem mami i tati."),
-                        o("😤", "Kažem: „Anin crtež je ružan.”", "Te reči mogu da rastuže Anu. Moj crtež i dalje vredi."),
+                        o("😤", "Kažem: „Aminin crtež je ružan.”", "Te reči mogu da rastuže Aminu. Moj crtež i dalje vredi."),
                     ]
                 ),
             },
@@ -1042,16 +1042,16 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["⛄", "🥕"],
-                text: "Sa drugaricom Sarom pravim Sneška Belića. Ja želim da nos bude šargarepa. Sara želi da nos bude šišarka.",
+                text: "Sa drugaricom Selmom pravim Sneška Belića. Ja želim da nos bude šargarepa. Selma želi da nos bude šišarka.",
                 decision: choice(
                     "Šta može da pomogne kad želite različite stvari?",
                     [
-                        o("🤝", "Predložim: nos šargarepa, dugmad šišarke", "To je dogovor. Sneško je tada i moj i Sarin."),
+                        o("🤝", "Predložim: nos šargarepa, dugmad šišarke", "To je dogovor. Sneško je tada i moj i Selmin."),
                         o("⛄", "Predložim da napravimo dva Sneška", "Tada svako ima svog Sneška i svoj nos."),
                     ],
                     [
-                        o("💥", "Srušim Sneška", "Tada nema Sneška ni za mene ni za Saru."),
-                        o("🥕", "Stavim šargarepu bez pitanja", "Sara tada nije birala ništa. Sneško je i moj i Sarin."),
+                        o("💥", "Srušim Sneška", "Tada nema Sneška ni za mene ni za Selmu."),
+                        o("🥕", "Stavim šargarepu bez pitanja", "Selma tada nije birala ništa. Sneško je i moj i Selmin."),
                     ]
                 ),
             },
@@ -1072,16 +1072,16 @@ const STORIES: readonly Story[] = [
             },
             {
                 scene: ["🛷", "⏳"],
-                text: "Imamo jedne sanke. Sada se spušta Sara. Ja mnogo želim da se spustim.",
+                text: "Imamo jedne sanke. Sada se spušta Selma. Ja mnogo želim da se spustim.",
                 decision: choice(
                     "Šta može da pomogne dok čekaš svoj red?",
                     [
-                        o("🔢", "Brojim do dvadeset dok se Sara spušta", "Dok brojim, vreme brže prolazi. Onda je moj red."),
-                        o("🗣️", "Pitam: „Saro, mogu li ja posle tebe?”", "Sara tada zna da čekam. Menjamo se: jednom ona, jednom ja."),
+                        o("🔢", "Brojim do dvadeset dok se Selma spušta", "Dok brojim, vreme brže prolazi. Onda je moj red."),
+                        o("🗣️", "Pitam: „Selmo, mogu li ja posle tebe?”", "Selma tada zna da čekam. Menjamo se: jednom ona, jednom ja."),
                     ],
                     [
-                        o("✊", "Uzmem joj sanke", "Ako uzmem sanke bez pitanja, Sara se može rastužiti."),
-                        o("📢", "Vičem: „Požuri!”", "Vika ne ubrzava sanke. Sara može da se uplaši."),
+                        o("✊", "Uzmem joj sanke", "Ako uzmem sanke bez pitanja, Selma se može rastužiti."),
+                        o("📢", "Vičem: „Požuri!”", "Vika ne ubrzava sanke. Selma može da se uplaši."),
                     ]
                 ),
             },

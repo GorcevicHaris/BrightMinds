@@ -57,15 +57,26 @@ export function useSayAll(say: Say) {
  * zove `unlock` čim čitanje završi, pa `unlock` mora da podnese i drugi poziv.
  */
 export function useListenGate(enabled: boolean, resetKey: unknown, narrate: () => void, unlock: () => void, maxMs = LISTEN_MAX_MS) {
+    // Stranica se čita samo kad se promeni `resetKey`. Nove verzije `narrate`/`unlock` (posle svakog
+    // dodira ili otključavanja) ne smeju ponovo da pokrenu čitanje — inače se ista stranica
+    // pročita još jednom, a izbori ponovo zaključaju, kao da se nivo učitao ispočetka.
+    const narrateRef = useRef(narrate);
+    const unlockRef = useRef(unlock);
+    const maxRef = useRef(maxMs);
+    useEffect(() => {
+        narrateRef.current = narrate;
+        unlockRef.current = unlock;
+        maxRef.current = maxMs;
+    });
     useEffect(() => {
         if (!enabled) return;
-        const speakTimer = window.setTimeout(narrate, NARRATION_DELAY_MS);
-        const unlockTimer = window.setTimeout(unlock, maxMs);
+        const speakTimer = window.setTimeout(() => narrateRef.current(), NARRATION_DELAY_MS);
+        const unlockTimer = window.setTimeout(() => unlockRef.current(), maxRef.current);
         return () => {
             window.clearTimeout(speakTimer);
             window.clearTimeout(unlockTimer);
         };
-    }, [enabled, resetKey, narrate, unlock, maxMs]);
+    }, [enabled, resetKey]);
 }
 
 /**

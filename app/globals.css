@@ -62,6 +62,7 @@
   --animate-soft-pulse: soft-pulse 1.8s ease-in-out infinite;
   --animate-demo-tap: demo-tap 1.3s ease-in-out infinite;
   --animate-breathe: breathe 8s ease-in-out infinite;
+  --animate-star-burst: star-burst 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 
   @keyframes pop {
     from { opacity: 0; transform: scale(0.92); }
@@ -92,6 +93,13 @@
   @keyframes soft-pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgb(108 97 240 / 0.35); }
     50% { box-shadow: 0 0 0 10px rgb(108 97 240 / 0); }
+  }
+  /* Zvezdice posle tačnog odgovora: izlete iz mesta dodira, okrenu se i nestanu */
+  @keyframes star-burst {
+    0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+    15% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--turn)); opacity: 0; }
   }
   /* Disanje na ekranu za pauzu: 4 s udah (krug raste), 4 s izdah (krug se smanjuje) */
   @keyframes breathe {

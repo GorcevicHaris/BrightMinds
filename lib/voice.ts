@@ -5,7 +5,7 @@
 // Lica učitelja na ekranu samo čitaju ovo stanje — može ih biti više odjednom.
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import type { VoiceEmotion } from "./emotion";
 import { masterVolume } from "./sound";
 
@@ -236,3 +236,25 @@ export function showEmotion(emotion: VoiceEmotion) {
     token += 1;
     settle(emotion);
 }
+
+/** Najduže zaključavanje dodira dok učitelj govori (ako se kraj govora nikad ne javi) */
+const SPEAKING_LOCK_MAX_MS = 10_000;
+
+/**
+ * True dok učitelj govori — igra tada ne prima dodire, pa se rečenica ne prekida.
+ * Ako se kraj govora ne javi, zaključavanje se samo skida posle 10 s.
+ */
+export function useSpeakingLock(): boolean {
+    const { speaking } = useVoiceState();
+    const [expired, setExpired] = useState(false);
+    useEffect(() => {
+        if (!speaking) return;
+        const timer = setTimeout(() => setExpired(true), SPEAKING_LOCK_MAX_MS);
+        return () => {
+            clearTimeout(timer);
+            setExpired(false);
+        };
+    }, [speaking]);
+    return speaking && !expired;
+}
+

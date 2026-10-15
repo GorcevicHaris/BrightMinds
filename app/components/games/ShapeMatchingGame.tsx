@@ -32,6 +32,7 @@ import {
     type FeedbackKind,
     type GameProps,
     type TimerId,
+    usePraise,
 } from "@/app/components/games/kit";
 import type { ResolvedSettings } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
@@ -593,10 +594,10 @@ function promptFor(view: ShapesView): { title: string; subtitle: string } {
     const rotated = view.options.some((option) => option.rot);
 
     let title = `Pronađi ${SHAPES[view.target].acc}`;
-    const steps = ["Dodirni isti oblik."];
+    const steps = ["Nađi isti oblik."];
     if (view.look === "shadow") {
         title = "Čija je ovo senka?";
-        steps[0] = "Dodirni oblik sa ovom senkom.";
+        steps[0] = "Nađi oblik sa ovom senkom.";
     } else if (view.look === "outline") {
         title = "Koji je ovo oblik?";
     }
@@ -669,6 +670,8 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
     const { after, cancel } = useTimers();
     // Sledeći zadatak čeka da glas izgovori „To je …” — ni kraće ni duže nego što treba
     const sayThen = useSayThen(say, after);
+    // Pohvala uz potvrdu tačnog odgovora (menja se, a posle niza tačnih ohrabruje)
+    const praise = usePraise();
     const guard = useInputGuard();
     const demo = useDemo(!isMonitor);
 
@@ -773,7 +776,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
             commit(solved, `Tačno ${how}: ${targetName}`);
             // Zvuk kraja nivoa pušta strana koja prikazuje rezultat — ovde samo potvrda tačnog odgovora
             playSfx("correct");
-            sayThen(feedbackText(solved), isLast ? finish : () => startRound(current.round), { emotion: "happy" });
+            sayThen(praise(feedbackText(solved), firstTry), isLast ? finish : () => startRound(current.round), { emotion: "happy" });
             return;
         }
 

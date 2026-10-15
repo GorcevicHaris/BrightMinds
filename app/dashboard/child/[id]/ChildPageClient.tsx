@@ -67,14 +67,15 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
     // Pozdrav pri ulasku (jedna kratka rečenica)
     useEffect(() => {
         const timer = setTimeout(() => {
-            // Ime deteta se ne šalje servisu za govor (najmanje podataka o detetu)
-            void speak(`Zdravo. ${isFemale ? "Dobro došla" : "Dobro došao"}. Izaberi igru.`, { gender, emotion: "hello" });
+            // Pozdrav imenom (samo ime, bez prezimena); stranica o privatnosti kaže da ime ide servisu za govor
+            const name = firstName && firstName !== "Druže" ? `, ${firstName}` : "";
+            void speak(`Zdravo${name}! ${isFemale ? "Dobro došla" : "Dobro došao"}. Izaberi igru.`, { gender, emotion: "hello", personal: Boolean(name) });
         }, 1200);
         return () => {
             clearTimeout(timer);
             stopSpeaking();
         };
-    }, [gender, isFemale]);
+    }, [gender, isFemale, firstName]);
 
     useEffect(() => () => {
         if (leaveTimer.current) clearTimeout(leaveTimer.current);
@@ -120,7 +121,7 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
     return (
         <ChildSettingsProvider settings={settings} className="min-h-dvh bg-canvas pb-24 md:pb-10">
             <header inert={gameOpen} className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
-                <div className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:h-18 sm:gap-3 sm:px-6 lg:px-8">
+                <div className="flex h-16 w-full items-center gap-2 px-4 sm:h-18 sm:gap-3 sm:px-6 lg:px-10 2xl:px-16">
                     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-base font-extrabold text-white" aria-hidden="true">
                         {initials || "🙂"}
                     </span>
@@ -159,7 +160,7 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                 </div>
             </header>
 
-            <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-8 lg:px-8">
+            <main className="w-full px-4 py-5 sm:px-6 sm:py-8 lg:px-10 2xl:px-16">
                 {view === "games" ? (
                     <div className="space-y-6 sm:space-y-8">
                         {/* Pozdrav + učitelj */}

@@ -27,7 +27,7 @@ export default async function DevChildPage({ searchParams }: { searchParams: Pro
 
     return (
         <ChildPageClient
-            child={{ id: 0, first_name: "Mila", last_name: "Test", gender: p.gender === "male" ? "male" : "female", experience_points: 120 }}
+            child={{ id: 0, first_name: "Lejla", last_name: "Test", gender: p.gender === "male" ? "male" : "female", experience_points: 120 }}
             viewer={p.viewer === "parent" ? "parent" : "child"}
             settings={settings}
             preview

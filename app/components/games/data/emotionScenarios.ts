@@ -3,7 +3,7 @@
 // Pravila pisanja:
 //  • Treće lice: svaki scenario govori o imenovanom detetu, nikad o detetu koje igra.
 //  • Rečenice su kratke i doslovne; ime lika je na početku i po pravilu u nominativu.
-//    Jedini drugi oblik za sada je akuzativ („Brat stalno prekida Milu.”, scenario 248).
+//    Jedini drugi oblik za sada je akuzativ („Brat stalno prekida Lejlu.”, scenario 248).
 //    Svaki padežni oblik imena mora da postoji u tabeli NAME_CASES (vidi „Imenjaci” niže).
 //  • Rod glagola i prideva je napisan u samom scenariju, za tog lika (bez šablona).
 //  • Nema pogrešnih osećanja: `common` su osećanja koja većina ljudi tada ima,
@@ -46,15 +46,15 @@ function allowedEmotions(emotionCount: number): EmotionId[] {
 // ── Likovi ────────────────────────────────────────────────────────────────────
 // Mali, stalan skup imena. Imena su izabrana tako da nemaju drugo značenje koje bi zbunilo dete.
 
-type CharacterId = "mila" | "ana" | "sara" | "luka" | "marko" | "filip";
+type CharacterId = "lejla" | "amina" | "selma" | "haris" | "amar" | "tarik";
 
 const CHARACTERS: Record<CharacterId, { name: string; female: boolean }> = {
-    mila: { name: "Mila", female: true },
-    ana: { name: "Ana", female: true },
-    sara: { name: "Sara", female: true },
-    luka: { name: "Luka", female: false },
-    marko: { name: "Marko", female: false },
-    filip: { name: "Filip", female: false },
+    lejla: { name: "Lejla", female: true },
+    amina: { name: "Amina", female: true },
+    selma: { name: "Selma", female: true },
+    haris: { name: "Haris", female: false },
+    amar: { name: "Amar", female: false },
+    tarik: { name: "Tarik", female: false },
 };
 
 // ── Scenariji ─────────────────────────────────────────────────────────────────
@@ -94,176 +94,175 @@ function group(tier: Tier, emotion: EmotionId, firstId: number, rows: ScenarioRo
 const SCENARIOS: readonly EmotionScenario[] = [
     // ── Lako (nivoi 1–5): jasne, svakodnevne situacije ────────────────────────
     ...group(1, "happy", 101, [
-        ["mila", "🎁", "Mila je dobila poklon.", "Kad dobijemo poklon, često smo srećni."],
-        ["luka", "🎂", "Luka slavi rođendan.", "Kad slavimo rođendan, često smo srećni."],
-        ["ana", "❤️", "Ana je dobila zagrljaj od mame.", "Kad nas mama zagrli, često smo srećni."],
-        ["marko", "🤝", "Marko se igra sa drugom.", "Kad se igramo sa drugom, često smo srećni."],
-        ["sara", "🌳", "Sara ide u park da se igra.", "Kad idemo u park, često smo srećni."],
-        ["filip", "🐱", "Filip mazi malu macu.", "Kad mazimo macu, često smo srećni."],
-        ["ana", "⭐", "Ana je lepo složila igračke. Mama ju je pohvalila.", "Kad nas neko pohvali, često smo srećni."],
+        ["lejla", "🎁", "Lejla je dobila poklon.", "Kad dobijemo poklon, često smo srećni."],
+        ["haris", "🎂", "Haris slavi rođendan.", "Kad slavimo rođendan, često smo srećni."],
+        ["amina", "❤️", "Amina je dobila zagrljaj od mame.", "Kad nas mama zagrli, često smo srećni."],
+        ["amar", "🤝", "Amar se igra sa drugom.", "Kad se igramo sa drugom, često smo srećni."],
+        ["selma", "🌳", "Selma ide u park da se igra.", "Kad idemo u park, često smo srećni."],
+        ["tarik", "🐱", "Tarik mazi malu macu.", "Kad mazimo macu, često smo srećni."],
+        ["amina", "⭐", "Amina je lepo složila igračke. Mama ju je pohvalila.", "Kad nas neko pohvali, često smo srećni."],
     ]),
     ...group(1, "sad", 121, [
-        ["luka", "🩹", "Luka je pao i udario koleno.", "Kad padnemo i zaboli nas, često smo tužni."],
-        ["mila", "🚗", "Mila ne može da se igra. Njena igračka se pokvarila.", "Kad nam se igračka pokvari, često smo tužni."],
-        ["marko", "📃", "Marko je slučajno pocepao svoj crtež.", "Kad nam se crtež pocepa, često smo tužni."],
-        ["sara", "🎈", "Sara je ispustila balon. Balon je odleteo.", "Kad nam balon odleti, često smo tužni."],
-        ["filip", "🍦", "Filip je ispustio sladoled na zemlju.", "Kad nam sladoled padne, često smo tužni."],
-        ["ana", "🌧️", "Ana ne može napolje jer pada kiša.", "Kad ne možemo napolje da se igramo, često smo tužni."],
-        ["luka", "🔍", "Luka ne može da nađe svog medu.", "Kad ne možemo da nađemo omiljenu igračku, često smo tužni."],
+        ["haris", "🩹", "Haris je pao i udario koleno.", "Kad padnemo i zaboli nas, često smo tužni."],
+        ["lejla", "🚗", "Lejla ne može da se igra. Njena igračka se pokvarila.", "Kad nam se igračka pokvari, često smo tužni."],
+        ["amar", "📃", "Amar je slučajno pocepao svoj crtež.", "Kad nam se crtež pocepa, često smo tužni."],
+        ["selma", "🎈", "Selma je ispustila balon. Balon je odleteo.", "Kad nam balon odleti, često smo tužni."],
+        ["tarik", "🍦", "Tarik je ispustio sladoled na zemlju.", "Kad nam sladoled padne, često smo tužni."],
+        ["amina", "🌧️", "Amina ne može napolje jer pada kiša.", "Kad ne možemo napolje da se igramo, često smo tužni."],
+        ["haris", "🔍", "Haris ne može da nađe svog medu.", "Kad ne možemo da nađemo omiljenu igračku, često smo tužni."],
     ]),
     ...group(1, "angry", 141, [
-        ["marko", "🧸", "Marko se igra autićem. Drug mu je uzeo autić bez pitanja.", "Kad nam neko uzme igračku bez pitanja, često smo ljuti."],
-        ["sara", "🧱", "Sara je napravila kulu od kocaka. Brat joj je srušio kulu.", "Kad nam neko sruši kulu, često smo ljuti."],
-        ["luka", "🖍️", "Luka je nacrtao crtež. Sestra mu je išarala crtež.", "Kad nam neko išara crtež, često smo ljuti."],
-        ["mila", "🍫", "Mila ima čokoladu. Brat joj je pojeo čokoladu bez pitanja.", "Kad nam neko uzme nešto bez pitanja, često smo ljuti."],
-        ["filip", "📺", "Filip gleda crtani film. Sestra mu je ugasila televizor.", "Kad nam neko ugasi crtani film, često smo ljuti."],
-        ["ana", "🧍", "Ana stoji u redu. Jedan dečak ju je gurnuo.", "Kad nas neko gurne, često smo ljuti."],
+        ["amar", "🧸", "Amar se igra autićem. Drug mu je uzeo autić bez pitanja.", "Kad nam neko uzme igračku bez pitanja, često smo ljuti."],
+        ["selma", "🧱", "Selma je napravila kulu od kocaka. Brat joj je srušio kulu.", "Kad nam neko sruši kulu, često smo ljuti."],
+        ["haris", "🖍️", "Haris je nacrtao crtež. Sestra mu je išarala crtež.", "Kad nam neko išara crtež, često smo ljuti."],
+        ["lejla", "🍫", "Lejla ima čokoladu. Brat joj je pojeo čokoladu bez pitanja.", "Kad nam neko uzme nešto bez pitanja, često smo ljuti."],
+        ["tarik", "📺", "Tarik gleda crtani film. Sestra mu je ugasila televizor.", "Kad nam neko ugasi crtani film, često smo ljuti."],
+        ["amina", "🧍", "Amina stoji u redu. Jedan dečak ju je gurnuo.", "Kad nas neko gurne, često smo ljuti."],
     ]),
 
     // ── Srednje (nivoi 6–10): više okolnosti, dodaju se uplašeno i iznenađeno ─
     ...group(2, "happy", 201, [
-        ["luka", "👵", "Luka voli svoju baku. Baka je došla u goste.", "Kad nam dođe neko koga volimo, često smo srećni."],
-        ["mila", "🏖️", "Mila ide na more sa mamom i tatom.", "Kad idemo na more, često smo srećni."],
-        ["marko", "📖", "Marko sluša omiljenu priču. Tata mu čita.", "Kad slušamo omiljenu priču, često smo srećni."],
-        ["sara", "⛄", "Sara pravi Sneška Belića.", "Kad se igramo na snegu, često smo srećni."],
-        ["filip", "🦁", "Filip ide u zoološki vrt.", "Kad idemo u zoološki vrt, često smo srećni."],
-        ["ana", "🌳", "Ana se spušta niz tobogan u parku.", "Kad se spuštamo niz tobogan, često smo srećni."],
-        ["luka", "🥞", "Luka jede palačinke kod bake.", "Kad jedemo hranu koju volimo, često smo srećni."],
-        ["mila", "🚲", "Mila vozi bicikl u parku.", "Kad vozimo bicikl, često smo srećni."],
+        ["haris", "👵", "Haris voli svoju baku. Baka je došla u goste.", "Kad nam dođe neko koga volimo, često smo srećni."],
+        ["lejla", "🏖️", "Lejla ide na more sa mamom i tatom.", "Kad idemo na more, često smo srećni."],
+        ["amar", "📖", "Amar sluša omiljenu priču. Tata mu čita.", "Kad slušamo omiljenu priču, često smo srećni."],
+        ["selma", "⛄", "Selma pravi Sneška Belića.", "Kad se igramo na snegu, često smo srećni."],
+        ["tarik", "🦁", "Tarik ide u zoološki vrt.", "Kad idemo u zoološki vrt, često smo srećni."],
+        ["amina", "🌳", "Amina se spušta niz tobogan u parku.", "Kad se spuštamo niz tobogan, često smo srećni."],
+        ["haris", "🥞", "Haris jede palačinke kod bake.", "Kad jedemo hranu koju volimo, često smo srećni."],
+        ["lejla", "🚲", "Lejla vozi bicikl u parku.", "Kad vozimo bicikl, često smo srećni."],
     ]),
     ...group(2, "sad", 221, [
-        ["luka", "🚚", "Luka ima najboljeg druga. Drug se seli u drugi grad.", "Kad se drug odseli, često smo tužni."],
-        ["sara", "🛏️", "Sara čeka drugaricu. Drugarica je bolesna i ne može da dođe.", "Kad drugarica ne može da dođe, često smo tužni."],
-        ["marko", "👋", "Marko se igra sa drugom. Drug mora da ide kući.", "Kad drug ode kući, često smo tužni."],
-        ["mila", "🧳", "Mila je kod kuće sa tatom. Mama je otišla na put na tri dana.", "Kad neko koga volimo ode na put, često smo tužni."],
-        ["filip", "🐻", "Filip je zaboravio medu kod bake.", "Kad omiljena igračka nije kod nas, često smo tužni."],
-        ["ana", "🏠", "Ana je bila kod bake i deke. Sada mora da ide kući.", "Kad odlazimo od nekoga koga volimo, često smo tužni."],
-        ["luka", "🧤", "Luka je izgubio novu rukavicu u parku.", "Kad izgubimo nešto svoje, često smo tužni."],
-        ["sara", "🍦", "Sara je htela sladoled. Prodavnica je zatvorena.", "Kad ne dobijemo ono što smo želeli, često smo tužni."],
+        ["haris", "🚚", "Haris ima najboljeg druga. Drug se seli u drugi grad.", "Kad se drug odseli, često smo tužni."],
+        ["selma", "🛏️", "Selma čeka drugaricu. Drugarica je bolesna i ne može da dođe.", "Kad drugarica ne može da dođe, često smo tužni."],
+        ["amar", "👋", "Amar se igra sa drugom. Drug mora da ide kući.", "Kad drug ode kući, često smo tužni."],
+        ["lejla", "🧳", "Lejla je kod kuće sa tatom. Mama je otišla na put na tri dana.", "Kad neko koga volimo ode na put, često smo tužni."],
+        ["tarik", "🐻", "Tarik je zaboravio medu kod bake.", "Kad omiljena igračka nije kod nas, često smo tužni."],
+        ["amina", "🏠", "Amina je bila kod bake i deke. Sada mora da ide kući.", "Kad odlazimo od nekoga koga volimo, često smo tužni."],
+        ["haris", "🧤", "Haris je izgubio novu rukavicu u parku.", "Kad izgubimo nešto svoje, često smo tužni."],
+        ["selma", "🍦", "Selma je htela sladoled. Prodavnica je zatvorena.", "Kad ne dobijemo ono što smo želeli, često smo tužni."],
     ]),
     ...group(2, "angry", 241, [
-        ["mila", "📕", "Mila ima novu knjigu. Drug joj je pocepao stranu.", "Kad nam neko pocepa knjigu, često smo ljuti."],
-        ["marko", "🚶", "Marko čeka u redu u prodavnici. Jedan dečak je stao ispred njega.", "Kad neko stane ispred nas u redu, često smo ljuti."],
-        ["filip", "🧢", "Filip ima novu kapu. Jedan dečak mu je namerno bacio kapu u baru.", "Kad nam neko namerno baci stvari, često smo ljuti."],
-        ["ana", "🧩", "Ana slaže slagalicu. Brat joj je namerno rasturio slagalicu.", "Kad nam neko namerno pokvari igru, često smo ljuti."],
-        ["luka", "🎲", "Luka igra igru sa drugom. Drug ne poštuje pravila igre.", "Kad neko ne poštuje pravila igre, često smo ljuti."],
-        ["sara", "⚽", "Sara se igra loptom. Jedna devojčica joj je uzela loptu i otišla.", "Kad nam neko uzme loptu, često smo ljuti."],
-        ["marko", "🏰", "Marko je napravio zamak od peska. Jedan dečak je namerno zgazio zamak.", "Kad nam neko namerno pokvari ono što smo napravili, često smo ljuti."],
-        ["mila", "🗣️", "Mila priča mami šta je radila u vrtiću. Brat stalno prekida Milu.", "Kad nas neko stalno prekida, često smo ljuti."],
+        ["lejla", "📕", "Lejla ima novu knjigu. Drug joj je pocepao stranu.", "Kad nam neko pocepa knjigu, često smo ljuti."],
+        ["amar", "🚶", "Amar čeka u redu u prodavnici. Jedan dečak je stao ispred njega.", "Kad neko stane ispred nas u redu, često smo ljuti."],
+        ["tarik", "🧢", "Tarik ima novu kapu. Jedan dečak mu je namerno bacio kapu u baru.", "Kad nam neko namerno baci stvari, često smo ljuti."],
+        ["amina", "🧩", "Amina slaže slagalicu. Brat joj je namerno rasturio slagalicu.", "Kad nam neko namerno pokvari igru, često smo ljuti."],
+        ["haris", "🎲", "Haris igra igru sa drugom. Drug ne poštuje pravila igre.", "Kad neko ne poštuje pravila igre, često smo ljuti."],
+        ["selma", "⚽", "Selma se igra loptom. Jedna devojčica joj je uzela loptu i otišla.", "Kad nam neko uzme loptu, često smo ljuti."],
+        ["amar", "🏰", "Amar je napravio zamak od peska. Jedan dečak je namerno zgazio zamak.", "Kad nam neko namerno pokvari ono što smo napravili, često smo ljuti."],
+        ["lejla", "🗣️", "Lejla priča mami šta je radila u vrtiću. Brat stalno prekida Lejlu.", "Kad nas neko stalno prekida, često smo ljuti."],
     ]),
     ...group(2, "scared", 261, [
-        ["luka", "🐕", "Luka šeta ulicom. Veliki pas laje i trči prema njemu.", "Kad veliki pas trči prema nama, često smo uplašeni."],
-        ["mila", "⛈️", "Mila je u svojoj sobi. Napolju jako grmi.", "Kad jako grmi, često smo uplašeni."],
-        ["marko", "🏪", "Marko je u prodavnici. Nigde ne vidi mamu.", "Kad ne vidimo mamu u prodavnici, često smo uplašeni."],
-        ["sara", "💡", "Sara je u sobi. Svetlo se odjednom ugasilo.", "Kad odjednom ostanemo u mraku, često smo uplašeni."],
-        ["filip", "🌙", "Filip leži u krevetu. U mraku čuje čudan zvuk.", "Kad u mraku čujemo čudan zvuk, često smo uplašeni."],
-        ["ana", "🐝", "Ana sedi u parku. Pčela zuji oko njene glave.", "Kad pčela zuji oko nas, često smo uplašeni."],
-        ["luka", "💤", "Luka je sanjao ružan san.", "Kad sanjamo ružan san, često smo uplašeni."],
-        ["mila", "💉", "Mila je kod doktora. Treba da primi vakcinu.", "Kad treba da primimo vakcinu, često smo uplašeni."],
+        ["haris", "🐕", "Haris šeta ulicom. Veliki pas laje i trči prema njemu.", "Kad veliki pas trči prema nama, često smo uplašeni."],
+        ["lejla", "⛈️", "Lejla je u svojoj sobi. Napolju jako grmi.", "Kad jako grmi, često smo uplašeni."],
+        ["amar", "🏪", "Amar je u prodavnici. Nigde ne vidi mamu.", "Kad ne vidimo mamu u prodavnici, često smo uplašeni."],
+        ["selma", "💡", "Selma je u sobi. Svetlo se odjednom ugasilo.", "Kad odjednom ostanemo u mraku, često smo uplašeni."],
+        ["tarik", "🌙", "Tarik leži u krevetu. U mraku čuje čudan zvuk.", "Kad u mraku čujemo čudan zvuk, često smo uplašeni."],
+        ["amina", "🐝", "Amina sedi u parku. Pčela zuji oko njene glave.", "Kad pčela zuji oko nas, često smo uplašeni."],
+        ["haris", "💤", "Haris je sanjao ružan san.", "Kad sanjamo ružan san, često smo uplašeni."],
+        ["lejla", "💉", "Lejla je kod doktora. Treba da primi vakcinu.", "Kad treba da primimo vakcinu, često smo uplašeni."],
     ]),
     ...group(2, "surprised", 281, [
-        ["marko", "🎩", "Marko gleda mađioničara. Mađioničar je izvukao zeca iz šešira.", "Kad vidimo nešto što nismo očekivali, često smo iznenađeni."],
-        ["ana", "🐿️", "Ana šeta parkom. Veverica je odjednom pretrčala stazu ispred nje.", "Kad se nešto desi odjednom, često smo iznenađeni."],
-        ["filip", "🌈", "Filip je pogledao kroz prozor. Na nebu je velika duga.", "Kad vidimo nešto što retko viđamo, često smo iznenađeni.", "happy"],
-        ["sara", "🚪", "Sara je otvorila vrata. Na vratima je baka. Sara nije znala da baka dolazi.", "Kad dođe neko koga nismo očekivali, često smo iznenađeni.", "happy"],
+        ["amar", "🎩", "Amar gleda mađioničara. Mađioničar je izvukao zeca iz šešira.", "Kad vidimo nešto što nismo očekivali, često smo iznenađeni."],
+        ["amina", "🐿️", "Amina šeta parkom. Veverica je odjednom pretrčala stazu ispred nje.", "Kad se nešto desi odjednom, često smo iznenađeni."],
+        ["tarik", "🌈", "Tarik je pogledao kroz prozor. Na nebu je velika duga.", "Kad vidimo nešto što retko viđamo, često smo iznenađeni.", "happy"],
+        ["selma", "🚪", "Selma je otvorila vrata. Na vratima je baka. Selma nije znala da baka dolazi.", "Kad dođe neko koga nismo očekivali, često smo iznenađeni.", "happy"],
     ]),
 
     // ── Teško (nivoi 11–15): manje očigledne situacije, dodaje se ponosno ─────
     ...group(3, "happy", 301, [
-        ["ana", "🌤️", "Ana je čekala da kiša stane. Kiša je stala i Ana ide napolje.", "Kad možemo napolje da se igramo, često smo srećni."],
-        ["luka", "🤝", "Luka se posvađao sa drugom. Sada su se pomirili.", "Kad se pomirimo sa drugom, često smo srećni."],
-        ["mila", "🧺", "Mila zna da sutra ide na izlet sa vrtićem.", "Kad znamo da nas čeka nešto lepo, često smo srećni."],
-        ["marko", "💌", "Marko je dobio pozivnicu za rođendan svog druga.", "Kad nas neko pozove na rođendan, često smo srećni."],
-        ["sara", "🧸", "Sara je izgubila medu. Posle je našla medu ispod kreveta.", "Kad nađemo ono što smo izgubili, često smo srećni."],
-        ["filip", "🏫", "Filip je nov u vrtiću. Jedna devojčica ga je pozvala da se igraju.", "Kad nas neko pozove u igru, često smo srećni."],
-        ["ana", "🍰", "Ana je sa bakom napravila kolač. Kolač je ukusan.", "Kad sa nekim napravimo nešto lepo, često smo srećni."],
-        ["luka", "🧳", "Luka dugo nije video tatu. Tata se vratio sa puta.", "Kad se vrati neko koga volimo, često smo srećni."],
+        ["amina", "🌤️", "Amina je čekala da kiša stane. Kiša je stala i Amina ide napolje.", "Kad možemo napolje da se igramo, često smo srećni."],
+        ["haris", "🤝", "Haris se posvađao sa drugom. Sada su se pomirili.", "Kad se pomirimo sa drugom, često smo srećni."],
+        ["lejla", "🧺", "Lejla zna da sutra ide na izlet sa vrtićem.", "Kad znamo da nas čeka nešto lepo, često smo srećni."],
+        ["amar", "💌", "Amar je dobio pozivnicu za rođendan svog druga.", "Kad nas neko pozove na rođendan, često smo srećni."],
+        ["selma", "🧸", "Selma je izgubila medu. Posle je našla medu ispod kreveta.", "Kad nađemo ono što smo izgubili, često smo srećni."],
+        ["tarik", "🏫", "Tarik je nov u vrtiću. Jedna devojčica ga je pozvala da se igraju.", "Kad nas neko pozove u igru, često smo srećni."],
+        ["amina", "🍰", "Amina je sa bakom napravila kolač. Kolač je ukusan.", "Kad sa nekim napravimo nešto lepo, često smo srećni."],
+        ["haris", "🧳", "Haris dugo nije video tatu. Tata se vratio sa puta.", "Kad se vrati neko koga volimo, često smo srećni."],
     ]),
     ...group(3, "sad", 321, [
-        ["mila", "🏰", "Mila je dugo pravila kulu od peska. Talas je srušio kulu.", "Kad se sruši nešto što smo dugo pravili, često smo tužni."],
-        ["marko", "📅", "Marko je čekao druga. Drug je obećao da će doći, ali nije došao.", "Kad se ne desi ono čemu smo se radovali, često smo tužni."],
-        ["sara", "🌅", "Sara je bila na moru. Leto je gotovo i Sara ide kući.", "Kad se završi nešto lepo, često smo tužni."],
-        ["filip", "🪁", "Filip gleda decu u parku. Deca se igraju, a njega nisu pozvala.", "Kad nas ne pozovu u igru, često smo tužni."],
-        ["ana", "🤒", "Ana je bolesna. Zato ne može da ide na rođendan drugarice.", "Kad ne možemo da idemo na rođendan, često smo tužni."],
-        ["luka", "🏫", "Luka ide u novu školu. Njegov najbolji drug je ostao u staroj školi.", "Kad više nismo sa najboljim drugom, često smo tužni."],
-        ["mila", "🎲", "Mila je igrala igru sa bratom. Mila je izgubila.", "Kad izgubimo u igri, često smo tužni.", "angry"],
-        ["marko", "🖼️", "Marko je nacrtao crtež za tatu. Tata nije stigao da pogleda crtež.", "Kad neko ne pogleda ono što smo napravili, često smo tužni."],
+        ["lejla", "🏰", "Lejla je dugo pravila kulu od peska. Talas je srušio kulu.", "Kad se sruši nešto što smo dugo pravili, često smo tužni."],
+        ["amar", "📅", "Amar je čekao druga. Drug je obećao da će doći, ali nije došao.", "Kad se ne desi ono čemu smo se radovali, često smo tužni."],
+        ["selma", "🌅", "Selma je bila na moru. Leto je gotovo i Selma ide kući.", "Kad se završi nešto lepo, često smo tužni."],
+        ["tarik", "🪁", "Tarik gleda decu u parku. Deca se igraju, a njega nisu pozvala.", "Kad nas ne pozovu u igru, često smo tužni."],
+        ["amina", "🤒", "Amina je bolesna. Zato ne može da ide na rođendan drugarice.", "Kad ne možemo da idemo na rođendan, često smo tužni."],
+        ["haris", "🏫", "Haris ide u novu školu. Njegov najbolji drug je ostao u staroj školi.", "Kad više nismo sa najboljim drugom, često smo tužni."],
+        ["lejla", "🎲", "Lejla je igrala igru sa bratom. Lejla je izgubila.", "Kad izgubimo u igri, često smo tužni.", "angry"],
+        ["amar", "🖼️", "Amar je nacrtao crtež za tatu. Tata nije stigao da pogleda crtež.", "Kad neko ne pogleda ono što smo napravili, često smo tužni."],
     ]),
     ...group(3, "angry", 341, [
-        ["sara", "⏳", "Sara dugo čeka na ljuljašku. Devojčica na ljuljašci neće da siđe.", "Kad dugo čekamo, a ne dođemo na red, često smo ljuti."],
-        ["filip", "💬", "Filip je rekao istinu. Niko mu ne veruje.", "Kad kažemo istinu, a ne veruju nam, često smo ljuti.", "sad"],
-        ["ana", "🥤", "Ana nije prosula sok. Brat je rekao mami da je Ana prosula sok.", "Kad neko kaže da smo uradili nešto što nismo, često smo ljuti."],
-        ["luka", "👓", "Luka ima nove naočare. Jedan dečak mu se ruga zbog naočara.", "Kad nam se neko ruga, često smo ljuti.", "sad"],
-        ["mila", "🌙", "Mila je htela još da se igra. Mama je rekla da je vreme za spavanje.", "Kad moramo da prekinemo igru, često smo ljuti.", "sad"],
-        ["marko", "🤫", "Marko je rekao tajnu svom drugu. Drug je rekao tajnu drugoj deci.", "Kad neko kaže našu tajnu drugima, često smo ljuti."],
-        ["sara", "✏️", "Sara je pozajmila bratu bojice. Brat je polomio bojice.", "Kad neko pokvari stvar koju smo mu pozajmili, često smo ljuti."],
-        ["filip", "✋", "Filip je tri puta rekao sestri: „Prestani.” Sestra ga i dalje gura.", "Kad neko ne prestane, a zamolili smo ga, često smo ljuti."],
+        ["selma", "⏳", "Selma dugo čeka na ljuljašku. Devojčica na ljuljašci neće da siđe.", "Kad dugo čekamo, a ne dođemo na red, često smo ljuti."],
+        ["tarik", "💬", "Tarik je rekao istinu. Niko mu ne veruje.", "Kad kažemo istinu, a ne veruju nam, često smo ljuti.", "sad"],
+        ["amina", "🥤", "Amina nije prosula sok. Brat je rekao mami da je Amina prosula sok.", "Kad neko kaže da smo uradili nešto što nismo, često smo ljuti."],
+        ["haris", "👓", "Haris ima nove naočare. Jedan dečak mu se ruga zbog naočara.", "Kad nam se neko ruga, često smo ljuti.", "sad"],
+        ["lejla", "🌙", "Lejla je htela još da se igra. Mama je rekla da je vreme za spavanje.", "Kad moramo da prekinemo igru, često smo ljuti.", "sad"],
+        ["amar", "🤫", "Amar je rekao tajnu svom drugu. Drug je rekao tajnu drugoj deci.", "Kad neko kaže našu tajnu drugima, često smo ljuti."],
+        ["selma", "✏️", "Selma je pozajmila bratu bojice. Brat je polomio bojice.", "Kad neko pokvari stvar koju smo mu pozajmili, često smo ljuti."],
+        ["tarik", "✋", "Tarik je tri puta rekao sestri: „Prestani.” Sestra ga i dalje gura.", "Kad neko ne prestane, a zamolili smo ga, često smo ljuti."],
     ]),
     ...group(3, "scared", 361, [
-        ["ana", "🦷", "Ana sutra prvi put ide kod zubara. Ne zna šta će zubar raditi.", "Kad ne znamo šta nas čeka, često smo uplašeni."],
-        ["luka", "🎤", "Luka treba da recituje pesmu pred celim razredom.", "Kad treba da nastupamo pred drugima, često smo uplašeni."],
-        ["mila", "🏫", "Mila je prvi dan u novoj školi. Nikoga ne poznaje.", "Kad smo na novom mestu i nikoga ne poznajemo, često smo uplašeni."],
-        ["marko", "🛏️", "Marko prvi put spava kod bake i deke, bez mame i tate.", "Kad prvi put spavamo bez mame i tate, često smo uplašeni."],
-        ["sara", "🧗", "Sara se popela visoko na penjalicu. Ne zna kako da siđe.", "Kad smo visoko i ne znamo kako da siđemo, često smo uplašeni."],
-        ["filip", "🕷️", "Filip je u kupatilu. Veliki pauk ide prema njemu.", "Kad veliki pauk ide prema nama, često smo uplašeni."],
+        ["amina", "🦷", "Amina sutra prvi put ide kod zubara. Ne zna šta će zubar raditi.", "Kad ne znamo šta nas čeka, često smo uplašeni."],
+        ["haris", "🎤", "Haris treba da recituje pesmu pred celim razredom.", "Kad treba da nastupamo pred drugima, često smo uplašeni."],
+        ["lejla", "🏫", "Lejla je prvi dan u novoj školi. Nikoga ne poznaje.", "Kad smo na novom mestu i nikoga ne poznajemo, često smo uplašeni."],
+        ["amar", "🛏️", "Amar prvi put spava kod bake i deke, bez mame i tate.", "Kad prvi put spavamo bez mame i tate, često smo uplašeni."],
+        ["selma", "🧗", "Selma se popela visoko na penjalicu. Ne zna kako da siđe.", "Kad smo visoko i ne znamo kako da siđemo, često smo uplašeni."],
+        ["tarik", "🕷️", "Tarik je u kupatilu. Veliki pauk ide prema njemu.", "Kad veliki pauk ide prema nama, često smo uplašeni."],
     ]),
     ...group(3, "surprised", 381, [
-        ["ana", "🎉", "Ana je ušla u sobu. Drugari su rekli: „Iznenađenje!”", "Kad se desi nešto što nismo očekivali, često smo iznenađeni.", "happy"],
-        ["luka", "🎈", "Luka drži balon. Balon je odjednom pukao.", "Kad se nešto desi odjednom, često smo iznenađeni.", "scared"],
-        ["mila", "❄️", "Mila se probudila. Napolju je sve belo od snega. Mila nije znala da će pasti sneg.", "Kad vidimo nešto što nismo očekivali, često smo iznenađeni.", "happy"],
-        ["marko", "🐸", "Marko je podigao kamen u bašti. Ispod kamena je žaba.", "Kad nađemo nešto što nismo očekivali, često smo iznenađeni."],
-        ["sara", "🎒", "Sara je došla u vrtić. U vrtiću je nova vaspitačica. Sara to nije znala.", "Kad vidimo nekog novog koga nismo očekivali, često smo iznenađeni."],
-        ["filip", "🏠", "Filip je došao kući. Tata je obrijao bradu. Tata sada izgleda drugačije.", "Kad neko odjednom izgleda drugačije, često smo iznenađeni."],
+        ["amina", "🎉", "Amina je ušla u sobu. Drugari su rekli: „Iznenađenje!”", "Kad se desi nešto što nismo očekivali, često smo iznenađeni.", "happy"],
+        ["haris", "🎈", "Haris drži balon. Balon je odjednom pukao.", "Kad se nešto desi odjednom, često smo iznenađeni.", "scared"],
+        ["lejla", "❄️", "Lejla se probudila. Napolju je sve belo od snega. Lejla nije znala da će pasti sneg.", "Kad vidimo nešto što nismo očekivali, često smo iznenađeni.", "happy"],
+        ["amar", "🐸", "Amar je podigao kamen u bašti. Ispod kamena je žaba.", "Kad nađemo nešto što nismo očekivali, često smo iznenađeni."],
+        ["selma", "🎒", "Selma je došla u vrtić. U vrtiću je nova vaspitačica. Selma to nije znala.", "Kad vidimo nekog novog koga nismo očekivali, često smo iznenađeni."],
+        ["tarik", "🏠", "Tarik je došao kući. Tata je obrijao bradu. Tata sada izgleda drugačije.", "Kad neko odjednom izgleda drugačije, često smo iznenađeni."],
     ]),
     // Ponosno je novo osećanje, pa svaki scenario izričito kaže šta je lik sam uradio ili naučio
     ...group(3, "proud", 401, [
-        ["mila", "🧩", "Mila je sama složila celu slagalicu. Slagalica je bila teška.", "Kad sami uradimo nešto teško, često smo ponosni."],
-        ["luka", "👟", "Luka je prvi put sam vezao pertle.", "Kad prvi put nešto uradimo sami, često smo ponosni."],
-        ["ana", "🚲", "Ana je dugo vežbala. Sada vozi bicikl bez pomoćnih točkića.", "Kad dugo vežbamo i uspemo, često smo ponosni."],
-        ["marko", "🖼️", "Marko je nacrtao crtež. Učiteljica je pokazala crtež celom razredu.", "Kad drugi vide naš trud, često smo ponosni."],
-        ["sara", "🛍️", "Sara je pomogla baki da ponese tešku kesu.", "Kad nekome pomognemo, često smo ponosni.", "happy"],
-        ["filip", "🧥", "Filip je sam obukao jaknu i sam je zakopčao.", "Kad nešto uradimo sami, često smo ponosni."],
-        ["mila", "🔤", "Mila je naučila da napiše svoje ime.", "Kad naučimo nešto novo, često smo ponosni."],
-        ["luka", "🏊", "Luka je dugo učio da pliva. Danas je sam preplivao bazen.", "Kad uspemo posle mnogo truda, često smo ponosni."],
+        ["lejla", "🧩", "Lejla je sama složila celu slagalicu. Slagalica je bila teška.", "Kad sami uradimo nešto teško, često smo ponosni."],
+        ["haris", "👟", "Haris je prvi put sam vezao pertle.", "Kad prvi put nešto uradimo sami, često smo ponosni."],
+        ["amina", "🚲", "Amina je dugo vežbala. Sada vozi bicikl bez pomoćnih točkića.", "Kad dugo vežbamo i uspemo, često smo ponosni."],
+        ["amar", "🖼️", "Amar je nacrtao crtež. Učiteljica je pokazala crtež celom razredu.", "Kad drugi vide naš trud, često smo ponosni."],
+        ["selma", "🛍️", "Selma je pomogla baki da ponese tešku kesu.", "Kad nekome pomognemo, često smo ponosni.", "happy"],
+        ["tarik", "🧥", "Tarik je sam obukao jaknu i sam je zakopčao.", "Kad nešto uradimo sami, često smo ponosni."],
+        ["lejla", "🔤", "Lejla je naučila da napiše svoje ime.", "Kad naučimo nešto novo, često smo ponosni."],
+        ["haris", "🏊", "Haris je dugo učio da pliva. Danas je sam preplivao bazen.", "Kad uspemo posle mnogo truda, često smo ponosni."],
     ]),
 ];
 
 const SCENARIOS_BY_ID = new Map<number, EmotionScenario>(SCENARIOS.map((scenario) => [scenario.id, scenario]));
 
 // ── Imenjaci ──────────────────────────────────────────────────────────────────
-// Kad se dete zove isto kao lik, pitanje „Kako se Mila oseća?” zvuči kao pitanje o samom
+// Kad se dete zove isto kao lik, pitanje „Kako se Lejla oseća?” zvuči kao pitanje o samom
 // detetu. Takav scenario se zato ispriča o drugom liku istog roda (rod glagola, prideva i
 // zamenica u tekstu ostaje tačan): menja se svako pojavljivanje imena — u tekstu, pitanju
 // i objašnjenju, na ekranu i u govoru.
 //
 // Imena se ne menjaju rezanjem i lepljenjem nastavaka: svaki oblik koji sme da se pojavi
 // u tekstu stoji u tabeli, a zamenjuje se samo cela reč, oblikom istog padeža. Lokativ je
-// kod ovih imena jednak dativu; vokativ i prisvojni pridevi („Milin”) nisu podržani, jer
+// kod ovih imena jednak dativu; vokativ i prisvojni pridevi („Lejlin”) nisu podržani, jer
 // se o liku uvek govori u trećem licu — scenario ih ne sme sadržati.
 
 type ObliqueCase = "gen" | "dat" | "acc" | "ins";
 
 const NAME_CASES: Record<CharacterId, Record<ObliqueCase, string>> = {
-    mila: { gen: "Mile", dat: "Mili", acc: "Milu", ins: "Milom" },
-    ana: { gen: "Ane", dat: "Ani", acc: "Anu", ins: "Anom" },
-    sara: { gen: "Sare", dat: "Sari", acc: "Saru", ins: "Sarom" },
-    luka: { gen: "Luke", dat: "Luki", acc: "Luku", ins: "Lukom" },
-    marko: { gen: "Marka", dat: "Marku", acc: "Marka", ins: "Markom" },
-    filip: { gen: "Filipa", dat: "Filipu", acc: "Filipa", ins: "Filipom" },
+    lejla: { gen: "Lejle", dat: "Lejli", acc: "Lejlu", ins: "Lejlom" },
+    amina: { gen: "Amine", dat: "Amini", acc: "Aminu", ins: "Aminom" },
+    selma: { gen: "Selme", dat: "Selmi", acc: "Selmu", ins: "Selmom" },
+    haris: { gen: "Harisa", dat: "Harisu", acc: "Harisa", ins: "Harisom" },
+    amar: { gen: "Amara", dat: "Amaru", acc: "Amara", ins: "Amarom" },
+    tarik: { gen: "Tarika", dat: "Tariku", acc: "Tarika", ins: "Tarikom" },
 };
 
 /**
- * Ko zamenjuje koga. Zamena je uvek istog roda. Luka nije zamena nikome: „Marka” i „Filipa”
- * su i genitiv i akuzativ, a Luka ta dva padeža razlikuje (Luke / Luku), pa se iz same reči
- * ne bi znalo koji oblik treba. U svim parovima ispod svaka reč ima tačno jednu zamenu.
+ * Ko zamenjuje koga. Zamena je uvek istog roda. Kod sva tri muška imena genitiv i akuzativ
+ * glase isto („Harisa”, „Amara”, „Tarika”), pa svaka reč ima tačno jednu zamenu.
  */
 const STAND_IN: Record<CharacterId, CharacterId> = {
-    mila: "ana",
-    ana: "sara",
-    sara: "mila",
-    luka: "marko",
-    marko: "filip",
-    filip: "marko",
+    lejla: "amina",
+    amina: "selma",
+    selma: "lejla",
+    haris: "amar",
+    amar: "tarik",
+    tarik: "haris",
 };
 
 const OBLIQUE_CASES: readonly ObliqueCase[] = ["gen", "dat", "acc", "ins"];

@@ -23,7 +23,13 @@ interface GameStageProps {
     className?: string;
 }
 
-const STAGE_WIDTH = { narrow: "max-w-2xl", normal: "max-w-4xl", wide: "max-w-6xl" };
+// Na velikim ekranima igra zauzima skoro celu širinu (ostaje samo vazduh sa strane);
+// gornja granica postoji samo da tekst ne bude predugačak za čitanje.
+const STAGE_WIDTH = {
+    narrow: "max-w-2xl xl:max-w-4xl 2xl:max-w-5xl",
+    normal: "max-w-4xl xl:max-w-6xl 2xl:max-w-7xl",
+    wide: "max-w-6xl xl:max-w-none",
+};
 
 export function GameStage({ children, width = "normal", className }: GameStageProps) {
     return (

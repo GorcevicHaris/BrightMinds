@@ -26,6 +26,7 @@ import {
     type GameProps,
     type TimerId,
     useWaitHint,
+    usePraise,
 } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
@@ -389,7 +390,7 @@ function MemoryCard({ position, animal, open, matched, hinted, disabled, classNa
 
 const TEXT_PEEK = "Pogledaj slike i zapamti gde su.";
 const TEXT_FIND = "Pronađi dve iste slike.";
-const TEXT_HINT = "Dodirni karticu koja svetli.";
+const TEXT_HINT = "Pogledaj karticu koja svetli.";
 /** Ako se slike sporo učitavaju, zavirivanje se ipak završava posle ovoliko dodatnog čekanja */
 const PEEK_GRACE_MS = 5000;
 const MATCH_FEEDBACK_MS = 1600;
@@ -402,6 +403,7 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
     const { say } = useSpeech(gender);
     const { after, cancel } = useTimers();
     const sayThen = useSayThen(say, after);
+    const praise = usePraise();
     const guard = useInputGuard();
     const demo = useDemo(!isMonitor);
 
@@ -586,10 +588,11 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
             // Zvuk kraja nivoa pušta strana koja prikazuje rezultat — ovde samo potvrda para
             playSfx("correct");
             if (allFound) {
-                sayThen(`${animal.name}.`, finish, { emotion: "happy" });
+                sayThen(praise(`To je ${animal.name.toLowerCase()}.`, firstTry), finish, { emotion: "happy" });
                 return;
             }
-            say(`${animal.name}.`, undefined, "happy");
+            // Ime u rečenici: samu reč („Krokodil.”) glas ume da pročita kao englesku
+            say(praise(`To je ${animal.name.toLowerCase()}.`, firstTry), undefined, "happy");
             feedbackTimer.current = after(MATCH_FEEDBACK_MS, () => {
                 feedbackTimer.current = null;
                 commit({ ...viewRef.current, feedback: null });

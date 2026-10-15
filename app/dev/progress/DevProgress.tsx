@@ -15,7 +15,7 @@ if (typeof window !== "undefined") {
 export default function DevProgress({ audience }: { audience: "parent" | "child" }) {
     return (
         <main className="mx-auto min-h-dvh max-w-6xl bg-canvas px-4 py-6 sm:px-6 lg:px-8">
-            <ProgressDashboard childId={0} childName="Mila" audience={audience} />
+            <ProgressDashboard childId={0} childName="Lejla" audience={audience} />
         </main>
     );
 }
