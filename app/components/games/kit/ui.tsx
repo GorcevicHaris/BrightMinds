@@ -1,0 +1,449 @@
+"use client";
+
+import React from "react";
+import { cn } from "@/lib/cn";
+import { IDLE_HINT_MS, useIdle } from "./useIdle";
+import type { GameAccent } from "@/lib/games";
+import SpeakingTeacher from "../../avatar/SpeakingTeacher";
+import { useChildSettings } from "../../ChildSettingsProvider";
+
+/**
+ * Ko čita zadatke detetu. Postavlja ga strana na kojoj dete igra; bez njega
+ * (npr. roditeljski prikaz uživo, gde niko ne govori) lice učitelja se ne crta.
+ */
+export const GameTeacherContext = React.createContext<{ gender?: string } | null>(null);
+
+// ── GameStage ─────────────────────────────────────────────────────────────────
+// Okvir igre: centrira sadržaj, drži istu širinu i razmake u svim igrama.
+
+interface GameStageProps {
+    children: React.ReactNode;
+    /** Uži okvir za igre sa pitanjima, širi za table */
+    width?: "narrow" | "normal" | "wide";
+    className?: string;
+}
+
+// Na velikim ekranima igra zauzima skoro celu širinu (ostaje samo vazduh sa strane);
+// gornja granica postoji samo da tekst ne bude predugačak za čitanje.
+const STAGE_WIDTH = {
+    narrow: "max-w-2xl xl:max-w-4xl 2xl:max-w-5xl",
+    normal: "max-w-4xl xl:max-w-6xl 2xl:max-w-7xl",
+    wide: "max-w-6xl xl:max-w-none",
+};
+
+export function GameStage({ children, width = "normal", className }: GameStageProps) {
+    return (
+        <div className={cn("relative mx-auto flex w-full flex-1 flex-col gap-4 sm:gap-5", STAGE_WIDTH[width], className)}>
+            {children}
+        </div>
+    );
+}
+
+// ── GameHud ───────────────────────────────────────────────────────────────────
+// Traka napretka: "Zadatak 2 od 5", poeni i (opciono) dugme za ponavljanje uputstva.
+
+interface GameHudProps {
+    round: number;
+    totalRounds: number;
+    score?: number;
+    /** Naziv jedinice napretka, npr. "Zadatak", "Par", "Pitanje" */
+    unit?: string;
+    onSpeak?: () => void;
+    /** Dodatni sadržaj desno (npr. brojač poteza) */
+    extra?: React.ReactNode;
+    className?: string;
+}
+
+/** Do ovoliko zadataka svaki ima svoj segment; preko toga bi segmenti na uskom telefonu bili sitni, pa je traka neprekidna. */
+const MAX_SEGMENTS = 8;
+
+export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, extra, className }: GameHudProps) {
+    const total = Math.max(totalRounds, 1);
+    const current = Math.min(Math.max(round, 1), total);
+    const segmented = total <= MAX_SEGMENTS;
+    // Ako dete dugo ništa ne dodirne, dugme „Ponovi” blago zasvetli — bez glasa i bez požurivanja
+    const idle = useIdle(IDLE_HINT_MS, round);
+    return (
+        <div className={cn("flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 shadow-soft sm:gap-4 sm:px-5 sm:py-3", className)}>
+            <HudTeacher />
+            <div className="min-w-0 flex-1">
+                <p className="mb-1.5 text-xs font-extrabold text-ink-soft sm:text-sm">
+                    {unit} {current} od {total}
+                </p>
+                <div
+                    className={segmented ? "flex gap-1.5" : "flex h-2.5 overflow-hidden rounded-full bg-brand-100"}
+                    role="progressbar"
+                    aria-valuemin={1}
+                    aria-valuemax={total}
+                    aria-valuenow={current}
+                    aria-label={`${unit} ${current} od ${total}`}
+                >
+                    {segmented ? (
+                        Array.from({ length: total }, (_, i) => (
+                            <span
+                                key={i}
+                                className={cn(
+                                    "h-2.5 flex-1 rounded-full transition-colors duration-300",
+                                    i < current - 1 ? "bg-emerald-400" : i === current - 1 ? "bg-brand-500" : "bg-brand-100"
+                                )}
+                            />
+                        ))
+                    ) : (
+                        // Iste boje kao segmenti: zeleno = završeno, ljubičasto = tekući zadatak, svetlo = ostalo
+                        <>
+                            <span className="bg-emerald-400 transition-[width] duration-300" style={{ width: `${((current - 1) / total) * 100}%` }} />
+                            <span className="rounded-r-full bg-brand-500 transition-[width] duration-300" style={{ width: `${100 / total}%` }} />
+                        </>
+                    )}
+                </div>
+            </div>
+            {extra}
+            {score !== undefined && (
+                <div className="flex shrink-0 items-center gap-1.5 rounded-xl bg-sun-50 px-3 py-2 text-sm font-extrabold text-sun-700 ring-1 ring-sun-200 sm:text-base">
+                    <span aria-hidden="true">⭐</span>
+                    <span aria-label={`${score} poena`}>{score}</span>
+                </div>
+            )}
+            {onSpeak && <SpeakButton onClick={onSpeak} className={idle ? "animate-soft-pulse" : undefined} />}
+        </div>
+    );
+}
+
+/**
+ * Učitelj koji čita zadatke: veliko lice na početku trake, izraz prati ton rečenice, usta se
+ * pomeraju dok govori. Dok govori, oko njega svetli prsten — jasno je ko se obraća detetu.
+ */
+function HudTeacher() {
+    const teacher = React.useContext(GameTeacherContext);
+    if (!teacher) return null;
+    return <SpeakingTeacher gender={teacher.gender} className="-my-1 h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem] short:sm:h-16 short:sm:w-16" />;
+}
+
+// ── SpeakButton ───────────────────────────────────────────────────────────────
+
+interface SpeakButtonProps {
+    onClick: () => void;
+    label?: string;
+    /** Veliko dugme sa tekstom (za glavni poziv "Pusti zvuk") */
+    large?: boolean;
+    className?: string;
+}
+
+export function SpeakButton({ onClick, label = "Ponovi", large = false, className }: SpeakButtonProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            aria-label={large ? undefined : label}
+            className={cn(
+                "inline-flex shrink-0 items-center justify-center gap-2 border-2 border-b-[5px] border-brand-700 bg-brand-500 font-extrabold text-white transition-[transform,background-color,border-width] hover:bg-brand-600 active:translate-y-[3px] active:border-b-2",
+                large ? "min-h-16 rounded-2xl px-7 text-lg sm:text-xl" : "h-12 w-12 rounded-xl sm:w-auto sm:px-4",
+                className
+            )}
+        >
+            <SpeakerIcon className={large ? "h-7 w-7" : "h-5 w-5"} />
+            <span className={large ? undefined : "hidden text-sm sm:inline"}>{label}</span>
+        </button>
+    );
+}
+
+function SpeakerIcon({ className }: { className: string }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+            <path d="M11 5 6 9H3v6h3l5 4V5z" strokeLinejoin="round" />
+            <path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13" strokeLinecap="round" />
+        </svg>
+    );
+}
+
+// ── OptionSpeaker ─────────────────────────────────────────────────────────────
+// Mali zvučnik uz izbor: čita taj izbor naglas, bez biranja.
+
+interface OptionSpeakerProps {
+    /** Naziv za čitače ekrana, npr. "Pročitaj: …" */
+    label: string;
+    onClick: () => void;
+    disabled?: boolean;
+}
+
+export function OptionSpeaker({ label, onClick, disabled }: OptionSpeakerProps) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={label}
+            className="grid min-h-14 w-14 shrink-0 place-items-center rounded-tile border-2 border-line bg-surface text-brand-600 shadow-soft transition-colors enabled:hover:border-brand-300 enabled:hover:bg-brand-50 disabled:cursor-default disabled:opacity-45"
+        >
+            <SpeakerIcon className="h-6 w-6" />
+        </button>
+    );
+}
+
+// ── GamePrompt ────────────────────────────────────────────────────────────────
+// Kartica sa uputstvom/pitanjem na vrhu igre.
+
+interface GamePromptProps {
+    title: React.ReactNode;
+    subtitle?: React.ReactNode;
+    /** Emodži ili slika levo od teksta */
+    visual?: React.ReactNode;
+    className?: string;
+}
+
+/**
+ * Repić „oblačića”: kartica sa uputstvom pokazuje na učitelja u traci iznad sebe.
+ * Dodaje se kartici koja stoji odmah ispod `GameHud` (boja ivice repića prati `border-color` kartice).
+ */
+const BUBBLE_TAIL =
+    "relative before:absolute before:-top-[9px] before:left-8 before:h-4 before:w-4 before:rotate-45 before:rounded-tl-[4px] before:border-l before:border-t before:border-inherit before:bg-surface sm:before:left-11";
+
+/** Klase za repić oblačića — prazno kad učitelj nije na ekranu (npr. roditeljski prikaz). */
+export function useBubbleTail(): string {
+    const settings = useChildSettings();
+    const teacher = React.useContext(GameTeacherContext);
+    return teacher !== null && settings.avatar ? BUBBLE_TAIL : "";
+}
+
+export function GamePrompt({ title, subtitle, visual, className }: GamePromptProps) {
+    // Uputstvo je „oblačić” onoga ko govori
+    const tail = useBubbleTail();
+    return (
+        <div
+            className={cn(
+                "relative flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-soft sm:gap-6 sm:p-6 short:sm:p-4",
+                tail,
+                className
+            )}
+        >
+            {visual && (
+                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-brand-50 text-5xl ring-1 ring-brand-100 sm:h-28 sm:w-28 sm:text-6xl short:sm:h-20 short:sm:w-20 short:sm:text-5xl">
+                    {visual}
+                </div>
+            )}
+            <div className="min-w-0 flex-1">
+                <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{title}</p>
+                {subtitle && <p className="mt-1 text-base font-bold text-ink-soft sm:text-lg">{subtitle}</p>}
+            </div>
+        </div>
+    );
+}
+
+// ── PlayArea ──────────────────────────────────────────────────────────────────
+// Polje za igru u boji igre: zauzima sav preostali prostor i drži zadatak u sredini,
+// pa na velikom ekranu nema praznine ispod, a kartice mogu da budu velike.
+
+interface PlayAreaProps {
+    accent: GameAccent;
+    children: React.ReactNode;
+    className?: string;
+}
+
+export function PlayArea({ accent, children, className }: PlayAreaProps) {
+    return (
+        <div className={cn("flex min-h-0 flex-1 flex-col items-center justify-center rounded-card border p-3 sm:p-5", accent.border, accent.soft, className)}>
+            {children}
+        </div>
+    );
+}
+
+// ── ChoiceCard ────────────────────────────────────────────────────────────────
+// Veliko dugme-odgovor sa jasnim stanjima. Nikad ne kažnjava: pogrešno je blago, tačno je mirno potvrđeno.
+
+export type ChoiceState = "idle" | "correct" | "wrong" | "dimmed" | "selected" | "hint";
+
+interface ChoiceCardProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
+    state?: ChoiceState;
+    children: React.ReactNode;
+}
+
+const CHOICE_STATES: Record<ChoiceState, string> = {
+    idle: "border-line bg-surface hover:border-brand-300 hover:bg-brand-50 active:translate-y-[3px] active:border-b-2",
+    selected: "border-brand-500 bg-brand-50",
+    /** Pomoć: tačan odgovor blago pulsira posle više pogrešnih pokušaja */
+    hint: "animate-soft-pulse border-brand-400 bg-brand-50",
+    correct: "border-emerald-500 bg-emerald-50",
+    wrong: "animate-shake border-rose-300 bg-rose-50",
+    dimmed: "border-line bg-surface opacity-45",
+};
+
+export function ChoiceCard({ state = "idle", children, className, disabled, ...props }: ChoiceCardProps) {
+    return (
+        <button
+            type="button"
+            disabled={disabled}
+            data-state={state}
+            className={cn(
+                "relative flex min-h-20 w-full select-none items-center justify-center rounded-tile border-2 border-b-[5px] p-3 text-center font-extrabold text-ink shadow-soft transition-[transform,background-color,border-color,opacity] duration-150 disabled:cursor-default sm:p-4",
+                CHOICE_STATES[state],
+                className
+            )}
+            {...props}
+        >
+            {children}
+            {state === "correct" && <ChoiceBadge className="bg-emerald-600">✓</ChoiceBadge>}
+            {state === "wrong" && <ChoiceBadge className="bg-rose-500">↺</ChoiceBadge>}
+        </button>
+    );
+}
+
+function ChoiceBadge({ children, className }: { children: React.ReactNode; className: string }) {
+    return (
+        <span
+            aria-hidden="true"
+            className={cn("absolute -right-2 -top-2 grid h-8 w-8 animate-pop place-items-center rounded-full text-base font-black text-white shadow-soft ring-2 ring-white", className)}
+        >
+            {children}
+        </span>
+    );
+}
+
+// ── Feedback ──────────────────────────────────────────────────────────────────
+// Kratka poruka posle odgovora. Čitači ekrana je izgovaraju (aria-live).
+
+export type FeedbackKind = "correct" | "wrong" | null;
+
+interface FeedbackProps {
+    kind: FeedbackKind;
+    correctText?: string;
+    wrongText?: string;
+    className?: string;
+}
+
+export function Feedback({ kind, correctText = "Tačno.", wrongText = "Probaj opet.", className }: FeedbackProps) {
+    return (
+        <div aria-live="polite" className={cn("pointer-events-none flex min-h-12 items-center justify-center", className)}>
+            {kind && (
+                <div
+                    key={kind}
+                    className={cn(
+                        "inline-flex animate-pop items-center gap-2 rounded-full px-5 py-2.5 text-base font-extrabold shadow-soft sm:text-lg",
+                        kind === "correct" ? "bg-emerald-700 text-white" : "bg-sun-100 text-sun-700 ring-1 ring-sun-300"
+                    )}
+                >
+                    {kind === "correct" && <span aria-hidden="true">✓</span>}
+                    {kind === "correct" ? correctText : wrongText}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ── ExplainPanel ──────────────────────────────────────────────────────────────
+// Objašnjenje posle tačnog odgovora, sa dugmetom "Dalje" (ili kratkom porukom na kraju nivoa).
+
+interface ExplainPanelProps {
+    /** Zašto je odgovor tačan */
+    text: React.ReactNode;
+    /** Emodži levo od teksta */
+    icon?: React.ReactNode;
+    /** Boje igre (`getGame(id).accent`) */
+    accent: GameAccent;
+    /** Bez `onNext` dugme se ne prikazuje (npr. na monitoru) */
+    onNext?: () => void;
+    nextLabel?: string;
+    /** Za fokus na dugme posle tačnog odgovora */
+    nextRef?: React.Ref<HTMLButtonElement>;
+    /** Nivo je završen: umesto dugmeta stoji kratka poruka */
+    done?: boolean;
+    doneText?: string;
+    className?: string;
+}
+
+export function ExplainPanel({ text, icon, accent, onNext, nextLabel = "Dalje", nextRef, done = false, doneText = "Nivo je završen.", className }: ExplainPanelProps) {
+    const textId = React.useId();
+    return (
+        <section
+            aria-label="Objašnjenje"
+            className={cn(
+                "flex animate-fade-up flex-col gap-4 rounded-card border-2 p-4 shadow-soft sm:flex-row sm:items-center sm:gap-5 sm:p-5",
+                accent.soft,
+                accent.border,
+                className
+            )}
+        >
+            <p id={textId} className="flex flex-1 items-center gap-3 text-lg font-bold leading-snug text-ink sm:text-xl">
+                {icon !== undefined && (
+                    <span aria-hidden="true" className="text-4xl">
+                        {icon}
+                    </span>
+                )}
+                {text}
+            </p>
+            {done ? (
+                <p role="status" className={cn("animate-pop text-center font-display text-2xl font-extrabold sm:shrink-0", accent.text)}>
+                    <span aria-hidden="true">🎉 </span>
+                    {doneText}
+                </p>
+            ) : (
+                onNext && (
+                    <button
+                        ref={nextRef}
+                        type="button"
+                        onClick={onNext}
+                        aria-describedby={textId}
+                        className={cn(
+                            "inline-flex min-h-16 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] px-8 font-display text-xl font-extrabold text-white transition-[transform,border-width] active:translate-y-[3px] active:border-b-2 sm:text-2xl",
+                            accent.solid,
+                            accent.edge
+                        )}
+                    >
+                        {nextLabel}
+                        <span aria-hidden="true">→</span>
+                    </button>
+                )
+            )}
+        </section>
+    );
+}
+
+// ── TriedNote ─────────────────────────────────────────────────────────────────
+// Posle izbora koji manje pomaže: šta je izabrano i šta bi se verovatno desilo — mirno, bez osude.
+// Roditelj daje `key` (probani izbor) da se kartica pri svakom novom pokušaju ponovo pojavi.
+
+interface TriedNoteProps {
+    emoji: string;
+    /** Tekst probanog izbora */
+    label: React.ReactNode;
+    /** Šta bi se verovatno desilo */
+    note: React.ReactNode;
+}
+
+export function TriedNote({ emoji, label, note }: TriedNoteProps) {
+    return (
+        <div className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 p-4 sm:p-5">
+            <p className="mb-1 text-sm font-extrabold text-ink-soft sm:text-base">
+                <span aria-hidden="true">{emoji} </span>
+                {label}
+            </p>
+            <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{note}</p>
+        </div>
+    );
+}
+
+// ── WaitingNote ───────────────────────────────────────────────────────────────
+// Prazna tabla na monitoru dok ne stigne stanje igre („Čekamo sledeći zadatak…”).
+
+export function WaitingNote({ children }: { children: React.ReactNode }) {
+    return <p className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-base font-bold text-ink-soft">{children}</p>;
+}
+
+// ── DemoHand ──────────────────────────────────────────────────────────────────
+// Ruka koja pokazuje šta treba dodirnuti. Deca od 4–6 godina najbolje prate uputstvo koje
+// im se POKAŽE pokretom; zato je prvi zadatak prvog nivoa „pokazan”, a posle toga ruke više nema.
+// Stavlja se u element koji ima `relative` (kartica, dugme); sama se ne može dodirnuti.
+
+export function DemoHand({ className }: { className?: string }) {
+    return (
+        <span aria-hidden="true" className={cn("pointer-events-none absolute bottom-1 right-1 z-20 animate-demo-tap drop-shadow-lg sm:bottom-2 sm:right-2", className)}>
+            <svg viewBox="0 0 24 24" className="h-12 w-12 sm:h-14 sm:w-14" fill="#ffffff" stroke="#1f1b3a" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 14a8 8 0 0 1-8 8" />
+                <path d="M18 11v-1a2 2 0 0 0-2-2a2 2 0 0 0-2 2" />
+                <path d="M14 10V9a2 2 0 0 0-2-2a2 2 0 0 0-2 2v1" />
+                <path d="M10 9.5V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v10" />
+                <path d="M18 11a2 2 0 1 1 4 0v3a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+            </svg>
+        </span>
+    );
+}
+

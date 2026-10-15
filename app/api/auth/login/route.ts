@@ -1,86 +1,63 @@
-import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
-import { supabaseAdmin } from '@/lib/supabase';
+// app/api/auth/login/route.ts
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { setSessionCookie } from "@/lib/auth";
+import { getClientIp, takeAttempt, type RateLimitRule } from "@/lib/rateLimit";
+import { assertDbConfigured } from "@/lib/supabase";
+import { asTrimmedString, isEmail } from "@/lib/validation";
+import { enforceRateLimit, errorResponse, HttpError, readJsonObject } from "../../_lib/http";
+import { findUserByEmail, toPublicUser } from "../../_lib/users";
+
+const INVALID_CREDENTIALS = "Pogrešan email ili lozinka";
+const TOO_MANY_ATTEMPTS = "Previše pokušaja prijave. Pokušajte ponovo za nekoliko minuta.";
+
+/** Neuspešni pokušaji po paru IP + email, i ukupno po IP adresi. */
+const PER_ACCOUNT_RULE: RateLimitRule = { limit: 10, windowMs: 10 * 60 * 1000 };
+const PER_IP_RULE: RateLimitRule = { limit: 50, windowMs: 10 * 60 * 1000 };
+
+const MAX_PASSWORD_LENGTH = 200;
+
+// Heš nepostojeće lozinke: poredi se i kada nalog ne postoji, da vreme odgovora
+// ne otkriva da li je email registrovan.
+let dummyHash: Promise<string> | null = null;
+function getDummyHash(): Promise<string> {
+    dummyHash ??= bcrypt.hash("bright-minds-nepostojeci-nalog", 10);
+    return dummyHash;
+}
 
 export async function POST(request: Request) {
     try {
-        const body = await request.json();
-        const { email, password } = body;
+        const body = await readJsonObject(request);
+        const email = asTrimmedString(body.email, { min: 1, max: 254 })?.toLowerCase() ?? null;
+        const password = typeof body.password === "string" ? body.password : "";
+        if (!email || !password) throw new HttpError(400, "Unesite email i lozinku");
 
-        // Validation
-        if (!email || !password) {
-            return NextResponse.json(
-                { error: 'Email i lozinka su obavezni' },
-                { status: 400 }
-            );
+        assertDbConfigured();
+
+        const ip = getClientIp(request);
+        const ipAttempt = takeAttempt(`login:ip:${ip}`, PER_IP_RULE);
+        enforceRateLimit(ipAttempt, TOO_MANY_ATTEMPTS);
+        const accountAttempt = takeAttempt(`login:${ip}:${email}`, PER_ACCOUNT_RULE);
+        if (!accountAttempt.allowed) ipAttempt.refund();
+        enforceRateLimit(accountAttempt, TOO_MANY_ATTEMPTS);
+
+        const lookupAllowed = isEmail(email) && password.length <= MAX_PASSWORD_LENGTH;
+        const user = lookupAllowed ? await findUserByEmail(email) : null;
+        const passwordHash = user?.password_hash || (await getDummyHash());
+        const passwordMatches = await bcrypt.compare(password.slice(0, MAX_PASSWORD_LENGTH), passwordHash);
+
+        if (!user || !user.password_hash || !passwordMatches) {
+            throw new HttpError(401, INVALID_CREDENTIALS);
         }
 
-        const { data: rows, error } = await supabaseAdmin
-            .from('users')
-            .select('id, password_hash, full_name, role, parental_pin')
-            .eq('email', email);
+        // Broje se samo neuspešni pokušaji.
+        ipAttempt.refund();
+        accountAttempt.refund();
 
-        console.log("EMAIL IZ REQUESTA:", email);
-        console.log("ROW IZ BAZE:", rows);
-        if (error) {
-             console.error("Supabase error:", error);
-        }
-
-        if (!rows || rows.length === 0) {
-            return NextResponse.json(
-                { error: 'Pogrešan email ili lozinka' },
-                { status: 401 }
-            );
-        }
-
-        const user = rows[0];
-
-        // Check password
-        const passwordMatch = await bcrypt.compare(password, user.password_hash);
-
-        if (!passwordMatch) {
-            return NextResponse.json(
-                { error: 'Pogrešan email ili lozinka' },
-                { status: 401 }
-            );
-        }
-
-        // Create JWT token
-        const token = jwt.sign(
-            { id: user.id, email, role: user.role },
-            process.env.JWT_SECRET!,
-            { expiresIn: '7d' }
-        );
-
-        // Kreiraj response
-        const response = NextResponse.json({
-            success: true,
-            user: {
-                id: user.id,
-                full_name: user.full_name,
-                email,
-                role: user.role,
-                parental_pin: user.parental_pin
-            }
-        });
-
-        // Postavi httpOnly cookie
-        response.cookies.set('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production', // true samo u produkciji
-            sameSite: 'strict',
-            maxAge: 60 * 60 * 24 * 7, // 7 dana
-            path: '/'
-        });
-
+        const response = NextResponse.json({ success: true, user: toPublicUser(user) });
+        setSessionCookie(response, { userId: user.id, email: user.email, role: user.role });
         return response;
-
     } catch (error) {
-        console.error('Login error:', error);
-        return NextResponse.json(
-            { error: 'Greška pri prijavljivanju' },
-            { status: 500 }
-        );
+        return errorResponse(error, "POST /api/auth/login");
     }
 }

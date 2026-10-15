@@ -1,161 +1,178 @@
-import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
-import jwt from 'jsonwebtoken';
+// app/api/children/verify-pin/route.ts
+// Prijava deteta vizuelnim PIN-om. Izdaje DEČJU sesiju (sa childId), koja sme
+// samo da igra i čuva rezultate za to dete — nikada punu roditeljsku sesiju.
+//
+// Niz dana (`streak`) se i dalje vodi u bazi za roditeljski panel, ali se detetu
+// NE vraća: bez "dođi i sutra" pritiska na dečjem ekranu.
+import { NextResponse } from "next/server";
+import { setSessionCookie } from "@/lib/auth";
+import { getClientIp, takeAttempt, type RateLimitRule } from "@/lib/rateLimit";
+import { assertDbConfigured, supabaseAdmin } from "@/lib/supabase";
+import { asTrimmedString, dateOnlyInTimeZone, shiftDateOnly } from "@/lib/validation";
+import { parseDbTimestamp, selectChildRows, type ChildRow } from "../../_lib/children";
+import { enforceRateLimit, errorResponse, HttpError, readJsonObject } from "../../_lib/http";
 
-export async function POST(req: Request) {
-    try {
-        const body = await req.json();
-        const { pin_code, child_id } = body;
+/** Neuspešni pokušaji po IP adresi. */
+const PIN_RULE: RateLimitRule = { limit: 8, windowMs: 5 * 60 * 1000 };
 
-        if (!pin_code) {
-            return NextResponse.json(
-                { error: 'PIN kod je obavezan' },
-                { status: 400 }
-            );
-        }
+const DAILY_LOGIN_POINTS = 10;
+const MAX_AWARD_RETRIES = 3;
 
-        let childData;
+interface Owner {
+    id: number;
+    email: string;
+    role: string;
+}
 
-        if (child_id) {
-            const { data, error } = await supabaseAdmin
-                .from('children')
-                .select('*')
-                .eq('id', child_id)
-                .eq('pin_code', pin_code)
-                .maybeSingle();
-            childData = data;
-        } else {
-            const { data, error } = await supabaseAdmin
-                .from('children')
-                .select('*')
-                .eq('pin_code', pin_code)
-                .limit(1)
-                .maybeSingle();
-            childData = data;
-        }
+interface LoginAward {
+    experiencePoints: number;
+}
 
-        if (!childData) {
-            return NextResponse.json(
-                { error: 'Netačan PIN kod' },
-                { status: 401 }
-            );
-        }
+/** PIN bez razmaka oko zareza: " dog, pizza ,car,pepsi" → "dog,pizza,car,pepsi". */
+function readPin(value: unknown): string | null {
+    const raw = asTrimmedString(value, { min: 1, max: 120 });
+    if (!raw) return null;
+    return raw
+        .split(",")
+        .map((part) => part.trim())
+        .join(",");
+}
 
-        let child = childData;
+async function findOwner(childId: number): Promise<Owner | null> {
+    const { data: links, error: linkError } = await supabaseAdmin
+        .from("user_children")
+        .select("user_id")
+        .eq("child_id", childId)
+        .order("is_primary", { ascending: false })
+        .order("user_id", { ascending: true })
+        .limit(1);
+    if (linkError) throw linkError;
 
-        // ─── STREAK & POINTS LOGIC ─────────────────────────────────────
+    const userId = ((links ?? []) as { user_id: number }[])[0]?.user_id;
+    if (userId === undefined) return null;
+
+    const { data: users, error: userError } = await supabaseAdmin
+        .from("users")
+        .select("id, email, role")
+        .eq("id", userId)
+        .limit(1);
+    if (userError) throw userError;
+    return ((users ?? []) as Owner[])[0] ?? null;
+}
+
+async function loadChild(childId: number): Promise<ChildRow | null> {
+    const rows = await selectChildRows((columns) =>
+        supabaseAdmin.from("children").select(columns).eq("id", childId).limit(1)
+    );
+    return rows[0] ?? null;
+}
+
+/**
+ * Dnevna nagrada za prijavu, po kalendarskom danu u Beogradu:
+ *  • prva prijava u danu → +10 poena; niz +1 ako je prethodna prijava bila juče, inače 1
+ *  • sledeće prijave istog dana ne menjaju ništa.
+ * Upis je uslovan (red se menja samo ako su last_login_at i poeni isti kao kad
+ * smo ih pročitali), pa dva paralelna zahteva ne mogu dvaput da dodele nagradu.
+ */
+async function applyDailyLogin(initial: ChildRow): Promise<LoginAward> {
+    let child = initial;
+
+    for (let attempt = 0; attempt < MAX_AWARD_RETRIES; attempt++) {
+        const streak = child.streak ?? 0;
+        const points = child.experience_points ?? 0;
         const now = new Date();
-        const lastLogin = child.last_login_at ? new Date(child.last_login_at) : null;
+        const today = dateOnlyInTimeZone(now);
+        const lastLogin = parseDbTimestamp(child.last_login_at);
+        const lastDay = lastLogin ? dateOnlyInTimeZone(lastLogin) : null;
 
-        let newStreak = child.streak || 0;
-        let newPoints = child.experience_points || 0;
-        let streakAdded = false;
+        if (lastDay === today) return { experiencePoints: points };
 
-        // Provera da li je novi kalendarski dan (Snapchat stil)
-        const isNewDay = !lastLogin || (
-            now.getFullYear() !== lastLogin.getFullYear() ||
-            now.getMonth() !== lastLogin.getMonth() ||
-            now.getDate() !== lastLogin.getDate()
+        const next = {
+            streak: lastDay === shiftDateOnly(today, { days: -1 }) ? streak + 1 : 1,
+            experience_points: points + DAILY_LOGIN_POINTS,
+            last_login_at: now.toISOString(),
+        };
+
+        let update = supabaseAdmin.from("children").update(next).eq("id", child.id);
+        update = child.last_login_at
+            ? update.eq("last_login_at", child.last_login_at)
+            : update.is("last_login_at", null);
+        update =
+            typeof child.experience_points === "number"
+                ? update.eq("experience_points", child.experience_points)
+                : update.is("experience_points", null);
+
+        const { data, error } = await update.select("id");
+        if (error) throw error;
+        if (data && data.length > 0) return { experiencePoints: next.experience_points };
+
+        // Neko drugi je u međuvremenu izmenio red — učitaj ponovo i probaj još jednom.
+        const reloaded = await loadChild(child.id);
+        if (!reloaded) break;
+        child = reloaded;
+    }
+
+    return { experiencePoints: child.experience_points ?? 0 };
+}
+
+export async function POST(request: Request) {
+    let attempt: ReturnType<typeof takeAttempt> | null = null;
+    try {
+        const body = await readJsonObject(request);
+        const pinCode = readPin(body.pin_code);
+        if (!pinCode) throw new HttpError(400, "Izaberi četiri sličice");
+
+        assertDbConfigured();
+
+        // Pokušaj se rezerviše unapred i vraća samo ako je kod tačan.
+        attempt = takeAttempt(`pin:${getClientIp(request)}`, PIN_RULE);
+        enforceRateLimit(attempt, "Previše pokušaja. Sačekaj malo pa probaj ponovo.");
+
+        const matches = await selectChildRows((columns) =>
+            supabaseAdmin
+                .from("children")
+                .select(columns)
+                .eq("pin_code", pinCode)
+                .order("id", { ascending: true })
+                .limit(2)
         );
+        if (matches.length === 0) throw new HttpError(401, "Netačan kod");
+        if (matches.length > 1) {
+            // Nasleđeni duplikati (pre jedinstvenog indeksa): ne pogađamo koje je dete u pitanju.
+            attempt.refund();
+            throw new HttpError(409, "Ovaj kod koristi više profila. Zamoli roditelja da izabere nove sličice.");
+        }
+        const child = matches[0];
 
-        if (isNewDay) {
-            streakAdded = true;
-            // Proveri da li je juče bio poslednji login (consecutive)
-            const yesterday = new Date(now);
-            yesterday.setDate(now.getDate() - 1);
-
-            const wasYesterday = lastLogin && (
-                yesterday.getFullYear() === lastLogin.getFullYear() &&
-                yesterday.getMonth() === lastLogin.getMonth() &&
-                yesterday.getDate() === lastLogin.getDate()
-            );
-
-            if (wasYesterday) {
-                newStreak += 1; // Nastavi streak
-            } else {
-                newStreak = 1; // Resetuj na 1 (ako je prvi put ili je prošlo više dana)
-            }
-
-            // Nagrada: +10 poena za dnevni ulazak
-            newPoints += 10;
-
-            // Sačuvaj u bazi
-            await supabaseAdmin
-                .from('children')
-                .update({ 
-                    streak: newStreak, 
-                    experience_points: newPoints, 
-                    last_login_at: new Date().toISOString() 
-                })
-                .eq('id', child.id);
+        const owner = await findOwner(child.id);
+        if (!owner) {
+            attempt.refund();
+            throw new HttpError(403, "Ovaj profil nije povezan sa roditeljem");
         }
 
-        // ─── JWT & SESSION LOGIC ──────────────────────────────────────
-        // Find the parent (user) associated with this child
-        const { data: parentRows } = await supabaseAdmin
-            .from('user_children')
-            .select('user:users(id, email, role)')
-            .eq('child_id', child.id)
-            .limit(1)
-            .maybeSingle();
+        const award = await applyDailyLogin(child);
+        attempt.refund();
 
-        let response: NextResponse;
-        
-        let parent: any = parentRows?.user;
-        if (Array.isArray(parent)) parent = parent[0];
-
-        if (parent) {
-            // Create JWT token for the parent session
-            const token = jwt.sign(
-                { id: parent.id, email: parent.email, role: parent.role },
-                process.env.JWT_SECRET || 'secret',
-                { expiresIn: '7d' }
-            );
-
-            response = NextResponse.json({
-                success: true,
-                child: {
-                    id: child.id,
-                    first_name: child.first_name,
-                    last_name: child.last_name,
-                    gender: child.gender,
-                    streak: newStreak,
-                    experiencePoints: newPoints,
-                    streakAdded: streakAdded
-                }
-            });
-
-            // Set httpOnly cookie so verifyToken() works in progress-logs
-            response.cookies.set('token', token, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'strict',
-                maxAge: 60 * 60 * 24 * 7, // 7 days
-                path: '/'
-            });
-        } else {
-            // Fallback for children without explicit user links
-            response = NextResponse.json({
-                success: true,
-                child: {
-                    id: child.id,
-                    first_name: child.first_name,
-                    last_name: child.last_name,
-                    gender: child.gender,
-                    streak: newStreak,
-                    experiencePoints: newPoints,
-                    streakAdded: streakAdded
-                }
-            });
-        }
-
+        const response = NextResponse.json({
+            success: true,
+            child: {
+                id: child.id,
+                first_name: child.first_name,
+                last_name: child.last_name,
+                gender: child.gender ?? null,
+                experiencePoints: award.experiencePoints,
+            },
+        });
+        setSessionCookie(response, {
+            userId: owner.id,
+            email: owner.email,
+            role: owner.role,
+            childId: child.id,
+        });
         return response;
-
     } catch (error) {
-        console.error('Error verifying PIN:', error);
-        return NextResponse.json(
-            { error: 'Greška pri verifikaciji PIN-a' },
-            { status: 500 }
-        );
+        // Pokušaj troši samo pogrešan kod; greška servera ne sme da zaključa dete
+        if (!(error instanceof HttpError && (error.status === 401 || error.status === 429))) attempt?.refund();
+        return errorResponse(error, "POST /api/children/verify-pin");
     }
 }

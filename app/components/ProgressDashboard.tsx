@@ -1,412 +1,1567 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+// Statistika napretka. Dva prikaza istih podataka:
+//  • "parent" — analitika za roditelja/terapeuta: samostalno naspram „uz pomoć”, savladanost
+//    po igri, trend i predlog za vežbu van ekrana. Zvezdice su ovde sporedne (nagrada za dete),
+//    a raspoloženje se prikazuje isključivo kao detetov izbor, nikad kao ishod igre.
+//  • "child"  — kratak, ohrabrujući pregled za dete: samo zvezdice i nivoi.
+// Aplikacija je vežbanka, ne terapija: nijedan tekst ovde ne sme da tvrdi suprotno.
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CalendarDays, Circle, CircleCheck, CircleDashed, Clock3, Download, Gamepad2, Info, Lightbulb, RefreshCw, Star, Target, type LucideIcon } from "lucide-react";
+import { Button, buttonClasses } from "@/app/components/ui/Button";
+import { Alert, Card } from "@/app/components/ui/Card";
+import { Select } from "@/app/components/ui/Field";
+import { cn } from "@/lib/cn";
+import { GAMES, MAX_LEVEL, MOODS, MOODS_THREE, getGame, getMood, type GameDefinition, type GameId, type Mood, type SuccessLevel } from "@/lib/games";
+import {
+    MASTERY_MIN_DAYS,
+    MASTERY_RATIO,
+    MASTERY_SESSIONS,
+    RECENT_SESSIONS_LIMIT,
+    TIERS,
+    dayKeyToDate,
+    tierForLevel,
+    type DailyActivity,
+    type GameProgress,
+    type MasteryStatus,
+    type MoodChoices,
+    type MoodCounts,
+    type ProgressResponse,
+    type ProgressSession,
+    type ProgressSummary,
+    type SuccessDistribution,
+    type TrendPoint,
+} from "@/lib/progress";
 
-interface GameStats {
-    total_games: number;
-    avg_score: number;
-    best_score: number;
-    total_minutes: number;
-    excellent_count: number;
-    successful_count: number;
-    partial_count: number;
-    struggled_count: number;
-}
-
-interface ProgressData {
-    total: {
-        total_games: number;
-        total_minutes: number;
-        excellent_count: number;
-        successful_count: number;
-        partial_count: number;
-        struggled_count: number;
-    };
-    allGames: Array<{
-        id: number;
-        completed_at: string;
-        success_level: string;
-        mood_before: string | null;
-        mood_after: string | null;
-        duration_minutes: number;
-        notes: string;
-        activity_title: string;
-        score: number;
-    }>;
-    shapes: {
-        stats: GameStats;
-        recentGames: any[];
-        progress: any[];
-        levelStats: any[];
-    };
-    memory: {
-        stats: GameStats;
-        recentGames: any[];
-        progress: any[];
-        levelStats: any[];
-    };
-    coloring: {
-        stats: GameStats;
-        recentGames: any[];
-        progress: any[];
-        levelStats: any[];
-    };
-    soundToImage: {
-        stats: GameStats;
-        recentGames: any[];
-        progress: any[];
-        levelStats: any[];
-    };
-    social: {
-        stats: GameStats;
-        recentGames: any[];
-        progress: any[];
-        levelStats: any[];
-    };
-    socialStory: {
-        stats: GameStats;
-        recentGames: any[];
-        progress: any[];
-        levelStats: any[];
-    };
-    emotions: {
-        stats: GameStats;
-        recentGames: any[];
-        progress: any[];
-        levelStats: any[];
-    };
-}
-
-interface Props {
+interface ProgressDashboardProps {
     childId: number;
     childName: string;
+    /** Kome je prikaz namenjen (podrazumevano roditelju/terapeutu) */
+    audience?: "parent" | "child";
 }
 
-const MOOD_EMOJI = {
-    very_upset: "😢",
-    upset: "😕",
-    neutral: "😐",
-    happy: "😊",
-    very_happy: "😄",
+type GameFilter = GameId | "all";
+type Metric = "plays" | "minutes";
+
+// ── Formatiranje ──────────────────────────────────────────────────────────────
+
+const LOCALE = "sr-Latn-RS";
+const numberFormat = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 });
+const pluralRules = new Intl.PluralRules("sr");
+
+const formatNumber = (value: number) => numberFormat.format(value);
+
+function plural(count: number, one: string, few: string, many: string): string {
+    const rule = pluralRules.select(count);
+    return rule === "one" ? one : rule === "few" ? few : many;
+}
+
+const gamesWord = (count: number) => plural(count, "igra", "igre", "igara");
+
+function percent(part: number, total: number): number {
+    return total > 0 ? Math.round((part / total) * 100) : 0;
+}
+
+/** Udeo 0–1 kao ceo procenat. */
+const toPercent = (ratio: number) => Math.round(ratio * 100);
+
+function formatDate(iso: string, timeZone: string): string {
+    return new Date(iso).toLocaleDateString(LOCALE, { day: "numeric", month: "short", year: "numeric", timeZone });
+}
+
+function formatTime(iso: string, timeZone: string): string {
+    return new Date(iso).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit", timeZone });
+}
+
+function formatDay(dayKey: string, style: "short" | "long"): string {
+    return dayKeyToDate(dayKey).toLocaleDateString(
+        LOCALE,
+        style === "short"
+            ? { day: "numeric", month: "short", timeZone: "UTC" }
+            : { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }
+    );
+}
+
+function formatDuration(seconds: number | null): string {
+    if (seconds === null) return "—";
+    if (seconds < 60) return `${seconds} s`;
+    const minutes = Math.floor(seconds / 60);
+    const rest = seconds % 60;
+    return rest > 0 ? `${minutes} min ${rest} s` : `${minutes} min`;
+}
+
+// ── Boje serija na grafikonima ────────────────────────────────────────────────
+// `swatch` (klasa) i `color` (CSS promenljiva) uvek idu u paru: Tailwind v4 emituje
+// `--color-*` samo za boje koje se negde koriste kao klasa.
+
+interface Series {
+    swatch: string;
+    color: string;
+}
+
+const ALL_GAMES_SERIES: Series = { swatch: "bg-brand-600", color: "var(--color-brand-600)" };
+
+const GAME_SERIES: Record<GameId, Series> = {
+    shapes: { swatch: "bg-emerald-600", color: "var(--color-emerald-600)" },
+    memory: { swatch: "bg-violet-600", color: "var(--color-violet-600)" },
+    coloring: { swatch: "bg-orange-600", color: "var(--color-orange-600)" },
+    "sound-to-image": { swatch: "bg-sky-600", color: "var(--color-sky-600)" },
+    social: { swatch: "bg-indigo-600", color: "var(--color-indigo-600)" },
+    "social-story": { swatch: "bg-teal-600", color: "var(--color-teal-600)" },
+    emotions: { swatch: "bg-pink-600", color: "var(--color-pink-600)" },
 };
 
-const SUCCESS_COLORS = {
-    excellent: "#10B981",
-    successful: "#3B82F6",
-    partial: "#F59E0B",
-    struggled: "#EF4444",
-};
+/** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */
+const SUPPORT_SERIES = {
+    independent: { label: "Samostalno", swatch: "bg-brand-700" },
+    prompted: { label: "Uz pomoć", swatch: "bg-brand-400" },
+    other: { label: "Ostalo", swatch: "bg-slate-300" },
+} as const;
 
-export default function ProgressDashboard({ childId, childName }: Props) {
-    const [data, setData] = useState<ProgressData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<"all" | "shapes" | "memory" | "coloring" | "sound-to-image" | "social" | "social-story" | "emotions">("all");
-    const [isMobile, setIsMobile] = useState(false);
+/** Zvezdice su uređena skala u boji zvezdice (nagrada za dete, ne mera savladanosti). */
+const STAR_LEVELS: { id: SuccessLevel; label: string; swatch: string }[] = [
+    { id: "excellent", label: "3 zvezdice", swatch: "bg-sun-600" },
+    { id: "successful", label: "2 zvezdice", swatch: "bg-sun-400" },
+    { id: "partial", label: "1 zvezdica", swatch: "bg-sun-200" },
+    { id: "struggled", label: "Bez zvezdica", swatch: "bg-slate-300" },
+];
+
+const AXIS_TICK = { fill: "var(--color-ink-soft)", fontSize: 12 };
+const GRID_STROKE = "var(--color-line)";
+/** Veličina pre prvog merenja kontejnera (bez nje Recharts prvi kadar crta sa širinom -1). */
+const CHART_INITIAL_SIZE = { width: 320, height: 240 };
+
+// ── Učitavanje ────────────────────────────────────────────────────────────────
+
+const LOAD_ERROR = "Statistika trenutno nije dostupna. Proverite internet vezu i pokušajte ponovo.";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
+}
+
+function isProgressResponse(value: unknown): value is ProgressResponse {
+    return (
+        isRecord(value) &&
+        isRecord(value.totals) &&
+        isRecord(value.mood) &&
+        Array.isArray(value.games) &&
+        Array.isArray(value.daily) &&
+        Array.isArray(value.recentSessions)
+    );
+}
+
+async function fetchProgress(childId: number, signal: AbortSignal): Promise<ProgressResponse> {
+    const response = await fetch(`/api/children/${childId}/progress`, { signal, cache: "no-store" });
+    const body: unknown = await response.json().catch(() => null);
+    if (response.ok && isProgressResponse(body)) return body;
+    // Poruke servera su već na srpskom; sve ostalo (mreža, neočekivan odgovor) dobija opštu poruku.
+    throw new Error(isRecord(body) && typeof body.error === "string" ? body.error : LOAD_ERROR);
+}
+
+interface ProgressState {
+    data: ProgressResponse | null;
+    error: string | null;
+    isLoading: boolean;
+    reload: () => void;
+}
+
+/**
+ * Učitava statistiku i prekida zahtev pri demontiranju. Tokom osvežavanja zadržava
+ * prethodne podatke (prikaz ih samo priguši) da stranica ne bi "skakala".
+ */
+function useProgress(childId: number): ProgressState {
+    const [attempt, setAttempt] = useState(0);
+    const [loaded, setLoaded] = useState<{ childId: number; data: ProgressResponse } | null>(null);
+    const [settled, setSettled] = useState<{ requestKey: string; error: string | null } | null>(null);
+    const requestKey = `${childId}:${attempt}`;
 
     useEffect(() => {
-        const check = () => setIsMobile(window.innerWidth < 640);
-        check();
-        window.addEventListener('resize', check);
-        return () => window.removeEventListener('resize', check);
-    }, []);
+        const controller = new AbortController();
+        fetchProgress(childId, controller.signal)
+            .then((data) => {
+                setLoaded({ childId, data });
+                setSettled({ requestKey, error: null });
+            })
+            .catch((error: unknown) => {
+                if (controller.signal.aborted) return;
+                setSettled({ requestKey, error: error instanceof Error ? error.message : LOAD_ERROR });
+            });
+        return () => controller.abort();
+    }, [childId, requestKey]);
 
-    useEffect(() => {
-        fetchProgress();
-    }, [childId]);
-
-    const fetchProgress = async () => {
-        try {
-            const res = await fetch(`/api/children/${childId}/progress`);
-            if (res.ok) {
-                const json = await res.json();
-                if (json && json.total && typeof json.total.total_games !== 'undefined') {
-                    setData(json);
-                }
-            }
-        } catch (error) {
-            console.error("Error fetching progress:", error);
-        } finally {
-            setLoading(false);
-        }
+    const isLoading = settled?.requestKey !== requestKey;
+    return {
+        data: loaded?.childId === childId ? loaded.data : null,
+        error: isLoading ? null : (settled?.error ?? null),
+        isLoading,
+        reload: () => setAttempt((value) => value + 1),
     };
+}
 
-    if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-                <div className="h-12 w-12 border-4 border-purple-100 border-t-purple-600 rounded-full animate-spin"></div>
-                <p className="text-gray-500 font-medium animate-pulse">Analiziramo podatke...</p>
-            </div>
-        );
+// ── Komponenta ────────────────────────────────────────────────────────────────
+
+export default function ProgressDashboard({ childId, childName, audience = "parent" }: ProgressDashboardProps) {
+    const { data, error, isLoading, reload } = useProgress(childId);
+    const isChild = audience === "child";
+
+    if (!data) {
+        if (error) return <ErrorState message={error} onRetry={reload} isChild={isChild} />;
+        return isChild ? <ChildSkeleton /> : <ParentSkeleton />;
     }
-
-    if (!data || !data.total || data.total.total_games === 0) {
-        return (
-            <div className="bg-white rounded-[3rem] p-16 text-center border border-gray-100 shadow-sm">
-                <div className="text-8xl mb-8">🎮</div>
-                <h3 className="text-3xl font-black text-gray-900 mb-4">Još uvek učimo!</h3>
-                <p className="text-lg text-gray-500 max-w-md mx-auto leading-relaxed">
-                    {childName} još uvek nije završio/la nijednu igru. Čim počne sa igrom, ovde će se pojaviti prva statistika.
-                </p>
-            </div>
-        );
-    }
-
-    const currentData = activeTab === "shapes" ? data.shapes 
-        : activeTab === "memory" ? data.memory 
-        : activeTab === "coloring" ? data.coloring 
-        : activeTab === "sound-to-image" ? data.soundToImage 
-        : activeTab === "social" ? data.social
-        : activeTab === "social-story" ? data.socialStory 
-        : activeTab === "emotions" ? data.emotions
-        : null;
-
-    const pieData = currentData ? [
-        { name: "Odlično", value: currentData.stats.excellent_count, color: SUCCESS_COLORS.excellent },
-        { name: "Uspešno", value: currentData.stats.successful_count, color: SUCCESS_COLORS.successful },
-        { name: "Delimično", value: currentData.stats.partial_count, color: SUCCESS_COLORS.partial },
-        { name: "Teškoće", value: currentData.stats.struggled_count, color: SUCCESS_COLORS.struggled },
-    ].filter(item => item.value > 0) : [
-        { name: "Odlično", value: data.total.excellent_count, color: SUCCESS_COLORS.excellent },
-        { name: "Uspešno", value: data.total.successful_count, color: SUCCESS_COLORS.successful },
-        { name: "Delimično", value: data.total.partial_count, color: SUCCESS_COLORS.partial },
-        { name: "Teškoće", value: data.total.struggled_count, color: SUCCESS_COLORS.struggled },
-    ].filter(item => item.value > 0);
 
     return (
-        <div className="space-y-10">
-            {/* Professional Navigation Tabs */}
-            <div className="bg-white p-1 sm:p-2 rounded-2xl border border-gray-100 shadow-sm inline-flex w-full overflow-x-auto no-scrollbar">
-                {[
-                    { id: "all", label: "Ukupno", icon: "📊", color: "text-blue-600 bg-blue-50" },
-                    { id: "shapes", label: "Oblici", icon: "🔷", color: "text-emerald-600 bg-emerald-50" },
-                    { id: "memory", label: "Memorija", icon: "🧠", color: "text-purple-600 bg-purple-50" },
-                    { id: "coloring", label: "Bojanka", icon: "🎨", color: "text-orange-600 bg-orange-50" },
-                    { id: "sound-to-image", label: "Zvuk", icon: "🔊", color: "text-cyan-600 bg-cyan-50" },
-                    { id: "social", label: "Govor", icon: "💬", color: "text-violet-600 bg-violet-50" },
-                    { id: "social-story", label: "Priče", icon: "🏙️", color: "text-rose-600 bg-rose-50" },
-                    { id: "emotions", label: "Emocije", icon: "😊", color: "text-pink-600 bg-pink-50" },
-                ].map((tab) => (
-                    <button
-                        key={tab.id}
-                        onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex-1 min-w-[100px] sm:min-w-[120px] flex items-center justify-center gap-2 px-3 sm:px-6 py-2.5 sm:py-3 rounded-xl font-black text-[11px] sm:text-sm transition-all duration-300 ${activeTab === tab.id
-                            ? `shadow-md shadow-purple-100 scale-[1.02] ${tab.id === 'all' ? 'bg-blue-600 text-white' : tab.id === 'shapes' ? 'bg-emerald-600 text-white' : tab.id === 'memory' ? 'bg-purple-600 text-white' : tab.id === 'coloring' ? 'bg-orange-600 text-white' : tab.id === 'sound-to-image' ? 'bg-cyan-600 text-white' : 'bg-rose-600 text-white'}`
-                            : "text-gray-500 hover:bg-gray-50"
-                            }`}
+        <div className="space-y-6">
+            {error && (
+                <Alert className="flex flex-wrap items-center justify-between gap-3">
+                    <span>Osvežavanje nije uspelo. Prikazani su ranije učitani podaci.</span>
+                    <Button variant="secondary" size="sm" onClick={reload}>
+                        Pokušaj ponovo
+                    </Button>
+                </Alert>
+            )}
+            <div aria-busy={isLoading} className={cn("transition-opacity duration-200", isLoading && "opacity-60")}>
+                {data.totals.plays === 0 ? (
+                    <EmptyState childName={childName} isChild={isChild} onRefresh={reload} isRefreshing={isLoading} />
+                ) : isChild ? (
+                    <ChildView data={data} childName={childName} />
+                ) : (
+                    <ParentView data={data} childId={childId} onRefresh={reload} isRefreshing={isLoading} />
+                )}
+            </div>
+            {!isChild && (
+                <p className="text-xs font-semibold text-ink-soft">
+                    Bright Minds je vežbanka uz podršku odraslih. Nije terapija ni dijagnostički alat i ne zamenjuje logopeda, defektologa ili
+                    psihologa.
+                </p>
+            )}
+        </div>
+    );
+}
+
+// ── Stanja: greška, prazno, učitavanje ────────────────────────────────────────
+
+function ErrorState({ message, onRetry, isChild }: { message: string; onRetry: () => void; isChild: boolean }) {
+    return (
+        <Card className="mx-auto max-w-lg text-center" role="alert">
+            <h2 className="text-xl font-extrabold text-ink">{isChild ? "Ups! Nešto nije u redu" : "Statistika nije učitana"}</h2>
+            <p className="mt-2 text-sm text-ink-soft">{isChild ? "Ne možemo da prikažemo tvoj napredak. Probaj ponovo." : message}</p>
+            <Button className="mt-5" variant={isChild ? "sun" : "primary"} chunky={isChild} onClick={onRetry}>
+                Pokušaj ponovo
+            </Button>
+        </Card>
+    );
+}
+
+interface EmptyStateProps {
+    childName: string;
+    isChild: boolean;
+    onRefresh: () => void;
+    isRefreshing: boolean;
+}
+
+function EmptyState({ childName, isChild, onRefresh, isRefreshing }: EmptyStateProps) {
+    if (isChild) {
+        return (
+            <Card className="mx-auto max-w-lg text-center">
+                <p className="text-5xl" aria-hidden="true">
+                    ⭐
+                </p>
+                <h2 className="mt-3 text-2xl font-extrabold text-ink">Ovde će biti tvoje zvezdice</h2>
+                <p className="mt-2 text-base text-ink-soft">Odigraj prvu igru i vrati se da vidiš svoj napredak!</p>
+            </Card>
+        );
+    }
+    return (
+        <Card className="mx-auto max-w-xl text-center">
+            <h2 className="text-xl font-extrabold text-ink">Još nema odigranih igara</h2>
+            <p className="mt-2 text-sm text-ink-soft">
+                Kada {childName} završi prvi nivo neke igre, ovde će se pojaviti aktivnost po danima, napredak po igrama i predlozi za
+                vežbu van ekrana.
+            </p>
+            <Button className="mt-5" variant="secondary" onClick={onRefresh} isLoading={isRefreshing}>
+                Osveži
+            </Button>
+        </Card>
+    );
+}
+
+function SkeletonBlock({ className }: { className?: string }) {
+    return <div className={cn("animate-pulse rounded-card bg-line/70", className)} />;
+}
+
+function ParentSkeleton() {
+    return (
+        <div role="status" className="space-y-6">
+            <span className="sr-only">Učitavanje statistike…</span>
+            <SkeletonBlock className="h-10 max-w-md rounded-xl" />
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                {Array.from({ length: 4 }, (_, i) => (
+                    <SkeletonBlock key={i} className="h-28" />
+                ))}
+            </div>
+            <SkeletonBlock className="h-80" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {Array.from({ length: 6 }, (_, i) => (
+                    <SkeletonBlock key={i} className="h-80" />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function ChildSkeleton() {
+    return (
+        <div role="status" className="space-y-5">
+            <span className="sr-only">Učitavanje…</span>
+            <SkeletonBlock className="h-9 max-w-xs rounded-xl" />
+            <div className="grid grid-cols-2 gap-3">
+                {Array.from({ length: 2 }, (_, i) => (
+                    <SkeletonBlock key={i} className="h-28" />
+                ))}
+            </div>
+            <SkeletonBlock className="h-96" />
+        </div>
+    );
+}
+
+// ── Zajednički delovi ─────────────────────────────────────────────────────────
+
+function SectionHeading({ id, title, description }: { id: string; title: string; description?: string }) {
+    return (
+        <div>
+            <h2 id={id} className="text-lg font-extrabold text-ink sm:text-xl">
+                {title}
+            </h2>
+            {description && <p className="mt-0.5 text-sm text-ink-soft">{description}</p>}
+        </div>
+    );
+}
+
+interface StarsProps {
+    value: number;
+    /** Samo osvojene zvezdice, bez sivih mesta za neosvojene (prikaz za dete) */
+    earnedOnly?: boolean;
+    className?: string;
+}
+
+function Stars({ value, earnedOnly = false, className }: StarsProps) {
+    const label = earnedOnly ? `${value} ${plural(value, "zvezdica", "zvezdice", "zvezdica")}` : `${value} od 3 zvezdice`;
+    return (
+        <span role="img" aria-label={label} className={cn("inline-flex gap-0.5 leading-none", className)}>
+            {(earnedOnly ? [1, 2, 3].slice(0, value) : [1, 2, 3]).map((star) => (
+                <span key={star} aria-hidden="true" className={star <= value ? "text-sun-400" : "text-slate-300"}>
+                    ★
+                </span>
+            ))}
+        </span>
+    );
+}
+
+function GameIcon({ game, size = "md" }: { game: GameDefinition; size?: "sm" | "md" | "lg" }) {
+    const sizes = { sm: "h-8 w-8 text-base rounded-lg", md: "h-11 w-11 text-xl rounded-xl", lg: "h-14 w-14 text-3xl rounded-2xl" };
+    return (
+        <span aria-hidden="true" className={cn("grid shrink-0 place-items-center", game.accent.soft, sizes[size])}>
+            {game.icon}
+        </span>
+    );
+}
+
+/** Napredak kroz 15 nivoa, podeljen na tri težine. */
+function LevelProgress({ game, completed }: { game: GameDefinition; completed: number }) {
+    const currentTier = tierForLevel(Math.min(completed + 1, MAX_LEVEL)).id;
+    return (
+        <div>
+            <div
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={MAX_LEVEL}
+                aria-valuenow={completed}
+                aria-label={`${game.title}: završeno ${completed} od ${MAX_LEVEL} nivoa`}
+                className="grid grid-cols-3 gap-2"
+            >
+                {TIERS.map((tier) => (
+                    <div key={tier.id} className="flex gap-0.5">
+                        {Array.from({ length: tier.to - tier.from + 1 }, (_, i) => (
+                            <span
+                                key={i}
+                                className={cn("h-2.5 flex-1 rounded-full", tier.from + i <= completed ? game.accent.solid : "bg-line")}
+                            />
+                        ))}
+                    </div>
+                ))}
+            </div>
+            <div aria-hidden="true" className="mt-1.5 grid grid-cols-3 gap-2 text-xs font-bold">
+                {TIERS.map((tier) => (
+                    <span key={tier.id} className={tier.id === currentTier ? "text-ink" : "text-ink-faint"}>
+                        {tier.label}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+interface SegmentedProps<T extends string> {
+    label: string;
+    value: T;
+    options: { value: T; label: string }[];
+    onChange: (value: T) => void;
+}
+
+function Segmented<T extends string>({ label, value, options, onChange }: SegmentedProps<T>) {
+    return (
+        <div role="group" aria-label={label} className="inline-flex shrink-0 rounded-xl border border-line bg-canvas p-1">
+            {options.map((option) => (
+                <button
+                    key={option.value}
+                    type="button"
+                    aria-pressed={option.value === value}
+                    onClick={() => onChange(option.value)}
+                    className={cn(
+                        "min-h-9 rounded-lg px-3 text-sm font-bold transition-colors",
+                        option.value === value ? "bg-surface text-ink shadow-soft" : "text-ink-soft hover:text-ink"
+                    )}
+                >
+                    {option.label}
+                </button>
+            ))}
+        </div>
+    );
+}
+
+function ChartNote({ children }: { children: ReactNode }) {
+    return <p className="rounded-xl bg-canvas px-4 py-8 text-center text-sm font-semibold text-ink-soft">{children}</p>;
+}
+
+// ── Prikaz za roditelja ───────────────────────────────────────────────────────
+
+type MoodOption = (typeof MOODS)[number];
+
+/**
+ * Skala lica za prikaz: baza čuva samo vrednost, a kraća skala (tri lica) koristi podskup
+ * istih vrednosti. Pet lica prikazujemo tek kada je zabeležen bar jedan krajnji izbor.
+ */
+function moodScaleFor(mood: MoodChoices): MoodOption[] {
+    const extremes = mood.before.very_upset + mood.before.very_happy + mood.after.very_upset + mood.after.very_happy;
+    return extremes > 0 ? MOODS : MOODS_THREE;
+}
+
+const countChoices = (counts: MoodCounts) => MOODS.reduce((sum, mood) => sum + counts[mood.value], 0);
+
+interface ParentViewProps {
+    data: ProgressResponse;
+    childId: number;
+    onRefresh: () => void;
+    isRefreshing: boolean;
+}
+
+function ParentView({ data, childId, onRefresh, isRefreshing }: ParentViewProps) {
+    const [filter, setFilter] = useState<GameFilter>("all");
+    const selected = filter === "all" ? undefined : data.games.find((game) => game.gameId === filter);
+    const sessions =
+        filter === "all"
+            ? data.recentSessions.slice(0, RECENT_SESSIONS_LIMIT)
+            : data.recentSessions.filter((session) => session.gameId === filter);
+    // Ista skala u svim delovima prikaza, bez obzira na izabranu igru
+    const moodScale = moodScaleFor(data.mood);
+    const mood = selected ? selected.mood : data.mood;
+    const updatedAt = new Date(data.generatedAt).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
+
+    return (
+        <div className="space-y-8">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                <GameFilterControl value={filter} onChange={setFilter} />
+                <div className="flex shrink-0 items-center gap-2 xl:ml-auto">
+                    <p className="mr-auto text-xs font-semibold text-ink-faint xl:hidden">Ažurirano u {updatedAt}</p>
+                    <a
+                        href={`/api/children/${childId}/export`}
+                        download
+                        title="Preuzmi sve rezultate kao tabelu (CSV)"
+                        className={buttonClasses({ variant: "secondary", size: "sm" })}
                     >
-                        <span className="text-base sm:text-lg">{tab.icon}</span>
-                        <span className="whitespace-nowrap">{tab.label}</span>
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                        CSV
+                    </a>
+                    <Button variant="secondary" size="sm" onClick={onRefresh} isLoading={isRefreshing} aria-label="Osveži podatke" title={`Ažurirano u ${updatedAt}. Osveži podatke.`}>
+                        {!isRefreshing && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+                        <span className="hidden sm:inline">Osveži</span>
+                    </Button>
+                </div>
+            </div>
+
+            <Overview summary={selected ?? data.totals} data={data} selected={selected} />
+
+            <ActivityChart daily={data.daily} filter={filter} windowDays={data.windowDays} />
+
+            {selected ? (
+                <GameDetail game={selected} timeZone={data.timeZone} windowDays={data.windowDays} onShowAll={() => setFilter("all")} />
+            ) : (
+                <section aria-labelledby="progress-games" className="space-y-4">
+                    <SectionHeading
+                        id="progress-games"
+                        title="Napredak po igrama"
+                        description="Samostalno: tačno iz prvog pokušaja. Uz pomoć: tačno tek kada igra istakne odgovor."
+                    />
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {data.games.map((game) => (
+                            <GameCard
+                                key={game.gameId}
+                                game={game}
+                                timeZone={data.timeZone}
+                                windowDays={data.windowDays}
+                                onSelect={() => setFilter(game.gameId)}
+                            />
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            <SessionsSection sessions={sessions} timeZone={data.timeZone} moodScale={moodScale} />
+
+            {countChoices(mood.before) + countChoices(mood.after) > 0 && <MoodSection mood={mood} scale={moodScale} />}
+        </div>
+    );
+}
+
+function GameFilterControl({ value, onChange }: { value: GameFilter; onChange: (value: GameFilter) => void }) {
+    const options: { value: GameFilter; label: string; icon?: string }[] = [
+        { value: "all", label: "Sve igre" },
+        ...GAMES.map((game) => ({ value: game.id, label: game.title, icon: game.icon })),
+    ];
+    return (
+        <>
+            <div className="md:hidden">
+                <Select
+                    label="Prikaži"
+                    value={value}
+                    onChange={(event) => onChange(options.find((option) => option.value === event.target.value)?.value ?? "all")}
+                >
+                    {options.map((option) => (
+                        <option key={option.value} value={option.value}>
+                            {option.label}
+                        </option>
+                    ))}
+                </Select>
+            </div>
+            {/* Jedan red: igre se ne prelamaju u drugi red ispod dugmadi, na užem ekranu red se pomera u stranu */}
+            <div
+                role="group"
+                aria-label="Filter po igri"
+                className="hidden min-w-0 gap-1 overflow-x-auto rounded-2xl bg-surface p-1 shadow-soft ring-1 ring-line [scrollbar-width:none] md:flex"
+            >
+                {options.map((option) => (
+                    <button
+                        key={option.value}
+                        type="button"
+                        aria-pressed={option.value === value}
+                        onClick={() => onChange(option.value)}
+                        className={cn(
+                            "inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 text-sm font-bold transition-colors",
+                            option.value === value ? "bg-brand-600 text-white shadow-soft" : "text-ink-soft hover:bg-brand-50 hover:text-ink"
+                        )}
+                    >
+                        {option.icon && <span aria-hidden="true">{option.icon}</span>}
+                        {option.label}
                     </button>
                 ))}
             </div>
+        </>
+    );
+}
 
-            {/* Dashboard Content */}
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {activeTab === "all" ? (
-                    <div className="space-y-8">
-                        {/* Summary Cards */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                            {[
-                                { title: "Ukupno igara", value: data.total.total_games, icon: "🎯", color: "from-blue-500 to-indigo-600" },
-                                { title: "Minuta vežbe", value: data.total.total_minutes, icon: "⏱️", color: "from-purple-500 to-pink-600" },
-                                { title: "Najbolji skor", value: Math.max(
-                                    data.shapes.stats.best_score || 0, 
-                                    data.memory.stats.best_score || 0, 
-                                    data.coloring.stats.best_score || 0, 
-                                    data.soundToImage.stats.best_score || 0, 
-                                    data.social.stats.best_score || 0,
-                                    data.socialStory.stats.best_score || 0,
-                                    data.emotions.stats.best_score || 0
-                                ), icon: "🏆", color: "from-orange-400 to-amber-600" },
-                                { title: "Bravo poeni", value: data.total.excellent_count + data.total.successful_count, icon: "⭐", color: "from-emerald-400 to-teal-600" },
-                            ].map((card, i) => (
-                                <div key={i} className={`bg-gradient-to-br ${card.color} rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 text-white shadow-xl hover:scale-[1.02] transition-transform duration-300`}>
-                                    <div className="text-3xl sm:text-4xl mb-2 sm:mb-4">{card.icon}</div>
-                                    <div className="text-2xl sm:text-3xl font-black mb-0.5 sm:mb-1">{card.value}</div>
-                                    <div className="text-white/80 text-[10px] sm:text-xs font-black uppercase tracking-wider">{card.title}</div>
-                                </div>
-                            ))}
-                        </div>
+// ── Pregled (kartice sa brojevima) ────────────────────────────────────────────
 
-                        {/* Charts Section */}
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-                            <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-10 border border-gray-100 shadow-sm">
-                                <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-6 sm:mb-8 flex items-center gap-3">
-                                    <span className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 text-sm sm:text-base">📈</span>
-                                    Nivo uspešnosti
-                                </h3>
-                                <div className="h-[250px] sm:h-[300px] w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie
-                                                data={pieData}
-                                                cx="50%"
-                                                cy="50%"
-                                                innerRadius={isMobile ? 40 : 60}
-                                                outerRadius={isMobile ? 75 : 100}
-                                                paddingAngle={5}
-                                                dataKey="value"
-                                            >
-                                                {pieData.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                                                ))}
-                                            </Pie>
-                                            <Tooltip
-                                                contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-6 sm:mt-8">
-                                    {pieData.map((entry, i) => (
-                                        <div key={i} className="flex items-center gap-2">
-                                            <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                                            <span className="text-[10px] sm:text-xs font-black text-gray-600 line-clamp-1">{entry.name}: {entry.value}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+interface StatPart {
+    value: string;
+    unit?: string;
+}
 
-                            <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-10 border border-gray-100 shadow-sm">
-                                <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-6 sm:mb-8 flex items-center gap-3">
-                                    <span className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 text-sm sm:text-base">🎯</span>
-                                    Pregled po igrama
-                                </h3>
-                                <div className="space-y-4 sm:space-y-6">
-                                    {[
-                                        { title: "Složi oblik", stats: data.shapes.stats, icon: "🔷", color: "emerald" },
-                                        { title: "Spoji parove", stats: data.memory.stats, icon: "🧠", color: "purple" },
-                                        { title: "Bojanka", stats: data.coloring.stats, icon: "🎨", color: "orange" },
-                                        { title: "Zvuk → Slika", stats: data.soundToImage.stats, icon: "🔊", color: "cyan" },
-                                        { title: "Šta da kažeš?", stats: data.social.stats, icon: "💬", color: "violet" },
-                                        { title: "Socialne Priče", stats: data.socialStory.stats, icon: "🏙️", color: "rose" },
-                                        { title: "Emocije", stats: data.emotions.stats, icon: "😊", color: "pink" },
-                                    ].map((game, i) => (
-                                        <div key={i} className="p-3 sm:p-5 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                                            <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                                                <div className="text-2xl sm:text-3xl shrink-0">{game.icon}</div>
-                                                <div className="min-w-0">
-                                                    <div className="text-xs sm:text-sm font-black text-gray-900 truncate">{game.title}</div>
-                                                    <div className="text-[9px] sm:text-[11px] font-black text-gray-400 uppercase tracking-widest">{game.stats.total_games}x</div>
-                                                </div>
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <div className={`text-base sm:text-xl font-black text-${game.color}-600`}>{Math.round(game.stats.avg_score || 0)}</div>
-                                                <div className="text-[9px] font-black text-gray-300 uppercase tracking-wider">Prosek</div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
+const TILE_TONES = {
+    brand: "bg-brand-50 text-brand-600",
+    sky: "bg-sky-50 text-sky-600",
+    emerald: "bg-emerald-50 text-emerald-600",
+    sun: "bg-sun-50 text-sun-600",
+} as const;
 
-                        {/* Recent History */}
-                        <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-10 border border-gray-100 shadow-sm">
-                            <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-6 sm:mb-8">Poslednje aktivnosti 📜</h3>
-                            <div className="space-y-3 sm:space-y-4">
-                                {data.allGames.slice(0, 10).map((game) => (
-                                    <div key={game.id} className="group p-4 sm:p-5 rounded-2xl border border-slate-50 hover:bg-slate-50 hover:border-purple-100 transition-all duration-300">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                            <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                                                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-xl sm:text-2xl shadow-sm shrink-0 group-hover:scale-110 transition-transform">
-                                                    {game.activity_title === "Složi oblik" ? "🔷" : 
-                                                     game.activity_title === "Spoji parove" ? "🧠" : 
-                                                     game.activity_title === "Zvuk → Slika" ? "🔊" : 
-                                                     game.activity_title === "Šta da kažeš?" ? "💬" : 
-                                                     game.activity_title === "Emocije" ? "😊" : 
-                                                     game.activity_title.includes("Istraži") || game.activity_title.includes("Grad") || game.activity_title.includes("Priče") ? "🏙️" : "🎨"}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="text-sm sm:text-base font-black text-gray-900 truncate">{game.activity_title}</div>
-                                                    <div className="text-[10px] sm:text-xs font-medium text-gray-400">
-                                                        {new Date(game.completed_at).toLocaleDateString('sr-RS', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-8 border-t border-slate-100 sm:border-0 pt-3 sm:pt-0">
-                                                <div className="text-left sm:text-right">
-                                                    <div className="text-base sm:text-lg font-black text-gray-900">{game.score} poena</div>
-                                                    <div className="text-[9px] sm:text-[10px] font-black text-gray-300 uppercase tracking-widest">{game.duration_minutes} min treninga</div>
-                                                </div>
-                                                <div className={`px-3 py-1 sm:px-4 sm:py-1.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest shrink-0 ${game.success_level === 'excellent' ? 'bg-emerald-100 text-emerald-700' :
-                                                    game.success_level === 'successful' ? 'bg-blue-100 text-blue-700' :
-                                                        game.success_level === 'partial' ? 'bg-orange-100 text-orange-700' :
-                                                            'bg-red-100 text-red-700'
-                                                    }`}>
-                                                    {game.success_level === 'excellent' ? 'Sjajno' :
-                                                        game.success_level === 'successful' ? 'Uspešno' :
-                                                            game.success_level === 'partial' ? 'Delimično' : 'Teškoće'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+interface StatTileProps {
+    label: string;
+    parts: StatPart[];
+    detail: string;
+    Icon: LucideIcon;
+    tone: keyof typeof TILE_TONES;
+}
+
+function StatTile({ label, parts, detail, Icon, tone }: StatTileProps) {
+    return (
+        <Card className="p-4 sm:p-5">
+            <dt className="flex items-center gap-2 text-sm font-bold text-ink-soft">
+                <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg", TILE_TONES[tone])} aria-hidden="true">
+                    <Icon className="h-4 w-4" />
+                </span>
+                {label}
+            </dt>
+            <dd className="mt-3">
+                <span className="flex flex-wrap items-baseline gap-x-1.5 text-ink">
+                    {parts.map((part, i) => (
+                        <span key={i} className="whitespace-nowrap">
+                            <span className="text-2xl font-extrabold leading-none sm:text-3xl">{part.value}</span>
+                            {part.unit && <span className="ml-1 text-sm font-bold text-ink-soft">{part.unit}</span>}
+                        </span>
+                    ))}
+                </span>
+                <span className="mt-2 block text-xs font-semibold text-ink-soft">{detail}</span>
+            </dd>
+        </Card>
+    );
+}
+
+function minutesParts(totalMinutes: number): StatPart[] {
+    if (totalMinutes < 60) return [{ value: formatNumber(totalMinutes), unit: "min" }];
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return minutes > 0
+        ? [
+              { value: formatNumber(hours), unit: "h" },
+              { value: formatNumber(minutes), unit: "min" },
+          ]
+        : [{ value: formatNumber(hours), unit: "h" }];
+}
+
+function Overview({ summary, data, selected }: { summary: ProgressSummary; data: ProgressResponse; selected?: GameProgress }) {
+    const averageMinutes = summary.plays > 0 ? summary.totalMinutes / summary.plays : 0;
+    const { independentRate30d: independent, promptedRate30d: prompted } = summary;
+    const period = `poslednjih ${data.windowDays} dana`;
+    const independentDetail =
+        independent === null
+            ? `Nema partija sa brojem odgovora u ${period}`
+            : prompted === null
+              ? `Iz prvog pokušaja, ${period}`
+              : `Uz pomoć: ${toPercent(prompted)}% · ${period}`;
+
+    return (
+        <section aria-label="Pregled" className="space-y-3">
+            <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+                <StatTile
+                    Icon={Gamepad2}
+                    tone="brand"
+                    label="Odigrane igre"
+                    parts={[{ value: formatNumber(summary.plays) }]}
+                    detail={
+                        selected
+                            ? `Trenutno na nivou ${selected.currentLevel} od ${MAX_LEVEL}`
+                            : `Isprobano ${data.totals.gamesTried} od ${GAMES.length} igara`
+                    }
+                />
+                <StatTile
+                    Icon={Clock3}
+                    tone="sky"
+                    label="Vreme igre"
+                    parts={minutesParts(summary.totalMinutes)}
+                    detail={summary.plays > 0 ? `Prosečno ${formatNumber(averageMinutes)} min po igri` : "Još nije igrano"}
+                />
+                <StatTile
+                    Icon={Target}
+                    tone="emerald"
+                    label="Samostalno tačno"
+                    parts={[{ value: independent === null ? "—" : `${toPercent(independent)}%` }]}
+                    detail={independentDetail}
+                />
+                <StatTile
+                    Icon={CalendarDays}
+                    tone="sun"
+                    label={`Dana igranja (${data.windowDays} dana)`}
+                    parts={[{ value: formatNumber(summary.daysPlayed30d), unit: `od ${data.windowDays}` }]}
+                    detail={`Od početka: ${formatNumber(summary.activeDays)} ${plural(summary.activeDays, "dan", "dana", "dana")}`}
+                />
+            </dl>
+            <p className="inline-flex flex-wrap items-center gap-x-1 rounded-xl bg-sun-50 px-3 py-2 text-sm text-ink-soft">
+                <Star className="h-4 w-4 fill-sun-300 text-sun-500" aria-hidden="true" />
+                Zvezdice: <strong className="font-extrabold text-ink">{formatNumber(summary.totalStars)}</strong>
+                {summary.averageStars !== null && <> (prosečno {formatNumber(summary.averageStars)} po igri)</>}. Zvezdice su nagrada za dete,
+                a ne mera savladanosti.
+            </p>
+        </section>
+    );
+}
+
+// ── Aktivnost po danima ───────────────────────────────────────────────────────
+
+const METRIC_OPTIONS: { value: Metric; label: string }[] = [
+    { value: "plays", label: "Igre" },
+    { value: "minutes", label: "Minuti" },
+];
+
+interface DayPoint {
+    date: string;
+    plays: number;
+    minutes: number;
+}
+
+function ActivityChart({ daily, filter, windowDays }: { daily: DailyActivity[]; filter: GameFilter; windowDays: number }) {
+    const [metric, setMetric] = useState<Metric>("plays");
+    const game = filter === "all" ? undefined : getGame(filter);
+    const series = filter === "all" ? ALL_GAMES_SERIES : GAME_SERIES[filter];
+
+    const points = useMemo<DayPoint[]>(
+        () =>
+            daily.map((day) => {
+                const source = filter === "all" ? day : (day.games[filter] ?? { plays: 0, minutes: 0 });
+                return { date: day.date, plays: source.plays, minutes: source.minutes };
+            }),
+        [daily, filter]
+    );
+    const dayByDate = useMemo(() => new Map(daily.map((day) => [day.date, day])), [daily]);
+    const activeDays = points.filter((point) => point.plays > 0);
+    const subject = game ? `igra „${game.title}”` : "sve igre";
+    const title = `${metric === "plays" ? "Broj odigranih igara" : "Minuti igre"} po danima, ${subject}`;
+
+    return (
+        <Card>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 className="text-lg font-extrabold text-ink sm:text-xl">Aktivnost po danima</h2>
+                    <p className="mt-0.5 flex items-center gap-2 text-sm text-ink-soft">
+                        <span aria-hidden="true" className={cn("h-2.5 w-2.5 rounded-sm", series.swatch)} />
+                        Poslednjih {windowDays} dana · {game ? game.title : "sve igre"}
+                    </p>
+                </div>
+                <Segmented label="Mera na grafikonu" value={metric} options={METRIC_OPTIONS} onChange={setMetric} />
+            </div>
+
+            {activeDays.length === 0 ? (
+                <div className="mt-5">
+                    <ChartNote>Nema odigranih igara u poslednjih {windowDays} dana.</ChartNote>
+                </div>
+            ) : (
+                <figure className="mt-5 min-w-0">
+                    <div className="h-60 w-full sm:h-72">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_INITIAL_SIZE}>
+                            <BarChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} title={title}>
+                                <CartesianGrid vertical={false} stroke={GRID_STROKE} />
+                                <XAxis
+                                    dataKey="date"
+                                    tickFormatter={(value: string) => formatDay(value, "short")}
+                                    tick={AXIS_TICK}
+                                    tickLine={false}
+                                    axisLine={{ stroke: GRID_STROKE }}
+                                    tickMargin={8}
+                                    minTickGap={24}
+                                    interval="preserveStartEnd"
+                                />
+                                <YAxis
+                                    width={36}
+                                    allowDecimals={metric === "minutes"}
+                                    tickFormatter={formatNumber}
+                                    tick={AXIS_TICK}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
+                                <Tooltip
+                                    cursor={{ fill: "var(--color-canvas)" }}
+                                    wrapperStyle={{ outline: "none" }}
+                                    content={({ active, label }) => {
+                                        const day = active && typeof label === "string" ? dayByDate.get(label) : undefined;
+                                        return day ? <DayTooltip day={day} filter={filter} /> : null;
+                                    }}
+                                />
+                                <Bar dataKey={metric} fill={series.color} radius={[4, 4, 0, 0]} maxBarSize={24} isAnimationActive={false} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div className="sr-only">
+                        <table>
+                            <caption>{title} (samo dani sa aktivnošću)</caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Dan</th>
+                                    <th scope="col">Igre</th>
+                                    <th scope="col">Minuti</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {activeDays.map((point) => (
+                                    <tr key={point.date}>
+                                        <th scope="row">{formatDay(point.date, "long")}</th>
+                                        <td>{point.plays}</td>
+                                        <td>{formatNumber(point.minutes)}</td>
+                                    </tr>
                                 ))}
-                            </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </figure>
+            )}
+        </Card>
+    );
+}
+
+function DayTooltip({ day, filter }: { day: DailyActivity; filter: GameFilter }) {
+    const shown = filter === "all" ? day : (day.games[filter] ?? { plays: 0, minutes: 0 });
+    const breakdown = filter === "all" ? GAMES.filter((game) => day.games[game.id]) : [];
+    return (
+        <div className="max-w-60 rounded-xl border border-line bg-surface px-3 py-2.5 text-sm shadow-lift">
+            <p className="text-xs font-bold text-ink-soft">{formatDay(day.date, "long")}</p>
+            <p className="mt-1 font-extrabold text-ink">
+                {shown.plays} {gamesWord(shown.plays)} · {formatNumber(shown.minutes)} min
+            </p>
+            {breakdown.length > 0 && (
+                <ul className="mt-2 space-y-1 border-t border-line pt-2">
+                    {breakdown.map((game) => (
+                        <li key={game.id} className="flex items-center gap-2 text-xs text-ink-soft">
+                            <span aria-hidden="true" className={cn("h-2 w-2 shrink-0 rounded-full", GAME_SERIES[game.id].swatch)} />
+                            <span className="min-w-0 flex-1 truncate font-semibold">{game.title}</span>
+                            <span className="font-extrabold text-ink">{day.games[game.id]?.plays ?? 0}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
+// ── Igre ──────────────────────────────────────────────────────────────────────
+
+const MASTERY_PERCENT = toPercent(MASTERY_RATIO);
+
+const MASTERY_BADGES: Record<MasteryStatus, { label: string; badge: string; Icon: LucideIcon }> = {
+    mastered: { label: "Savladano", badge: "border-emerald-200 bg-emerald-50 text-emerald-800", Icon: CircleCheck },
+    progressing: { label: "U toku", badge: "border-brand-200 bg-brand-50 text-brand-800", Icon: CircleDashed },
+    not_started: { label: "Nije započeto", badge: "border-line bg-canvas text-ink-soft", Icon: Circle },
+    ungraded: { label: "Bez ocene", badge: "border-line bg-canvas text-ink-soft", Icon: Circle },
+};
+
+const UNGRADED_NOTE =
+    "U ovoj igri nema pogrešnih odgovora — sva osećanja su u redu. „Samostalno” ovde znači da je dete izabralo osećanje koje u toj situaciji ima većina dece.";
+
+/** Kriterijum iz lib/progress.ts rečima; brojevi dolaze iz istih konstanti. */
+const MASTERY_CRITERION =
+    `„Savladano” znači: poslednje ${MASTERY_SESSIONS} ${plural(MASTERY_SESSIONS, "partija", "partije", "partija")} na trenutnoj težini, ` +
+    `odigrane u najmanje ${MASTERY_MIN_DAYS} različita dana, i u svakoj bar ${MASTERY_PERCENT}% zadataka rešeno samostalno. ` +
+    "To je uobičajen dogovor iz prakse, a ne strogo pravilo — o sledećem koraku odlučujete vi.";
+
+/** Oznaka savladanosti trenutne težine, sa objašnjenjem kriterijuma na dugme „i”. */
+function MasteryStatusLine({ game, progress }: { game: GameDefinition; progress: GameProgress }) {
+    const [isExplained, setIsExplained] = useState(false);
+    const noteId = useId();
+    const { label, badge, Icon } = MASTERY_BADGES[progress.mastery];
+
+    return (
+        <div>
+            <div className="flex items-center gap-2">
+                <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-extrabold", badge)}>
+                        <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                        {label}
+                    </span>
+                    <span className="text-xs font-bold text-ink-soft">Težina: {tierForLevel(progress.currentLevel).label}</span>
+                </p>
+                <button
+                    type="button"
+                    aria-expanded={isExplained}
+                    aria-controls={noteId}
+                    aria-label={`${game.title}: šta znači oznaka „Savladano”?`}
+                    onClick={() => setIsExplained((value) => !value)}
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-brand-50 hover:text-ink"
+                >
+                    <Info className="h-4 w-4" aria-hidden="true" />
+                </button>
+            </div>
+            <p id={noteId} hidden={!isExplained} className="mt-2 rounded-xl bg-canvas px-3 py-2.5 text-xs font-semibold text-ink-soft">
+                {progress.mastery === "ungraded" ? UNGRADED_NOTE : MASTERY_CRITERION}
+            </p>
+        </div>
+    );
+}
+
+interface SupportSplitProps {
+    /** Udeli 0–1 nad istim zadacima; `prompted` je `null` kada pomoć nije beležena */
+    independent: number | null;
+    prompted: number | null;
+    windowDays: number;
+}
+
+/** Samostalno / uz pomoć / ostalo kao traka od 100%, sa brojevima ispisanim ispod. */
+function SupportSplit({ independent, prompted, windowDays }: SupportSplitProps) {
+    const heading = <p className="text-sm font-bold text-ink">Samostalnost ({windowDays} dana)</p>;
+    if (independent === null) {
+        return (
+            <div>
+                {heading}
+                <p className="mt-1 text-xs font-semibold text-ink-soft">Nema partija sa brojem odgovora u ovom periodu.</p>
+            </div>
+        );
+    }
+
+    const independentPercent = toPercent(independent);
+    const promptedPercent = prompted === null ? null : Math.min(toPercent(prompted), 100 - independentPercent);
+    const parts = [
+        { ...SUPPORT_SERIES.independent, value: independentPercent },
+        ...(promptedPercent === null ? [] : [{ ...SUPPORT_SERIES.prompted, value: promptedPercent }]),
+        { ...SUPPORT_SERIES.other, value: 100 - independentPercent - (promptedPercent ?? 0) },
+    ];
+
+    return (
+        <div>
+            {heading}
+            <div aria-hidden="true" className="mt-2 flex h-3 gap-0.5">
+                {parts
+                    .filter((part) => part.value > 0)
+                    .map((part) => (
+                        <span
+                            key={part.label}
+                            className={cn("min-w-1 rounded-sm first:rounded-l-full last:rounded-r-full", part.swatch)}
+                            style={{ flexGrow: part.value, flexBasis: 0 }}
+                        />
+                    ))}
+            </div>
+            <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                {parts.map((part) => (
+                    <div key={part.label} className="flex items-center gap-1.5">
+                        <span aria-hidden="true" className={cn("h-2.5 w-2.5 shrink-0 rounded-sm", part.swatch)} />
+                        <dt className="font-semibold text-ink-soft">{part.label}</dt>
+                        <dd className="font-extrabold text-ink">{part.value}%</dd>
+                    </div>
+                ))}
+            </dl>
+        </div>
+    );
+}
+
+function TrendTooltip({ point }: { point: TrendPoint }) {
+    return (
+        <div className="rounded-xl border border-line bg-surface px-3 py-2 text-xs shadow-lift">
+            <p className="font-bold text-ink-soft">
+                {formatDay(point.date, "short")}
+                {point.level !== null && ` · nivo ${point.level}`}
+            </p>
+            <p className="mt-1 whitespace-nowrap font-extrabold text-ink">Samostalno {toPercent(point.independentRatio)}%</p>
+            {point.promptedRatio !== null && (
+                <p className="whitespace-nowrap font-semibold text-ink-soft">Uz pomoć {toPercent(point.promptedRatio)}%</p>
+            )}
+        </div>
+    );
+}
+
+interface TrendChartProps {
+    game: GameDefinition;
+    /** Od najstarije ka najnovijoj partiji */
+    trend: TrendPoint[];
+    /** Veći grafikon sa osama (detalji igre) umesto male linije u kartici */
+    detailed?: boolean;
+}
+
+/** Udeo samostalno tačnih odgovora po partijama; isprekidana linija je prag savladanosti. */
+function TrendChart({ game, trend, detailed = false }: TrendChartProps) {
+    const points = useMemo(() => trend.map((point, index) => ({ index, independent: toPercent(point.independentRatio) })), [trend]);
+    if (trend.length === 0) return null;
+
+    const color = GAME_SERIES[game.id].color;
+    const title = `${game.title}: udeo samostalno tačnih odgovora po partijama`;
+
+    return (
+        <figure className="min-w-0">
+            <figcaption className="flex flex-wrap items-baseline justify-between gap-x-3 text-sm font-bold text-ink">
+                Samostalno po partijama
+                <span className="text-xs font-semibold text-ink-soft">
+                    {trend.length === 1 ? "poslednja partija" : `poslednjih ${trend.length}`} · crta: {MASTERY_PERCENT}%
+                </span>
+            </figcaption>
+            <div className={cn("mt-2 w-full", detailed ? "h-52" : "h-16")}>
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={CHART_INITIAL_SIZE}>
+                    <LineChart data={points} margin={{ top: 8, right: 12, bottom: detailed ? 0 : 6, left: detailed ? 0 : 12 }} title={title}>
+                        {detailed && <CartesianGrid vertical={false} stroke={GRID_STROKE} />}
+                        <XAxis
+                            dataKey="index"
+                            hide={!detailed}
+                            tickFormatter={(value: number) => (trend[value] ? formatDay(trend[value].date, "short") : "")}
+                            tick={AXIS_TICK}
+                            tickLine={false}
+                            axisLine={{ stroke: GRID_STROKE }}
+                            tickMargin={8}
+                            minTickGap={16}
+                            interval="preserveStartEnd"
+                            padding={{ left: 8, right: 8 }}
+                        />
+                        <YAxis
+                            hide={!detailed}
+                            width={44}
+                            domain={[0, 100]}
+                            ticks={[0, 50, 100]}
+                            tickFormatter={(value: number) => `${value}%`}
+                            tick={AXIS_TICK}
+                            tickLine={false}
+                            axisLine={false}
+                        />
+                        <ReferenceLine y={MASTERY_PERCENT} stroke="var(--color-ink-faint)" strokeDasharray="4 4" />
+                        <Tooltip
+                            cursor={{ stroke: GRID_STROKE }}
+                            wrapperStyle={{ outline: "none", zIndex: 10 }}
+                            allowEscapeViewBox={{ x: false, y: true }}
+                            content={({ active, label }) => {
+                                const point = active ? trend[Number(label)] : undefined;
+                                return point ? <TrendTooltip point={point} /> : null;
+                            }}
+                        />
+                        <Line
+                            type="linear"
+                            dataKey="independent"
+                            stroke={color}
+                            strokeWidth={2}
+                            dot={{ r: 3.5, fill: color, stroke: "var(--color-surface)", strokeWidth: 1.5 }}
+                            activeDot={{ r: 5, fill: color, stroke: "var(--color-surface)", strokeWidth: 2 }}
+                            isAnimationActive={false}
+                        />
+                    </LineChart>
+                </ResponsiveContainer>
+            </div>
+            <div className="sr-only">
+                <table>
+                    <caption>{title} (od najstarije ka najnovijoj)</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">Dan</th>
+                            <th scope="col">Nivo</th>
+                            <th scope="col">Samostalno</th>
+                            <th scope="col">Uz pomoć</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {trend.map((point, index) => (
+                            <tr key={index}>
+                                <th scope="row">{formatDay(point.date, "long")}</th>
+                                <td>{point.level ?? "nije zabeležen"}</td>
+                                <td>{toPercent(point.independentRatio)}%</td>
+                                <td>{point.promptedRatio === null ? "nije zabeleženo" : `${toPercent(point.promptedRatio)}%`}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </figure>
+    );
+}
+
+function SupportSuggestion() {
+    return (
+        <p className="flex gap-2 rounded-xl border border-sun-200 bg-sun-50 px-3 py-2.5 text-sm text-ink">
+            <Lightbulb className="mt-0.5 h-4 w-4 shrink-0 text-sun-700" aria-hidden="true" />
+            <span>
+                <strong className="font-extrabold">Predlog:</strong> Poslednje tri partije su bile teške. Probajte lakši uzrast u podešavanjima ili
+                igrajte zajedno.
+            </span>
+        </p>
+    );
+}
+
+/** Veštine iz aplikacije slabo se prenose same od sebe — zato uz svaku igru ide vežba van ekrana. */
+function OffscreenTip({ game, heading: Heading }: { game: GameDefinition; heading: "h3" | "h4" }) {
+    return (
+        <div>
+            <Heading className="font-sans text-xs font-extrabold tracking-normal text-ink-soft">Vežbajte i van ekrana</Heading>
+            <p className="mt-0.5 text-sm text-ink">{game.offscreenTip}</p>
+        </div>
+    );
+}
+
+function Fact({ label, children }: { label: string; children: ReactNode }) {
+    return (
+        <div className="min-w-0">
+            <dt className="text-xs font-semibold text-ink-soft">{label}</dt>
+            <dd className="mt-0.5 text-base font-extrabold text-ink">{children}</dd>
+        </div>
+    );
+}
+
+function LevelSummary({ game, progress }: { game: GameDefinition; progress: GameProgress }) {
+    return (
+        <div>
+            <p className="mb-2 text-sm font-bold text-ink">
+                Završeno {progress.highestLevelCompleted} od {MAX_LEVEL} nivoa
+            </p>
+            <LevelProgress game={game} completed={progress.highestLevelCompleted} />
+        </div>
+    );
+}
+
+interface GameCardProps {
+    game: GameProgress;
+    timeZone: string;
+    windowDays: number;
+    onSelect: () => void;
+}
+
+function GameCard({ game: progress, timeZone, windowDays, onSelect }: GameCardProps) {
+    const game = getGame(progress.gameId);
+    const played = progress.plays > 0;
+    // Na telefonu kartica prvo pokazuje samo najvažnije (status i nivoe); ostalo se otvara dodirom,
+    // da sedam igara ne bude sedam ekrana skrolovanja. Na širem ekranu je sve odmah vidljivo.
+    const [open, setOpen] = useState(false);
+    const moreId = useId();
+    return (
+        <Card className="flex flex-col gap-4 p-5">
+            <div className="flex items-start gap-3">
+                <GameIcon game={game} />
+                <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-extrabold text-ink">{game.title}</h3>
+                    <p className="text-sm text-ink-soft">{game.skill}</p>
+                </div>
+            </div>
+
+            <MasteryStatusLine game={game} progress={progress} />
+            <LevelSummary game={game} progress={progress} />
+
+            {played ? (
+                <>
+                    {progress.needsSupport && <SupportSuggestion />}
+                    <div id={moreId} className={cn("flex-col gap-4", open ? "flex" : "hidden sm:flex")}>
+                        <SupportSplit independent={progress.independentRate30d} prompted={progress.promptedRate30d} windowDays={windowDays} />
+                        <TrendChart game={game} trend={progress.trend} />
+                        <OffscreenTip game={game} heading="h4" />
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setOpen((value) => !value)}
+                        aria-expanded={open}
+                        aria-controls={moreId}
+                        className="-my-1 inline-flex min-h-11 items-center justify-center gap-1.5 self-start rounded-xl px-2 text-sm font-extrabold text-brand-700 hover:bg-brand-50 sm:hidden"
+                    >
+                        {open ? "Prikaži manje" : "Samostalnost i predlog za vežbu"}
+                        <span aria-hidden="true" className={cn("transition-transform duration-200", open && "rotate-180")}>
+                            ▾
+                        </span>
+                    </button>
+                </>
+            ) : (
+                <OffscreenTip game={game} heading="h4" />
+            )}
+
+            {played ? (
+                <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-3">
+                    <p className="text-xs font-semibold text-ink-soft">
+                        {formatNumber(progress.plays)} {gamesWord(progress.plays)} · poslednji put{" "}
+                        {progress.lastPlayedAt ? formatDate(progress.lastPlayedAt, timeZone) : "—"}
+                    </p>
+                    <Button variant="ghost" size="sm" onClick={onSelect} aria-label={`Detalji za igru ${game.title}`}>
+                        Detalji
+                    </Button>
+                </div>
+            ) : (
+                <p className="mt-auto border-t border-line pt-3 text-sm font-semibold text-ink-soft">Još nije igrano.</p>
+            )}
+        </Card>
+    );
+}
+
+interface GameDetailProps {
+    game: GameProgress;
+    timeZone: string;
+    windowDays: number;
+    onShowAll: () => void;
+}
+
+function GameDetail({ game: progress, timeZone, windowDays, onShowAll }: GameDetailProps) {
+    const game = getGame(progress.gameId);
+    return (
+        <Card aria-labelledby="progress-game-detail" role="region" className="space-y-6">
+            <div className="flex flex-wrap items-start gap-3">
+                <GameIcon game={game} />
+                <div className="min-w-0 flex-1">
+                    <h2 id="progress-game-detail" className="text-lg font-extrabold text-ink sm:text-xl">
+                        {game.title}
+                    </h2>
+                    <p className="text-sm text-ink-soft">{game.skill}</p>
+                </div>
+                <Button variant="secondary" size="sm" onClick={onShowAll}>
+                    Sve igre
+                </Button>
+            </div>
+
+            {progress.plays === 0 ? (
+                <>
+                    <ChartNote>Ova igra još nije igrana.</ChartNote>
+                    <OffscreenTip game={game} heading="h3" />
+                </>
+            ) : (
+                <>
+                    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                        <div className="min-w-0 space-y-5">
+                            <MasteryStatusLine game={game} progress={progress} />
+                            <LevelSummary game={game} progress={progress} />
+                            <SupportSplit independent={progress.independentRate30d} prompted={progress.promptedRate30d} windowDays={windowDays} />
+                            <dl className="grid grid-cols-2 gap-3 border-t border-line pt-4">
+                                <Fact label="Trenutni nivo">{progress.currentLevel}</Fact>
+                                <Fact label="Poslednji put">
+                                    <span className="text-sm">{progress.lastPlayedAt ? formatDate(progress.lastPlayedAt, timeZone) : "—"}</span>
+                                </Fact>
+                            </dl>
+                        </div>
+                        <div className="min-w-0 space-y-5">
+                            <TrendChart game={game} trend={progress.trend} detailed />
+                            {progress.needsSupport && <SupportSuggestion />}
+                            <OffscreenTip game={game} heading="h3" />
                         </div>
                     </div>
-                ) : (
-                    currentData && (
-                        <div className="space-y-8">
-                             {/* Individual Stats Grid */}
-                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                                {[
-                                    { title: "Ukupno igara", value: currentData.stats.total_games, icon: "🎮", color: "bg-blue-300" },
-                                    { title: "Prosečan skor", value: Math.round(currentData.stats.avg_score || 0), icon: "🏆", color: "bg-emerald-300" },
-                                    { title: "Najbolji skor", value: currentData.stats.best_score || 0, icon: "⭐", color: "bg-orange-300" },
-                                    { title: "Ukupno minuta", value: currentData.stats.total_minutes || 0, icon: "⏱️", color: "bg-purple-300" },
-                                ].map((stat, i) => (
-                                    <div key={i} className="bg-white p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] border border-gray-100 shadow-sm flex flex-col items-center text-center">
-                                        <div className={`h-10 w-10 sm:h-12 sm:w-12 ${stat.color} rounded-xl text-white flex items-center justify-center text-lg sm:text-xl mb-3 sm:mb-4 shadow-lg ring-4 ring-white`}>
-                                            {stat.icon}
-                                        </div>
-                                        <div className="text-xl sm:text-2xl font-black text-gray-900 mb-0.5 sm:mb-1">{stat.value}</div>
-                                        <div className="text-[9px] sm:text-xs font-black text-gray-400 uppercase tracking-widest">{stat.title}</div>
-                                    </div>
-                                ))}
-                            </div>
+                    <RewardBreakdown progress={progress} />
+                </>
+            )}
+        </Card>
+    );
+}
 
-                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
-                                <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 border border-gray-100 shadow-sm">
-                                    <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-6 sm:mb-8">Napredak kroz vreme 📅</h3>
-                                    <div className="h-[250px] sm:h-[300px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={currentData.progress.slice().reverse()}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                                                <XAxis
-                                                    dataKey="date"
-                                                    axisLine={false}
-                                                    tickLine={false}
-                                                    tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }}
-                                                    tickFormatter={(v) => new Date(v).toLocaleDateString('sr', { day: 'numeric', month: 'short' })}
-                                                />
-                                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} />
-                                                <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                                                <Line type="monotone" dataKey="avg_score" stroke="#8B5CF6" strokeWidth={4} dot={{ r: 4, fill: '#8B5CF6', strokeWidth: 2, stroke: '#fff' }} name="Prosek" />
-                                            </LineChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-6 sm:p-8 border border-gray-100 shadow-sm">
-                                    <h3 className="text-lg sm:text-xl font-black text-gray-900 mb-6 sm:mb-8">Uspeh po nivoima 🎯</h3>
-                                    <div className="h-[250px] sm:h-[300px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={currentData.levelStats}>
-                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                                                <XAxis dataKey="level" axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} />
-                                                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 10, fontWeight: 700 }} />
-                                                <Tooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                                                <Bar dataKey="avg_score" fill="#3B82F6" radius={[4, 4, 0, 0]} name="Prosečan skor" />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </div>
+/** Zvezdice i poeni: sporedan prikaz, jer su nagrada za dete, a ne podatak o savladanosti. */
+function RewardBreakdown({ progress }: { progress: GameProgress }) {
+    const success: SuccessDistribution = progress.success;
+    const levels = STAR_LEVELS.filter((level) => level.id !== "struggled" || success[level.id] > 0);
+    return (
+        <div className="border-t border-line pt-5">
+            <h3 className="text-sm font-bold text-ink">Zvezdice i poeni</h3>
+            <p className="mt-0.5 text-xs font-semibold text-ink-soft">Nagrada za dete — ne pokazuju koliko je veština savladana.</p>
+            <div className="mt-3 grid grid-cols-1 gap-x-8 gap-y-4 lg:grid-cols-2">
+                <div>
+                    <div aria-hidden="true" className="flex h-3 gap-0.5">
+                        {levels
+                            .filter((level) => success[level.id] > 0)
+                            .map((level) => (
+                                <span
+                                    key={level.id}
+                                    className={cn("min-w-1 rounded-sm first:rounded-l-full last:rounded-r-full", level.swatch)}
+                                    style={{ flexGrow: success[level.id], flexBasis: 0 }}
+                                />
+                            ))}
+                    </div>
+                    <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                        {levels.map((level) => (
+                            <div key={level.id} className="flex items-center gap-1.5">
+                                <span aria-hidden="true" className={cn("h-2.5 w-2.5 shrink-0 rounded-sm", level.swatch)} />
+                                <dt className="font-semibold text-ink-soft">{level.label}</dt>
+                                <dd className="font-extrabold text-ink">
+                                    {success[level.id]} <span className="font-semibold text-ink-soft">({percent(success[level.id], progress.plays)}%)</span>
+                                </dd>
                             </div>
-                        </div>
-                    )
-                )}
+                        ))}
+                    </dl>
+                </div>
+                <dl className="grid grid-cols-3 gap-3">
+                    <Fact label="Zvezdica ukupno">{formatNumber(progress.totalStars)}</Fact>
+                    <Fact label="Prosek po igri">{progress.averageStars === null ? "—" : formatNumber(progress.averageStars)}</Fact>
+                    <Fact label="Najviše poena">{progress.bestScore === null ? "—" : formatNumber(progress.bestScore)}</Fact>
+                </dl>
             </div>
+        </div>
+    );
+}
+
+// ── Poslednje igre ────────────────────────────────────────────────────────────
+
+const SESSIONS_COLLAPSED = 8;
+
+function findMood(scale: MoodOption[], value: Mood | null): MoodOption | undefined {
+    return scale.find((mood) => mood.value === value) ?? getMood(value);
+}
+
+/** Lica koja je dete izabralo pre i posle partije — samo zapis izbora, bez poređenja. */
+function MoodChoice({ session, scale }: { session: ProgressSession; scale: MoodOption[] }) {
+    const before = findMood(scale, session.moodBefore);
+    const after = findMood(scale, session.moodAfter);
+    if (!before && !after) return <span className="text-ink-faint">—</span>;
+    return (
+        <span className="inline-flex items-center gap-1 whitespace-nowrap">
+            <span className="sr-only">
+                Pre: {before?.label ?? "nije izabrano"}, posle: {after?.label ?? "nije izabrano"}
+            </span>
+            <span aria-hidden="true" title={before ? `Pre: ${before.label}` : undefined}>
+                {before?.emoji ?? "–"}
+            </span>
+            <span aria-hidden="true" className="text-ink-faint">
+                ·
+            </span>
+            <span aria-hidden="true" title={after ? `Posle: ${after.label}` : undefined}>
+                {after?.emoji ?? "–"}
+            </span>
+        </span>
+    );
+}
+
+function independentText(session: ProgressSession): string {
+    return session.independentCount !== null && session.totalCount !== null ? `${session.independentCount}/${session.totalCount}` : "—";
+}
+
+const promptedText = (session: ProgressSession) => (session.promptedCount === null ? "—" : String(session.promptedCount));
+
+interface SessionsSectionProps {
+    sessions: ProgressSession[];
+    timeZone: string;
+    moodScale: MoodOption[];
+}
+
+function SessionsSection({ sessions, timeZone, moodScale }: SessionsSectionProps) {
+    const [expanded, setExpanded] = useState(false);
+    const visible = expanded ? sessions : sessions.slice(0, SESSIONS_COLLAPSED);
+
+    return (
+        <section aria-labelledby="progress-sessions" className="space-y-4">
+            <SectionHeading
+                id="progress-sessions"
+                title="Poslednje igre"
+                description="Svaka odigrana partija, od najnovije. „Samostalno” je broj zadataka rešenih iz prvog pokušaja od ukupnog broja."
+            />
+
+            {sessions.length === 0 ? (
+                <Card>
+                    <ChartNote>Nema odigranih igara za ovaj prikaz.</ChartNote>
+                </Card>
+            ) : (
+                <>
+                    <ul className="space-y-3 md:hidden">
+                        {visible.map((session) => {
+                            const game = getGame(session.gameId);
+                            return (
+                                <li key={session.id}>
+                                    <Card className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <GameIcon game={game} size="sm" />
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-sm font-extrabold text-ink">{game.title}</p>
+                                                <p className="text-xs font-semibold text-ink-soft">
+                                                    {session.level === null ? "Nivo —" : `Nivo ${session.level}`} · {formatDate(session.completedAt, timeZone)} ·{" "}
+                                                    {formatTime(session.completedAt, timeZone)}
+                                                </p>
+                                            </div>
+                                            <Stars value={session.stars} className="text-lg" />
+                                        </div>
+                                        <dl className="mt-3 grid grid-cols-2 gap-x-2 gap-y-3 border-t border-line pt-3 text-sm min-[480px]:grid-cols-4">
+                                            <div>
+                                                <dt className="text-xs font-semibold text-ink-soft">Samostalno</dt>
+                                                <dd className="font-extrabold tabular-nums text-ink">{independentText(session)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-xs font-semibold text-ink-soft">Uz pomoć</dt>
+                                                <dd className="font-extrabold tabular-nums text-ink">{promptedText(session)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-xs font-semibold text-ink-soft">Trajanje</dt>
+                                                <dd className="font-extrabold text-ink">{formatDuration(session.durationSeconds)}</dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-xs font-semibold text-ink-soft">Raspoloženje (izbor deteta)</dt>
+                                                <dd className="text-base">
+                                                    <MoodChoice session={session} scale={moodScale} />
+                                                </dd>
+                                            </div>
+                                        </dl>
+                                    </Card>
+                                </li>
+                            );
+                        })}
+                    </ul>
+
+                    <Card padded={false} className="hidden overflow-hidden md:block">
+                        <div className="scroll-soft overflow-x-auto">
+                            <table className="w-full min-w-[46rem] text-left text-sm">
+                                <caption className="sr-only">Poslednje odigrane igre</caption>
+                                <thead className="border-b border-line bg-canvas text-xs font-bold text-ink-soft">
+                                    <tr>
+                                        <th scope="col" className="px-5 py-3">Datum</th>
+                                        <th scope="col" className="px-3 py-3">Igra</th>
+                                        <th scope="col" className="px-3 py-3 text-right">Nivo</th>
+                                        <th scope="col" className="px-3 py-3 text-right">Samostalno</th>
+                                        <th scope="col" className="px-3 py-3 text-right">Uz pomoć</th>
+                                        <th scope="col" className="px-3 py-3 text-right">Trajanje</th>
+                                        <th scope="col" className="px-3 py-3">Zvezdice</th>
+                                        <th scope="col" className="px-5 py-3">
+                                            Raspoloženje <span className="font-semibold">(izbor deteta)</span>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-line">
+                                    {visible.map((session) => {
+                                        const game = getGame(session.gameId);
+                                        return (
+                                            <tr key={session.id}>
+                                                <td className="whitespace-nowrap px-5 py-3 text-ink">
+                                                    {formatDate(session.completedAt, timeZone)}
+                                                    <span className="ml-2 text-xs text-ink-soft">{formatTime(session.completedAt, timeZone)}</span>
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <span className="flex items-center gap-2 font-bold text-ink">
+                                                        <span aria-hidden="true">{game.icon}</span>
+                                                        {game.title}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-3 text-right tabular-nums text-ink">{session.level ?? "—"}</td>
+                                                <td className="px-3 py-3 text-right font-bold tabular-nums text-ink">{independentText(session)}</td>
+                                                <td className="px-3 py-3 text-right tabular-nums text-ink">{promptedText(session)}</td>
+                                                <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-ink">
+                                                    {formatDuration(session.durationSeconds)}
+                                                </td>
+                                                <td className="px-3 py-3">
+                                                    <Stars value={session.stars} className="text-base" />
+                                                </td>
+                                                <td className="px-5 py-3 text-base">
+                                                    <MoodChoice session={session} scale={moodScale} />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+
+                    {sessions.length > SESSIONS_COLLAPSED && (
+                        <div className="text-center">
+                            <Button variant="secondary" size="sm" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
+                                {expanded ? "Prikaži manje" : `Prikaži sve (${sessions.length})`}
+                            </Button>
+                        </div>
+                    )}
+                </>
+            )}
+        </section>
+    );
+}
+
+// ── Raspoloženje (izbor deteta) ───────────────────────────────────────────────
+
+/** Koliko puta je dete izabralo svako lice; traka pokazuje udeo u toj koloni (pre ili posle). */
+function MoodDistribution({ id, title, counts, scale }: { id: string; title: string; counts: MoodCounts; scale: MoodOption[] }) {
+    const total = countChoices(counts);
+    return (
+        <div className="min-w-0">
+            <h3 id={id} className="flex items-baseline justify-between gap-2 text-sm font-bold text-ink">
+                {title}
+                <span className="font-sans text-xs font-semibold tracking-normal text-ink-soft">
+                    {total} {plural(total, "izbor", "izbora", "izbora")}
+                </span>
+            </h3>
+            {total === 0 ? (
+                <p className="mt-2 text-sm text-ink-soft">Nije zabeleženo.</p>
+            ) : (
+                <ul aria-labelledby={id} className="mt-3 space-y-2">
+                    {scale.map((mood) => (
+                        <li key={mood.value} className="flex items-center gap-2 text-sm">
+                            <span aria-hidden="true" className="w-6 shrink-0 text-center text-base">
+                                {mood.emoji}
+                            </span>
+                            <span className="w-16 shrink-0 font-semibold text-ink-soft">{mood.label}</span>
+                            <span aria-hidden="true" className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-line">
+                                <span className="block h-full rounded-full bg-brand-500" style={{ width: `${percent(counts[mood.value], total)}%` }} />
+                            </span>
+                            <span className="w-8 shrink-0 text-right font-extrabold tabular-nums text-ink">{counts[mood.value]}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
+function MoodSection({ mood, scale }: { mood: MoodChoices; scale: MoodOption[] }) {
+    return (
+        <Card aria-labelledby="progress-mood" role="region">
+            <SectionHeading id="progress-mood" title="Raspoloženje (izbor deteta)" />
+            <p className="mt-2 max-w-3xl rounded-xl bg-canvas px-4 py-3 text-sm text-ink-soft">
+                Ovo je detetov izbor lica pre i posle igre. Kod male dece to nije pouzdano merenje i ne pokazuje da li igra „popravlja”
+                raspoloženje.
+            </p>
+            <div className="mt-5 grid grid-cols-1 gap-x-10 gap-y-6 md:grid-cols-2">
+                <MoodDistribution id="progress-mood-before" title="Pre igre" counts={mood.before} scale={scale} />
+                <MoodDistribution id="progress-mood-after" title="Posle igre" counts={mood.after} scale={scale} />
+            </div>
+        </Card>
+    );
+}
+
+// ── Prikaz za dete ────────────────────────────────────────────────────────────
+
+const CHILD_WINS = 5;
+
+function ChildView({ data, childName }: { data: ProgressResponse; childName: string }) {
+    const wins = data.recentSessions.filter((session) => session.stars > 0).slice(0, CHILD_WINS);
+    // Samo ono što dete može da skuplja: zvezdice i nivoi. Bez procenata, ocena i poređenja.
+    const tiles = [
+        { emoji: "⭐", value: data.totals.totalStars, label: "Zvezdice", tone: "bg-sun-50 border-sun-200" },
+        { emoji: "🏆", value: data.totals.levelsCompleted, label: "Nivoi", tone: "bg-emerald-50 border-emerald-200" },
+    ];
+
+    return (
+        <div className="space-y-6">
+            <div className="animate-fade-up">
+                <h2 className="text-2xl font-extrabold text-ink sm:text-3xl">Bravo, {childName}!</h2>
+                <p className="mt-1 text-base font-semibold text-ink-soft">Ovo je tvoj napredak.</p>
+            </div>
+
+            <dl className="grid grid-cols-2 gap-3 sm:gap-4">
+                {tiles.map((tile) => (
+                    <div key={tile.label} className={cn("flex flex-col-reverse items-center rounded-card border-2 px-2 py-4 text-center sm:py-6", tile.tone)}>
+                        <dt className="mt-1 text-sm font-extrabold text-ink-soft sm:text-base">{tile.label}</dt>
+                        <dd className="text-3xl font-extrabold leading-tight text-ink sm:text-5xl">
+                            <span aria-hidden="true" className="block text-2xl sm:text-4xl">
+                                {tile.emoji}
+                            </span>
+                            {formatNumber(tile.value)}
+                        </dd>
+                    </div>
+                ))}
+            </dl>
+
+            <Card>
+                <h3 className="text-xl font-extrabold text-ink">Tvoje igre</h3>
+                <ul className="mt-4 space-y-5">
+                    {data.games.map((progress) => {
+                        const game = getGame(progress.gameId);
+                        const completed = progress.highestLevelCompleted;
+                        return (
+                            <li key={progress.gameId} className="flex items-center gap-3 sm:gap-4">
+                                <GameIcon game={game} size="lg" />
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-baseline justify-between gap-x-2">
+                                        <p className="min-w-0 break-words text-base font-extrabold text-ink sm:text-lg">{game.title}</p>
+                                        <p className="shrink-0 text-sm font-extrabold text-ink-soft">
+                                            {completed > 0 ? `Nivo ${completed} od ${MAX_LEVEL}` : "Probaj!"}
+                                        </p>
+                                    </div>
+                                    <div
+                                        role="progressbar"
+                                        aria-valuemin={0}
+                                        aria-valuemax={MAX_LEVEL}
+                                        aria-valuenow={completed}
+                                        aria-label={`${game.title}: nivo ${completed} od ${MAX_LEVEL}`}
+                                        className={cn("mt-2 h-4 overflow-hidden rounded-full border", game.accent.soft, game.accent.border)}
+                                    >
+                                        <div
+                                            className={cn("h-full rounded-full transition-[width] duration-500", game.accent.solid)}
+                                            style={{ width: `${(completed / MAX_LEVEL) * 100}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ul>
+            </Card>
+
+            {wins.length > 0 && (
+                <Card>
+                    <h3 className="text-xl font-extrabold text-ink">Poslednje zvezdice</h3>
+                    <ul className="mt-3 divide-y divide-line">
+                        {wins.map((session) => {
+                            const game = getGame(session.gameId);
+                            return (
+                                <li key={session.id} className="flex items-center gap-3 py-3">
+                                    <GameIcon game={game} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-base font-extrabold text-ink">{game.title}</p>
+                                        {session.level !== null && <p className="text-sm font-bold text-ink-soft">Nivo {session.level}</p>}
+                                    </div>
+                                    <Stars value={session.stars} earnedOnly className="text-2xl sm:text-3xl" />
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </Card>
+            )}
         </div>
     );
 }

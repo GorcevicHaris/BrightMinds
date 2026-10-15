@@ -1,529 +1,726 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useGameEmitter } from '@/lib/useSocket';
-import { useSpeech } from '@/lib/useSpeech';
+// Spoji parove — dete okreće po dve kartice i traži iste životinje.
+// Nema vremena ni neuspeha: promašen par se sam vrati (bez komentara), a posle onoliko grešaka pamćenja
+// koliko je zadato u podešavanjima deteta par otvorene kartice blago svetli.
 
-interface Card {
-  id: number;
-  pairId: number;
-  image: string; // path relative to /public
-  isFlipped: boolean;
-  isMatched: boolean;
+import Image from "next/image";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useChildSettings } from "@/app/components/ChildSettingsProvider";
+import {
+    Feedback,
+    GameHud,
+    GameStage,
+    PlayArea,
+    playSfx,
+    PULSE_ONCE,
+    shuffle,
+    useDemo,
+    useGameSync,
+    useInputGuard,
+    useBubbleTail,
+    useSayThen,
+    useTimers,
+    type BaseView,
+    type FeedbackKind,
+    type GameProps,
+    type TimerId,
+    useWaitHint,
+    usePraise,
+} from "@/app/components/games/kit";
+import { cn } from "@/lib/cn";
+import { getGame } from "@/lib/games";
+import { ANIMAL_PICTURES, type AnimalId } from "@/lib/pictures";
+import { useSpeech } from "@/lib/speech";
+
+// ── Sličice ───────────────────────────────────────────────────────────────────
+
+interface Animal {
+    name: string;
+    src: string;
 }
 
-interface GameProps {
-  childId: number;
-  level: number;
-  onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null, stats?: { correct: number, total: number }) => void;
-  onClose?: () => void;
-  autoStart?: boolean;
-  isMonitor?: boolean;
-  monitorState?: any;
-  gender?: string;
+// Iste slike kao u ostatku aplikacije (lib/pictures.ts). Redosled je od životinja koje se jasno
+// razlikuju ka onima koje liče jedna na drugu (lav, tigar, mačka, puma): male table koriste
+// samo početak liste, a slične životinje stižu tek na većim tablama, gde otežavaju pamćenje.
+const MEMORY_ORDER: AnimalId[] = ["dog", "cow", "pig", "bird", "zebra", "crocodile", "monkey", "rooster", "bear", "horse", "lion", "tiger", "cat", "puma"];
+
+const ANIMALS: Record<string, Animal> = Object.fromEntries(
+    MEMORY_ORDER.map((id) => [id, { name: ANIMAL_PICTURES[id].name, src: ANIMAL_PICTURES[id].image }])
+);
+
+/** Koliko životinja sa početka liste ulazi u izbor za tablu sa `pairs` parova */
+function poolSize(pairs: number): number {
+    return Math.min(MEMORY_ORDER.length, Math.max(pairs + 3, 7));
 }
 
-const IMAGES = [
-  "/memoryGameImages/kokoska.png",
-  "/memoryGameImages/kravaa.png",
-  "/memoryGameImages/krokodill.png",
-  "/memoryGameImages/lavv.png",
-  "/memoryGameImages/lisica.png",
-  "/memoryGameImages/mackaa.png",
-  "/memoryGameImages/miss.png",
-  "/memoryGameImages/morskikonj.png",
-  "/memoryGameImages/panda.png",
-  "/memoryGameImages/pass.png",
-  "/memoryGameImages/sovaa.png",
-  "/memoryGameImages/tigar.png",
+const ANIMAL_IDS: string[] = MEMORY_ORDER;
+
+function animalOf(id: string | undefined): Animal | undefined {
+    return id !== undefined && Object.prototype.hasOwnProperty.call(ANIMALS, id) ? ANIMALS[id] : undefined;
+}
+
+// ── Nivoi ─────────────────────────────────────────────────────────────────────
+// Raste broj parova; svaka nova veličina table se na lakšim nivoima prvo igra uz kratko "zavirivanje".
+// Stvarni broj parova dodatno ograničavaju podešavanja deteta (uzrast) i veličina ekrana.
+
+interface LevelConfig {
+    pairs: number;
+    /** Sve kartice su na početku nakratko otkrivene (mlađoj deci uvek, bez obzira na nivo) */
+    peek: boolean;
+}
+
+const LEVELS: LevelConfig[] = [
+    { pairs: 2, peek: true },
+    { pairs: 3, peek: true },
+    { pairs: 3, peek: false },
+    { pairs: 4, peek: true },
+    { pairs: 4, peek: false },
+    { pairs: 5, peek: true },
+    { pairs: 5, peek: false },
+    { pairs: 6, peek: true },
+    { pairs: 6, peek: false },
+    { pairs: 7, peek: false },
+    { pairs: 8, peek: true },
+    { pairs: 8, peek: false },
+    { pairs: 9, peek: false },
+    { pairs: 10, peek: true },
+    { pairs: 10, peek: false },
 ];
 
-export default function MemoryGame({ childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender }: GameProps) {
-  const pairsCount = Math.min(2 + level, IMAGES.length);
+/**
+ * Promašen par ostaje otkriven dovoljno dugo da se obe slike stvarno vide (okretanje traje pola
+ * sekunde). Isto na svim nivoima: težinu čini broj kartica, a ne brzina. Dete koje je već
+ * zapamtilo ne mora da čeka — sledeći dodir odmah vraća par.
+ */
+const FLIP_BACK_MS = 2000;
+/** Toliko posle promašaja dodir još ne vraća par (druga kartica se tek okreće) */
+const MISMATCH_MIN_MS = 800;
 
-  const [cards, setCards] = useState<Card[]>(monitorState?.cards || []);
-  const [flippedIds, setFlippedIds] = useState<number[]>([]);
-  const [moves, setMoves] = useState(monitorState?.moves || 0);
-  const [matchedPairs, setMatchedPairs] = useState(monitorState?.matchedPairs || 0);
-  const [isPlaying, setIsPlaying] = useState(isMonitor ? true : false);
-  const [isLocked, setIsLocked] = useState(false); // replaces isChecking — locks ALL card clicks
-  const [startTime, setStartTime] = useState<number | null>(null);
-  const [moodBefore, setMoodBefore] = useState<string | null>(null);
-  const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
-  const [showMoodAfter, setShowMoodAfter] = useState(false);
-  const [gameCompleted, setGameCompleted] = useState(false);
-  const [incorrectCount, setIncorrectCount] = useState(monitorState?.incorrectCount || 0);
-  const [mismatchedIds, setMismatchedIds] = useState<number[]>([]);
+function levelIndex(level: number): number {
+    return Math.min(Math.max(Math.round(level) || 1, 1), LEVELS.length) - 1;
+}
 
-  // Refs to avoid stale closures in setTimeout
-  const cardsRef = useRef(cards);
-  const matchedPairsRef = useRef(matchedPairs);
-  const incorrectCountRef = useRef(incorrectCount);
-  const movesRef = useRef(moves);
+function configFor(level: number): LevelConfig {
+    return LEVELS[levelIndex(level)];
+}
 
-  useEffect(() => { cardsRef.current = cards; }, [cards]);
-  useEffect(() => { matchedPairsRef.current = matchedPairs; }, [matchedPairs]);
-  useEffect(() => { incorrectCountRef.current = incorrectCount; }, [incorrectCount]);
-  useEffect(() => { movesRef.current = moves; }, [moves]);
+interface Deal {
+    pairs: number;
+    peek: boolean;
+    /** Trajanje zavirivanja u odnosu na puno (1 = puno) */
+    peekScale: number;
+}
 
-  // Sync with monitor state
-  useEffect(() => {
-    if (isMonitor && monitorState) {
-      if (monitorState.cards) {
-        setCards([...monitorState.cards]);
-      }
-      if (monitorState.moves !== undefined) setMoves(monitorState.moves);
-      if (monitorState.matchedPairs !== undefined) setMatchedPairs(monitorState.matchedPairs);
-      if (monitorState.flippedCards !== undefined) setFlippedIds(monitorState.flippedCards);
-      if (monitorState.incorrectCount !== undefined) setIncorrectCount(monitorState.incorrectCount);
-      if (monitorState.totalIncorrect !== undefined) setIncorrectCount(monitorState.totalIncorrect);
-      if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
+/**
+ * Šta se stvarno deli detetu. Broj parova ograničava uzrast (`maxPairs`), pa kad se on dostigne
+ * nivoi i dalje moraju da se razlikuju:
+ *  • mlađi uvek zaviruju, ali sve kraće — svaki nivo sa istim brojem parova skraćuje gledanje;
+ *  • ostali zaviruju samo dok tabla još raste; kad je najveća, zavirivanja više nema
+ *    (nivo sa zavirivanjem nikad ne dolazi posle istog bez njega).
+ */
+function dealFor(level: number, maxPairs: number, young: boolean): Deal {
+    const index = levelIndex(level);
+    const pairs = Math.min(LEVELS[index].pairs, maxPairs);
+    if (young) {
+        const first = LEVELS.findIndex((cfg) => Math.min(cfg.pairs, maxPairs) === pairs);
+        return { pairs, peek: true, peekScale: Math.max(0.4, 1 - 0.08 * (index - first)) };
     }
-  }, [isMonitor, monitorState]);
+    const capped = LEVELS[index].pairs > maxPairs;
+    return { pairs, peek: LEVELS[index].peek && !capped, peekScale: 1 };
+}
 
-  // Auto-start logic
-  useEffect(() => {
-    if (autoStart && !isMonitor && !isPlaying && moves === 0) {
-      handleMoodBeforeSelect("neutral"); // Default mood for auto-start
+/** Koliko dugo traje zavirivanje: više kartica, više vremena */
+function peekMsFor(pairs: number, scale = 1): number {
+    return Math.round((2400 + pairs * 450) * scale);
+}
+
+// ── Raspored ──────────────────────────────────────────────────────────────────
+// Uspravno najviše 4 kolone (kartica ostaje dovoljno velika za prst), položeno više kolona i manje redova.
+// Kartica se smanjuje da cela tabla stane u visinu ekrana — kod pamćenja je važno videti sve odjednom —
+// ali nikad ispod 4rem (64 px), sa razmakom od 12 px.
+
+interface BoardLayout {
+    vars: string;
+    /** Broj kolona iz `vars`, za proveru da li tabla staje na ekran: uspravno, položeno i (ako se razlikuje) na niskom ekranu */
+    cols: { portrait: number; landscape: number; short?: number };
+    /** Poslednje dve kartice se uspravno centriraju u svom redu */
+    centerTail?: boolean;
+}
+
+/** Visina do koje važi `short` raspored (isti prag kao u `vars`) */
+const SHORT_SCREEN_PX = 480;
+
+const DEFAULT_LAYOUT: BoardLayout = { vars: "[--cols:4] [--rows:5]", cols: { portrait: 4, landscape: 4 } };
+const LAYOUT: Record<number, BoardLayout> = {
+    4: { vars: "[--cols:2] [--rows:2] landscape:[--cols:4] landscape:[--rows:1]", cols: { portrait: 2, landscape: 4 } },
+    6: {
+        // Uspravno dve kolone: šest kartica tada popuni ekran telefona umesto da ostanu male u dva reda
+        vars: "[--cols:2] [--rows:3] landscape:[--cols:3] landscape:[--rows:2] [@media(max-height:480px)]:[--cols:6] [@media(max-height:480px)]:[--rows:1]",
+        cols: { portrait: 2, landscape: 3, short: 6 },
+    },
+    8: {
+        vars: "[--cols:4] [--rows:2] [@media(max-height:480px)]:[--cols:8] [@media(max-height:480px)]:[--rows:1]",
+        cols: { portrait: 4, landscape: 4, short: 8 },
+    },
+    10: { vars: "[--cols:4] [--rows:3] landscape:[--cols:5] landscape:[--rows:2]", cols: { portrait: 4, landscape: 5 }, centerTail: true },
+    12: { vars: "[--cols:4] [--rows:3] landscape:[--cols:6] landscape:[--rows:2]", cols: { portrait: 4, landscape: 6 } },
+    14: { vars: "[--cols:4] [--rows:4] landscape:[--cols:7] landscape:[--rows:2]", cols: { portrait: 4, landscape: 7 }, centerTail: true },
+    16: { vars: "[--cols:4] [--rows:4] landscape:[--cols:8] landscape:[--rows:2]", cols: { portrait: 4, landscape: 8 } },
+    18: { vars: "[--cols:4] [--rows:5] landscape:[--cols:6] landscape:[--rows:3]", cols: { portrait: 4, landscape: 6 }, centerTail: true },
+    20: { vars: "[--cols:4] [--rows:5] landscape:[--cols:5] landscape:[--rows:4]", cols: { portrait: 4, landscape: 5 } },
+};
+const TAIL_START = "col-start-2 landscape:col-start-auto";
+
+const BOARD_STYLE = {
+    // ≈17rem zauzimaju zaglavlje, traka napretka i uputstvo
+    "--card": "clamp(4rem, calc((100dvh - 17rem) / var(--rows) - var(--gap)), 14rem)",
+    gap: "var(--gap)",
+    gridTemplateColumns: "repeat(var(--cols), minmax(0, 1fr))",
+    maxWidth: "calc(var(--cols) * var(--card) + (var(--cols) - 1) * var(--gap))",
+} as CSSProperties;
+
+// Iste mere kao u BOARD_STYLE, u pikselima
+const MIN_CARD_PX = 64;
+const GAP_PX = 12;
+const CHROME_PX = 272;
+/** Telefon: kraća strana ekrana ispod ove širine */
+const PHONE_SHORT_SIDE_PX = 480;
+/** Na telefonu najviše 4 × 4 kartice */
+const PHONE_MAX_PAIRS = 8;
+/** Kad ni najmanja tabla ne staje u visinu (vrlo nizak ekran): jedan red od najviše 8 kartica */
+const TINY_SCREEN_PAIRS = 4;
+
+function fitsScreen(pairs: number, width: number, height: number): boolean {
+    const cards = pairs * 2;
+    const { cols } = LAYOUT[cards] ?? DEFAULT_LAYOUT;
+    const columns = height <= SHORT_SCREEN_PX && cols.short ? cols.short : width > height ? cols.landscape : cols.portrait;
+    const rows = Math.ceil(cards / columns);
+    return rows * (MIN_CARD_PX + GAP_PX) - GAP_PX <= height - CHROME_PX;
+}
+
+/**
+ * Najviše parova (do `wanted`) uz koje cela tabla staje na ekran, a kartica ostaje bar 64 px.
+ * Meri se jednom, kad se karte dele; čita veličinu prozora, pa se zove samo iz početnog stanja.
+ */
+function pairsForScreen(wanted: number): number {
+    if (typeof window === "undefined") return wanted;
+    const { innerWidth: width, innerHeight: height } = window;
+    const most = Math.min(width, height) < PHONE_SHORT_SIDE_PX ? Math.min(wanted, PHONE_MAX_PAIRS) : wanted;
+    for (let pairs = most; pairs > TINY_SCREEN_PAIRS; pairs -= 1) {
+        if (fitsScreen(pairs, width, height)) return pairs;
     }
-  }, [autoStart, isMonitor, isPlaying, moves]);
+    return Math.min(most, TINY_SCREEN_PAIRS);
+}
 
-  const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
-  const { speak } = useSpeech();
+// ── View ──────────────────────────────────────────────────────────────────────
 
-  const animalNames: Record<string, string> = {
-    "kokoska.png": "Kokoška",
-    "kravaa.png": "Krava",
-    "krokodill.png": "Krokodil",
-    "lavv.png": "Lav",
-    "lisica.png": "Lisica",
-    "mackaa.png": "Mačka",
-    "miss.png": "Miš",
-    "morskikonj.png": "Morski konj",
-    "panda.png": "Panda",
-    "pass.png": "Pas",
-    "sovaa.png": "Sova",
-    "tigar.png": "Tigar"
-  };
+/**
+ * Jedan "zadatak" je jedan par. Otvaranje kartica koje dete još nije videlo je istraživanje, ne greška.
+ * Greška pamćenja je promašaj koji se mogao izbeći: par prve kartice je već bio viđen, druga kartica je
+ * već bila viđena, ili je par u tom trenutku svetleo kao pomoć.
+ *
+ *   correctCount   = parovi pronađeni samostalno iz prve prilike (bez greške pamćenja od prethodnog para, bez pomoći)
+ *   promptedCount  = parovi pronađeni dok je par otvorene kartice svetleo (pomoć)
+ *   incorrectCount = greške pamćenja
+ */
+export interface MemoryView extends BaseView {
+    /** ID životinje na svakom mestu table (indeks = mesto kartice) */
+    cards: string[];
+    /** Mesta otvorenih, još nespojenih kartica (najviše dva) */
+    flipped: number[];
+    /** ID-jevi pronađenih životinja, redom kojim su pronađene */
+    matched: string[];
+    /** Mesta kartica koje je dete već videlo otvorene */
+    seen: number[];
+    /** Broj pokušaja (dve okrenute kartice = jedan potez) */
+    moves: number;
+    /** Greške pamćenja od poslednjeg pronađenog para */
+    streak: number;
+    /** Mesto kartice koja blago svetli kao pomoć */
+    hint: number | null;
+    /** Sve kartice su nakratko otkrivene na početku nivoa */
+    peek: boolean;
+    /** Upravo je pronađen par (promašaj se ne komentariše) */
+    feedback: FeedbackKind;
+    promptedCount: number;
+}
 
-  const initializeGame = useCallback(() => {
-    const selectedImages = IMAGES.slice(0, pairsCount);
-    const cardPairs: Card[] = [];
-    selectedImages.forEach((image, pairId) => {
-      cardPairs.push({ id: pairId * 2, pairId, image, isFlipped: false, isMatched: false });
-      cardPairs.push({ id: pairId * 2 + 1, pairId, image, isFlipped: false, isMatched: false });
-    });
-    const shuffled = cardPairs.sort(() => Math.random() - 0.5);
-    setCards(shuffled);
-    setFlippedIds([]);
-    setMoves(0);
-    setMatchedPairs(0);
-    setIsLocked(false);
-    setGameCompleted(false);
-    setIncorrectCount(0);
-  }, [pairsCount]);
+/** Prazna tabla sa zatvorenim karticama — početno stanje monitora dok ne stigne prva poruka. */
+function emptyView(pairs: number): MemoryView {
+    return {
+        score: 0,
+        correctCount: 0,
+        incorrectCount: 0,
+        round: 1,
+        totalRounds: pairs,
+        cards: Array.from({ length: pairs * 2 }, () => ""),
+        flipped: [],
+        matched: [],
+        seen: [],
+        moves: 0,
+        streak: 0,
+        hint: null,
+        peek: false,
+        feedback: null,
+        promptedCount: 0,
+    };
+}
 
-  useEffect(() => {
-    setIsPlaying(isMonitor ? true : false);
-    // Ne gasi početni ekras raspoloženja na prvom ulasku — inače ostane isPlaying=false i karte nisu klikabilne.
-    // Kada roditelj prosledi autoStart (sledeći nivo), preskoči raspoloženje; inače pokaži ga opet samo ako nije monitor.
-    setShowMoodBefore(!isMonitor && !autoStart);
-    setShowMoodAfter(false);
-    setMoodBefore(null);
-    setStartTime(null);
-    setGameCompleted(false);
-    initializeGame();
-  }, [level, isMonitor, autoStart, initializeGame]);
+function dealCards(pairs: number, peek: boolean): MemoryView {
+    const chosen = shuffle(ANIMAL_IDS.slice(0, poolSize(pairs))).slice(0, pairs);
+    const cards = shuffle([...chosen, ...chosen]);
+    // Posle zavirivanja dete je videlo sve kartice
+    return { ...emptyView(pairs), cards, peek, seen: peek ? cards.map((_, index) => index) : [] };
+}
 
-  const startGame = () => {
-    setShowMoodBefore(true);
-  };
+function partnerOf(cards: string[], index: number): number {
+    return cards.findIndex((id, other) => id === cards[index] && other !== index);
+}
 
-  const handleMoodBeforeSelect = (mood: string) => {
-    setMoodBefore(mood);
-    setShowMoodBefore(false);
-    setIsPlaying(true);
-    setStartTime(Date.now());
-    setIncorrectCount(0);
-    initializeGame();
+function listOf<T extends string | number>(value: unknown, type: "string" | "number"): T[] {
+    return Array.isArray(value) ? value.filter((item): item is T => typeof item === type) : [];
+}
 
-    emitGameStart(childId, 3, 'memory', {
-      level,
-      cards: cards,
-      moves: 0,
-      matchedPairs: 0,
-      isPlaying: true,
-    });
-  };
+/** Stanje za monitor: podrazumevane vrednosti + ono što je stiglo, uz proveru nizova od kojih zavisi crtanje. */
+function toShown(fallback: MemoryView, state: Partial<MemoryView> | null | undefined): MemoryView {
+    const merged = { ...fallback, ...state };
+    const cards = listOf<string>(merged.cards, "string");
+    return {
+        ...merged,
+        cards: cards.length > 0 ? cards : fallback.cards,
+        flipped: listOf<number>(merged.flipped, "number"),
+        matched: listOf<string>(merged.matched, "string"),
+        seen: listOf<number>(merged.seen, "number"),
+    };
+}
 
-  const handleCardClick = useCallback((cardId: number) => {
-    if (!isPlaying || isMonitor || isLocked) return;
+// ── Kartica ───────────────────────────────────────────────────────────────────
 
-    const card = cardsRef.current.find(c => c.id === cardId);
-    if (!card || card.isMatched || card.isFlipped) return;
+const GAME = getGame("memory");
 
-    // Flip the clicked card
-    const updatedCards = cardsRef.current.map(c =>
-      c.id === cardId ? { ...c, isFlipped: true } : c
-    );
-    setCards(updatedCards);
+interface MemoryCardProps {
+    /** Redni broj na tabli, od 1 */
+    position: number;
+    animal: Animal | undefined;
+    open: boolean;
+    matched: boolean;
+    hinted: boolean;
+    disabled: boolean;
+    className?: string;
+    onFlip: () => void;
+    onImageSettled: () => void;
+}
 
-    // Speak animal name
-    // const filename = card.image.split('/').pop() || "";
-    // const animalName = animalNames[filename] || "";
-    // if (animalName) speak(animalName);
+function MemoryCard({ position, animal, open, matched, hinted, disabled, className, onFlip, onImageSettled }: MemoryCardProps) {
+    const name = animal?.name ?? "Kartica";
+    const label = matched ? `${name}, pronađen par` : open ? name : `Zatvorena kartica ${position}`;
 
-    setFlippedIds(prev => {
-      const newFlipped = [...prev, cardId];
-
-      // Emit progress (lightweight — no full cards array)
-      emitGameProgress({
-        childId,
-        activityId: 3,
-        gameType: 'memory',
-        event: 'card_flipped',
-        data: {
-          cardId,
-          image: card.image,
-          flippedCount: newFlipped.length,
-          moves: movesRef.current,
-          score: Math.max(0, 1000 - movesRef.current * 50),
-          correctCount: matchedPairsRef.current,
-          incorrectCount: incorrectCountRef.current,
-          flippedCards: newFlipped,
-          cards: updatedCards, // Send current card states to monitor
-        },
-        timestamp: new Date().toISOString(),
-      });
-
-      if (newFlipped.length === 2) {
-        setIsLocked(true);
-        const newMoves = movesRef.current + 1;
-        setMoves(newMoves);
-
-        const firstCard = cardsRef.current.find(c => c.id === newFlipped[0]);
-        const secondCard = updatedCards.find(c => c.id === newFlipped[1]);
-
-        if (firstCard && secondCard && firstCard.pairId === secondCard.pairId) {
-          // MATCH!
-          setTimeout(() => {
-            const nextCards = cardsRef.current.map(c =>
-              c.id === newFlipped[0] || c.id === newFlipped[1]
-                ? { ...c, isMatched: true, isFlipped: true }
-                : c
-            );
-            setCards(nextCards);
-            const newMatched = matchedPairsRef.current + 1;
-            setMatchedPairs(newMatched);
-            setFlippedIds([]);
-            setIsLocked(false);
-
-            emitGameProgress({
-              childId,
-              activityId: 3,
-              gameType: 'memory',
-              event: 'progress',
-              data: {
-                matched: true,
-                image: firstCard.image,
-                score: Math.max(0, 1000 - newMoves * 50),
-                moves: newMoves,
-                correct: true,
-                correctCount: newMatched,
-                incorrectCount: incorrectCountRef.current,
-                matchedPairs: newMatched,
-                flippedCards: [],
-                cards: nextCards,
-              },
-              timestamp: new Date().toISOString(),
-            });
-          }, 400);
-        } else {
-          setMismatchedIds(newFlipped);
-          setTimeout(() => {
-            const resetCards = cardsRef.current.map(c =>
-              c.id === newFlipped[0] || c.id === newFlipped[1]
-                ? { ...c, isFlipped: false }
-                : c
-            );
-            setCards(resetCards);
-            const newIncorrect = incorrectCountRef.current + 1;
-            setIncorrectCount(newIncorrect);
-            setFlippedIds([]);
-            setMismatchedIds([]);
-            setIsLocked(false);
-
-            emitGameProgress({
-              childId,
-              activityId: 3,
-              gameType: 'memory',
-              event: 'progress',
-              data: {
-                matched: false,
-                moves: newMoves,
-                correct: false,
-                correctCount: matchedPairsRef.current,
-                incorrectCount: newIncorrect,
-                score: Math.max(0, 1000 - newMoves * 50),
-                matchedPairs: matchedPairsRef.current,
-                flippedCards: [],
-                cards: resetCards, // Sync flipped back cards
-              },
-              timestamp: new Date().toISOString(),
-            });
-          }, 700);
-        }
-      }
-
-      return newFlipped;
-    });
-  }, [isPlaying, isMonitor, isLocked, childId, emitGameProgress]);
-
-  // Win detection
-  useEffect(() => {
-    if (matchedPairs === pairsCount && matchedPairs > 0 && isPlaying && !gameCompleted) {
-      setGameCompleted(true);
-      setIsPlaying(false);
-
-      const finalScore = Math.max(0, 1000 - moves * 50);
-      emitGameComplete({
-        childId,
-        activityId: 3,
-        gameType: 'memory',
-        event: 'completed',
-        data: { finalScore, totalMoves: moves },
-        timestamp: new Date().toISOString(),
-      });
-
-      if (autoStart) {
-        handleMoodAfterSelect("neutral"); // Default mood for auto-transition
-      } else {
-        setTimeout(() => setShowMoodAfter(true), 500);
-      }
-    }
-  }, [matchedPairs, pairsCount, isPlaying, gameCompleted, moves, childId, emitGameComplete]);
-
-  const handleMoodAfterSelect = (mood: string) => {
-    setShowMoodAfter(false);
-    const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-    const score = Math.max(0, 1000 - moves * 50);
-    // For stars: ratio of pairsCount to moves (perfect is 1.0)
-    onComplete(score, duration, moodBefore, mood, { correct: pairsCount, total: Math.max(pairsCount, moves) });
-  };
-
-  // ── Mood Before — Premium Immersive Design ────────────────
-  if (!isMonitor && showMoodBefore) {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
-        {/* Background Decor */}
-        <div className="absolute inset-0 bg-slate-50">
-           <div 
-             className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
-             style={{ backgroundImage: "url('/images/spojiparove.png')" }}
-           />
-           <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-white/80 to-indigo-600/10 backdrop-blur-3xl" />
-        </div>
-
-        <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
-          {onClose && (
-            <button 
-              onClick={onClose}
-              className="fixed top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-purple-600 font-black text-xs uppercase tracking-widest shadow-lg border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-[110]"
-            >
-              <span>⬅</span> Nazad
-            </button>
-          )}
-          <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-purple-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
-               ✨ Raspoloženje
-            </div>
-            <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
-               Kako si danas?
-            </h2>
-            <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
-          </div>
-
-          <div className="flex flex-wrap justify-center gap-3 sm:gap-6 w-full max-w-4xl px-4">
-            {[
-              { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
-              { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
-              { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
-              { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
-              { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-            ].map((mood, idx) => (
-              <button
-                key={mood.value}
-                onClick={() => handleMoodBeforeSelect(mood.value)}
-                className="group relative flex flex-col items-center bg-white rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-105 hover:-translate-y-2 cursor-pointer shadow-lg border border-slate-100 hover:border-purple-100 animate-in zoom-in-95 duration-500"
-                style={{ animationDelay: `${idx * 100}ms` }}
-              >
-                <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
-                <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
-                   {mood.emoji}
-                </div>
-                <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-purple-600 transition-colors">{mood.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {isConnected && (
-            <div className="mt-20 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-700">
-               <div className="flex items-center gap-4 px-8 py-4 bg-white/40 backdrop-blur-2xl rounded-3xl border-2 border-white shadow-2xl">
-                <span className="relative flex h-4 w-4">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
-                </span>
-                <span className="text-sm sm:text-lg font-black text-emerald-900 tracking-[0.1em] uppercase">Sistemi su aktivni</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // ── POST-GAME MOOD ─────────────────────────────────
-  if (!isMonitor && showMoodAfter) {
-    const score = Math.max(0, 1000 - moves * 50);
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[450px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl animate-in fade-in duration-500 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-
-        <div className="text-center mb-6 md:mb-12 relative z-10">
-          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-sm font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
-          <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-3 md:mb-4">Bravo! Kako si sada? 🌟</h2>
-          <p className="text-sm sm:text-base md:text-xl text-slate-500 font-medium tracking-wide">
-            {gender?.toLowerCase() === 'female' ? 'Završila si' : 'Završio si'} za <span className="font-black text-purple-600">{moves} poteza</span>! Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
-          {[
-            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
-            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
-            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
-            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
-            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-          ].map((mood, idx) => (
-            <button
-              key={mood.value}
-              onClick={() => handleMoodAfterSelect(mood.value)}
-              className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
-              style={{ animationDelay: `${idx * 100}ms` }}
-            >
-              <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-10 rounded-2xl md:rounded-[2.5rem] transition-opacity`} />
-              <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-              <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Start screen removed for faster gameplay
-
-  // ── PLAYING ────────────────────────────────────────
-  let gridCols = "grid-cols-4";
-  if (pairsCount >= 12) gridCols = "grid-cols-4 sm:grid-cols-6 md:grid-cols-8";
-  else if (pairsCount >= 8) gridCols = "grid-cols-4 sm:grid-cols-5 md:grid-cols-6";
-  else if (pairsCount >= 5) gridCols = "grid-cols-4 md:grid-cols-5";
-
-  return (
-    <div className="bg-white/95 backdrop-blur-xl rounded-[1.5rem] sm:rounded-2xl md:rounded-[3rem] p-3 sm:p-5 md:p-8 shadow-2xl border border-white/50 w-full max-w-5xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 pointer-events-none rounded-2xl md:rounded-[3rem]"></div>
-
-      {/* Header */}
-      <div className="flex justify-between items-center mb-4 sm:mb-6 md:mb-8 bg-gradient-to-r from-purple-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-3 py-2 sm:px-6 sm:py-3 md:px-8 md:py-5 shadow-xl relative overflow-hidden ring-1 ring-purple-100/50 flex-shrink-0">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-        <div className="flex items-center gap-2 sm:gap-3 md:gap-6 relative z-10">
-          <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-lg sm:rounded-xl bg-white shadow-md flex items-center justify-center text-lg sm:text-xl md:text-2xl ring-2 sm:ring-4 ring-purple-50 border border-purple-100 transform -rotate-3 transition-transform">
-            🧠
-          </div>
-          <div className="hidden sm:block">
-            <h3 className="text-sm sm:text-base md:text-xl font-black text-slate-800 tracking-wide uppercase leading-tight">Nivo {level}</h3>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 sm:gap-3 md:gap-6 relative z-10 flex-shrink-0">
-          <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-lg sm:rounded-xl md:rounded-2xl px-2 py-1 sm:px-4 sm:py-2 md:px-6 md:py-2.5 border border-purple-100/50 text-center min-w-[60px] sm:min-w-[80px] md:min-w-[100px]">
-            <span className="block text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Potezi</span>
-            <span className="text-sm sm:text-lg md:text-2xl font-black text-purple-600">{moves}</span>
-          </div>
-          <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-lg sm:rounded-xl md:rounded-2xl px-2 py-1 sm:px-4 sm:py-2 md:px-6 md:py-2.5 border border-purple-100/50 text-center min-w-[70px] sm:min-w-[90px] md:min-w-[120px]">
-            <span className="block text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Pronađeno</span>
-            <span className="text-sm sm:text-lg md:text-2xl font-black text-emerald-500">
-              {matchedPairs}<span className="text-slate-400 text-xs sm:text-sm mx-0.5 md:mx-1">/</span>{pairsCount}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Card Grid */}
-      <div className="flex-1 flex items-center justify-center relative z-10 min-h-0">
-        <div className={`grid ${gridCols} gap-2 sm:gap-3 md:gap-4 w-full max-w-4xl mx-auto px-1 sm:px-2 overflow-y-auto max-h-full custom-scrollbar py-2`}>
-          {cards.map((card) => {
-            const isRevealed = card.isFlipped || card.isMatched;
-            const canClick = isPlaying && !isLocked && !card.isMatched && !card.isFlipped && !isMonitor;
-
-            return (
-              <button
-                key={card.id}
-                onClick={() => canClick && handleCardClick(card.id)}
-                className={`relative aspect-square rounded-xl md:rounded-2xl font-bold transition-all duration-200 overflow-hidden
-                  ${card.isMatched
-                    ? "bg-emerald-50 shadow-sm border-2 border-emerald-200"
-                    : mismatchedIds.includes(card.id)
-                      ? "bg-rose-50 shadow-lg border-2 border-rose-200 animate-shake"
-                      : isRevealed
-                        ? "bg-white shadow-lg border-2 border-indigo-100"
-                        : canClick
-                          ? "bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
-                          : "bg-gradient-to-br from-indigo-400 via-indigo-500 to-purple-500 shadow-md cursor-default"
-                  }
-                `}
-                style={{ WebkitTapHighlightColor: 'transparent' }}
-              >
-                {/* Card face — animal image */}
-                <div
-                  className={`absolute inset-0 transition-all duration-200
-                    ${isRevealed ? "opacity-100 scale-100" : "opacity-0 scale-75"}
-                  `}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={card.image}
-                    alt="animal"
-                    draggable={false}
-                    className={`w-full h-full object-cover select-none
-                      ${card.isMatched ? "opacity-60" : "opacity-100"}
-                    `}
-                  />
-                </div>
-
-                {/* Card back — gradient with ? */}
-                <div
-                  className={`absolute inset-0 flex items-center justify-center transition-all duration-200
-                    ${isRevealed ? "opacity-0 scale-75" : "opacity-100 scale-100"}
-                  `}
-                >
-                  <span className="text-white/50 font-black text-2xl sm:text-3xl md:text-4xl select-none drop-shadow">?</span>
-                </div>
-
-                {/* Match checkmark */}
-                {card.isMatched && (
-                  <div className="absolute top-1 right-1 text-[10px] sm:text-sm">
-                    <span className="bg-emerald-500 text-white rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[8px] sm:text-[10px] font-black shadow">✓</span>
-                  </div>
+        <button
+            type="button"
+            disabled={disabled}
+            onClick={onFlip}
+            aria-label={label}
+            className={cn(
+                "relative aspect-square w-full rounded-tile perspective-midrange transition-transform duration-150 enabled:active:scale-95 disabled:cursor-default",
+                hinted && "animate-soft-pulse outline-4 outline-offset-2 outline-sun-400",
+                className
+            )}
+        >
+            {/* Okreće se unutrašnji sloj; kad sistem traži manje pokreta, kartica se menja bez animacije */}
+            <span
+                className={cn(
+                    "absolute inset-0 block transition-transform duration-500 ease-out transform-3d motion-reduce:transition-none",
+                    open && "rotate-y-180"
                 )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+            >
+                <span
+                    className={cn(
+                        "absolute inset-0 grid place-items-center rounded-tile border-2 border-b-[5px] bg-gradient-to-br shadow-soft backface-hidden",
+                        GAME.accent.edge,
+                        GAME.accent.gradient
+                    )}
+                >
+                    {/* Poleđina: unutrašnji okvir i znak u krugu — kartica izgleda kao prava, a ne kao prazno polje */}
+                    <span aria-hidden="true" className="absolute inset-[7%] rounded-[1rem] border-2 border-white/25" />
+                    <span
+                        aria-hidden="true"
+                        className="grid aspect-square w-[42%] place-items-center rounded-full bg-white/20 font-display text-[clamp(1.5rem,6cqw,3rem)] font-extrabold text-white ring-2 ring-white/30"
+                    >
+                        ?
+                    </span>
+                </span>
 
-      <div className="mt-auto pt-3 text-center text-[8px] sm:text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest opacity-60">
-        💡 Pokušaj da zapamtiš gde su sličice sakrivene!
-      </div>
-    </div>
-  );
+                <span
+                    className={cn(
+                        "absolute inset-0 rotate-y-180 overflow-hidden rounded-tile border-[3px] bg-surface shadow-soft backface-hidden",
+                        matched ? "border-emerald-400" : "border-brand-300"
+                    )}
+                >
+                    {animal && (
+                        <Image
+                            src={animal.src}
+                            alt={animal.name}
+                            fill
+                            sizes="(min-width: 640px) 224px, 45vw"
+                            loading="eager"
+                            draggable={false}
+                            onLoad={onImageSettled}
+                            onError={onImageSettled}
+                            className="select-none object-cover"
+                        />
+                    )}
+                    {matched && (
+                        <span
+                            aria-hidden="true"
+                            className="absolute right-1 top-1 grid h-6 w-6 animate-pop place-items-center rounded-full bg-emerald-600 text-sm font-black text-white ring-2 ring-white sm:h-7 sm:w-7 sm:text-base"
+                        >
+                            ✓
+                        </span>
+                    )}
+                </span>
+            </span>
+        </button>
+    );
+}
+
+// ── Igra ──────────────────────────────────────────────────────────────────────
+// Tekstovi su kratki, doslovni i bez roda. Promašaj se ne komentariše: kartice se samo vrate.
+
+const TEXT_PEEK = "Pogledaj slike i zapamti gde su.";
+const TEXT_FIND = "Pronađi dve iste slike.";
+const TEXT_HINT = "Pogledaj karticu koja svetli.";
+/** Ako se slike sporo učitavaju, zavirivanje se ipak završava posle ovoliko dodatnog čekanja */
+const PEEK_GRACE_MS = 5000;
+const MATCH_FEEDBACK_MS = 1600;
+
+export default function MemoryGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<MemoryView>) {
+    const cfg = configFor(level);
+    const settings = useChildSettings();
+
+    const sync = useGameSync<MemoryView>({ childId, gameId: "memory", level, isMonitor });
+    const { say } = useSpeech(gender);
+    const { after, cancel } = useTimers();
+    const sayThen = useSayThen(say, after);
+    const praise = usePraise();
+    const guard = useInputGuard();
+    const demo = useDemo(!isMonitor);
+
+    const [deal] = useState<Deal>(() => dealFor(level, settings.preset.memoryMaxPairs, settings.activeBand === "young"));
+    // Monitor nema podešavanja deteta ni njegov ekran: tabla stiže u `monitorState`
+    const [view, setView] = useState<MemoryView>(() => {
+        if (isMonitor) return emptyView(cfg.pairs);
+        return dealCards(pairsForScreen(deal.pairs), deal.peek);
+    });
+
+    // Poslednje stanje za rukovaoce i tajmere (dva brza dodira ne vide zastarelo stanje)
+    const viewRef = useRef(view);
+    const finishedRef = useRef(false);
+    const feedbackTimer = useRef<TimerId | null>(null);
+    const peekTimer = useRef<TimerId | null>(null);
+    const peekArmed = useRef(false);
+    /** Zavirivanje se meri tek kad je uputstvo izgovoreno — dok glas govori, dete još ne gleda kartice */
+    const peekSpoken = useRef(false);
+    const settledImages = useRef(new Set<number>());
+    const flipBackTimer = useRef<TimerId | null>(null);
+    /** Promašen par sme da se vrati dodirom tek kad se druga kartica okrenula do kraja */
+    const mismatchSettled = useRef(false);
+    const onCompleteRef = useRef(onComplete);
+
+    useEffect(() => {
+        onCompleteRef.current = onComplete;
+    }, [onComplete]);
+
+    const commit = useCallback(
+        (next: MemoryView, log?: string) => {
+            viewRef.current = next;
+            setView(next);
+            sync.update(next, log);
+        },
+        [sync]
+    );
+
+    const showDemo = demo.show;
+    const endPeek = useCallback(() => {
+        peekTimer.current = null;
+        const current = viewRef.current;
+        if (!current.peek) return;
+        // Kartice se zatvaraju: dodir koji je ostao od gledanja ne sme da otvori karticu
+        guard.hold();
+        commit({ ...current, peek: false }, "Kartice su sakrivene, traženje parova počinje");
+        showDemo();
+        say(TEXT_FIND);
+    }, [commit, guard, say, showDemo]);
+
+    useEffect(() => {
+        if (isMonitor) return;
+        guard.hold();
+        sync.start(viewRef.current);
+    }, [isMonitor, sync, guard]);
+
+    /** Zavirivanje se meri tek kad su sve slike na ekranu i uputstvo izgovoreno: dete ne gleda prazne kartice ni dok još sluša. */
+    const armPeek = useCallback(() => {
+        const current = viewRef.current;
+        if (!current.peek || peekArmed.current) return;
+        if (!peekSpoken.current || settledImages.current.size < current.cards.length) return;
+        peekArmed.current = true;
+        cancel(peekTimer.current);
+        peekTimer.current = after(peekMsFor(current.totalRounds, deal.peekScale), endPeek);
+    }, [after, cancel, deal.peekScale, endPeek]);
+
+    useEffect(() => {
+        if (isMonitor) return;
+        if (!viewRef.current.peek) {
+            say(TEXT_FIND);
+            return;
+        }
+        say(TEXT_PEEK, () => {
+            peekSpoken.current = true;
+            armPeek();
+        });
+    }, [isMonitor, say, armPeek]);
+
+    // Rezervni kraj zavirivanja (slike ili glas se ne jave); inače ga zamenjuje tačno odmereni tajmer iz `armPeek`
+    useEffect(() => {
+        const current = viewRef.current;
+        if (isMonitor || !current.peek || peekArmed.current) return;
+        const id = after(peekMsFor(current.totalRounds, deal.peekScale) + PEEK_GRACE_MS, endPeek);
+        peekTimer.current = id;
+        return () => cancel(id);
+    }, [isMonitor, after, cancel, deal.peekScale, endPeek]);
+
+    const handleImageSettled = (index: number) => {
+        if (isMonitor) return;
+        settledImages.current.add(index);
+        armPeek();
+    };
+
+    const finish = () => {
+        if (finishedRef.current) return;
+        finishedRef.current = true;
+        const final = viewRef.current;
+        sync.complete(final);
+        // total    = broj parova bez poslednjeg (kad ostanu dve kartice, par se ne može promašiti,
+        //            pa nije mera pamćenja i ne broji se ni kao samostalan ni kao uz pomoć)
+        // correct  = parovi pronađeni samostalno iz prve prilike: bez pomoći i bez greške pamćenja od
+        //            prethodnog para (otvaranje još neviđenih kartica se ne računa kao greška)
+        // prompted = parovi pronađeni dok je par otvorene kartice svetleo kao pomoć
+        // Ostatak (total − correct − prompted) su parovi pronađeni posle greške, ali bez pomoći.
+        onCompleteRef.current({
+            score: final.score,
+            durationSec: sync.elapsedSec(),
+            correct: final.correctCount,
+            total: Math.max(final.totalRounds - 1, 1),
+            prompted: final.promptedCount,
+        });
+    };
+
+    const handleFlip = (index: number) => {
+        if (isMonitor || finishedRef.current || guard.blocked()) return;
+        let current = viewRef.current;
+        const id = current.cards[index];
+        const animal = animalOf(id);
+        if (!animal || current.peek || current.matched.includes(id)) return;
+
+        // Promašen par još stoji otkriven: dodir ga odmah vraća (dete koje je zapamtilo ne čeka),
+        // ali ne pre nego što se druga kartica okrenula do kraja
+        if (current.flipped.length >= 2) {
+            if (!mismatchSettled.current) return;
+            cancel(flipBackTimer.current);
+            flipBackTimer.current = null;
+            const wasOpen = current.flipped.includes(index);
+            current = { ...current, flipped: [] };
+            if (wasOpen) {
+                commit(current);
+                return;
+            }
+        }
+        // Već otvorena kartica: ponovljeni dodir se nikad ne računa kao potez
+        if (current.flipped.includes(index)) return;
+
+        cancel(feedbackTimer.current);
+        feedbackTimer.current = null;
+        const seen = current.seen.includes(index) ? current.seen : [...current.seen, index];
+
+        if (current.flipped.length === 0) {
+            const partner = partnerOf(current.cards, index);
+            // Pomoć: posle zadatog broja grešaka pamćenja par otvorene kartice blago svetli (0 = nikad)
+            const hint = settings.hintAfter > 0 && current.streak >= settings.hintAfter && partner >= 0 ? partner : null;
+            playSfx("flip");
+            commit(
+                { ...current, flipped: [index], seen, feedback: null, hint },
+                `Otvorena kartica: ${animal.name}${hint !== null ? " (prikazana pomoć)" : ""}`
+            );
+            return;
+        }
+
+        const firstIndex = current.flipped[0];
+        const firstId = current.cards[firstIndex];
+        const moves = current.moves + 1;
+
+        if (firstId === id) {
+            const matched = [...current.matched, id];
+            const pairs = current.totalRounds;
+            const allFound = matched.length >= pairs;
+            // Poslednji par se ne može promašiti, pa se ne boduje kao pamćenje
+            const forced = allFound;
+            const prompted = !forced && current.hint !== null;
+            const firstTry = !forced && !prompted && current.streak === 0;
+            const how = forced ? "poslednji" : firstTry ? "iz prve prilike" : prompted ? "uz pomoć" : "posle greške";
+            commit(
+                {
+                    ...current,
+                    flipped: [],
+                    matched,
+                    seen,
+                    moves,
+                    streak: 0,
+                    hint: null,
+                    feedback: "correct",
+                    score: current.score + (firstTry ? 10 : 5),
+                    correctCount: current.correctCount + (firstTry ? 1 : 0),
+                    promptedCount: current.promptedCount + (prompted ? 1 : 0),
+                    round: Math.min(matched.length + 1, pairs),
+                },
+                `Pronađen par ${how}: ${animal.name} (${matched.length} od ${pairs})`
+            );
+            // Zvuk kraja nivoa pušta strana koja prikazuje rezultat — ovde samo potvrda para
+            playSfx("correct");
+            if (allFound) {
+                sayThen(praise(`To je ${animal.name.toLowerCase()}.`, firstTry), finish, { emotion: "happy" });
+                return;
+            }
+            // Ime u rečenici: samu reč („Krokodil.”) glas ume da pročita kao englesku
+            say(praise(`To je ${animal.name.toLowerCase()}.`, firstTry), undefined, "happy");
+            feedbackTimer.current = after(MATCH_FEEDBACK_MS, () => {
+                feedbackTimer.current = null;
+                commit({ ...viewRef.current, feedback: null });
+            });
+            return;
+        }
+
+        // Nije par. Bez poruke i bez zvuka greške: kartice se same vrate.
+        const avoidable = current.hint !== null || current.seen.includes(partnerOf(current.cards, firstIndex)) || current.seen.includes(index);
+        playSfx("flip");
+        commit(
+            {
+                ...current,
+                flipped: [firstIndex, index],
+                seen,
+                moves,
+                streak: current.streak + (avoidable ? 1 : 0),
+                hint: null,
+                feedback: null,
+                incorrectCount: current.incorrectCount + (avoidable ? 1 : 0),
+            },
+            `Nije par: ${animalOf(firstId)?.name ?? "kartica"} i ${animal.name}${avoidable ? "" : " (istraživanje)"}`
+        );
+        mismatchSettled.current = false;
+        after(MISMATCH_MIN_MS, () => {
+            mismatchSettled.current = true;
+        });
+        flipBackTimer.current = after(FLIP_BACK_MS, () => {
+            flipBackTimer.current = null;
+            commit({ ...viewRef.current, flipped: [] });
+        });
+    };
+
+    // Pomoć posle čekanja: jedna kartica je otvorena, a dete dugo ne zna gde je njen par — par blago zasvetli
+    useWaitHint(!isMonitor && settings.waitHint && view.flipped.length === 1, `${view.flipped.join(",")}:${view.matched.length}`, () => {
+        const current = viewRef.current;
+        if (finishedRef.current || current.peek || current.flipped.length !== 1 || current.hint !== null) return;
+        const partner = partnerOf(current.cards, current.flipped[0]);
+        if (partner < 0) return;
+        commit({ ...current, hint: partner }, "Pomoć posle čekanja");
+    });
+
+    const repeatInstruction = () => {
+        demo.show();
+        say(viewRef.current.peek ? TEXT_PEEK : TEXT_FIND);
+    };
+
+    const tail = useBubbleTail();
+    const shown = isMonitor ? toShown(emptyView(cfg.pairs), monitorState) : view;
+    const pairs = Math.max(shown.totalRounds, 1);
+    const lastFound = animalOf(shown.matched[shown.matched.length - 1]);
+    const layout = LAYOUT[shown.cards.length] ?? DEFAULT_LAYOUT;
+    // Brojevi (poeni, potezi) se mlađoj deci ne prikazuju; roditelj ih na monitoru vidi
+    const showNumbers = isMonitor || settings.preset.showPoints;
+
+    let instruction = TEXT_FIND;
+    if (shown.peek) instruction = TEXT_PEEK;
+    else if (shown.hint !== null) instruction = TEXT_HINT;
+
+    const foundName = lastFound?.name.toLowerCase();
+    const correctText = foundName ? `Par: ${foundName}.` : "Par je pronađen.";
+
+    return (
+        <GameStage width="wide">
+            <GameHud
+                round={shown.round}
+                totalRounds={pairs}
+                score={showNumbers ? shown.score : undefined}
+                unit="Par"
+                onSpeak={isMonitor ? undefined : repeatInstruction}
+                extra={
+                    showNumbers && (
+                        <div className="hidden shrink-0 rounded-xl bg-brand-50 px-3 py-2 text-sm font-extrabold text-brand-700 ring-1 ring-brand-100 sm:block sm:text-base">
+                            Potezi: {shown.moves}
+                        </div>
+                    )
+                }
+            />
+
+            {/* Uputstvo i povratna poruka dele isto mesto, da tabla ne skače */}
+            <div className={cn("grid min-h-14 place-items-center rounded-2xl border border-line bg-surface px-4 py-2 shadow-soft *:col-start-1 *:row-start-1", tail)}>
+                <p
+                    aria-hidden={shown.feedback ? true : undefined}
+                    className={cn(
+                        "text-center font-display text-lg font-extrabold text-ink transition-opacity duration-200 sm:text-2xl",
+                        shown.feedback && "opacity-0"
+                    )}
+                >
+                    {instruction}
+                </p>
+                <Feedback kind={shown.feedback} correctText={correctText} />
+            </div>
+
+            <PlayArea accent={GAME.accent} className="relative">
+                {demo.on && (
+                    <span
+                        key={demo.run}
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 animate-soft-pulse rounded-card ring-4 ring-brand-300"
+                        style={PULSE_ONCE}
+                    />
+                )}
+                <div
+                    role="group"
+                    aria-label="Kartice"
+                    className={cn("mx-auto grid w-full [--gap:0.75rem]", layout.vars, isMonitor && "pointer-events-none")}
+                    style={BOARD_STYLE}
+                >
+                    {shown.cards.map((id, index) => {
+                        const matched = shown.matched.includes(id);
+                        const open = shown.peek || shown.flipped.includes(index) || matched;
+                        return (
+                            <MemoryCard
+                                key={index}
+                                position={index + 1}
+                                animal={animalOf(id)}
+                                open={open}
+                                matched={matched}
+                                hinted={shown.hint === index && !open}
+                                disabled={isMonitor || open}
+                                className={layout.centerTail && index === shown.cards.length - 2 ? TAIL_START : undefined}
+                                onFlip={() => handleFlip(index)}
+                                onImageSettled={() => handleImageSettled(index)}
+                            />
+                        );
+                    })}
+                </div>
+            </PlayArea>
+        </GameStage>
+    );
 }

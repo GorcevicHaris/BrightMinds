@@ -1,152 +1,90 @@
-import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+// app/api/children/route.ts
+import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth";
+import { supabaseAdmin } from "@/lib/supabase";
+import {
+    assertPinAvailable,
+    childWriteError,
+    parseChildInput,
+    selectChildRows,
+    toChild,
+} from "../_lib/children";
+import { errorResponse, readJsonObject } from "../_lib/http";
 
-export async function POST(req: Request) {
+/** Deca prijavljenog roditelja/učitelja, po imenu. */
+export async function GET() {
     try {
-        const body = await req.json();
-        const { first_name, last_name, date_of_birth, gender, notes, user_id, pin_code } = body;
+        const session = await requireUser();
 
-        if (!first_name || !last_name || !date_of_birth || !gender || !notes || !user_id) {
-            return NextResponse.json(
-                { error: 'Svi podaci su obavezni' },
-                { status: 400 }
-            );
-        }
+        const { data: links, error: linksError } = await supabaseAdmin
+            .from("user_children")
+            .select("child_id")
+            .eq("user_id", session.userId);
+        if (linksError) throw linksError;
 
-        // Prvo dodaj dete u children tabelu
-        const { data: child, error: childError } = await supabaseAdmin
-            .from('children')
-            .insert([{
-                first_name, 
-                last_name, 
-                date_of_birth, 
-                gender, 
-                notes, 
-                pin_code: pin_code || null
-            }])
-            .select('id')
-            .single();
+        const childIds = ((links ?? []) as { child_id: number }[]).map((link) => link.child_id);
+        if (childIds.length === 0) return NextResponse.json({ children: [] });
 
-        if (childError) throw childError;
-        const childId = child.id;
+        const rows = await selectChildRows((columns) =>
+            supabaseAdmin
+                .from("children")
+                .select(columns)
+                .in("id", childIds)
+                .order("first_name", { ascending: true })
+                .order("id", { ascending: true })
+        );
 
-        // Onda poveži dete sa roditeljem preko user_children tabele
-        const { error: ucError } = await supabaseAdmin
-            .from('user_children')
-            .insert([{
-                user_id, 
-                child_id: childId, 
-                relationship: 'parent', 
-                is_primary: true
-            }]);
+        return NextResponse.json({ children: rows.map(toChild) });
+    } catch (error) {
+        return errorResponse(error, "GET /api/children");
+    }
+}
 
-        if (ucError) throw ucError;
+/** Dodaje dete i povezuje ga sa prijavljenim korisnikom. */
+export async function POST(request: Request) {
+    try {
+        const session = await requireUser();
+        const input = parseChildInput(await readJsonObject(request));
+        const pinCode = input.pin_code ?? null;
 
-        return NextResponse.json({
-            id: childId,
-            first_name,
-            last_name,
-            date_of_birth,
-            gender,
-            notes,
-            pin_code,
+        if (pinCode) await assertPinAvailable(pinCode);
+
+        const [child] = await selectChildRows((columns) =>
+            supabaseAdmin
+                .from("children")
+                .insert({
+                    first_name: input.first_name,
+                    last_name: input.last_name,
+                    date_of_birth: input.date_of_birth,
+                    gender: input.gender,
+                    notes: input.notes ?? null,
+                    pin_code: pinCode,
+                })
+                .select(columns)
+        ).catch((error: unknown) => {
+            throw childWriteError(error, pinCode);
         });
-    } catch (error) {
-        console.error('Error adding child:', error);
-        return NextResponse.json(
-            { error: 'Greška pri dodavanju deteta' },
-            { status: 500 }
-        );
-    }
-}
+        if (!child) throw new Error("Dete nije sačuvano");
 
-export async function GET(req: Request) {
-    try {
-        const url = new URL(req.url);
-        const userId = url.searchParams.get('user_id');
-
-        if (!userId) {
-            return NextResponse.json(
-                { error: "nije prosledjen id" },
-                { status: 400 }
-            )
+        const { error: linkError } = await supabaseAdmin.from("user_children").insert({
+            user_id: session.userId,
+            child_id: child.id,
+            relationship: "parent",
+            is_primary: true,
+        });
+        if (linkError) {
+            // Bez veze sa roditeljem dete bi ostalo "siroče" koje niko ne vidi — poništi upis.
+            try {
+                const { error: rollbackError } = await supabaseAdmin.from("children").delete().eq("id", child.id);
+                if (rollbackError) throw rollbackError;
+            } catch (rollbackError) {
+                console.error("[api] POST /api/children: poništavanje upisa nije uspelo:", rollbackError);
+            }
+            throw linkError;
         }
-        
-        const { data: ucData, error } = await supabaseAdmin
-            .from('user_children')
-            .select('child:children(*)')
-            .eq('user_id', userId);
 
-        if (error) throw error;
-        
-        const rows = (ucData || []).map(uc => Array.isArray(uc.child) ? uc.child[0] : uc.child).filter(c => c !== null);
-
-        return NextResponse.json(rows);
+        return NextResponse.json({ child: toChild(child) }, { status: 201 });
     } catch (error) {
-        console.error('Error fetching children:', error);
-        return NextResponse.json(
-            { error: 'Greška pri dohvaćanju dece' },
-            { status: 500 }
-        );
-    }
-}
-
-export async function DELETE(req: Request) {
-    try {
-        const url = new URL(req.url)
-        const childId = url.searchParams.get("child_id")
-        
-        const { error } = await supabaseAdmin
-            .from('children')
-            .delete()
-            .eq('id', childId);
-            
-        if (error) throw error;
-        
-        console.log(childId, "- childId")
-        return NextResponse.json({
-            message: "Child deleted successfully"
-        })
-    } catch (error) {
-        console.error('Error deleting child:', error);
-        return NextResponse.json(
-            { error: 'Greška pri brisanju deteta' },
-            { status: 500 }
-        )
-    }
-}
-
-export async function PUT(req: Request) {
-    try {
-        const url = new URL(req.url)
-        const childId = url.searchParams.get("child_id")
-        console.log(childId, "childid")
-        const body = await req.json()
-        const { first_name, last_name, date_of_birth, gender, notes, pin_code } = body;
-        
-        const { error } = await supabaseAdmin
-            .from('children')
-            .update({
-                first_name, 
-                last_name, 
-                date_of_birth, 
-                gender, 
-                notes, 
-                pin_code: pin_code || null
-            })
-            .eq('id', childId);
-            
-        if (error) throw error;
-        
-        return NextResponse.json({
-            message: "Child updated successfully"
-
-        })
-    } catch (error) {
-        console.error('Error updating child:', error);
-        return NextResponse.json(
-            { error: 'Greška pri ažuriranju deteta' },
-            { status: 500 }
-        )
+        return errorResponse(error, "POST /api/children");
     }
 }

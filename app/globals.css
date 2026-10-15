@@ -1,37 +1,191 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ──────────────────────────────────────────────────────────────────────────
+   Bright Minds — dizajn tokeni
+   Miran, predvidljiv i čitljiv interfejs: malo vizuelnog šuma, veliki ciljevi
+   za dodir, jasan kontrast. Sve boje/senke/animacije idu odavde.
+   ────────────────────────────────────────────────────────────────────────── */
+/* Nizak ekran (položen telefon, manji tablet): uputstva se zbijaju, da zadatak stane bez skrolovanja */
+@custom-variant short {
+  @media (max-height: 820px) {
+    @slot;
   }
 }
 
+@theme {
+  --font-sans: var(--font-nunito), ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-baloo), var(--font-nunito), ui-rounded, system-ui, sans-serif;
+
+  /* Podloga i tekst */
+  --color-canvas: #f6f5fc;
+  --color-surface: #ffffff;
+  --color-line: #e6e3f4;
+  --color-ink: #1f1b3a;
+  --color-ink-soft: #57537a;
+  --color-ink-faint: #6b678d;
+
+  /* Brend (ljubičasto-indigo) */
+  --color-brand-50: #f2f1ff;
+  --color-brand-100: #e5e3ff;
+  --color-brand-200: #cecbff;
+  --color-brand-300: #aca7fd;
+  --color-brand-400: #8a82f7;
+  --color-brand-500: #6c61f0;
+  --color-brand-600: #5847e2;
+  --color-brand-700: #4937c6;
+  --color-brand-800: #3d30a0;
+  --color-brand-900: #342d7e;
+
+  /* Sunce (topli akcenat za dečji deo) */
+  --color-sun-50: #fff8e6;
+  --color-sun-100: #ffefc4;
+  --color-sun-200: #ffe08a;
+  --color-sun-300: #ffcd4d;
+  --color-sun-400: #ffb920;
+  --color-sun-500: #f59e0b;
+  --color-sun-600: #d97f06;
+  --color-sun-700: #955005;
+
+  --radius-card: 1.5rem;
+  --radius-tile: 1.25rem;
+
+  --shadow-soft: 0 1px 2px rgb(31 27 58 / 0.04), 0 8px 24px -10px rgb(31 27 58 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(31 27 58 / 0.05), 0 18px 40px -16px rgb(31 27 58 / 0.22);
+  --shadow-pop: 0 24px 60px -20px rgb(31 27 58 / 0.35);
+
+  --animate-pop: pop 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  --animate-fade-up: fade-up 0.35s ease-out both;
+  --animate-fade: fade 0.25s ease-out both;
+  --animate-shake: shake 0.36s ease-in-out both;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-wiggle: wiggle 0.5s ease-in-out both;
+  --animate-soft-pulse: soft-pulse 1.8s ease-in-out infinite;
+  --animate-demo-tap: demo-tap 1.3s ease-in-out infinite;
+  --animate-breathe: breathe 8s ease-in-out infinite;
+  --animate-star-burst: star-burst 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.92); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(0deg); }
+    25% { transform: rotate(-4deg); }
+    75% { transform: rotate(4deg); }
+  }
+  @keyframes soft-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgb(108 97 240 / 0.35); }
+    50% { box-shadow: 0 0 0 10px rgb(108 97 240 / 0); }
+  }
+  /* Zvezdice posle tačnog odgovora: izlete iz mesta dodira, okrenu se i nestanu */
+  @keyframes star-burst {
+    0% { transform: translate(0, 0) scale(0.3) rotate(0deg); opacity: 0; }
+    15% { opacity: 1; }
+    70% { opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--turn)); opacity: 0; }
+  }
+  /* Disanje na ekranu za pauzu: 4 s udah (krug raste), 4 s izdah (krug se smanjuje) */
+  @keyframes breathe {
+    0%, 100% { transform: scale(0.72); }
+    50% { transform: scale(1); }
+  }
+  /* Ruka koja pokazuje: prilazi i „dodirne”, pa se vrati — mirno, bez skakanja */
+  @keyframes demo-tap {
+    0%, 100% { transform: translate(10px, 14px) scale(1); }
+    45% { transform: translate(0, 0) scale(1); }
+    55% { transform: translate(0, 0) scale(0.9); }
+    65% { transform: translate(0, 0) scale(1); }
+  }
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
 }
 
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-5px); }
-  75% { transform: translateX(5px); }
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
 
-.animate-shake {
-  animation: shake 0.2s ease-in-out 0s 2;
+/* Jasan fokus za tastaturu svuda */
+:focus-visible {
+  outline: 3px solid var(--color-brand-400);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
 }
 
+button, a, [role="button"] {
+  touch-action: manipulation;
+}
+
+button:not(:disabled), [role="button"] {
+  cursor: pointer;
+}
+
+/* Tanak, neupadljiv scrollbar u karticama */
+.scroll-soft {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-brand-200) transparent;
+}
+
+/* Velika štampana slova za decu koja tek uče slova (bira roditelj) */
+[data-caps],
+[data-caps] button,
+[data-caps] select,
+[data-caps] input {
+  text-transform: uppercase;
+}
+
+/* Delovi namenjeni odraslima (napomene, saveti) ostaju u običnom pisanju */
+[data-caps] .normal-case,
+[data-caps] .normal-case button {
+  text-transform: none;
+}
+
+/* Smanjeno kretanje koje je izabrao roditelj — isto što i sistemsko podešavanje ispod */
+[data-motion="reduced"] *,
+[data-motion="reduced"] *::before,
+[data-motion="reduced"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Deca osetljiva na pokret: gasimo animacije kad sistem to traži */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

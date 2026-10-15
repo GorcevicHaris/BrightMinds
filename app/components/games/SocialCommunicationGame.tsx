@@ -1,990 +1,490 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useGameEmitter } from "@/lib/useSocket";
-import { useSpeech } from "@/lib/useSpeech";
-import { log } from "console";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useChildSettings } from "@/app/components/ChildSettingsProvider";
+import { cn } from "@/lib/cn";
+import { getGame } from "@/lib/games";
+import { useSpeech } from "@/lib/speech";
+import {
+    ChoiceCard,
+    DemoHand,
+    demoRounds,
+    ExplainPanel,
+    Feedback,
+    GameHud,
+    GamePrompt,
+    GameStage,
+    genderText,
+    hintDue,
+    offeredOptions,
+    OptionSpeaker,
+    playSfx,
+    shuffle,
+    toCount,
+    toIndexList,
+    TriedNote,
+    useGameSync,
+    useInputGuard,
+    useListenGate,
+    useSayAll,
+    type BaseView,
+    type ChoiceState,
+    type FeedbackKind,
+    type GameProps,
+    useWaitHint,
+    usePraise,
+} from "@/app/components/games/kit";
+import {
+    getSituation,
+    getSituationsForLevel,
+    type SituationKind,
+    type SocialOption,
+    type SocialSituation,
+} from "./data/socialSituations";
 
-interface GameProps {
-    childId: number;
-    level: number;
-    onComplete: (score: number, duration: number, moodBefore?: string | null, moodAfter?: string | null, stats?: any) => void;
-    onClose?: () => void;
-    autoStart?: boolean;
-    isMonitor?: boolean;
-    monitorState?: any;
-    gender?: string;
+// ── Stanje ────────────────────────────────────────────────────────────────────
+// Sve što utiče na prikaz je u jednom JSON objektu koji se šalje live monitoru.
+//
+// Igra vežba korisne rečenice, a ne „tačno i pogrešno”: situacija obično ima više
+// izbora koji pomažu. `correctCount` broji situacije u kojima je PRVI izbor bio
+// jedan od njih (iz toga se računaju zvezdice), `promptedCount` one rešene tek
+// pošto je kartica zasvetlela, a `incorrectCount` sve izbore koji manje pomažu.
+
+export interface SocialView extends BaseView {
+    /** Situacija koja je na tabli */
+    situationId: number;
+    /** Indeksi ponuđenih izbora, u redosledu prikaza */
+    order: number[];
+    /** Primer (model) je pročitan i izbori su na ekranu */
+    optionsShown: boolean;
+    /** Izbori koji manje pomažu, redom kojim su probani u ovoj situaciji */
+    tried: number[];
+    /** Izabran izbor koji pomaže; čeka se „Dalje” */
+    picked: number | null;
+    /** Jedna kartica koja pomaže blago svetli */
+    hint: boolean;
+    /** Situacije rešene tek uz pomoć */
+    promptedCount: number;
+    /** Nivo je završen (kratka pauza pre zvezdica) */
+    finished: boolean;
 }
 
-interface Situation {
-    id: number;
-    scene: string;
-    description: string;
-    question: string;
-    answers: string[];
-    correct: number;
-    hint: string;
-    color: string;
-    bgColor: string;
+interface Round {
+    situationId: number;
+    order: number[];
 }
 
-// ─── SITUACIJE PO NIVOIMA ────────────────────────────────────────────────────
-const SITUATIONS_BY_LEVEL: Record<number, Situation[]> = {
-    1: [
-        {
-            id: 1, scene: "🎁",
-            description: "Dobio/la si poklon. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Hvala!", "Neću to."],
-            correct: 0,
-            hint: "Uvek kažemo hvala.",
-            color: "#7C3AED", bgColor: "#EDE9FE",
-        },
-        {
-            id: 2, scene: "👋",
-            description: "Srećeš učiteljicu. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Ćutiš.", "Dobar dan!"],
-            correct: 1,
-            hint: "Starije pozdravljamo.",
-            color: "#0891B2", bgColor: "#E0F2FE",
-        },
-        {
-            id: 3, scene: "😢",
-            description: "Slučajno si gurnuo druga. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Izvini!", "Skloni se."],
-            correct: 0,
-            hint: "Kada pogrešimo, kažemo izvini.",
-            color: "#059669", bgColor: "#D1FAE5",
-        },
-    ],
-    2: [
-        {
-            id: 4, scene: "💧",
-            description: "Želiš vodu. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Daj vodu!", "Molim te, daj mi vodu."],
-            correct: 1,
-            hint: "Koristimo reč molim.",
-            color: "#DC2626", bgColor: "#FEE2E2",
-        },
-        {
-            id: 5, scene: "🧸",
-            description: "Drug ti da igračku. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Hvala ti!", "Baciš je."],
-            correct: 0,
-            hint: "Lepo se zahvalimo.",
-            color: "#D97706", bgColor: "#FEF3C7",
-        },
-        {
-            id: 6, scene: "🏠",
-            description: "Ideš kući. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Doviđenja!", "Samo odeš."],
-            correct: 0,
-            hint: "Uvek se pozdravimo pri prelasku.",
-            color: "#DB2777", bgColor: "#FCE7F3",
-        },
-    ],
-    3: [
-        {
-            id: 7, scene: "😭",
-            description: "Brat plače. Šta uradiš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.", "Pitaš: Jesi li dobro?"],
-            correct: 1,
-            hint: "Brinemo o drugima.",
-            color: "#4B5563", bgColor: "#F3F4F6",
-        },
-        {
-            id: 8, scene: "🍽️",
-            description: "Mama napravi ručak. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Baš je ukusno, hvala!", "Fuj."],
-            correct: 0,
-            hint: "Zahvalimo se za obrok.",
-            color: "#65A30D", bgColor: "#ECFCCB",
-        },
-        {
-            id: 9, scene: "👋",
-            description: "Drug ti kaže zdravo. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Zdravo!", "Gledaš u pod."],
-            correct: 0,
-            hint: "Odgovorimo na pozdrav.",
-            color: "#7C3AED", bgColor: "#EDE9FE",
-        },
-    ],
-    4: [
-        {
-            id: 10, scene: "⚽",
-            description: "Želiš da se igraš sa drugima. Šta pitaš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Mogu li i ja?", "Uzmim im loptu."],
-            correct: 0,
-            hint: "Uvek lepo pitaj.",
-            color: "#0891B2", bgColor: "#E0F2FE",
-        },
-        {
-            id: 11, scene: "✏️",
-            description: "Neko ti uzme olovku. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Vrati to, molim te.", "Udariš ga."],
-            correct: 0,
-            hint: "Budi pristojan.",
-            color: "#059669", bgColor: "#D1FAE5",
-        },
-        {
-            id: 12, scene: "🤕",
-            description: "Prijatelj je pao. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.", "Treba li ti pomoć?"],
-            correct: 1,
-            hint: "Pomažemo u nevolji.",
-            color: "#DC2626", bgColor: "#FEE2E2",
-        },
-    ],
-    5: [
-        {
-            id: 13, scene: "🍦",
-            description: "Kupuješ sladoled. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Molim vas jedan sladoled.", "Daj sladoled!"],
-            correct: 0,
-            hint: "Koristimo reč molim.",
-            color: "#D97706", bgColor: "#FEF3C7",
-        },
-        {
-            id: 14, scene: "🎂",
-            description: "Drug slavi rođendan. Šta mu kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Srećan rođendan!", "Daj mi tortu."],
-            correct: 0,
-            hint: "Čestitamo rođendane.",
-            color: "#DB2777", bgColor: "#FCE7F3",
-        },
-        {
-            id: 15, scene: "🚶",
-            description: "Želiš da prođeš. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Skloni se!", "Izvinite, mogu li da prođem?"],
-            correct: 1,
-            hint: "Budimo kulturni.",
-            color: "#4B5563", bgColor: "#F3F4F6",
-        },
-    ],
-    6: [
-        {
-            id: 16, scene: "🎁",
-            description: "Dobio/la si poklon. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Hvala!", "Neću to."],
-            correct: 0,
-            hint: "Uvek kažemo hvala.",
-            color: "#7C3AED", bgColor: "#EDE9FE",
-        },
-        {
-            id: 17, scene: "👋",
-            description: "Srećeš učiteljicu. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Ćutiš.", "Dobar dan!"],
-            correct: 1,
-            hint: "Starije pozdravljamo.",
-            color: "#0891B2", bgColor: "#E0F2FE",
-        },
-        {
-            id: 18, scene: "😢",
-            description: "Slučajno si gurnuo druga. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Izvini!", "Skloni se."],
-            correct: 0,
-            hint: "Kada pogrešimo, kažemo izvini.",
-            color: "#059669", bgColor: "#D1FAE5",
-        },
-    ],
-    7: [
-        {
-            id: 19, scene: "💧",
-            description: "Želiš vodu. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Daj vodu!", "Molim te, daj mi vodu."],
-            correct: 1,
-            hint: "Koristimo reč molim.",
-            color: "#DC2626", bgColor: "#FEE2E2",
-        },
-        {
-            id: 20, scene: "🧸",
-            description: "Drug ti da igračku. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Hvala ti!", "Baciš je."],
-            correct: 0,
-            hint: "Lepo se zahvalimo.",
-            color: "#D97706", bgColor: "#FEF3C7",
-        },
-        {
-            id: 21, scene: "🏠",
-            description: "Ideš kući. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Doviđenja!", "Samo odeš."],
-            correct: 0,
-            hint: "Uvek se pozdravimo pri prelasku.",
-            color: "#DB2777", bgColor: "#FCE7F3",
-        },
-    ],
-    8: [
-        {
-            id: 22, scene: "😭",
-            description: "Brat plače. Šta uradiš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.", "Pitaš: Jesi li dobro?"],
-            correct: 1,
-            hint: "Brinemo o drugima.",
-            color: "#4B5563", bgColor: "#F3F4F6",
-        },
-        {
-            id: 23, scene: "🍽️",
-            description: "Mama napravi ručak. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Baš je ukusno, hvala!", "Fuj."],
-            correct: 0,
-            hint: "Zahvalimo se za obrok.",
-            color: "#65A30D", bgColor: "#ECFCCB",
-        },
-        {
-            id: 24, scene: "👋",
-            description: "Drug ti kaže zdravo. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Zdravo!", "Gledaš u pod."],
-            correct: 0,
-            hint: "Odgovorimo na pozdrav.",
-            color: "#7C3AED", bgColor: "#EDE9FE",
-        },
-    ],
-    9: [
-        {
-            id: 25, scene: "⚽",
-            description: "Želiš da se igraš sa drugima. Šta pitaš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Mogu li i ja?", "Uzmim im loptu."],
-            correct: 0,
-            hint: "Uvek lepo pitaj.",
-            color: "#0891B2", bgColor: "#E0F2FE",
-        },
-        {
-            id: 26, scene: "✏️",
-            description: "Neko ti uzme olovku. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Vrati to, molim te.", "Udariš ga."],
-            correct: 0,
-            hint: "Budi pristojan.",
-            color: "#059669", bgColor: "#D1FAE5",
-        },
-        {
-            id: 27, scene: "🤕",
-            description: "Prijatelj je pao. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.", "Treba li ti pomoć?"],
-            correct: 1,
-            hint: "Pomažemo u nevolji.",
-            color: "#DC2626", bgColor: "#FEE2E2",
-        },
-    ],
-    10: [
-        {
-            id: 28, scene: "🍦",
-            description: "Kupuješ sladoled. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Molim vas jedan sladoled.", "Daj sladoled!"],
-            correct: 0,
-            hint: "Koristimo reč molim.",
-            color: "#D97706", bgColor: "#FEF3C7",
-        },
-        {
-            id: 29, scene: "🎂",
-            description: "Drug slavi rođendan. Šta mu kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Srećan rođendan!", "Daj mi tortu."],
-            correct: 0,
-            hint: "Čestitamo rođendane.",
-            color: "#DB2777", bgColor: "#FCE7F3",
-        },
-        {
-            id: 30, scene: "🚶",
-            description: "Želiš da prođeš. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Skloni se!", "Izvinite, mogu li da prođem?"],
-            correct: 1,
-            hint: "Budimo kulturni.",
-            color: "#4B5563", bgColor: "#F3F4F6",
-        },
-    ],
-    11: [
-        {
-            id: 31, scene: "🎁",
-            description: "Dobio/la si poklon. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Hvala!", "Neću to."],
-            correct: 0,
-            hint: "Uvek kažemo hvala.",
-            color: "#7C3AED", bgColor: "#EDE9FE",
-        },
-        {
-            id: 32, scene: "👋",
-            description: "Srećeš učiteljicu. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Ćutiš.", "Dobar dan!"],
-            correct: 1,
-            hint: "Starije pozdravljamo.",
-            color: "#0891B2", bgColor: "#E0F2FE",
-        },
-        {
-            id: 33, scene: "😢",
-            description: "Slučajno si gurnuo druga. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Izvini!", "Skloni se."],
-            correct: 0,
-            hint: "Kada pogrešimo, kažemo izvini.",
-            color: "#059669", bgColor: "#D1FAE5",
-        },
-    ],
-    12: [
-        {
-            id: 34, scene: "💧",
-            description: "Želiš vodu. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Daj vodu!", "Molim te, daj mi vodu."],
-            correct: 1,
-            hint: "Koristimo reč molim.",
-            color: "#DC2626", bgColor: "#FEE2E2",
-        },
-        {
-            id: 35, scene: "🧸",
-            description: "Drug ti da igračku. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Hvala ti!", "Baciš je."],
-            correct: 0,
-            hint: "Lepo se zahvalimo.",
-            color: "#D97706", bgColor: "#FEF3C7",
-        },
-        {
-            id: 36, scene: "🏠",
-            description: "Ideš kući. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Doviđenja!", "Samo odeš."],
-            correct: 0,
-            hint: "Uvek se pozdravimo pri prelasku.",
-            color: "#DB2777", bgColor: "#FCE7F3",
-        },
-    ],
-    13: [
-        {
-            id: 37, scene: "😭",
-            description: "Brat plače. Šta uradiš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.", "Pitaš: Jesi li dobro?"],
-            correct: 1,
-            hint: "Brinemo o drugima.",
-            color: "#4B5563", bgColor: "#F3F4F6",
-        },
-        {
-            id: 38, scene: "🍽️",
-            description: "Mama napravi ručak. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Baš je ukusno, hvala!", "Fuj."],
-            correct: 0,
-            hint: "Zahvalimo se za obrok.",
-            color: "#65A30D", bgColor: "#ECFCCB",
-        },
-        {
-            id: 39, scene: "👋",
-            description: "Drug ti kaže zdravo. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Zdravo!", "Gledaš u pod."],
-            correct: 0,
-            hint: "Odgovorimo na pozdrav.",
-            color: "#7C3AED", bgColor: "#EDE9FE",
-        },
-    ],
-    14: [
-        {
-            id: 40, scene: "⚽",
-            description: "Želiš da se igraš sa drugima. Šta pitaš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Mogu li i ja?", "Uzmim im loptu."],
-            correct: 0,
-            hint: "Uvek lepo pitaj.",
-            color: "#0891B2", bgColor: "#E0F2FE",
-        },
-        {
-            id: 41, scene: "✏️",
-            description: "Neko ti uzme olovku. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Vrati to, molim te.", "Udariš ga."],
-            correct: 0,
-            hint: "Budi pristojan.",
-            color: "#059669", bgColor: "#D1FAE5",
-        },
-        {
-            id: 42, scene: "🤕",
-            description: "Prijatelj je pao. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Smeješ se.", "Treba li ti pomoć?"],
-            correct: 1,
-            hint: "Pomažemo u nevolji.",
-            color: "#DC2626", bgColor: "#FEE2E2",
-        },
-    ],
-    15: [
-        {
-            id: 43, scene: "🍦",
-            description: "Kupuješ sladoled. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Molim vas jedan sladoled.", "Daj sladoled!"],
-            correct: 0,
-            hint: "Koristimo reč molim.",
-            color: "#D97706", bgColor: "#FEF3C7",
-        },
-        {
-            id: 44, scene: "🎂",
-            description: "Drug slavi rođendan. Šta mu kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Srećan rođendan!", "Daj mi tortu."],
-            correct: 0,
-            hint: "Čestitamo rođendane.",
-            color: "#DB2777", bgColor: "#FCE7F3",
-        },
-        {
-            id: 45, scene: "🚶",
-            description: "Želiš da prođeš. Šta kažeš?",
-            question: "Šta je najbolje reći?",
-            answers: ["Skloni se!", "Izvinite, mogu li da prođem?"],
-            correct: 1,
-            hint: "Budimo kulturni.",
-            color: "#4B5563", bgColor: "#F3F4F6",
-        },
-    ],
-};
+const ACCENT = getGame("social").accent;
+const MODEL_LABEL = "Primer";
+const LISTENING_TEXT = "Slušamo…";
+const HELPS_TEXT = "To pomaže.";
+const RETRY_TEXT = "Probaj nešto drugo.";
+const HINT_TEXT = "Pogledaj karticu koja svetli.";
+const KIND_LABEL: Record<SituationKind, string> = { polite: "učtivost", advocacy: "zastupanje sebe" };
+const CELEBRATE_MS = 1000;
+/** Poeni prema broju izbora koji manje pomažu pre onog koji pomaže */
+const POINTS = [100, 60, 30];
 
-const ALL_SITUATIONS = Object.values(SITUATIONS_BY_LEVEL).flat();
-
-function getSituationsForLevel(level: number): Situation[] {
-    if (level >= 1 && level <= 15) return SITUATIONS_BY_LEVEL[level] || SITUATIONS_BY_LEVEL[1];
-    return [...ALL_SITUATIONS].sort(() => Math.random() - 0.5).slice(0, 8);
-}
-
-type AnswerState = "idle" | "correct" | "wrong";
-
-export default function SocialCommunicationGame({
-    childId, level, onComplete, onClose, autoStart, isMonitor, monitorState, gender
-}: GameProps) {
-    const situations = getSituationsForLevel(level);
-    const [currentIndex, setCurrentIndex] = useState(monitorState?.currentIndex || 0);
-    const currentSituation = situations[currentIndex];
-    const totalSituations = situations.length;
-    const [score, setScore] = useState(monitorState?.score || 0);
-    const [correctCount, setCorrectCount] = useState(monitorState?.correctCount || 0);
-    const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-    const [answerState, setAnswerState] = useState<AnswerState>("idle");
-    const [hintVisible, setHintVisible] = useState(false);
-    const [isPlaying, setIsPlaying] = useState(isMonitor ? true : autoStart);
-    const [showMoodBefore, setShowMoodBefore] = useState(!isMonitor && !autoStart);
-    const [showMoodAfter, setShowMoodAfter] = useState(false);
-    const [moodBefore, setMoodBefore] = useState<string | null>(null);
-    const [startTime, setStartTime] = useState<number | null>(null);
-    const [completed, setCompleted] = useState(false);
-    const [wrongAttempts, setWrongAttempts] = useState(0);
-    const [totalIncorrect, setTotalIncorrect] = useState(monitorState?.totalIncorrect || 0);
-    const [advancing, setAdvancing] = useState(false); // blocks clicks during auto-advance
-
-    const formatText = (text: string) => {
-        if (!gender) return text;
-        const isFemale = gender.toLowerCase() === 'female';
-        return text
-            .replace(/Dobio\/la/g, isFemale ? 'Dobila' : 'Dobio')
-            .replace(/Slučajno si gurnuo/g, isFemale ? 'Slučajno si gurnula' : 'Slučajno si gurnuo')
-            .replace(/si prepoznao\/la/g, isFemale ? 'si prepoznala' : 'si prepoznao')
-            .replace(/si uradio\/la/g, isFemale ? 'si uradila' : 'si uradio');
-    };
-
-    const [isMuted, setIsMuted] = useState(false);
-    const { emitGameStart, emitGameProgress, emitGameComplete, isConnected } = useGameEmitter();
-    const { speak, stopSpeech } = useSpeech();
-
-    // ── TTS Logic ─────────────────────────────────────────────────────────────
-    useEffect(() => {
-        if (isPlaying && currentSituation && !isMuted && !isMonitor) {
-            const textToSpeak = `${formatText(currentSituation.description)} ${formatText(currentSituation.question)}`;
-            speak(textToSpeak, undefined, undefined, gender);
-        }
-    }, [currentIndex, isPlaying, isMuted, isMonitor, currentSituation, speak, gender]);
-    useEffect(() => {
-        if (isMonitor && monitorState) {
-            // Sync current question index (support both naming conventions)
-            if (monitorState.index !== undefined) setCurrentIndex(monitorState.index);
-            else if (monitorState.currentIndex !== undefined) setCurrentIndex(monitorState.currentIndex);
-
-            // Sync stats
-            if (monitorState.score !== undefined) setScore(monitorState.score);
-            if (monitorState.correctCount !== undefined) setCorrectCount(monitorState.correctCount);
-            if (monitorState.totalIncorrect !== undefined) setTotalIncorrect(monitorState.totalIncorrect);
-
-            // Sync answer UI state
-            if (monitorState.selectedAnswer !== undefined) setSelectedAnswer(monitorState.selectedAnswer);
-            if (monitorState.hintVisible !== undefined) setHintVisible(monitorState.hintVisible);
-            if (monitorState.isPlaying !== undefined) setIsPlaying(monitorState.isPlaying);
-        }
-    }, [isMonitor, monitorState]);
-
-    // Auto-start logic
-    useEffect(() => {
-        if (autoStart && !isMonitor && !isPlaying && currentIndex === 0 && !completed) {
-            handleMoodBeforeSelect("neutral"); // Default mood for auto-start
-        }
-    }, [autoStart, isMonitor, isPlaying, currentIndex, completed]);
-
-    const handleAnswerClick = (index: number) => {
-        if (answerState !== "idle" || isMonitor || advancing) return;
-        stopSpeech();
-        setSelectedAnswer(index);
-
-        if (index === currentSituation.correct) {
-            // Tačno!
-            const points = wrongAttempts === 0 ? 100 : wrongAttempts === 1 ? 60 : 30;
-            const newScore = score + points;
-            const newCorrect = correctCount + 1;
-            setScore(newScore);
-            setCorrectCount(newCorrect);
-            setAnswerState("correct");
-            setHintVisible(false);
-            setAdvancing(true);  // block further clicks
-
-            emitGameProgress({
-                childId, activityId: 6, gameType: "social" as any, event: "answer",
-                data: {
-                    correct: true,
-                    situationId: currentSituation.id,
-                    score: newScore,
-                    correctCount: newCorrect,
-                    totalIncorrect,
-                    index: currentIndex,
-                    level,
-                    totalSituations,
-                    selectedAnswer: index,
-                    answerState: "correct"
-                },
-                timestamp: new Date().toISOString(),
-            });
-
-            setTimeout(() => {
-                if (currentIndex + 1 >= totalSituations) {
-                    finishGame(newScore, newCorrect);
-                } else {
-                    const nextIndex = currentIndex + 1;
-                    setCurrentIndex(nextIndex);
-                    setSelectedAnswer(null);
-                    setAnswerState("idle");
-                    setHintVisible(false);
-                    setWrongAttempts(0);
-                    setAdvancing(false);
-
-                    // Sync index change to monitor immediately
-                    emitGameProgress({
-                        childId, activityId: 6, gameType: "social" as any, event: "next_question",
-                        data: {
-                            index: nextIndex,
-                            score: newScore,
-                            correctCount: newCorrect,
-                            totalIncorrect,
-                            selectedAnswer: null,
-                            answerState: "idle",
-                            hintVisible: false
-                        },
-                        timestamp: new Date().toISOString(),
-                    });
-                }
-            }, 1500);
-
-        } else {
-            // Netačno
-            setAnswerState("wrong");
-            setWrongAttempts((prev: number) => prev + 1);
-            const newTotalIncorrect = totalIncorrect + 1;
-            setTotalIncorrect(newTotalIncorrect);
-
-            // Šaljemo monitoru da je došlo do greške (sa vizuelnim stanjem)
-            emitGameProgress({
-                childId, activityId: 6, gameType: "social" as any, event: "answer",
-                data: {
-                    correct: false,
-                    situationId: currentSituation.id,
-                    score,
-                    totalIncorrect: newTotalIncorrect,
-                    index: currentIndex,
-                    level,
-                    selectedAnswer: index,
-                    answerState: "wrong"
-                },
-                timestamp: new Date().toISOString(),
-            });
-
-            setTimeout(() => {
-                setSelectedAnswer(null);
-                setAnswerState("idle");
-
-                // Resetuj vizuelno stanje na monitoru nakon što istekne timeout za grešku
-                emitGameProgress({
-                    childId, activityId: 6, gameType: "social" as any, event: "reset_answer",
-                    data: {
-                        selectedAnswer: null,
-                        answerState: "idle",
-                        index: currentIndex
-                    },
-                    timestamp: new Date().toISOString(),
-                });
-            }, 1200);
-        }
-    };
-
-    const finishGame = (finalScore: number, finalCorrect: number) => {
-        setCompleted(true);
-        setIsPlaying(false);
-        emitGameComplete({
-            childId, activityId: 6, gameType: "social" as any, event: "completed",
-            data: { finalScore, correctCount: finalCorrect, totalIncorrect, totalSituations },
-            timestamp: new Date().toISOString(),
+/** Situacije nivoa kao zadaci. `randomize` meša redosled ponuđenih izbora. */
+function buildRounds(level: number, choiceLimit: number, maxRounds: number, randomize: boolean): Round[] {
+    // Zastupanje sebe je drugo u nizu, pa ostaje u nivou i kad je on skraćen; tek onda se
+    // redosled meša, da isti nivo ne počinje uvek istom situacijom
+    const picked = getSituationsForLevel(level).slice(0, Math.max(maxRounds, 1));
+    return (randomize ? shuffle(picked) : picked)
+        .map((situation) => {
+            const offered = offeredOptions(situation, choiceLimit);
+            return { situationId: situation.id, order: randomize ? shuffle(offered) : offered };
         });
+}
 
-        if (autoStart) {
-            handleMoodAfterSelect("neutral"); // Default mood for auto-transition
-        } else {
-            setTimeout(() => setShowMoodAfter(true), 1000);
+function initialView(rounds: Round[]): SocialView {
+    return {
+        score: 0,
+        correctCount: 0,
+        incorrectCount: 0,
+        round: 1,
+        totalRounds: rounds.length,
+        situationId: rounds[0].situationId,
+        order: rounds[0].order,
+        optionsShown: false,
+        tried: [],
+        picked: null,
+        hint: false,
+        promptedCount: 0,
+        finished: false,
+    };
+}
+
+/** Stanje sa monitora može biti prazno ili nepotpuno — sve što fali ili nema smisla menja se podrazumevanim. */
+function mergeMonitorView(fallback: SocialView, state: Partial<SocialView> | null | undefined): SocialView {
+    if (!state) return fallback;
+    const situation = typeof state.situationId === "number" ? getSituation(state.situationId) : undefined;
+    const order = situation ? toIndexList(state.order, situation.options.length) : [];
+    const board = situation && order.some((i) => situation.acceptable.includes(i)) ? situation : undefined;
+    const totalRounds = Math.max(toCount(state.totalRounds, fallback.totalRounds), 1);
+    const picked = board && typeof state.picked === "number" && order.includes(state.picked) && board.acceptable.includes(state.picked) ? state.picked : null;
+    return {
+        score: toCount(state.score, 0),
+        correctCount: toCount(state.correctCount, 0),
+        incorrectCount: toCount(state.incorrectCount, 0),
+        round: Math.min(Math.max(toCount(state.round, 1), 1), totalRounds),
+        totalRounds,
+        situationId: board ? board.id : fallback.situationId,
+        order: board ? order : fallback.order,
+        optionsShown: Boolean(board) && state.optionsShown === true,
+        tried: board ? toIndexList(state.tried, board.options.length).filter((i) => order.includes(i) && !board.acceptable.includes(i)) : [],
+        picked,
+        hint: Boolean(board) && state.hint === true,
+        promptedCount: toCount(state.promptedCount, 0),
+        finished: state.finished === true,
+    };
+}
+
+/** Svetli samo jedna kartica: prvi prikazani izbor koji pomaže. */
+function hintTarget(view: SocialView, situation: SocialSituation): number | null {
+    if (!view.hint || view.picked !== null) return null;
+    return view.order.find((i) => situation.acceptable.includes(i)) ?? null;
+}
+
+/** Nijedna kartica se ne boji kao „pogrešna”: probani izbori se samo utišaju. */
+function choiceState(index: number, view: SocialView, situation: SocialSituation): ChoiceState {
+    if (view.picked !== null) {
+        if (index === view.picked) return "correct";
+        return situation.acceptable.includes(index) ? "idle" : "dimmed";
+    }
+    if (view.tried.includes(index)) return "dimmed";
+    return index === hintTarget(view, situation) ? "hint" : "idle";
+}
+
+/** Tekst izbora za prikaz i dnevnik: rečenice stoje pod navodnicima. */
+function optionLabel(option: SocialOption, female: boolean): string {
+    const text = genderText(option.text, female);
+    return option.type === "say" ? `„${text}”` : text;
+}
+
+/** Rečenica za ponavljanje: ona koju je dete izabralo ili, uz radnju, rečenica iz primera. */
+function echoLine(situation: SocialSituation, picked: number, female: boolean): string {
+    const option = situation.options[picked];
+    if (option.type === "say") return `Možeš da kažeš: ${optionLabel(option, female)}`;
+    return `Možeš i da kažeš: „${genderText(situation.script, female)}”`;
+}
+
+/** Uz izabranu rečenicu: drugi ponuđeni izbor koji isto pomaže. */
+function alsoLine(situation: SocialSituation, picked: number, order: number[], female: boolean): string | null {
+    if (situation.options[picked].type !== "say") return null;
+    const others = order.filter((i) => i !== picked && situation.acceptable.includes(i));
+    if (others.length === 0) return null;
+    return `I ovo pomaže: ${others.map((i) => optionLabel(situation.options[i], female)).join(" ")}`;
+}
+
+function explanationSpeech(situation: SocialSituation, picked: number, order: number[], female: boolean): string {
+    const parts = [genderText(situation.options[picked].note, female), echoLine(situation, picked, female), alsoLine(situation, picked, order, female)];
+    return parts.filter(Boolean).join(" ");
+}
+
+// ── Igra ──────────────────────────────────────────────────────────────────────
+
+export default function SocialCommunicationGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<SocialView>) {
+    // Namerno bez `isFemale` iz kita: `female` je zavisnost više `useCallback` funkcija, a React Compiler lint
+    // (preserve-manual-memoization) samo za poređenje napisano ovde zna da je vrednost primitivna.
+    const female = gender?.toLowerCase() === "female";
+    const settings = useChildSettings();
+    const hintAfter = settings.hintAfter;
+    // Najmlađima se izbori pročitaju sami, jednom; ostali ih čuju na dodir zvučnika
+    const readOptionsAloud = settings.activeBand === "young";
+    const guard = useInputGuard();
+    const sync = useGameSync<SocialView>({ childId, gameId: "social", level, isMonitor });
+    const { say, stop } = useSpeech(gender);
+    const { sayAll, cancel: cancelSpeechQueue } = useSayAll(say);
+
+    // Komponenta se za svaki nivo pravi iznova, pa se izbori biraju i mešaju samo jednom, ovde.
+    const [rounds] = useState(() => buildRounds(level, settings.choiceLimit, settings.preset.maxRounds, !isMonitor));
+    const [view, setView] = useState(() => initialView(rounds));
+    const viewRef = useRef(view);
+    const praise = usePraise();
+    const finishTimer = useRef<number | null>(null);
+    const startedRef = useRef(false);
+    const completedRef = useRef(false);
+    const nextButtonRef = useRef<HTMLButtonElement>(null);
+
+    // Monitor se ne pravi iznova kad se nivo promeni, pa podrazumevano stanje prati `level`.
+    // Dok stanje ne stigne, monitor vidi celu prvu situaciju (primer, pitanje i izbore).
+    const fallbackView = useMemo(() => ({ ...initialView(buildRounds(level, Infinity, Infinity, false)), optionsShown: true }), [level]);
+    const shown = isMonitor ? mergeMonitorView(fallbackView, monitorState) : view;
+    const situation = getSituation(shown.situationId) ?? getSituationsForLevel(level)[0];
+    const lastTried = shown.tried.length > 0 ? shown.tried[shown.tried.length - 1] : null;
+    const feedback: FeedbackKind = shown.picked !== null ? "correct" : lastTried !== null ? "wrong" : null;
+
+    const commit = useCallback(
+        (next: SocialView, log?: string) => {
+            viewRef.current = next;
+            setView(next);
+            sync.update(next, log);
+        },
+        [sync]
+    );
+
+    const revealOptions = useCallback(() => {
+        const current = viewRef.current;
+        if (current.optionsShown || current.finished) return;
+        guard.hold();
+        commit({ ...current, optionsShown: true });
+    }, [commit, guard]);
+
+    const speakQuestion = useCallback(() => {
+        const current = viewRef.current;
+        const target = getSituation(current.situationId);
+        if (!target) return;
+        const question = `${genderText(target.text, female)} ${target.ask}`;
+        const options = readOptionsAloud ? current.order.map((i) => genderText(target.options[i].text, female)) : [];
+        sayAll([question, ...options]);
+    }, [sayAll, female, readOptionsAloud]);
+
+    /** Primer se čita prvi; tek kad se završi, pojavljuju se pitanje i izbori. */
+    const present = useCallback(() => {
+        const target = getSituation(viewRef.current.situationId);
+        if (!target) return;
+        sayAll([genderText(target.model, female)], () => {
+            revealOptions();
+            speakQuestion();
+        });
+    }, [sayAll, revealOptions, speakQuestion, female]);
+
+    useEffect(() => {
+        if (isMonitor || startedRef.current) return;
+        startedRef.current = true;
+        sync.start(viewRef.current);
+    }, [isMonitor, sync]);
+
+    useEffect(
+        () => () => {
+            if (finishTimer.current !== null) window.clearTimeout(finishTimer.current);
+        },
+        []
+    );
+
+    // Svaka nova situacija: primer se pročita naglas, pa se pojave izbori (najkasnije posle LISTEN_MAX_MS)
+    useListenGate(!isMonitor, view.round, present, revealOptions);
+
+    // Posle izbora koji pomaže fokus ide na „Dalje” (tastatura, čitači ekrana, mali ekrani)
+    useEffect(() => {
+        if (!isMonitor && view.picked !== null && !view.finished) nextButtonRef.current?.focus();
+    }, [isMonitor, view.picked, view.finished]);
+
+    // Pomoć posle čekanja: izbor koji pomaže blago zasvetli kad dete dugo ništa ne dodirne
+    useWaitHint(!isMonitor && settings.waitHint && view.optionsShown, `${view.round}:${view.optionsShown}`, () => {
+        const current = viewRef.current;
+        if (current.hint || current.picked !== null || current.finished || !current.optionsShown) return;
+        if (level === 1 && current.round === 1 && current.tried.length === 0) return; // tu pokazuje ruka
+        commit({ ...current, hint: true }, "Pomoć posle čekanja");
+    });
+
+    const handleRepeat = () => {
+        const current = viewRef.current;
+        const target = getSituation(current.situationId);
+        if (!target || current.finished) return;
+        if (current.picked !== null) sayAll([explanationSpeech(target, current.picked, current.order, female)]);
+        else present();
+    };
+
+    const handleSpeakOption = (index: number) => {
+        const target = getSituation(viewRef.current.situationId);
+        if (target) sayAll([genderText(target.options[index].text, female)]);
+    };
+
+    const handlePick = (index: number) => {
+        if (isMonitor || guard.blocked()) return;
+        const current = viewRef.current;
+        if (!current.optionsShown || current.picked !== null || current.finished || current.tried.includes(index)) return;
+        const target = getSituation(current.situationId);
+        if (!target) return;
+        const option = target.options[index];
+        const label = optionLabel(option, female);
+
+        if (target.acceptable.includes(index)) {
+            const attempt = current.tried.length + 1;
+            // Situacija koju je pokazala ruka (prva u prvom nivou) je pokazivanje, a ne zadatak: ne boduje se
+            const modeled = level === 1 && current.round === 1 && attempt === 1;
+            const next: SocialView = {
+                ...current,
+                picked: index,
+                score: current.score + POINTS[Math.min(current.tried.length, POINTS.length - 1)],
+                correctCount: current.correctCount + (attempt === 1 && !modeled && !current.hint ? 1 : 0),
+                promptedCount: current.promptedCount + (current.hint ? 1 : 0),
+            };
+            const how = attempt === 1 ? (current.hint ? " uz pomoć" : "") : ` iz ${attempt}. pokušaja${current.hint ? ", uz pomoć" : ""}`;
+            commit(next, `Izbor koji pomaže${how}: ${label}`);
+            playSfx("correct");
+            // Drugi dodir dvostrukog dodira ne sme da pritisne „Dalje” i preskoči objašnjenje
+            guard.hold();
+            sayAll([praise(explanationSpeech(target, index, current.order, female), attempt === 1 && !current.hint && !modeled)], undefined, "happy");
+            return;
         }
+
+        const tried = [...current.tried, index];
+        const lessHelpfulOffered = current.order.filter((i) => !target.acceptable.includes(i)).length;
+        const hint = current.hint || hintDue(hintAfter, tried.length, lessHelpfulOffered);
+        const next: SocialView = { ...current, tried, hint, incorrectCount: current.incorrectCount + 1 };
+        commit(next, `Izbor koji manje pomaže: ${label}${hint && !current.hint ? " (prikazana pomoć)" : ""}`);
+        playSfx("tap");
+        sayAll([`${genderText(option.note, female)} ${hint ? HINT_TEXT : RETRY_TEXT}`], undefined, "gentle");
     };
 
-    const handleMoodBeforeSelect = (mood: string) => {
-        setMoodBefore(mood);
-        setShowMoodBefore(false);
-        setIsPlaying(true);
-        setStartTime(Date.now());
-        setCurrentIndex(0);
-        setScore(0);
-        setCorrectCount(0);
-        setCompleted(false);
-        setAnswerState("idle");
-        setSelectedAnswer(null);
-        setWrongAttempts(0);
-        setTotalIncorrect(0);
-        setAdvancing(false);
-        emitGameStart(childId, 6, "social" as any, { level, isPlaying: true });
+    const handleNext = () => {
+        if (isMonitor || guard.blocked()) return;
+        const current = viewRef.current;
+        if (current.picked === null || current.finished || completedRef.current) return;
+        cancelSpeechQueue();
+        stop();
+
+        if (current.round >= rounds.length) {
+            // Kraj nivoa: kratka pauza, pa rezultat ide roditeljskom okviru tačno jednom.
+            // Zvezdice: total = broj situacija, correct = situacije u kojima je prvi izbor pomogao.
+            completedRef.current = true;
+            const done: SocialView = { ...current, finished: true };
+            commit(done, `Nivo završen: ${done.correctCount} od ${done.totalRounds} iz prvog izbora, ${done.promptedCount} uz pomoć`);
+            finishTimer.current = window.setTimeout(() => {
+                finishTimer.current = null;
+                sync.complete(done);
+                onComplete({
+                    score: done.score,
+                    durationSec: sync.elapsedSec(),
+                    correct: done.correctCount,
+                    total: Math.max(done.totalRounds - demoRounds(level, done.totalRounds), 1),
+                    prompted: done.promptedCount,
+                });
+            }, CELEBRATE_MS);
+            return;
+        }
+
+        const upcoming = rounds[current.round];
+        const kind = getSituation(upcoming.situationId)?.kind;
+        const next: SocialView = {
+            ...current,
+            round: current.round + 1,
+            situationId: upcoming.situationId,
+            order: upcoming.order,
+            optionsShown: false,
+            tried: [],
+            picked: null,
+            hint: false,
+        };
+        commit(next, `Situacija ${next.round} od ${next.totalRounds}${kind ? ` (${KIND_LABEL[kind]})` : ""}`);
+        playSfx("tap");
     };
 
-    const handleMoodAfterSelect = (mood: string) => {
-        setShowMoodAfter(false);
-        const duration = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
-        onComplete(score, duration, moodBefore, mood, { correct: correctCount, total: correctCount + totalIncorrect });
-    };
+    const triedOption = shown.picked === null && lastTried !== null ? situation.options[lastTried] : null;
+    const also = shown.picked !== null ? alsoLine(situation, shown.picked, shown.order, female) : null;
 
-    const moodList = [
-        { emoji: "😢", label: "Loše", value: "very_upset" },
-        { emoji: "😕", label: "Nije sjajno", value: "upset" },
-        { emoji: "😐", label: "Okej", value: "neutral" },
-        { emoji: "😊", label: "Dobro", value: "happy" },
-        { emoji: "😄", label: "Super", value: "very_happy" },
-    ];
-
-    // ── Mood Before — Premium Immersive Design ────────────────
-    if (!isMonitor && showMoodBefore) {
-        return (
-            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 sm:p-10 overflow-hidden text-center">
-                {/* Background Decor */}
-                <div className="absolute inset-0 bg-slate-50">
-                    <div
-                        className="absolute inset-0 bg-cover bg-center opacity-20 blur-xl scale-110"
-                        style={{ backgroundImage: "url('/images/ustacomunicira.png')" }}
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-white/80 to-purple-600/10 backdrop-blur-3xl" />
-                </div>
-
-                <div className="relative z-10 w-full max-w-4xl flex flex-col items-center">
-                    {onClose && (
-                        <button
-                            onClick={onClose}
-                            className="fixed top-6 left-6 flex items-center gap-2 px-4 py-2 rounded-full bg-white text-slate-500 hover:text-indigo-600 font-black text-xs uppercase tracking-widest shadow-lg border border-slate-100 transition-all hover:-translate-x-1 active:scale-95 z-[110]"
-                        >
-                            <span>⬅</span> Nazad
-                        </button>
-                    )}
-                    <div className="text-center mb-6 sm:mb-10 animate-in fade-in slide-in-from-top-10 duration-700">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm border border-slate-100 text-indigo-600 text-[10px] sm:text-xs font-black uppercase tracking-widest mb-4">
-                            ✨ Raspoloženje
-                        </div>
-                        <h2 className="text-3xl sm:text-5xl font-black text-slate-900 tracking-tight leading-tight mb-2">
-                            Kako si danas?
-                        </h2>
-                        <p className="text-slate-500 text-base sm:text-xl font-bold italic">Izaberi sličicu koja te opisuje</p>
-                    </div>
-
-                    <div className="flex flex-wrap justify-center gap-3 sm:gap-6 w-full max-w-4xl px-4">
-                        {[
-                            { emoji: "😢", label: "Tužno", color: "from-blue-400 to-indigo-500", value: "very_upset" },
-                            { emoji: "😕", label: "Umorno", color: "from-slate-400 to-slate-500", value: "upset" },
-                            { emoji: "😐", label: "Okej", color: "from-emerald-400 to-teal-500", value: "neutral" },
-                            { emoji: "😊", label: "Dobro", color: "from-amber-400 to-orange-500", value: "happy" },
-                            { emoji: "😄", label: "Super!", color: "from-pink-400 to-rose-500", value: "very_happy" },
-                        ].map((mood, idx) => (
-                            <button
-                                key={mood.value}
-                                onClick={() => handleMoodBeforeSelect(mood.value)}
-                                className="group relative flex flex-col items-center bg-white rounded-2xl p-4 sm:p-6 transition-all duration-300 hover:scale-105 hover:-translate-y-2 cursor-pointer shadow-lg border border-slate-100 hover:border-indigo-100 animate-in zoom-in-95 duration-500"
-                                style={{ animationDelay: `${idx * 100}ms` }}
-                            >
-                                <div className={`absolute inset-0 bg-gradient-to-br ${mood.color} opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300`} />
-                                <div className="w-16 h-16 sm:w-24 sm:h-24 mb-3 sm:mb-4 flex items-center justify-center text-5xl sm:text-7xl transform group-hover:scale-110 transition-transform duration-500">
-                                    {mood.emoji}
-                                </div>
-                                <span className="text-sm sm:text-lg font-black text-slate-800 tracking-tight uppercase group-hover:text-indigo-600 transition-colors">{mood.label}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (!isMonitor && showMoodAfter) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[450px] w-full bg-gradient-to-br from-emerald-50 via-white to-teal-50 rounded-[2rem] md:rounded-[3rem] p-4 sm:p-6 md:p-10 shadow-2xl animate-in fade-in duration-500 overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-
-                <div className="text-center mb-6 md:mb-12 relative z-10">
-                    <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-600 text-[10px] md:text-sm font-black uppercase tracking-widest mb-3 md:mb-4 inline-block">Igra je završena!</span>
-                    <h2 className="text-2xl sm:text-3xl md:text-5xl font-black text-slate-900 tracking-tight mb-2 md:mb-4">Bravo! Kako si sada? 🌟</h2>
-                    <p className="text-sm sm:text-base md:text-xl text-slate-500 font-medium tracking-wide">
-                        Rezultat: <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">{score} poena</span>.
-                    </p>
-                </div>
-
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-3 sm:gap-4 md:gap-6 w-full max-w-4xl px-2 relative z-10">
-                    {moodList.map(mood => (
-                        <button
-                            key={mood.value}
-                            onClick={() => handleMoodAfterSelect(mood.value)}
-                            className="group relative flex flex-col items-center bg-white rounded-2xl md:rounded-[2.5rem] p-3 sm:p-4 md:p-6 transition-all duration-300 hover:scale-105 hover:shadow-xl border border-slate-100 active:scale-95"
-                        >
-                            <div className={`absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 opacity-0 group-hover:opacity-100 rounded-2xl md:rounded-[2.5rem] transition-opacity`}></div>
-                            <span className="text-4xl sm:text-5xl md:text-6xl mb-1 sm:mb-2 md:mb-3 transform group-hover:scale-110 transition-transform duration-300 select-none">{mood.emoji}</span>
-                            <span className="text-[10px] sm:text-sm md:text-base font-black text-slate-700 truncate w-full px-1">{mood.label}</span>
-                        </button>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    // Start screen removed for faster gameplay
-
-    // ─── END SCREEN ───────────────────────────────────────────────────────────────
-    if (completed && !showMoodAfter) {
-        const pct = Math.round((correctCount / totalSituations) * 100);
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[600px] w-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 rounded-[3rem] p-12 shadow-2xl animate-in fade-in zoom-in duration-500">
-                <div className="text-center space-y-8 max-w-2xl mx-auto">
-                    <div className="relative inline-block mb-8">
-                        <div className="absolute inset-0 bg-yellow-400 rounded-full blur-3xl opacity-20 animate-pulse"></div>
-                        <div className="relative text-9xl animate-bounce drop-shadow-2xl">🏆</div>
-                    </div>
-
-                    <div>
-                        <span className="px-6 py-2 rounded-full bg-indigo-100 text-indigo-600 text-xs font-black uppercase tracking-widest mb-4 inline-block">Sjajan uspeh!</span>
-                        <h2 className="text-5xl font-black text-slate-900 tracking-tight">Fantastično si {gender?.toLowerCase() === 'female' ? 'uradila' : 'uradio'}!</h2>
-                    </div>
-
-                    <p className="text-2xl font-bold text-slate-600 italic leading-relaxed">
-                        Tvoj rezultat je <span className="text-indigo-600 underline underline-offset-8 decoration-4">{score} poena</span>
-                    </p>
-
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-end mb-2 px-2">
-                            <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Tačnost</span>
-                            <span className="text-2xl font-black text-indigo-600">{pct}%</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-8 p-1.5 shadow-inner ring-1 ring-slate-200">
-                            <div
-                                className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-full transition-all duration-1500 shadow-lg relative overflow-hidden"
-                                style={{ width: `${pct}%` }}
-                            >
-                                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-center gap-6 pt-10">
-                        {Array.from({ length: 3 }).map((_, i) => (
-                            <div
-                                key={i}
-                                className={`text-6xl transition-all duration-700 delay-${i * 200} ${i * 33 < pct ? 'scale-125 opacity-100 rotate-12' : 'scale-50 opacity-20'}`}
-                            >
-                                ⭐
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // ─── GAME SCREEN ──────────────────────────────────────────────────────────────
-    if (!currentSituation) return null; // Guard clause for when currentSituation is not available
     return (
-        <div className="bg-white/95 backdrop-blur-xl rounded-[1.5rem] sm:rounded-2xl md:rounded-[3rem] p-3 sm:p-5 md:p-8 shadow-2xl border border-white/50 w-full max-w-5xl mx-auto flex-1 flex flex-col animate-in fade-in duration-700 relative overflow-hidden">
-            {/* Background glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-indigo-500/5 pointer-events-none"></div>
+        <GameStage width="narrow">
+            <GameHud
+                round={shown.round}
+                totalRounds={shown.totalRounds}
+                score={isMonitor || settings.preset.showPoints ? shown.score : undefined}
+                unit="Zadatak"
+                onSpeak={isMonitor ? undefined : handleRepeat}
+            />
 
-            {/* Compact Header Area */}
-            <div className="flex justify-between items-center mb-4 sm:mb-6 md:mb-8 bg-gradient-to-r from-violet-50/50 to-white rounded-2xl md:rounded-[2.5rem] px-3 py-2 sm:px-6 sm:py-3 md:px-8 md:py-5 shadow-xl relative overflow-hidden ring-1 ring-violet-100/50 shrink-0">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
-
-                <div className="flex items-center gap-2 sm:gap-3 md:gap-6 relative z-10">
-                    <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-lg sm:rounded-xl bg-white shadow-md flex items-center justify-center text-lg sm:text-xl md:text-2xl ring-2 sm:ring-4 ring-violet-50 border border-violet-100 transform -rotate-3 transition-transform">
-                        🗣️
-                    </div>
-                    <div className="hidden sm:block">
-                        <h3 className="text-sm sm:text-base md:text-xl font-black text-slate-800 tracking-wide uppercase leading-tight">Bon-Ton</h3>
-                    </div>
+            <section
+                key={situation.id}
+                aria-label={MODEL_LABEL}
+                className={cn("flex animate-fade-up items-center gap-3 rounded-card border-2 p-4 shadow-soft sm:gap-4 sm:p-5", ACCENT.soft, ACCENT.border)}
+            >
+                <span aria-hidden="true" className="text-4xl leading-none sm:text-5xl">
+                    💬
+                </span>
+                <div className="min-w-0 flex-1">
+                    <p className={cn("text-sm font-extrabold sm:text-base", ACCENT.text)}>{MODEL_LABEL}</p>
+                    <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{genderText(situation.model, female)}</p>
                 </div>
+            </section>
 
-                <div className="flex items-center gap-2 sm:gap-3 md:gap-6 relative z-10 shrink-0">
-                    <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-lg sm:rounded-xl md:rounded-2xl px-2 py-1 sm:px-4 sm:py-2 md:px-6 md:py-2.5 border border-violet-100/50 text-center min-w-[60px] sm:min-w-[80px] md:min-w-[100px]">
-                        <span className="block text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Igra</span>
-                        <span className="text-sm sm:text-lg md:text-2xl font-black text-violet-500">{currentIndex + 1}<span className="text-slate-400 text-[10px] sm:text-xs md:text-lg mx-0.5 md:mx-1">/</span>{totalSituations}</span>
-                    </div>
+            {!shown.optionsShown && (
+                <p role="status" className="flex min-h-12 items-center justify-center gap-2 text-lg font-extrabold text-ink-soft">
+                    <span aria-hidden="true">👂</span>
+                    {LISTENING_TEXT}
+                </p>
+            )}
 
-                    <div className="bg-white/80 backdrop-blur-sm shadow-sm rounded-lg sm:rounded-xl md:rounded-2xl px-2 py-1 sm:px-4 sm:py-2 md:px-6 md:py-2.5 border border-violet-100/50 text-center min-w-[60px] sm:min-w-[80px] md:min-w-[100px]">
-                        <span className="block text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Poena</span>
-                        <span className="text-sm sm:text-lg md:text-2xl font-black text-emerald-500">{score}</span>
-                    </div>
-                </div>
-            </div>
+            {shown.optionsShown && (
+                <>
+                    <GamePrompt
+                        key={`prompt-${situation.id}`}
+                        className="animate-fade"
+                        visual={<span aria-hidden="true">{situation.scene}</span>}
+                        title={genderText(situation.text, female)}
+                        subtitle={situation.ask}
+                    />
 
-            <div className="flex-1 flex flex-col gap-4 sm:gap-6 md:gap-8 min-h-0 relative z-10 overflow-y-auto custom-scrollbar pr-1">
-                {/* Situation Display */}
-                <div
-                    className="relative group bg-white rounded-[1.25rem] sm:rounded-2xl md:rounded-[2.5rem] p-4 sm:p-6 md:p-10 shadow-xl border-2 transition-all duration-700 shrink-0"
-                    style={{ borderColor: `${currentSituation.color}20` }}
-                >
-                    <div
-                        className="absolute inset-x-0 bottom-0 h-1 sm:h-1.5 rounded-b-[1.25rem] sm:rounded-b-2xl md:rounded-b-[2.5rem]"
-                        style={{ backgroundColor: currentSituation.color }}
-                    ></div>
-
-                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 md:gap-10">
-                        <div
-                            className="relative w-20 h-20 sm:w-32 sm:h-32 md:w-44 md:h-44 rounded-xl sm:rounded-2xl md:rounded-[2.5rem] shadow-lg flex items-center justify-center text-3xl sm:text-6xl md:text-8xl transform transition-transform duration-700 shrink-0 ring-2 sm:ring-4 md:ring-6 ring-slate-50"
-                            style={{ backgroundColor: currentSituation.bgColor }}
-                        >
-                            {currentSituation.scene}
-                        </div>
-
-                        <div className="flex-1 text-center sm:text-left space-y-2 sm:space-y-4">
-                            <div className="space-y-0.5 sm:space-y-1">
-                                <span className="text-[7px] sm:text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">Situacija</span>
-                                <h4 className="text-sm sm:text-xl md:text-3xl font-black text-slate-800 leading-tight">
-                                    {formatText(currentSituation.description)}
-                                </h4>
-                            </div>
-
-                            <div
-                                className="inline-flex items-center gap-2 md:gap-3 px-3 py-1 sm:px-5 sm:py-2.5 md:px-6 md:py-3 rounded-lg sm:rounded-xl md:rounded-[1.5rem] text-[10px] sm:text-sm md:text-lg font-black shadow-inner ring-1 ring-slate-100 max-w-full"
-                                style={{ backgroundColor: `${currentSituation.color}08`, color: currentSituation.color }}
-                            >
-                                <span className="text-sm sm:text-xl">💬</span>
-                                <span className="truncate sm:whitespace-normal">{formatText(currentSituation.question)}</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {hintVisible && (
-                        <div className="mt-3 sm:mt-4 md:mt-6 p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl md:rounded-3xl bg-slate-900 text-white animate-in slide-in-from-top-4 duration-500 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                            <p className="relative z-10 flex items-start gap-2 sm:gap-4 text-xs sm:text-sm md:text-lg font-medium">
-                                <span className="text-base sm:text-xl shrink-0">💡</span>
-                                {currentSituation.hint}
-                            </p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Answers Grid */}
-                <div className="space-y-2 sm:space-y-3 md:space-y-4 max-w-4xl mx-auto w-full pb-2">
-                    {currentSituation.answers.map((answer, i) => {
-                        const isSelected = selectedAnswer === i;
-                        const state = isSelected
-                            ? (answerState === "correct" ? "correct" : (answerState === "wrong" ? "wrong" : "idle"))
-                            : "idle";
-
-                        return (
-                            <button
-                                key={i}
-                                onClick={() => handleAnswerClick(i)}
-                                disabled={answerState === "correct" || advancing}
-                                className={`group w-full relative p-3 sm:p-5 md:p-6 rounded-xl sm:rounded-2xl md:rounded-[2rem] text-left transition-all duration-300 border shadow-sm transform active:scale-[0.98] ${state === "correct"
-                                    ? "bg-emerald-50 border-emerald-400 shadow-xl ring-4 ring-emerald-50 z-20"
-                                    : state === "wrong"
-                                        ? "bg-rose-50 border-rose-200 opacity-60 animate-shake"
-                                        : advancing
-                                            ? "bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed"
-                                            : "bg-white border-slate-100 hover:border-violet-200 hover:shadow-xl hover:-translate-y-0.5 sm:hover:-translate-y-1"
-                                    }`}
-                            >
-                                <div className="flex items-center gap-3 sm:gap-4 md:gap-6">
-                                    <div
-                                        className={`w-7 h-7 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center font-black text-sm sm:text-lg md:text-xl transition-colors duration-300 flex-shrink-0 ${state === "correct"
-                                            ? "bg-emerald-500 text-white"
-                                            : state === "wrong"
-                                                ? "bg-rose-500 text-white"
-                                                : "bg-slate-50 text-slate-400 group-hover:bg-violet-100 group-hover:text-violet-600 border border-slate-100"
-                                            }`}
+                    <ul key={`options-${shown.round}`} aria-label="Ponuđeni izbori" className="grid animate-fade gap-3">
+                        {shown.order.map((index) => {
+                            const firstHelpful = shown.order.find((i) => situation.acceptable.includes(i));
+                            const showHand = !isMonitor && level === 1 && shown.round === 1 && shown.optionsShown && shown.picked === null && shown.tried.length === 0;
+                            const option = situation.options[index];
+                            const label = optionLabel(option, female);
+                            const state = choiceState(index, shown, situation);
+                            const inactive = shown.picked !== null || shown.finished || shown.tried.includes(index);
+                            const status = state === "correct" ? " To pomaže." : shown.tried.includes(index) ? " Već probano." : "";
+                            return (
+                                <li key={index} className="flex items-stretch gap-2">
+                                    <ChoiceCard
+                                        state={state}
+                                        disabled={isMonitor}
+                                        aria-disabled={inactive || undefined}
+                                        aria-label={`${label}${status}`}
+                                        onClick={() => handlePick(index)}
+                                        className={cn("min-w-0 flex-1", inactive && "cursor-default")}
                                     >
-                                        {String.fromCharCode(65 + i)}
-                                    </div>
-                                    <span className={`text-xs sm:text-base md:text-lg font-bold transition-colors leading-snug ${state === "correct" ? "text-emerald-900" :
-                                        state === "wrong" ? "text-rose-900" : "text-slate-700 font-bold"
-                                        }`}>
-                                        {answer}
-                                    </span>
+                                        <span className="flex w-full items-center gap-3 text-left sm:gap-4">
+                                            <span
+                                                aria-hidden="true"
+                                                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 text-3xl leading-none sm:h-14 sm:w-14 sm:text-4xl"
+                                            >
+                                                {option.emoji}
+                                            </span>
+                                            <span className="min-w-0 flex-1 text-lg leading-snug sm:text-xl">{label}</span>
+                                        </span>
+                                        {showHand && index === firstHelpful && <DemoHand />}
+                                    </ChoiceCard>
+                                    {!isMonitor && <OptionSpeaker label={`Pročitaj: ${label}`} onClick={() => handleSpeakOption(index)} />}
+                                </li>
+                            );
+                        })}
+                    </ul>
 
-                                    {state === "correct" && (
-                                        <div className="ml-auto w-5 h-5 sm:w-8 sm:h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg animate-bounce shrink-0">
-                                            <span className="text-[10px] sm:text-base font-bold">✓</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
+                    <Feedback kind={feedback} correctText={HELPS_TEXT} wrongText={shown.hint ? HINT_TEXT : RETRY_TEXT} />
 
-            <div className="mt-auto pt-3 flex justify-between items-center text-[8px] sm:text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest opacity-60 shrink-0">
-                <p className="truncate mr-2">💡 Misli o osećanjima drugih.</p>
-                {!hintVisible && !advancing && wrongAttempts > 0 && (
-                    <button
-                        onClick={() => {
-                            setHintVisible(true);
-                            emitGameProgress({
-                                childId, activityId: 6, gameType: "social" as any, event: "hint",
-                                data: { hintVisible: true, index: currentIndex },
-                                timestamp: new Date().toISOString(),
-                            });
-                        }}
-                        className="text-violet-500 hover:text-violet-600 underline underline-offset-4 decoration-2 shrink-0"
-                    >
-                        Pomoć?
-                    </button>
-                )}
-            </div>
-        </div>
+                    <div aria-live="polite">
+                        {triedOption && (
+                            <TriedNote
+                                key={lastTried}
+                                emoji={triedOption.emoji}
+                                label={optionLabel(triedOption, female)}
+                                note={genderText(triedOption.note, female)}
+                            />
+                        )}
+                    </div>
+
+                    {shown.picked !== null && (
+                        <ExplainPanel
+                            accent={ACCENT}
+                            icon={situation.options[shown.picked].emoji}
+                            text={
+                                <span className="flex flex-col gap-1.5">
+                                    <span>{genderText(situation.options[shown.picked].note, female)}</span>
+                                    <span className={ACCENT.text}>{echoLine(situation, shown.picked, female)}</span>
+                                    {also && <span className="text-base text-ink-soft sm:text-lg">{also}</span>}
+                                </span>
+                            }
+                            done={shown.finished}
+                            doneText="Gotovo!"
+                            onNext={isMonitor ? undefined : handleNext}
+                            nextRef={nextButtonRef}
+                        />
+                    )}
+                </>
+            )}
+        </GameStage>
     );
 }

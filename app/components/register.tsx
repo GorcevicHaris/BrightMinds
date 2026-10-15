@@ -1,213 +1,181 @@
-'use client'
-import { useState } from 'react';
-import { Eye, EyeOff, User, Mail, Lock, Phone, UserCircle, CloudCog } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Eye, EyeOff, Lock, Mail, Phone, User } from "lucide-react";
+import AuthShell from "./AuthShell";
+import { Alert, Card } from "./ui/Card";
+import { Button } from "./ui/Button";
+import { Input, Select } from "./ui/Field";
+
+interface FormState {
+    fullName: string;
+    email: string;
+    password: string;
+    phone: string;
+    role: "parent" | "teacher" | "therapist";
+}
+
+type FieldErrors = Partial<Record<keyof FormState, string>>;
+
+const MIN_PASSWORD = 8;
+
+function validate(form: FormState): FieldErrors {
+    const errors: FieldErrors = {};
+    if (form.fullName.trim().length < 2) errors.fullName = "Unesite ime i prezime";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errors.email = "Unesite ispravan email";
+    if (form.password.length < MIN_PASSWORD) errors.password = `Lozinka mora imati najmanje ${MIN_PASSWORD} znakova`;
+    return errors;
+}
 
 export default function RegisterPage() {
     const router = useRouter();
+    const [form, setForm] = useState<FormState>({ fullName: "", email: "", password: "", phone: "", role: "parent" });
+    const [errors, setErrors] = useState<FieldErrors>({});
+    const [serverError, setServerError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [formData, setFormData] = useState({
-        email: '',
-        password: '',
-        fullName: '',
-        phone: '',
-        role: 'parent'
-    });
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleSubmit = async () => {
-        // Validacija pre slanja
-        if (!formData.email || !formData.password || !formData.fullName) {
-            alert("Popunite sva polja");
-            return;
-        }
-
-        console.log("Sending:", formData); // LOG: Šta šalješ
-
-        const res = await fetch("/api/auth/register", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                email: formData.email,
-                password: formData.password,
-                full_name: formData.fullName,
-                phone: formData.phone,
-                role: formData.role
-            })
-        });
-
-        const data = await res.json();
-        console.log("Response:", data); // LOG: Šta dobijaš nazad
-
-        if (res.ok) {
-            // Auto-login after registration
-            try {
-                const loginRes = await fetch("/api/auth/login", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ email: formData.email, password: formData.password })
-                });
-                const loginData = await loginRes.json();
-                if (loginRes.ok) {
-                    localStorage.setItem("user", JSON.stringify(loginData.user));
-                    router.push("/dashboard");
-                } else {
-                    router.push("/login");
-                }
-            } catch (e) {
-                router.push("/login");
-            }
-        } else {
-            alert(data.error || "Greška pri registraciji");
-        }
+    const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+        setForm((prev) => ({ ...prev, [key]: value }));
+        if (errors[key]) setErrors((prev) => ({ ...prev, [key]: undefined }));
     };
 
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (isLoading) return;
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        const found = validate(form);
+        setErrors(found);
+        setServerError("");
+        if (Object.keys(found).length > 0) return;
+
+        setIsLoading(true);
+        try {
+            const res = await fetch("/api/auth/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: form.email.trim(),
+                    password: form.password,
+                    full_name: form.fullName.trim(),
+                    phone: form.phone.trim() || undefined,
+                    role: form.role,
+                }),
+            });
+            if (res.ok) {
+                // Registracija odmah prijavljuje korisnika (kolačić sesije)
+                router.push("/dashboard");
+                return;
+            }
+            const data = await res.json().catch(() => null);
+            setServerError(typeof data?.error === "string" ? data.error : "Registracija nije uspela. Pokušajte ponovo.");
+        } catch {
+            setServerError("Mrežna greška. Pokušajte ponovo.");
+        }
+        setIsLoading(false);
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4 sm:py-8 overflow-y-auto">
-            <div className="w-full max-w-md my-auto">
-                {/* Logo/Header */}
-                <div className="text-center mb-6">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mb-4 shadow-lg">
-                        <UserCircle className="w-10 h-10 text-white" />
+        <AuthShell>
+            <Card className="animate-fade-up p-5 sm:p-8">
+                <form onSubmit={handleSubmit} noValidate>
+                    <div className="mb-6 text-center">
+                        <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">Napravite nalog</h1>
+                        <p className="mt-1 text-base font-semibold text-ink-soft">Za roditelje, učitelje i terapeute</p>
                     </div>
-                    <h1 className="text-3xl font-bold text-gray-800 mb-2">Helper</h1>
-                    <p className="text-gray-600">Kreirajte vaš nalog</p>
-                </div>
 
-                {/* Card */}
-                <div className="bg-white rounded-3xl shadow-2xl p-8">
-                    <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">Registracija</h2>
+                    {serverError && <Alert className="mb-5">{serverError}</Alert>}
 
-                    {/* Form Fields */}
-                    <div className="space-y-5">
-                        {/* Full Name */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Ime i prezime
-                            </label>
-                            <div className="relative">
-                                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    name="fullName"
-                                    value={formData.fullName}
-                                    onChange={handleInputChange}
-                                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-black"
-                                    placeholder="Unesite ime i prezime"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Email */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Email
-                            </label>
-                            <div className="relative">
-                                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    onChange={handleInputChange}
-                                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-black"
-                                    placeholder="vas@email.com"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Password */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Lozinka
-                            </label>
-                            <div className="relative">
-                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    name="password"
-                                    value={formData.password}
-                                    onChange={handleInputChange}
-                                    className="w-full pl-11 pr-12 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-black"
-                                    placeholder="••••••••"
-                                />
+                    <div className="space-y-4">
+                        <Input
+                            label="Ime i prezime"
+                            name="fullName"
+                            autoComplete="name"
+                            placeholder="npr. Ana Petrović"
+                            value={form.fullName}
+                            onChange={(e) => update("fullName", e.target.value)}
+                            error={errors.fullName}
+                            disabled={isLoading}
+                            icon={<User className="h-5 w-5" aria-hidden="true" />}
+                        />
+                        <Input
+                            label="Email"
+                            type="email"
+                            name="email"
+                            autoComplete="email"
+                            inputMode="email"
+                            placeholder="vas@email.com"
+                            value={form.email}
+                            onChange={(e) => update("email", e.target.value)}
+                            error={errors.email}
+                            disabled={isLoading}
+                            icon={<Mail className="h-5 w-5" aria-hidden="true" />}
+                        />
+                        <Input
+                            label="Lozinka"
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            autoComplete="new-password"
+                            placeholder={`Najmanje ${MIN_PASSWORD} znakova`}
+                            value={form.password}
+                            onChange={(e) => update("password", e.target.value)}
+                            error={errors.password}
+                            disabled={isLoading}
+                            icon={<Lock className="h-5 w-5" aria-hidden="true" />}
+                            trailing={
                                 <button
                                     type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    aria-label={showPassword ? "Sakrij lozinku" : "Prikaži lozinku"}
+                                    aria-pressed={showPassword}
+                                    className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint transition-colors hover:bg-brand-50 hover:text-ink"
                                 >
-                                    {showPassword ? (
-                                        <EyeOff className="w-5 h-5" />
-                                    ) : (
-                                        <Eye className="w-5 h-5" />
-                                    )}
+                                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
-                            </div>
-                        </div>
-
-                        {/* Phone */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Telefon (opciono)
-                            </label>
-                            <div className="relative">
-                                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                                <input
-                                    type="tel"
-                                    name="phone"
-                                    value={formData.phone}
-                                    onChange={handleInputChange}
-                                    className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all text-black"
-                                    placeholder="+381 60 123 4567"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Role */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Uloga
-                            </label>
-                            <select
+                            }
+                        />
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <Input
+                                label="Telefon"
+                                optional
+                                type="tel"
+                                name="phone"
+                                autoComplete="tel"
+                                inputMode="tel"
+                                placeholder="+381 60 123 4567"
+                                value={form.phone}
+                                onChange={(e) => update("phone", e.target.value)}
+                                disabled={isLoading}
+                                icon={<Phone className="h-5 w-5" aria-hidden="true" />}
+                            />
+                            <Select
+                                label="Uloga"
                                 name="role"
-                                value={formData.role}
-                                onChange={handleInputChange}
-                                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white text-black"
+                                value={form.role}
+                                onChange={(e) => update("role", e.target.value as FormState["role"])}
+                                disabled={isLoading}
                             >
                                 <option value="parent">Roditelj</option>
-                                <option value="teacher">Nastavnik</option>
-                            </select>
+                                <option value="teacher">Učitelj / nastavnik</option>
+                                <option value="therapist">Terapeut</option>
+                            </Select>
                         </div>
-
-                        {/* Submit Button */}
-                        <button
-                            onClick={handleSubmit}
-                            className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-indigo-700 transform hover:scale-[1.02] transition-all mt-2"
-                        >
-                            Registrujte se
-                        </button>
                     </div>
 
+                    <Button type="submit" size="lg" block className="mt-6" isLoading={isLoading}>
+                        {isLoading ? "Pravim nalog…" : "Registruj se"}
+                    </Button>
 
-                </div>
-
-                {/* Footer Text */}
-                <p className="text-center text-sm text-gray-600 mt-6">
-                    Već imate nalog?{' '}
-                    <a href="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
-                        Prijavite se
-                    </a>
-                </p>
-            </div>
-        </div>
+                    <p className="mt-6 text-center text-sm font-semibold text-ink-soft">
+                        Već imate nalog?{" "}
+                        <Link href="/login" className="font-extrabold text-brand-600 underline-offset-4 hover:underline">
+                            Prijavite se
+                        </Link>
+                    </p>
+                </form>
+            </Card>
+        </AuthShell>
     );
 }
