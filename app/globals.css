@@ -61,6 +61,7 @@
   --animate-wiggle: wiggle 0.5s ease-in-out both;
   --animate-soft-pulse: soft-pulse 1.8s ease-in-out infinite;
   --animate-demo-tap: demo-tap 1.3s ease-in-out infinite;
+  --animate-breathe: breathe 8s ease-in-out infinite;
 
   @keyframes pop {
     from { opacity: 0; transform: scale(0.92); }
@@ -91,6 +92,11 @@
   @keyframes soft-pulse {
     0%, 100% { box-shadow: 0 0 0 0 rgb(108 97 240 / 0.35); }
     50% { box-shadow: 0 0 0 10px rgb(108 97 240 / 0); }
+  }
+  /* Disanje na ekranu za pauzu: 4 s udah (krug raste), 4 s izdah (krug se smanjuje) */
+  @keyframes breathe {
+    0%, 100% { transform: scale(0.72); }
+    50% { transform: scale(1); }
   }
   /* Ruka koja pokazuje: prilazi i „dodirne”, pa se vrati — mirno, bez skakanja */
   @keyframes demo-tap {

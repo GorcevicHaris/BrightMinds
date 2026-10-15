@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { ArrowLeft, ArrowRight, Check, Eye, Lock, RotateCcw, SkipForward, Star, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Eye, Lock, Pause, Play, RotateCcw, SkipForward, Star, X } from "lucide-react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
@@ -26,6 +26,7 @@ import {
 } from "@/lib/games";
 import { useGameBroadcast } from "@/lib/realtime";
 import { useSpeech } from "@/lib/speech";
+import type { VoiceEmotion } from "@/lib/emotion";
 import { usePlanProgress } from "./planProgress";
 import { useSessionClock } from "./sessionClock";
 
@@ -209,6 +210,11 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     /** Menja se pri ponavljanju istog nivoa da bi se igra ponovo montirala */
     const [attempt, setAttempt] = useState(0);
     const [outcome, setOutcome] = useState<LevelOutcome | null>(null);
+    /**
+     * Pauza važi za tačno jednu partiju (igra–nivo–pokušaj): kraj nivoa, novi pokušaj ili izlazak
+     * je sami završavaju, bez posebnog brisanja stanja
+     */
+    const [breakFor, setBreakFor] = useState<string | null>(null);
 
     const [unlocked, setUnlocked] = useState<Record<string, number>>(() =>
         preview ? Object.fromEntries(GAMES.map((g) => [g.id, previewUnlocked])) : {}
@@ -239,7 +245,10 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const nextPlanned = plan.find((id) => !planDone.includes(id)) ?? null;
     const planActive = plan.length > 0 && nextPlanned !== null;
 
-    const clock = useSessionClock(childId, preview ? 0 : settings.sessionMinutes, screen === "playing" && !outcome);
+    const playKey = `${gameId}-${level}-${attempt}`;
+    const onBreak = breakFor === playKey && screen === "playing" && !outcome;
+    // Pauza se ne računa u dnevno vreme igre
+    const clock = useSessionClock(childId, preview ? 0 : settings.sessionMinutes, screen === "playing" && !outcome && !onBreak);
 
     const game = gameId ? getGame(gameId) : null;
     const tier = tierOf(tierId);
@@ -564,6 +573,21 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     )}
                 </div>
                 {watched && <WatchedBadge />}
+                {screen === "playing" && !outcome && (
+                    // Kartica „Treba mi pauza”: dete samo traži odmor, bez izlaska iz igre
+                    <button
+                        type="button"
+                        onClick={() => {
+                            playSfx("tap");
+                            setBreakFor(playKey);
+                        }}
+                        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border-2 border-sun-200 bg-sun-50 px-3 text-sm font-extrabold text-sun-700 transition-colors hover:bg-sun-100 sm:px-4"
+                    >
+                        <Pause className="h-5 w-5" fill="currentColor" aria-hidden="true" />
+                        <span className="hidden sm:inline">Pauza</span>
+                        <span className="sr-only sm:hidden">Pauza</span>
+                    </button>
+                )}
                 <SoundToggle />
                 <button
                     type="button"
@@ -608,6 +632,10 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     />
                 )}
             </div>
+
+            {screen === "playing" && onBreak && (
+                <BreakScreen teacher={settings.avatar ? (gender ?? undefined) : null} say={say} onDone={() => setBreakFor(null)} />
+            )}
 
             {screen === "playing" && outcome && (
                 <LevelResult
@@ -878,6 +906,68 @@ function HoldButton({ label, onConfirm, holdMs = 2000 }: { label: string; onConf
             />
             <span className="relative">{armed ? "Pritisnite još jednom za potvrdu" : label}</span>
         </button>
+    );
+}
+
+// ── Pauza ─────────────────────────────────────────────────────────────────────
+// „Treba mi pauza”: miran ekran preko igre. Krug polako raste i smanjuje se (udah 4 s, izdah 4 s),
+// učitelj tiho kaže šta da radi, a igra čeka tačno tamo gde je dete stalo. Nema zvukova ni žurbe.
+
+interface BreakScreenProps {
+    teacher: string | undefined | null;
+    say: (text: string, onEnd?: () => void, emotion?: VoiceEmotion) => unknown;
+    onDone: () => void;
+}
+
+function BreakScreen({ teacher, say, onDone }: BreakScreenProps) {
+    const [inhale, setInhale] = useState(true);
+    // Drugi dodir dvostrukog dodira ne sme odmah da zatvori pauzu
+    const guard = useInputGuard(800);
+    const panelRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        guard.hold();
+        panelRef.current?.focus();
+        void say("Odmorimo se. Polako udahni, pa izdahni.", undefined, "gentle");
+        const timer = setInterval(() => setInhale((value) => !value), 4000);
+        return () => clearInterval(timer);
+    }, [guard, say]);
+
+    return (
+        <div
+            ref={panelRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pauza"
+            className="absolute inset-0 z-20 flex animate-fade flex-col items-center justify-center gap-6 bg-gradient-to-b from-sky-50 to-brand-50 p-6 text-center outline-none"
+        >
+            {teacher !== null && (
+                <span className="grid h-20 w-20 place-items-end overflow-hidden rounded-3xl bg-white/70 ring-2 ring-white">
+                    <TeacherAvatar gender={teacher ?? undefined} variant="face" emotion="gentle" className="h-full w-full" />
+                </span>
+            )}
+            <h2 className="font-display text-3xl font-extrabold text-ink sm:text-4xl">Pauza</h2>
+            <div className="relative grid h-56 w-56 place-items-center sm:h-72 sm:w-72" aria-hidden="true">
+                <span className="absolute inset-0 animate-breathe rounded-full bg-sky-200/70" />
+                <span className="absolute inset-[18%] animate-breathe rounded-full bg-sky-300/60 [animation-delay:150ms]" />
+                <span className="relative font-display text-2xl font-extrabold text-sky-900 sm:text-3xl">{inhale ? "Udahni…" : "Izdahni…"}</span>
+            </div>
+            <p className="text-lg font-bold text-ink-soft">Kad budeš {teacher === "female" ? "spremna" : "spreman"}, nastavi igru.</p>
+            <Button
+                chunky
+                size="xl"
+                variant="success"
+                onClick={() => {
+                    if (guard.blocked()) return;
+                    playSfx("tap");
+                    onDone();
+                }}
+            >
+                <Play className="h-6 w-6" fill="currentColor" aria-hidden="true" />
+                Nastavi igru
+            </Button>
+        </div>
     );
 }
 
