@@ -319,11 +319,12 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         setScreen("playing");
     };
 
+    const gameTitle = game?.title ?? null;
     // Ekrani između igara se i izgovaraju: većina dece mlađe od 5 godina ne čita, pa im glas kaže šta da dodirnu
     useEffect(() => {
         const line =
             screen === "tiers"
-                ? "Dodirni zeleno dugme."
+                ? `${gameTitle ? `${gameTitle}. ` : ""}Dodirni zeleno dugme.`
                 : screen === "mood-before"
                   ? "Kako si danas? Dodirni lice."
                   : screen === "mood-after"
@@ -332,7 +333,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         if (!line) return;
         const timer = setTimeout(() => void say(line, undefined, line.startsWith("Kako") ? "curious" : "neutral"), 500);
         return () => clearTimeout(timer);
-    }, [screen, say]);
+    }, [screen, say, gameTitle]);
 
     /** Pokreće izabrani nivo. Bez `wanted` kreće sledeći nezavršeni nivo te težine. */
     const chooseTier = (next: TierConfig, wanted?: number) => {
