@@ -263,7 +263,8 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
         // Priča se čita mirnim glasom: stranica često pominje osećanje („strah”, „plače”) koje
         // ne sme da oboji ceo tekst. Pitanje posle nje se pita radoznalo.
         if (current.phase === "cover") {
-            sayAll([`Priča: ${story.title}. ${genderText(story.intro, female)}`], undefined, "neutral");
+            // Na kraju naslovne strane glas kaže i šta je sledeće (dete koje ne čita ne zna šta piše na dugmetu)
+            sayAll([`Priča: ${story.title}. ${genderText(story.intro, female)}`, "Dodirni veliko dugme dole."], undefined, "neutral");
             return;
         }
         if (current.phase !== "story") return;

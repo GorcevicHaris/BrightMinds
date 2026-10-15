@@ -7,7 +7,7 @@ Edukativne igre za decu (posebno decu sa autizmom i razvojnim teškoćama), sa p
 
 > Bright Minds je vežbanka uz podršku odraslih. Nije terapija ni dijagnostički alat i ne zamenjuje logopeda, defektologa ili psihologa.
 
-Dizajn se oslanja na istraživanja o razvoju dece od 3 do 8 godina i o podršci deci sa autizmom — odluke i izvori su u [docs/istrazivanje.md](docs/istrazivanje.md).
+Dizajn se oslanja na istraživanja o razvoju dece od 3 do 10 godina i o podršci deci sa autizmom — odluke i izvori su u [docs/istrazivanje.md](docs/istrazivanje.md).
 
 ## Pokretanje
 
@@ -54,7 +54,7 @@ app/
     games/kit/               zajednički delovi igara (HUD, kartice odgovora, zvuk, sinhronizacija)
 lib/
   games.ts                   spisak igara, boje, zvezdice — jedini izvor istine
-  childSettings.ts           podešavanja po detetu i preporuke po uzrastu (3–4, 5–6, 7–8)
+  childSettings.ts           podešavanja po detetu i preporuke po uzrastu (3–4, 5–6, 7–10)
   progress.ts                statistika: samostalno / uz pomoć, savladanost
   auth.ts                    sesije i provera pristupa (roditeljska i dečja sesija)
   realtime.ts                praćenje uživo preko Supabase Realtime Broadcast-a

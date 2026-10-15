@@ -1051,8 +1051,10 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         if (!interactive || lockedRef.current) return;
         const current = viewRef.current;
         const color = COLOR_BY_ID[id];
-        // Boja se uvek i izgovori: naziv ne zavisi od toga da li dete razlikuje nijanse
-        if (color) say(color.nom);
+        // Boja se uvek i izgovori: naziv ne zavisi od toga da li dete razlikuje nijanse.
+        // Kad je to tražena boja, glas odmah kaže i drugi korak — mlađa deca teško pamte uputstvo u dva koraka.
+        if (color && guided && round && id === round.color.id) say(`${color.nom}. Sada dodirni ${round.zone.acc}.`);
+        else if (color) say(color.nom);
         if (current.color === id) return;
         playSfx("tap");
         commit(

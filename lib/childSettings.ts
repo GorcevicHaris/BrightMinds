@@ -62,7 +62,7 @@ export interface BandPreset {
 export const BAND_PRESETS: Record<AgeBand, BandPreset> = {
     young: { label: "Mlađi", ages: "3–4 godine", maxChoices: 3, memoryMaxPairs: 4, emotionCount: 3, maxRounds: 5, showPoints: false },
     middle: { label: "Srednji", ages: "5–6 godina", maxChoices: 4, memoryMaxPairs: 6, emotionCount: 5, maxRounds: 6, showPoints: false },
-    older: { label: "Stariji", ages: "7–8 godina", maxChoices: 6, memoryMaxPairs: 10, emotionCount: 6, maxRounds: 8, showPoints: true },
+    older: { label: "Stariji", ages: "7–10 godina", maxChoices: 6, memoryMaxPairs: 10, emotionCount: 6, maxRounds: 8, showPoints: true },
 };
 
 export const AGE_BANDS: AgeBand[] = ["young", "middle", "older"];
