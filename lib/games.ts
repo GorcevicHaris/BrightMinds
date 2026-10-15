@@ -205,7 +205,7 @@ export const GAMES: GameDefinition[] = [
             gradient: "from-pink-400 to-rose-500",
         },
         offscreenTip: "Dok čitate slikovnicu, pitajte: „Kako se oseća ovaj lik? Po čemu to vidiš?”",
-        graded: false,
+        graded: true,
     },
 ];
 

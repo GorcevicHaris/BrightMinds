@@ -39,7 +39,8 @@ export async function loadOwnedChild(idParam: string): Promise<OwnedChild> {
     const firstName = typeof data?.first_name === "string" ? data.first_name.trim() : "";
     if (!firstName) redirect("/dashboard");
 
-    return { id: childId, firstName, gender: typeof data?.gender === "string" ? data.gender : undefined };
+    // Ime uvek velikim početnim slovom („dina” → „Dina”), u naslovu i u tekstovima stranice
+    return { id: childId, firstName: displayName(firstName), gender: typeof data?.gender === "string" ? data.gender : undefined };
 }
 
 type ChildView = "progress" | "monitor";
@@ -59,50 +60,71 @@ interface ChildPageShellProps {
     children: ReactNode;
 }
 
+/** Ime kako je upisano, ali uvek velikim početnim slovom („dina” → „Dina”) */
+function displayName(name: string): string {
+    return name.charAt(0).toLocaleUpperCase("sr") + name.slice(1);
+}
+
+function ViewSwitch({ child, view, className }: { child: OwnedChild; view: ChildView; className?: string }) {
+    return (
+        <nav aria-label="Prikazi za ovo dete" className={cn("grid grid-cols-2 gap-1 rounded-2xl bg-canvas p-1 ring-1 ring-line", className)}>
+            {VIEWS.map(({ id, label, path, Icon }) => (
+                <Link
+                    key={id}
+                    href={`/dashboard/${path}/${child.id}`}
+                    aria-current={id === view ? "page" : undefined}
+                    className={cn(
+                        "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-extrabold transition-colors",
+                        id === view ? "bg-surface text-brand-700 shadow-soft" : "text-ink-soft hover:text-ink"
+                    )}
+                >
+                    <Icon className="h-4 w-4" aria-hidden="true" />
+                    {label}
+                </Link>
+            ))}
+        </nav>
+    );
+}
+
 export function ChildPageShell({ child, view, title, description, children }: ChildPageShellProps) {
+    const name = child.firstName;
+    const isGirl = child.gender === "female";
     return (
         <div className="min-h-dvh bg-canvas">
-            <header className="border-b border-line bg-surface">
-                <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+            <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
+                <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:px-10">
                     <Link
                         href="/dashboard"
                         aria-label="Nazad na spisak dece"
-                        className={buttonClasses({ variant: "secondary", size: "sm", className: "shrink-0 whitespace-nowrap" })}
+                        className={buttonClasses({ variant: "ghost", size: "sm", className: "-ml-2 shrink-0 whitespace-nowrap" })}
                     >
                         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-                        Nazad
+                        Moja deca
                     </Link>
+                    <span className="h-6 w-px bg-line" aria-hidden="true" />
                     <Logo size="sm" className="shrink-0 whitespace-nowrap" />
+                    <ViewSwitch child={child} view={view} className="ml-auto hidden w-64 md:grid" />
                 </div>
             </header>
 
-            <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-                <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+            <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-10">
+                <div className="mb-6 flex items-center gap-4 sm:mb-8">
+                    <span
+                        className={cn(
+                            "grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-3xl sm:h-16 sm:w-16 sm:text-4xl",
+                            isGirl ? "bg-pink-50" : child.gender === "male" ? "bg-sky-50" : "bg-brand-50"
+                        )}
+                        aria-hidden="true"
+                    >
+                        {isGirl ? "👧" : child.gender === "male" ? "👦" : "🧒"}
+                    </span>
                     <div className="min-w-0">
-                        <h1 className="break-words text-2xl font-extrabold text-ink sm:text-3xl">
-                            <span className="mb-1 block font-sans text-sm font-bold tracking-normal text-brand-700">{title}</span>
-                            {child.firstName}
-                        </h1>
-                        <p className="mt-1 text-sm text-ink-soft">{description}</p>
+                        <p className="text-sm font-extrabold text-brand-700">{title}</p>
+                        <h1 className="break-words text-2xl font-extrabold leading-tight text-ink sm:text-3xl">{name}</h1>
+                        <p className="mt-0.5 hidden text-sm font-medium text-ink-soft sm:block">{description}</p>
                     </div>
-
-                    <nav aria-label="Prikazi za ovo dete" className="inline-flex shrink-0 self-start rounded-xl border border-line bg-surface p-1 sm:self-auto">
-                        {VIEWS.map(({ id, label, path, Icon }) => (
-                            <Link
-                                key={id}
-                                href={`/dashboard/${path}/${child.id}`}
-                                aria-current={id === view ? "page" : undefined}
-                                className={cn(
-                                    "inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3.5 text-sm font-extrabold transition-colors",
-                                    id === view ? "bg-brand-600 text-white" : "text-ink-soft hover:bg-brand-50 hover:text-ink"
-                                )}
-                            >
-                                <Icon className="h-4 w-4" aria-hidden="true" />
-                                {label}
-                            </Link>
-                        ))}
-                    </nav>
                 </div>
+                <ViewSwitch child={child} view={view} className="mb-6 md:hidden" />
 
                 {children}
             </main>

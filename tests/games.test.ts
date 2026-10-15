@@ -76,9 +76,9 @@ describe("successLevelFor", () => {
 });
 
 describe("isGradedActivity", () => {
-    it("is false only for the emotions game", () => {
+    it("is true for every game, emotions included (they have a right answer)", () => {
         for (const game of GAMES) {
-            assert.equal(isGradedActivity(game.activityId), game.id !== "emotions", game.id);
+            assert.equal(isGradedActivity(game.activityId), true, game.id);
         }
     });
 
@@ -141,10 +141,10 @@ describe("game registry", () => {
         for (const mood of [...MOODS, ...MOODS_THREE]) assert.doesNotMatch(toCyrillic(mood.label), /\p{Script=Latin}/u, mood.label);
     });
 
-    it("marks emotions as the only ungraded game", () => {
+    it("grades every game", () => {
         assert.deepEqual(
             GAMES.filter((game) => !game.graded).map((game) => game.id),
-            ["emotions"]
+            []
         );
     });
 

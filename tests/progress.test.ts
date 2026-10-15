@@ -79,9 +79,9 @@ describe("buildProgress with no data", () => {
         }
     });
 
-    it("reports graded games as not started and emotions as ungraded", () => {
+    it("reports every game as not started", () => {
         for (const game of empty.games) {
-            assert.equal(game.mastery, game.gameId === "emotions" ? "ungraded" : "not_started", game.gameId);
+            assert.equal(game.mastery, "not_started", game.gameId);
         }
     });
 
@@ -286,7 +286,7 @@ describe("mastery of the current tier", () => {
         assert.equal(game.mastery, "not_started");
     });
 
-    it("is never assessed for emotions, the game without wrong answers", () => {
+    it("is assessed for emotions like for every other game", () => {
         const response = buildProgress(
             [
                 log({ activity_id: EMOTIONS, correct_count: 5, total_count: 5, completed_at: "2026-03-10T10:00:00Z" }),
@@ -295,7 +295,12 @@ describe("mastery of the current tier", () => {
             ],
             NOW
         );
-        assert.equal(gameOf(response, "emotions").mastery, "ungraded");
+        const asShapes = buildProgress(
+            [10, 11, 12].map((day) => log({ activity_id: SHAPES, correct_count: 5, total_count: 5, completed_at: `2026-03-${day}T10:00:00Z` })),
+            NOW
+        );
+        assert.equal(gameOf(response, "emotions").mastery, gameOf(asShapes, "shapes").mastery);
+        assert.notEqual(gameOf(response, "emotions").mastery, "ungraded");
     });
 });
 
@@ -328,9 +333,10 @@ describe("needsSupport", () => {
         assert.equal(shapes([...recentLow, newerGood]).needsSupport, false);
     });
 
-    it("is never raised for emotions, where a different answer is not a mistake", () => {
+    it("is raised for emotions the same way as for other games", () => {
         const rows = [1, 2, 3].map(() => log({ activity_id: EMOTIONS, correct_count: 0, total_count: 4 }));
-        assert.equal(gameOf(buildProgress(rows, NOW), "emotions").needsSupport, false);
+        const shapeRows = [1, 2, 3].map(() => log({ activity_id: SHAPES, correct_count: 0, total_count: 4 }));
+        assert.equal(gameOf(buildProgress(rows, NOW), "emotions").needsSupport, gameOf(buildProgress(shapeRows, NOW), "shapes").needsSupport);
     });
 });
 
@@ -375,9 +381,10 @@ describe("levels and tiers", () => {
         assert.equal(shapes([log({ level: 3, correct_count: 0, total_count: 5, passed: true })]).highestLevelCompleted, 3);
     });
 
-    it("completes any finished emotions level, whatever was answered", () => {
+    it("completes an emotions level by the same rule as other games", () => {
         const response = buildProgress([log({ activity_id: EMOTIONS, level: 4, correct_count: 0, total_count: 5 })], NOW);
-        assert.equal(gameOf(response, "emotions").highestLevelCompleted, 4);
+        const asShapes = buildProgress([log({ activity_id: SHAPES, level: 4, correct_count: 0, total_count: 5 })], NOW);
+        assert.equal(gameOf(response, "emotions").highestLevelCompleted, gameOf(asShapes, "shapes").highestLevelCompleted);
     });
 
     it("ignores a level outside 1–15", () => {

@@ -7,6 +7,7 @@
 // odrasli gleda, ništa se ne snima i odavde se igrom ne upravlja.
 import { useCallback, useReducer, type ComponentType } from "react";
 import dynamic from "next/dynamic";
+import { Radio } from "lucide-react";
 import type { BaseView, GameProps } from "@/app/components/games/kit/types";
 import { Spinner } from "@/app/components/ui/Button";
 import { Alert, Card } from "@/app/components/ui/Card";
@@ -328,17 +329,31 @@ function GameMirror({ active, childId, gender }: { active: ActiveGame; childId: 
 }
 
 function IdleCard({ childName, isWaitingForConnection }: { childName: string; isWaitingForConnection: boolean }) {
+    const steps = [
+        `${childName} otvori igru na svom uređaju (telefon, tablet ili računar).`,
+        "Ovde se odmah pojavi isti ekran igre, bez upravljanja.",
+        "Sa strane pratite tok: tačne odgovore, pomoć i pauze.",
+    ];
     return (
-        <Card className="py-12 text-center sm:py-16">
-            <p className="text-4xl" aria-hidden="true">
-                🎮
-            </p>
-            <h2 className="mt-3 text-xl font-extrabold text-ink">Trenutno nema aktivne igre</h2>
-            <p className="mx-auto mt-2 max-w-md text-sm text-ink-soft">
-                {isWaitingForConnection
-                    ? "Povezivanje sa kanalom za praćenje je u toku…"
-                    : `Kada ${childName} pokrene igru, ovde će se pojaviti ekran igre i rezultat u realnom vremenu.`}
-            </p>
+        <Card className="py-10 sm:py-14">
+            <div className="mx-auto max-w-md text-center">
+                <span className="relative mx-auto grid h-16 w-16 place-items-center rounded-full bg-brand-50 text-brand-600" aria-hidden="true">
+                    <span className="absolute inset-0 animate-ping rounded-full bg-brand-100 opacity-60 motion-reduce:hidden" />
+                    <Radio className="relative h-7 w-7" />
+                </span>
+                <h2 className="mt-4 text-xl font-extrabold text-ink">
+                    {isWaitingForConnection ? "Povezivanje…" : `Čekamo da ${childName} pokrene igru`}
+                </h2>
+                <p className="mt-1 text-sm text-ink-soft">Stranica može da ostane otvorena — sve se osvežava samo.</p>
+            </div>
+            <ol className="mx-auto mt-6 grid max-w-2xl gap-3 sm:grid-cols-3">
+                {steps.map((step, i) => (
+                    <li key={step} className="rounded-xl bg-canvas p-3 text-sm font-semibold text-ink-soft">
+                        <span className="mb-1 grid h-6 w-6 place-items-center rounded-full bg-brand-600 text-xs font-extrabold text-white">{i + 1}</span>
+                        {step}
+                    </li>
+                ))}
+            </ol>
         </Card>
     );
 }

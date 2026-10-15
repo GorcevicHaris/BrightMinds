@@ -8,7 +8,7 @@
 // Aplikacija je vežbanka, ne terapija: nijedan tekst ovde ne sme da tvrdi suprotno.
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { Circle, CircleCheck, CircleDashed, Download, Info, Lightbulb, RefreshCw, type LucideIcon } from "lucide-react";
+import { CalendarDays, Circle, CircleCheck, CircleDashed, Clock3, Download, Gamepad2, Info, Lightbulb, RefreshCw, Star, Target, type LucideIcon } from "lucide-react";
 import { Button, buttonClasses } from "@/app/components/ui/Button";
 import { Alert, Card } from "@/app/components/ui/Card";
 import { Select } from "@/app/components/ui/Field";
@@ -466,25 +466,27 @@ function ParentView({ data, childId, onRefresh, isRefreshing }: ParentViewProps)
     // Ista skala u svim delovima prikaza, bez obzira na izabranu igru
     const moodScale = moodScaleFor(data.mood);
     const mood = selected ? selected.mood : data.mood;
+    const updatedAt = new Date(data.generatedAt).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
                 <GameFilterControl value={filter} onChange={setFilter} />
-                <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 md:justify-end">
-                    <p className="text-xs font-semibold text-ink-soft">
-                        Ažurirano u {new Date(data.generatedAt).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                        <a href={`/api/children/${childId}/export`} download className={buttonClasses({ variant: "secondary", size: "sm" })}>
-                            <Download className="h-4 w-4" aria-hidden="true" />
-                            Preuzmi podatke (CSV)
-                        </a>
-                        <Button variant="secondary" size="sm" onClick={onRefresh} isLoading={isRefreshing}>
-                            {!isRefreshing && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
-                            Osveži
-                        </Button>
-                    </div>
+                <div className="flex shrink-0 items-center gap-2 xl:ml-auto">
+                    <p className="mr-auto text-xs font-semibold text-ink-faint xl:hidden">Ažurirano u {updatedAt}</p>
+                    <a
+                        href={`/api/children/${childId}/export`}
+                        download
+                        title="Preuzmi sve rezultate kao tabelu (CSV)"
+                        className={buttonClasses({ variant: "secondary", size: "sm" })}
+                    >
+                        <Download className="h-4 w-4" aria-hidden="true" />
+                        CSV
+                    </a>
+                    <Button variant="secondary" size="sm" onClick={onRefresh} isLoading={isRefreshing} aria-label="Osveži podatke" title={`Ažurirano u ${updatedAt}. Osveži podatke.`}>
+                        {!isRefreshing && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+                        <span className="hidden sm:inline">Osveži</span>
+                    </Button>
                 </div>
             </div>
 
@@ -542,7 +544,12 @@ function GameFilterControl({ value, onChange }: { value: GameFilter; onChange: (
                     ))}
                 </Select>
             </div>
-            <div role="group" aria-label="Filter po igri" className="hidden min-w-0 flex-1 flex-wrap gap-2 md:flex">
+            {/* Jedan red: igre se ne prelamaju u drugi red ispod dugmadi, na užem ekranu red se pomera u stranu */}
+            <div
+                role="group"
+                aria-label="Filter po igri"
+                className="hidden min-w-0 gap-1 overflow-x-auto rounded-2xl bg-surface p-1 shadow-soft ring-1 ring-line [scrollbar-width:none] md:flex"
+            >
                 {options.map((option) => (
                     <button
                         key={option.value}
@@ -550,10 +557,8 @@ function GameFilterControl({ value, onChange }: { value: GameFilter; onChange: (
                         aria-pressed={option.value === value}
                         onClick={() => onChange(option.value)}
                         className={cn(
-                            "inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-bold transition-colors",
-                            option.value === value
-                                ? "border-brand-600 bg-brand-600 text-white"
-                                : "border-line bg-surface text-ink-soft hover:border-brand-200 hover:bg-brand-50 hover:text-ink"
+                            "inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 text-sm font-bold transition-colors",
+                            option.value === value ? "bg-brand-600 text-white shadow-soft" : "text-ink-soft hover:bg-brand-50 hover:text-ink"
                         )}
                     >
                         {option.icon && <span aria-hidden="true">{option.icon}</span>}
@@ -572,11 +577,31 @@ interface StatPart {
     unit?: string;
 }
 
-function StatTile({ label, parts, detail }: { label: string; parts: StatPart[]; detail: string }) {
+const TILE_TONES = {
+    brand: "bg-brand-50 text-brand-600",
+    sky: "bg-sky-50 text-sky-600",
+    emerald: "bg-emerald-50 text-emerald-600",
+    sun: "bg-sun-50 text-sun-600",
+} as const;
+
+interface StatTileProps {
+    label: string;
+    parts: StatPart[];
+    detail: string;
+    Icon: LucideIcon;
+    tone: keyof typeof TILE_TONES;
+}
+
+function StatTile({ label, parts, detail, Icon, tone }: StatTileProps) {
     return (
         <Card className="p-4 sm:p-5">
-            <dt className="text-sm font-bold text-ink-soft">{label}</dt>
-            <dd className="mt-2">
+            <dt className="flex items-center gap-2 text-sm font-bold text-ink-soft">
+                <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg", TILE_TONES[tone])} aria-hidden="true">
+                    <Icon className="h-4 w-4" />
+                </span>
+                {label}
+            </dt>
+            <dd className="mt-3">
                 <span className="flex flex-wrap items-baseline gap-x-1.5 text-ink">
                     {parts.map((part, i) => (
                         <span key={i} className="whitespace-nowrap">
@@ -618,6 +643,8 @@ function Overview({ summary, data, selected }: { summary: ProgressSummary; data:
         <section aria-label="Pregled" className="space-y-3">
             <dl className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 <StatTile
+                    Icon={Gamepad2}
+                    tone="brand"
                     label="Odigrane igre"
                     parts={[{ value: formatNumber(summary.plays) }]}
                     detail={
@@ -627,25 +654,29 @@ function Overview({ summary, data, selected }: { summary: ProgressSummary; data:
                     }
                 />
                 <StatTile
+                    Icon={Clock3}
+                    tone="sky"
                     label="Vreme igre"
                     parts={minutesParts(summary.totalMinutes)}
                     detail={summary.plays > 0 ? `Prosečno ${formatNumber(averageMinutes)} min po igri` : "Još nije igrano"}
                 />
                 <StatTile
+                    Icon={Target}
+                    tone="emerald"
                     label="Samostalno tačno"
                     parts={[{ value: independent === null ? "—" : `${toPercent(independent)}%` }]}
                     detail={independentDetail}
                 />
                 <StatTile
+                    Icon={CalendarDays}
+                    tone="sun"
                     label={`Dana igranja (${data.windowDays} dana)`}
                     parts={[{ value: formatNumber(summary.daysPlayed30d), unit: `od ${data.windowDays}` }]}
                     detail={`Od početka: ${formatNumber(summary.activeDays)} ${plural(summary.activeDays, "dan", "dana", "dana")}`}
                 />
             </dl>
-            <p className="text-sm text-ink-soft">
-                <span aria-hidden="true" className="text-sun-500">
-                    ★
-                </span>{" "}
+            <p className="inline-flex flex-wrap items-center gap-x-1 rounded-xl bg-sun-50 px-3 py-2 text-sm text-ink-soft">
+                <Star className="h-4 w-4 fill-sun-300 text-sun-500" aria-hidden="true" />
                 Zvezdice: <strong className="font-extrabold text-ink">{formatNumber(summary.totalStars)}</strong>
                 {summary.averageStars !== null && <> (prosečno {formatNumber(summary.averageStars)} po igri)</>}. Zvezdice su nagrada za dete,
                 a ne mera savladanosti.

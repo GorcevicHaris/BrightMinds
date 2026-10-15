@@ -6,8 +6,8 @@
 //    Jedini drugi oblik za sada je akuzativ („Brat stalno prekida Lejlu.”, scenario 248).
 //    Svaki padežni oblik imena mora da postoji u tabeli NAME_CASES (vidi „Imenjaci” niže).
 //  • Rod glagola i prideva je napisan u samom scenariju, za tog lika (bez šablona).
-//  • Nema pogrešnih osećanja: `common` su osećanja koja većina ljudi tada ima,
-//    a svako drugo osećanje je takođe prihvatljiv odgovor.
+//  • `common` su osećanja koja većina ljudi tada ima — to su tačni odgovori. Ostala
+//    ponuđena osećanja u toj situaciji nisu uobičajena (igra blago traži novi pokušaj).
 //  • Emodži scene namerno nije lice, da ne bi odao odgovor.
 
 import { toCyrillic } from "@/lib/script";

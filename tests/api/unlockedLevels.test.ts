@@ -133,9 +133,10 @@ describe("unlocked levels from the session columns (migration 0001, no view)", (
         assert.equal((await unlocked()).shapes, 1);
     });
 
-    it("unlock the next emotions level after any finished level", async () => {
-        db.seed("progress_logs", [played(2, 0, 4, { activity_id: EMOTIONS }), played(1, 0, 4)]);
-        assert.deepEqual(await unlocked(), { ...EVERYTHING_LOCKED, emotions: 3 });
+    it("unlock emotions levels by the same rule as other games", async () => {
+        db.seed("progress_logs", [played(2, 0, 4, { activity_id: EMOTIONS }), played(2, 0, 4)]);
+        const result = await unlocked();
+        assert.equal(result.emotions, result.shapes);
     });
 
     it("use the stars for rows that have no answer counts", async () => {
@@ -192,9 +193,13 @@ describe("unlocked levels from old notes (no migration applied)", () => {
         assert.equal((await unlocked()).shapes, 8);
     });
 
-    it("unlock the next emotions level after any finished level", async () => {
-        db.seed("progress_logs", [legacy("Nivo 3, Zvezdice: 0, Rezultat: 0", { activity_id: EMOTIONS, success_level: "struggled" })]);
-        assert.equal((await unlocked()).emotions, 4);
+    it("unlock emotions levels from old notes by the same rule as other games", async () => {
+        db.seed("progress_logs", [
+            legacy("Nivo 3, Zvezdice: 0, Rezultat: 0", { activity_id: EMOTIONS, success_level: "struggled" }),
+            legacy("Nivo 3, Zvezdice: 0, Rezultat: 0", { success_level: "struggled" }),
+        ]);
+        const result = await unlocked();
+        assert.equal(result.emotions, result.shapes);
     });
 
     it("ignore notes without a level and rows of other children", async () => {

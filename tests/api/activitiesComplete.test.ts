@@ -169,11 +169,11 @@ describe("POST /api/activities/complete — saving a result", () => {
         assert.equal(logs()[0].passed, false);
     });
 
-    it("passes any finished emotions level, where no answer is wrong", async () => {
+    it("grades an emotions level like every other game", async () => {
         await post(result({ activityId: EMOTIONS, correct: 0, total: 4, prompted: 0 }));
-        assert.equal(logs()[0].passed, true);
-        // Bez pogrešnih odgovora nema ni „slabijeg” rezultata: završen nivo donosi sve tri zvezdice
-        assert.equal(logs()[0].stars, 3);
+        await post(result({ correct: 0, total: 4, prompted: 0 }));
+        assert.equal(logs()[0].passed, logs()[1].passed);
+        assert.equal(logs()[0].stars, logs()[1].stars);
     });
 
     it("leaves the prompted column out when the client did not send it", async () => {
