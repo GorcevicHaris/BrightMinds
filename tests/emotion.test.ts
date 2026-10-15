@@ -53,12 +53,12 @@ describe("tabele emocija", () => {
         }
     });
 
-    it("glas ostaje u mirnim granicama (nikad brz, nikad piskav)", () => {
+    it("glas ostaje u mirnim granicama (polagan, nikad brz)", () => {
         for (const emotion of VOICE_EMOTIONS) {
             const { stability, style, speed } = TTS_DELIVERY[emotion];
             assert.ok(stability >= 0.35 && stability <= 0.75, `${emotion} stability`);
             assert.ok(style >= 0 && style <= 0.6, `${emotion} style`);
-            assert.ok(speed >= 0.85 && speed <= 1.02, `${emotion} speed`);
+            assert.ok(speed >= 0.78 && speed <= 0.92, `${emotion} speed`);
         }
     });
 

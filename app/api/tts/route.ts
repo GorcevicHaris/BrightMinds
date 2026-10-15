@@ -73,7 +73,8 @@ export async function POST(request: Request) {
 
         // Ista rečenica se plaća samo jednom. Lični tekst (pozdrav sa imenom deteta) se ne čuva.
         const personal = body.personal === true;
-        const cacheKey = ttsCacheKey([preferredModel, LANGUAGE, voiceId, emotion, text]);
+        // Podešavanja izgovora su deo ključa: kad se glas promeni (npr. uspori), stari snimci se više ne puštaju
+        const cacheKey = ttsCacheKey([preferredModel, LANGUAGE, voiceId, emotion, JSON.stringify(delivery), text]);
         const cached = personal ? null : await readCachedAudio(cacheKey);
         if (cached) return audioResponse(cached);
         if (Date.now() - keyRejectedAt < KEY_REJECTED_PAUSE_MS) throw new HttpError(502, UNAVAILABLE);

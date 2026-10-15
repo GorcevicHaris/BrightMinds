@@ -70,7 +70,10 @@ export interface TtsDelivery {
     stability: number;
     /** Koliko se naglašava stil govornika (0–1) */
     style: number;
-    /** 0.7–1.2 */
+    /**
+     * 0.7–1.2. Namerno sporije od običnog govora: deca od 3 do 10 godina i deca iz spektra
+     * autizma bolje razumeju polagan govor sa jasnim granicama reči.
+     */
     speed: number;
     /** Oznaka u tekstu za modele koji ih razumeju (eleven_v3) */
     tag: string;
@@ -83,16 +86,16 @@ function hint(how: string): TtsDelivery["hint"] {
 }
 
 export const TTS_DELIVERY: Record<VoiceEmotion, TtsDelivery> = {
-    neutral: { stability: 0.6, style: 0.1, speed: 0.95, tag: "", hint: null },
-    hello: { stability: 0.45, style: 0.35, speed: 0.98, tag: "[warmly]", hint: hint("toplo i veselo") },
-    happy: { stability: 0.4, style: 0.45, speed: 1, tag: "[happy]", hint: hint("veselo, sa osmehom") },
-    proud: { stability: 0.38, style: 0.55, speed: 1, tag: "[excited]", hint: hint("ponosno i radosno") },
-    gentle: { stability: 0.7, style: 0.15, speed: 0.9, tag: "[gently]", hint: hint("nežno i ohrabrujuće") },
-    curious: { stability: 0.45, style: 0.3, speed: 0.96, tag: "[curious]", hint: hint("radoznalo") },
-    sad: { stability: 0.5, style: 0.35, speed: 0.88, tag: "[sad]", hint: hint("tiho i tužno") },
-    angry: { stability: 0.5, style: 0.35, speed: 0.94, tag: "[annoyed]", hint: hint("ozbiljno i ljutito, ali bez vikanja") },
-    scared: { stability: 0.42, style: 0.4, speed: 0.98, tag: "[nervous]", hint: hint("uplašeno i tiho") },
-    surprised: { stability: 0.38, style: 0.5, speed: 1, tag: "[surprised]", hint: hint("iznenađeno") },
+    neutral: { stability: 0.6, style: 0.1, speed: 0.85, tag: "", hint: null },
+    hello: { stability: 0.45, style: 0.35, speed: 0.88, tag: "[warmly]", hint: hint("toplo i veselo") },
+    happy: { stability: 0.4, style: 0.45, speed: 0.9, tag: "[happy]", hint: hint("veselo, sa osmehom") },
+    proud: { stability: 0.38, style: 0.55, speed: 0.9, tag: "[excited]", hint: hint("ponosno i radosno") },
+    gentle: { stability: 0.7, style: 0.15, speed: 0.82, tag: "[gently]", hint: hint("nežno i ohrabrujuće") },
+    curious: { stability: 0.45, style: 0.3, speed: 0.86, tag: "[curious]", hint: hint("radoznalo") },
+    sad: { stability: 0.5, style: 0.35, speed: 0.8, tag: "[sad]", hint: hint("tiho i tužno") },
+    angry: { stability: 0.5, style: 0.35, speed: 0.84, tag: "[annoyed]", hint: hint("ozbiljno i ljutito, ali bez vikanja") },
+    scared: { stability: 0.42, style: 0.4, speed: 0.86, tag: "[nervous]", hint: hint("uplašeno i tiho") },
+    surprised: { stability: 0.38, style: 0.5, speed: 0.9, tag: "[surprised]", hint: hint("iznenađeno") },
 };
 
 // ── Lice učitelja ─────────────────────────────────────────────────────────────

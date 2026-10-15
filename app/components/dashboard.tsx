@@ -1,10 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { BarChart3, BookOpen, LogOut, Pencil, Play, Plus, Radio, Settings2, Trash2 } from "lucide-react";
+import { BarChart3, BookOpen, KeyRound, LogOut, MoreHorizontal, Pencil, Play, Plus, Radio, Settings2, Star, Trash2 } from "lucide-react";
 import CustomStoriesManager from "./stories/CustomStoriesManager";
 import ChildSettingsModal from "./ChildSettingsModal";
 import VisualPinPad from "./VisualPinPad";
@@ -194,7 +194,7 @@ export default function Dashboard() {
     return (
         <div className="min-h-dvh bg-canvas">
             <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
-                <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:h-18 sm:px-6 lg:px-8">
+                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:h-18 sm:px-6 lg:px-10">
                     <Logo size="sm" />
                     <div className="flex items-center gap-2 sm:gap-4">
                         {user && (
@@ -212,7 +212,7 @@ export default function Dashboard() {
                 </div>
             </header>
 
-            <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10 lg:px-8">
+            <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-10 lg:px-10">
                 <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">
@@ -258,7 +258,7 @@ export default function Dashboard() {
                 )}
 
                 {loadState === "ready" && children.length > 0 && (
-                    <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <ul className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                         {children.map((child) => (
                             <li key={child.id}>
                                 <ChildCard
@@ -277,7 +277,7 @@ export default function Dashboard() {
                 )}
             </main>
 
-            <footer className="mx-auto max-w-6xl px-4 pb-8 sm:px-6 lg:px-8">
+            <footer className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-10">
                 <p className="max-w-3xl text-xs font-medium text-ink-faint">
                     Bright Minds je vežbanka uz podršku odraslih. Nije terapija ni dijagnostički alat i ne zamenjuje logopeda,
                     defektologa ili psihologa. Veštine se najbolje prenose u svakodnevni život kada ih dete vežba i van ekrana, sa vama.{" "}
@@ -354,134 +354,176 @@ function ChildCard({ child, onEdit, onConfigure, onStories, onDelete }: ChildCar
     const hasPin = pinItems.length === PIN_LENGTH && pinItems.every(Boolean);
     const age = ageLabel(child.date_of_birth);
     const isGirl = child.gender === "female";
+    const points = child.experience_points ?? 0;
 
+    // Jedno glavno dugme („Pokreni igre”), ostalo tiho: kartica se čita u jednom pogledu.
+    // Izmena i brisanje su u meniju „⋯”, jer se retko koriste, a brisanje ne sme da bude pri ruci.
     return (
-        <Card className="flex h-full flex-col transition-shadow hover:shadow-lift">
-            <div className="flex items-start gap-4">
+        <article className="flex h-full flex-col overflow-hidden rounded-card border border-line bg-surface shadow-soft transition-shadow hover:shadow-lift">
+            <div className="flex items-center gap-4 px-5 pb-3 pt-5">
                 <span
                     className={cn(
-                        "grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-3xl",
-                        isGirl ? "bg-pink-100" : child.gender === "male" ? "bg-sky-100" : "bg-brand-100"
+                        "grid h-16 w-16 shrink-0 place-items-center rounded-2xl text-4xl",
+                        isGirl ? "bg-pink-50" : child.gender === "male" ? "bg-sky-50" : "bg-brand-50"
                     )}
                     aria-hidden="true"
                 >
                     {isGirl ? "👧" : child.gender === "male" ? "👦" : "🧒"}
                 </span>
                 <div className="min-w-0 flex-1">
-                    <h2 className="line-clamp-2 break-words text-lg font-extrabold leading-tight text-ink sm:text-xl">
+                    <h2 className="truncate text-xl font-extrabold leading-tight text-ink">
                         {child.first_name} {child.last_name}
                     </h2>
-                    <p className="text-sm font-semibold text-ink-soft">{age || "—"}</p>
+                    <p className="mt-0.5 text-sm font-semibold text-ink-soft">
+                        {age || "—"} · igre za {bandLabel(child)}
+                    </p>
                 </div>
-                <div className="-mr-2 -mt-1 flex shrink-0">
-                    <button
-                        type="button"
-                        onClick={onEdit}
-                        aria-label={`Izmeni profil: ${child.first_name}`}
-                        className="grid h-10 w-10 place-items-center rounded-xl text-ink-faint transition-colors hover:bg-brand-50 hover:text-brand-700"
-                    >
-                        <Pencil className="h-[18px] w-[18px]" aria-hidden="true" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onDelete}
-                        aria-label={`Obriši profil: ${child.first_name}`}
-                        className="grid h-10 w-10 place-items-center rounded-xl text-ink-faint transition-colors hover:bg-rose-50 hover:text-rose-600"
-                    >
-                        <Trash2 className="h-[18px] w-[18px]" aria-hidden="true" />
-                    </button>
-                </div>
+                <CardMenu name={child.first_name} onEdit={onEdit} onDelete={onDelete} />
             </div>
 
-            <dl className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-xl bg-sun-50 px-3 py-2.5">
-                    <dt className="text-xs font-bold text-sun-700">Poeni</dt>
-                    <dd className="text-lg font-extrabold text-ink">⭐ {child.experience_points ?? 0}</dd>
-                </div>
-                <div className="rounded-xl bg-orange-50 px-3 py-2.5">
-                    <dt className="text-xs font-bold text-orange-700">Uzrast za igre</dt>
-                    <dd className="text-lg font-extrabold text-ink">{bandLabel(child)}</dd>
-                </div>
-            </dl>
-
-            <div className="mt-3 flex min-h-14 items-center gap-2 rounded-xl border border-line px-3 py-2">
-                <span className="text-xs font-bold text-ink-soft">Tajni kod</span>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-5 text-sm font-bold text-ink-soft">
+                <span className="inline-flex items-center gap-1.5">
+                    <Star className="h-4 w-4 fill-sun-300 text-sun-500" aria-hidden="true" />
+                    {points} {points === 1 ? "poen" : "poena"}
+                </span>
                 {hasPin ? (
-                    <span className="ml-auto flex gap-1.5">
-                        {pinItems.map((item, idx) =>
-                            item ? (
-                                <Image
-                                    key={idx}
-                                    src={item.image}
-                                    alt={item.name}
-                                    title={item.name}
-                                    width={36}
-                                    height={36}
-                                    sizes="36px"
-                                    className="h-9 w-9 rounded-lg object-cover ring-1 ring-line"
-                                />
-                            ) : null
-                        )}
+                    <span className="inline-flex items-center gap-2">
+                        <span>Kod:</span>
+                        <span className="flex gap-1">
+                            {pinItems.map((item, idx) =>
+                                item ? (
+                                    <Image
+                                        key={idx}
+                                        src={item.image}
+                                        alt={item.name}
+                                        title={item.name}
+                                        width={28}
+                                        height={28}
+                                        sizes="28px"
+                                        className="h-7 w-7 rounded-md object-cover ring-1 ring-line"
+                                    />
+                                ) : null
+                            )}
+                        </span>
                     </span>
                 ) : (
                     <button
                         type="button"
                         onClick={onEdit}
-                        className="ml-auto rounded-lg bg-sun-100 px-2.5 py-1.5 text-xs font-extrabold text-sun-700 hover:bg-sun-200"
+                        className="inline-flex items-center gap-1.5 rounded-lg text-sun-700 underline-offset-4 hover:underline"
                     >
-                        Nije postavljen — dodaj
+                        <KeyRound className="h-4 w-4" aria-hidden="true" />
+                        Postavi tajni kod
                     </button>
                 )}
             </div>
 
-            {child.notes && <p className="mt-3 line-clamp-2 text-sm font-medium text-ink-soft">{child.notes}</p>}
+            {child.notes && <p className="mt-3 line-clamp-2 px-5 text-sm font-medium text-ink-faint">{child.notes}</p>}
 
-            <div className="mt-auto pt-5">
+            <div className="mt-auto px-5 pb-4 pt-5">
                 <Link href={`/dashboard/child/${child.id}`} className={buttonClasses({ size: "lg", block: true })}>
                     <Play className="h-5 w-5" aria-hidden="true" />
                     Pokreni igre
                 </Link>
-                <div className="mt-2.5 grid grid-cols-2 gap-2">
-                    <Link href={`/dashboard/progress/${child.id}`} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
-                        <BarChart3 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        Statistika
-                    </Link>
-                    <Link href={`/dashboard/monitor/${child.id}`} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
-                        <Radio className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        Uživo
-                    </Link>
-                    <button type="button" onClick={onStories} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
-                        <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        Priče
+            </div>
+
+            <nav aria-label={`Još za: ${child.first_name}`} className="grid grid-cols-4 divide-x divide-line border-t border-line bg-canvas/60">
+                <Link href={`/dashboard/progress/${child.id}`} className={QUIET_ACTION}>
+                    <BarChart3 className="h-5 w-5" aria-hidden="true" />
+                    Napredak
+                </Link>
+                <Link href={`/dashboard/monitor/${child.id}`} className={QUIET_ACTION}>
+                    <Radio className="h-5 w-5" aria-hidden="true" />
+                    Uživo
+                </Link>
+                <button type="button" onClick={onStories} className={QUIET_ACTION}>
+                    <BookOpen className="h-5 w-5" aria-hidden="true" />
+                    Priče
+                </button>
+                <button type="button" onClick={onConfigure} className={QUIET_ACTION}>
+                    <Settings2 className="h-5 w-5" aria-hidden="true" />
+                    Podesi
+                </button>
+            </nav>
+        </article>
+    );
+}
+
+const QUIET_ACTION =
+    "flex min-h-16 flex-col items-center justify-center gap-1 px-1 py-2.5 text-xs font-extrabold text-ink-soft transition-colors hover:bg-brand-50 hover:text-brand-700 focus-visible:bg-brand-50 focus-visible:text-brand-700 focus-visible:outline-none sm:text-sm";
+
+/** Meni „⋯” sa retkim radnjama (izmena, brisanje). Zatvara se klikom van menija i tasterom Escape. */
+function CardMenu({ name, onEdit, onDelete }: { name: string; onEdit: () => void; onDelete: () => void }) {
+    const [open, setOpen] = useState(false);
+    const rootRef = useRef<HTMLDivElement>(null);
+    const menuId = useId();
+
+    useEffect(() => {
+        if (!open) return;
+        const close = (event: PointerEvent) => {
+            if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+        };
+        const escape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") setOpen(false);
+        };
+        document.addEventListener("pointerdown", close);
+        document.addEventListener("keydown", escape);
+        return () => {
+            document.removeEventListener("pointerdown", close);
+            document.removeEventListener("keydown", escape);
+        };
+    }, [open]);
+
+    const choose = (action: () => void) => {
+        setOpen(false);
+        action();
+    };
+
+    return (
+        <div ref={rootRef} className="relative -mr-2 shrink-0 self-start">
+            <button
+                type="button"
+                onClick={() => setOpen((value) => !value)}
+                aria-label={`Još opcija: ${name}`}
+                aria-haspopup="menu"
+                aria-expanded={open}
+                aria-controls={open ? menuId : undefined}
+                className="grid h-10 w-10 place-items-center rounded-xl text-ink-faint transition-colors hover:bg-brand-50 hover:text-ink"
+            >
+                <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
+            </button>
+            {open && (
+                <div id={menuId} role="menu" className="absolute right-0 top-full z-20 mt-1 w-48 animate-fade-up rounded-xl border border-line bg-surface p-1.5 shadow-pop">
+                    <button type="button" role="menuitem" onClick={() => choose(onEdit)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold text-ink hover:bg-brand-50">
+                        <Pencil className="h-4 w-4 text-ink-soft" aria-hidden="true" />
+                        Izmeni profil
                     </button>
-                    <button type="button" onClick={onConfigure} className={buttonClasses({ variant: "secondary", className: "px-2 text-sm" })}>
-                        <Settings2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-                        Podesi
+                    <button type="button" role="menuitem" onClick={() => choose(onDelete)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold text-rose-600 hover:bg-rose-50">
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        Obriši profil
                     </button>
                 </div>
-            </div>
-        </Card>
+            )}
+        </div>
     );
 }
 
 function ChildrenSkeleton() {
     return (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Učitavanje">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Učitavanje">
             {[0, 1, 2].map((i) => (
-                <Card key={i} className="animate-pulse">
-                    <div className="flex items-center gap-4">
-                        <div className="h-14 w-14 rounded-2xl bg-brand-100" />
+                <div key={i} className="animate-pulse overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+                    <div className="flex items-center gap-4 p-5">
+                        <div className="h-16 w-16 rounded-2xl bg-brand-100" />
                         <div className="flex-1 space-y-2">
                             <div className="h-5 w-2/3 rounded bg-brand-100" />
-                            <div className="h-4 w-1/3 rounded bg-brand-50" />
+                            <div className="h-4 w-1/2 rounded bg-brand-50" />
                         </div>
                     </div>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                        <div className="h-16 rounded-xl bg-brand-50" />
-                        <div className="h-16 rounded-xl bg-brand-50" />
-                    </div>
-                    <div className="mt-5 h-13 rounded-2xl bg-brand-100" />
-                </Card>
+                    <div className="mx-5 h-4 w-1/3 rounded bg-brand-50" />
+                    <div className="m-5 h-13 rounded-2xl bg-brand-100" />
+                    <div className="h-16 border-t border-line bg-canvas/60" />
+                </div>
             ))}
         </div>
     );
