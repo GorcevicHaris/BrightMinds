@@ -1109,7 +1109,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         if (rightZone && picked.id === round.color.id) {
             lockedRef.current = true;
             cancelFeedbackTimer();
-            const firstTry = current.wrongColors.length + current.wrongZones.length === 0;
+            const firstTry = current.wrongColors.length + current.wrongZones.length === 0 && !current.hint;
             const prompted = current.hint;
             const solved: ColoringView = {
                 ...current,

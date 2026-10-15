@@ -307,10 +307,10 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                 ...current,
                 picked: index,
                 score: current.score + POINTS[Math.min(current.tried.length, POINTS.length - 1)],
-                correctCount: current.correctCount + (attempt === 1 && !modeled ? 1 : 0),
-                promptedCount: current.promptedCount + (attempt > 1 && current.hint ? 1 : 0),
+                correctCount: current.correctCount + (attempt === 1 && !modeled && !current.hint ? 1 : 0),
+                promptedCount: current.promptedCount + (current.hint ? 1 : 0),
             };
-            const how = attempt === 1 ? "" : ` iz ${attempt}. pokušaja${current.hint ? ", uz pomoć" : ""}`;
+            const how = attempt === 1 ? (current.hint ? " uz pomoć" : "") : ` iz ${attempt}. pokušaja${current.hint ? ", uz pomoć" : ""}`;
             commit(next, `Izbor koji pomaže${how}: ${label}`);
             playSfx("correct");
             // Drugi dodir dvostrukog dodira ne sme da pritisne „Dalje” i preskoči objašnjenje

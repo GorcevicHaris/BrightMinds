@@ -614,7 +614,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         lockedRef.current = true;
         // Zvuk koji je pokazala ruka (prvi u prvom nivou) je pokazivanje, a ne zadatak: ne boduje se
         const modeled = level === 1 && current.round === 1 && current.wrongIds.length === 0;
-        const firstTry = current.wrongIds.length === 0 && !modeled;
+        const firstTry = current.wrongIds.length === 0 && !modeled && !current.hint;
         const answered: SoundToImageView = {
             ...current,
             pickedId: id,

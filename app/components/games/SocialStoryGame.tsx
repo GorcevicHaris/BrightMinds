@@ -26,6 +26,7 @@ import {
     type ChoiceState,
     type FeedbackKind,
     type GameProps,
+    useWaitHint,
 } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
@@ -304,6 +305,17 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
         if (!isMonitor) scrollIntoViewGently(topRef.current);
     }, [isMonitor, view.phase, view.stepIndex]);
 
+    // Pomoć posle čekanja: na koraku sa izborom, kad je čitanje gotovo, a dete dugo ništa ne dodirne,
+    // jedan izbor koji pomaže blago zasvetli
+    useWaitHint(!isMonitor && settings.waitHint && view.phase === "story" && !view.listening, `${view.stepIndex}:${view.listening}`, () => {
+        const current = viewRef.current;
+        const record = current.records[current.stepIndex];
+        if (current.phase !== "story" || current.listening || !record || record.hint || record.picked !== null) return;
+        if (!story.steps[current.stepIndex]?.decision || current.mode !== "choose") return;
+        const records = current.records.map((item, i) => (i === current.stepIndex ? { ...item, hint: true } : item));
+        commit({ ...current, records }, `Korak ${current.stepIndex + 1}: pomoć posle čekanja`);
+    });
+
     const silence = () => {
         cancelSpeechQueue();
         stop();
@@ -352,10 +364,10 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                 ...current,
                 records: withRecord(picked),
                 score: current.score + (attempt === 1 ? POINTS_FIRST_PICK : POINTS_LATER_PICK),
-                correctCount: current.correctCount + (attempt === 1 ? 1 : 0),
-                promptedCount: current.promptedCount + (attempt > 1 && currentRecord.hint ? 1 : 0),
+                correctCount: current.correctCount + (attempt === 1 && !currentRecord.hint ? 1 : 0),
+                promptedCount: current.promptedCount + (currentRecord.hint ? 1 : 0),
             };
-            const how = attempt === 1 ? "" : ` iz ${attempt}. pokušaja${currentRecord.hint ? ", uz pomoć" : ""}`;
+            const how = attempt === 1 ? (currentRecord.hint ? " uz pomoć" : "") : ` iz ${attempt}. pokušaja${currentRecord.hint ? ", uz pomoć" : ""}`;
             playSfx("correct");
             commit(next, `${place}: izbor koji pomaže${how}: ${label}`);
             // Ekran se pomera ka objašnjenju: drugi dodir dvostrukog dodira ne sme da pritisne „Dalje”

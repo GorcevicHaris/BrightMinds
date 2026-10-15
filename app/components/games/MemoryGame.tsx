@@ -25,6 +25,7 @@ import {
     type FeedbackKind,
     type GameProps,
     type TimerId,
+    useWaitHint,
 } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
@@ -621,6 +622,15 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
             commit({ ...viewRef.current, flipped: [] });
         });
     };
+
+    // Pomoć posle čekanja: jedna kartica je otvorena, a dete dugo ne zna gde je njen par — par blago zasvetli
+    useWaitHint(!isMonitor && settings.waitHint && view.flipped.length === 1, `${view.flipped.join(",")}:${view.matched.length}`, () => {
+        const current = viewRef.current;
+        if (finishedRef.current || current.peek || current.flipped.length !== 1 || current.hint !== null) return;
+        const partner = partnerOf(current.cards, current.flipped[0]);
+        if (partner < 0) return;
+        commit({ ...current, hint: partner }, "Pomoć posle čekanja");
+    });
 
     const repeatInstruction = () => {
         demo.show();
