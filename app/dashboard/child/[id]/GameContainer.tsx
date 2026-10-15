@@ -381,6 +381,19 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         });
     };
 
+    /** Roditelju koji prati uživo javljamo kad dete uzme pauzu i kad nastavi. */
+    const announcePause = (pause: "start" | "end") => {
+        if (!game) return;
+        publish({
+            childId,
+            activityId: game.activityId,
+            gameType: game.gameType,
+            event: "progress",
+            data: { pause },
+            timestamp: new Date().toISOString(),
+        });
+    };
+
     /** Izlaz iz igre: ako je nešto odigrano (i pitanje je uključeno), pitamo kako se dete sada oseća. */
     const leaveGame = () => {
         // „Zatvori” na pitanju o raspoloženju znači: preskoči
@@ -580,6 +593,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         onClick={() => {
                             playSfx("tap");
                             setBreakFor(playKey);
+                            announcePause("start");
                         }}
                         className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border-2 border-sun-200 bg-sun-50 px-3 text-sm font-extrabold text-sun-700 transition-colors hover:bg-sun-100 sm:px-4"
                     >
@@ -634,7 +648,14 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             </div>
 
             {screen === "playing" && onBreak && (
-                <BreakScreen teacher={settings.avatar ? (gender ?? undefined) : null} say={say} onDone={() => setBreakFor(null)} />
+                <BreakScreen
+                    teacher={settings.avatar ? (gender ?? undefined) : null}
+                    say={say}
+                    onDone={() => {
+                        setBreakFor(null);
+                        announcePause("end");
+                    }}
+                />
             )}
 
             {screen === "playing" && outcome && (

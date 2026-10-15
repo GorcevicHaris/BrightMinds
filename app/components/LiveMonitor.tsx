@@ -138,6 +138,10 @@ function monitorReducer(state: MonitorState, { update, receivedAt }: MonitorActi
 
     const game = getGameByType(update.gameType);
     if (!game) return state;
+    // Dete je zatražilo pauzu (ili se vratilo): samo zapis u toku aktivnosti, prikaz igre ostaje isti
+    if (update.event === "progress" && (data.pause === "start" || data.pause === "end")) {
+        return { ...state, ...withEntry(state, at, data.pause === "start" ? "Dete je uzelo pauzu" : "Dete nastavlja igru", "progress") };
+    }
     const continues = active !== null && active.phase === "playing" && active.game.id === game.id;
 
     if (update.event === "started") {
