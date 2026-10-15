@@ -23,6 +23,7 @@ import {
     useInputGuard,
     useSayThen,
     useTimers,
+    useWaitHint,
 } from "@/app/components/games/kit";
 import type { BaseView, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
@@ -1196,6 +1197,13 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         playSfx("tap");
         commit(withFills(viewRef.current, picture, previous), "Vraćen poslednji potez");
     };
+
+    // Pomoć posle čekanja (bojenje po uputstvu): tražena boja i deo blago zasvetle
+    useWaitHint(!isMonitor && guided && settings.waitHint, view.round, () => {
+        const current = viewRef.current;
+        if (lockedRef.current || current.done || current.hint || current.feedback === "correct") return;
+        commit({ ...current, hint: true }, "Pomoć posle čekanja");
+    });
 
     const repeatInstruction = () => {
         demo.show();

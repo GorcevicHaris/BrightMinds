@@ -5,6 +5,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 /** Koliko dugo čekamo pre nego što blago skrenemo pažnju na dugme „Ponovi” (dete dobija vreme da razmisli). */
 export const IDLE_HINT_MS = 10_000;
 
+/** Posle ovoliko vremena bez dodira tačan odgovor zasvetli (kad je uključena „pomoć posle čekanja”) */
+export const WAIT_HINT_MS = 8_000;
+
 /**
  * True kada dete `ms` milisekundi nije ništa dodirnulo. Vraća se na false pri
  * svakom dodiru i kad se promeni `resetKey` (npr. novi zadatak).
@@ -52,3 +55,20 @@ export function useInputGuard(ms = 400) {
         [ms]
     );
 }
+
+/**
+ * Pomoć posle čekanja: kad je `enabled` i dete `WAIT_HINT_MS` ništa ne dodirne, zove se `onHint`
+ * (jednom po `resetKey`, npr. zadatku). Igra tada ističe tačan odgovor i beleži ga kao „uz pomoć”.
+ * Nema odbrojavanja ni požurivanja na ekranu — samo tiha pomoć za dete koje ne zna kako dalje.
+ */
+export function useWaitHint(enabled: boolean, resetKey: unknown, onHint: () => void) {
+    const idle = useIdle(WAIT_HINT_MS, resetKey);
+    const onHintRef = useRef(onHint);
+    useEffect(() => {
+        onHintRef.current = onHint;
+    });
+    useEffect(() => {
+        if (enabled && idle) onHintRef.current();
+    }, [enabled, idle]);
+}
+

@@ -37,6 +37,11 @@ export interface ChildSettings {
     /** Najviše ponuđenih odgovora; 0 = prema uzrastu */
     maxChoices: 0 | 2 | 3 | 4 | 6;
     hintAfter: HintAfter;
+    /**
+     * Pomoć posle čekanja: kad dete dugo ništa ne dodirne, tačan odgovor blago zasvetli —
+     * pre greške, a ne posle nje (učenje bez grešaka, „pomoć sa odlaganjem”)
+     */
+    waitHint: boolean;
     /** Dnevno ograničenje igre u minutima; 0 = bez ograničenja */
     sessionMinutes: 0 | 10 | 15 | 20 | 30;
     moodCheck: MoodCheck;
@@ -118,6 +123,7 @@ export function defaultSettings(band: AgeBand): ChildSettings {
         avatar: true,
         maxChoices: 0,
         hintAfter: band === "young" ? 1 : 2,
+        waitHint: band === "young",
         sessionMinutes: band === "young" ? 10 : band === "middle" ? 15 : 20,
         // Deca mlađa od ~5–6 godina ne mogu pouzdano da ocene svoje raspoloženje na skali
         moodCheck: band === "young" ? "off" : "three",
@@ -170,6 +176,7 @@ export function sanitizeSettings(raw: unknown, ageBand: AgeBand): ChildSettings 
         avatar: bool(source.avatar, base.avatar),
         maxChoices: pick<ChildSettings["maxChoices"]>(source.maxChoices, [0, 2, 3, 4, 6], base.maxChoices),
         hintAfter: pick<HintAfter>(source.hintAfter, [0, 1, 2], base.hintAfter),
+        waitHint: bool(source.waitHint, base.waitHint),
         sessionMinutes: pick<ChildSettings["sessionMinutes"]>(source.sessionMinutes, [0, 10, 15, 20, 30], base.sessionMinutes),
         moodCheck: pick<MoodCheck>(source.moodCheck, ["off", "three"], base.moodCheck),
         plan: sanitizePlan(source.plan),

@@ -31,6 +31,7 @@ import {
     type ChoiceState,
     type FeedbackKind,
     type GameProps,
+    useWaitHint,
 } from "@/app/components/games/kit";
 import {
     getSituation,
@@ -267,6 +268,14 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
     useEffect(() => {
         if (!isMonitor && view.picked !== null && !view.finished) nextButtonRef.current?.focus();
     }, [isMonitor, view.picked, view.finished]);
+
+    // Pomoć posle čekanja: izbor koji pomaže blago zasvetli kad dete dugo ništa ne dodirne
+    useWaitHint(!isMonitor && settings.waitHint && view.optionsShown, `${view.round}:${view.optionsShown}`, () => {
+        const current = viewRef.current;
+        if (current.hint || current.picked !== null || current.finished || !current.optionsShown) return;
+        if (level === 1 && current.round === 1 && current.tried.length === 0) return; // tu pokazuje ruka
+        commit({ ...current, hint: true }, "Pomoć posle čekanja");
+    });
 
     const handleRepeat = () => {
         const current = viewRef.current;

@@ -26,6 +26,7 @@ import {
     useInputGuard,
     useSayThen,
     useTimers,
+    useWaitHint,
     type BaseView,
     type ChoiceState,
     type FeedbackKind,
@@ -793,6 +794,15 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
             commit({ ...viewRef.current, picked: null, feedback: null });
         });
     };
+
+    // Pomoć posle čekanja: dete koje dugo ne zna kako dalje dobija blago istaknut tačan oblik
+    // (pre greške, ne posle nje). Zadatak tada važi kao rešen uz pomoć.
+    useWaitHint(!isMonitor && settings.waitHint, view.round, () => {
+        const current = viewRef.current;
+        if (finishedRef.current || current.hint || current.feedback || current.options.length === 0) return;
+        if (level === 1 && current.round === 1 && current.wrong.length === 0) return; // taj zadatak pokazuje ruka
+        commit({ ...current, hint: true }, "Pomoć posle čekanja");
+    });
 
     const repeatInstruction = () => {
         demo.show();

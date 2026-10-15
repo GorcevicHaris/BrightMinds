@@ -155,6 +155,14 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                             <option value={0}>Bez isticanja odgovora</option>
                         </Select>
                     </div>
+                    <div className="mt-2">
+                        <Switch
+                            label="Pomoć kad dete dugo ne odgovara"
+                            description="Posle 8 sekundi bez dodira tačan odgovor blago zasvetli — pre greške, ne posle nje. Preporučeno za najmlađe."
+                            checked={settings.waitHint}
+                            onChange={(v) => set("waitHint", v)}
+                        />
+                    </div>
                 </Section>
 
                 <Section

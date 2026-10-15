@@ -24,6 +24,7 @@ import {
     useInputGuard,
     useTimers,
     WaitingNote,
+    useWaitHint,
 } from "@/app/components/games/kit";
 import type { BaseView, ChoiceState, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
 import { OwlPicture, WindPicture, type SoundPicture } from "./SoundPictures";
@@ -504,6 +505,14 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         setView(next);
         sync.update(next, log);
     };
+
+    // Pomoć posle čekanja: kad je zvuk odslušan, a dete dugo ništa ne dodirne, tačna slika zasvetli
+    useWaitHint(!isMonitor && settings.waitHint && view.heard, `${view.round}:${view.heard}`, () => {
+        const current = viewRef.current;
+        if (lockedRef.current || current.done || current.hint || current.soundOff || !current.heard || current.feedback === "correct") return;
+        if (level === 1 && current.round === 1 && current.wrongIds.length === 0) return; // tu pokazuje ruka
+        commit({ ...current, hint: true }, "Pomoć posle čekanja");
+    });
 
     // Dugme sa zvučnikom gasi i zvuk zadatka koji upravo svira — odmah, ne tek pri sledećem dodiru
     const [muted] = useMuted();

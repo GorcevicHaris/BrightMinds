@@ -167,6 +167,7 @@ describe("sanitizeSettings", () => {
             avatar: false,
             maxChoices: 2,
             hintAfter: 0,
+            waitHint: true,
             sessionMinutes: 30,
             moodCheck: "off",
             plan: ["emotions", "shapes"],
@@ -308,5 +309,16 @@ describe("band presets", () => {
             AGE_BANDS.map((band) => BAND_PRESETS[band].showPoints),
             [false, false, true]
         );
+    });
+});
+
+describe("waitHint", () => {
+    it("is on for the youngest and off for older children by default, and survives sanitizing", async () => {
+        const { defaultSettings, sanitizeSettings } = await import("@/lib/childSettings");
+        assert.equal(defaultSettings("young").waitHint, true);
+        assert.equal(defaultSettings("middle").waitHint, false);
+        assert.equal(defaultSettings("older").waitHint, false);
+        assert.equal(sanitizeSettings({ waitHint: true }, "middle").waitHint, true);
+        assert.equal(sanitizeSettings({ waitHint: "yes" }, "young").waitHint, true);
     });
 });
