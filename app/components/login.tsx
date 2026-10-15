@@ -10,7 +10,9 @@ import { Alert, Card } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Input } from "./ui/Field";
 import { cn } from "@/lib/cn";
-import { PIN_LENGTH } from "@/lib/visualPinData";
+import { PIN_LENGTH, VISUAL_PIN_CATEGORIES } from "@/lib/visualPinData";
+import { SpeakButton } from "@/app/components/games/kit";
+import { speak } from "@/lib/speech";
 
 type LoginMode = "child" | "parent";
 
@@ -123,14 +125,26 @@ function ChildLogin() {
         setPin(next);
         setStatus("idle");
         setMessage("");
-        if (next.length === PIN_LENGTH) void verify(next);
+        if (next.length === PIN_LENGTH) {
+            void verify(next);
+            return;
+        }
+        // Glas kaže samo šta je sledeće — nikad koja je sličica izabrana (kod je tajna)
+        if (next.length > pin.length) void speak(`Sada izaberi ${VISUAL_PIN_CATEGORIES[next.length].prompt}.`);
     };
+
+    // Dete koje ne čita čuje uputstvo kad dodirne zvučnik (pregledač ne pušta glas pre prvog dodira)
+    const sayInstructions = () =>
+        void speak(`Dodirni svoje četiri sličice. ${pin.length === 0 ? "Prvo" : "Sada"} izaberi ${VISUAL_PIN_CATEGORIES[Math.min(pin.length, PIN_LENGTH - 1)].prompt}.`);
 
     return (
         <div>
-            <div className="mb-5 text-center">
-                <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">Tvoj tajni kod</h1>
-                <p className="mt-1 text-base font-semibold text-ink-soft">Dodirni svoje četiri sličice</p>
+            <div className="mb-5 flex items-center justify-center gap-3 text-center">
+                <div>
+                    <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">Tvoj tajni kod</h1>
+                    <p className="mt-1 text-base font-semibold text-ink-soft">Dodirni svoje četiri sličice</p>
+                </div>
+                <SpeakButton onClick={sayInstructions} label="Slušaj" />
             </div>
 
             <VisualPinPad value={pin} onChange={handleChange} status={status === "success" ? "checking" : status} />

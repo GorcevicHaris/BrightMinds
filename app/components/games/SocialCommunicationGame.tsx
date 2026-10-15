@@ -7,6 +7,8 @@ import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
 import {
     ChoiceCard,
+    DemoHand,
+    demoRounds,
     ExplainPanel,
     Feedback,
     GameHud,
@@ -290,11 +292,13 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
 
         if (target.acceptable.includes(index)) {
             const attempt = current.tried.length + 1;
+            // Situacija koju je pokazala ruka (prva u prvom nivou) je pokazivanje, a ne zadatak: ne boduje se
+            const modeled = level === 1 && current.round === 1 && attempt === 1;
             const next: SocialView = {
                 ...current,
                 picked: index,
                 score: current.score + POINTS[Math.min(current.tried.length, POINTS.length - 1)],
-                correctCount: current.correctCount + (attempt === 1 ? 1 : 0),
+                correctCount: current.correctCount + (attempt === 1 && !modeled ? 1 : 0),
                 promptedCount: current.promptedCount + (attempt > 1 && current.hint ? 1 : 0),
             };
             const how = attempt === 1 ? "" : ` iz ${attempt}. pokušaja${current.hint ? ", uz pomoć" : ""}`;
@@ -335,7 +339,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     score: done.score,
                     durationSec: sync.elapsedSec(),
                     correct: done.correctCount,
-                    total: done.totalRounds,
+                    total: Math.max(done.totalRounds - demoRounds(level, done.totalRounds), 1),
                     prompted: done.promptedCount,
                 });
             }, CELEBRATE_MS);
@@ -404,6 +408,8 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
 
                     <ul key={`options-${shown.round}`} aria-label="Ponuđeni izbori" className="grid animate-fade gap-3">
                         {shown.order.map((index) => {
+                            const firstHelpful = shown.order.find((i) => situation.acceptable.includes(i));
+                            const showHand = !isMonitor && level === 1 && shown.round === 1 && shown.optionsShown && shown.picked === null && shown.tried.length === 0;
                             const option = situation.options[index];
                             const label = optionLabel(option, female);
                             const state = choiceState(index, shown, situation);
@@ -428,6 +434,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                                             </span>
                                             <span className="min-w-0 flex-1 text-lg leading-snug sm:text-xl">{label}</span>
                                         </span>
+                                        {showHand && index === firstHelpful && <DemoHand />}
                                     </ChoiceCard>
                                     {!isMonitor && <OptionSpeaker label={`Pročitaj: ${label}`} onClick={() => handleSpeakOption(index)} />}
                                 </li>

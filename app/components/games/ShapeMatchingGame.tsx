@@ -9,6 +9,8 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Reac
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
+    DemoHand,
+    demoRounds,
     Feedback,
     finiteOr,
     GameHud,
@@ -715,7 +717,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
             score: final.score,
             durationSec: sync.elapsedSec(),
             correct: final.correctCount,
-            total: final.totalRounds,
+            total: Math.max(final.totalRounds - demoRounds(level, final.totalRounds), 1),
             prompted: final.promptedCount,
         });
     };
@@ -751,7 +753,10 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
         const targetName = SHAPES[current.target].name.toLowerCase();
 
         if (option.shape === current.target) {
-            const firstTry = current.wrong.length === 0;
+            // Zadatak koji je pokazala ruka (prvi u prvom nivou) je pokazivanje, a ne zadatak:
+            // ne broji se ni kao samostalan ni kao uz pomoć, a nivo se ocenjuje bez njega (DEMO_ROUNDS)
+            const modeled = level === 1 && current.round === 1 && current.wrong.length === 0;
+            const firstTry = current.wrong.length === 0 && !modeled;
             const prompted = current.hint;
             const isLast = current.round >= current.totalRounds;
             const solved: ShapesView = {
@@ -807,6 +812,8 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
         );
     }
 
+    // Prvi zadatak prvog nivoa se pokazuje rukom; čim dete dodirne bilo šta, ruke više nema
+    const showHand = !isMonitor && level === 1 && shown.round === 1 && shown.wrong.length === 0 && shown.feedback === null;
     const prompt = promptFor(shown);
     const message = feedbackText(shown);
 
@@ -862,6 +869,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                                 <span className={cn("absolute grid place-items-center", option.rot ? "inset-[17%]" : "inset-[11%]")}>
                                     <ShapeArt shape={option.shape} color={option.color} rot={option.rot} scale={option.scale} className="h-full w-full" />
                                 </span>
+                                {showHand && option.shape === shown.target && <DemoHand />}
                             </ChoiceCard>
                         );
                     })}

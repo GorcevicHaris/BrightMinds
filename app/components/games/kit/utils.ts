@@ -70,3 +70,11 @@ export function toIndexList(value: unknown, size: number): number[] {
     const valid = value.filter((v): v is number => Number.isInteger(v) && v >= 0 && v < size);
     return Array.from(new Set(valid));
 }
+
+/**
+ * Koliko zadataka na početku nivoa je „pokazano” rukom (DemoHand) i zato se ne ocenjuje:
+ * prvi zadatak prvog nivoa, ako nivo ima još bar jedan zadatak.
+ */
+export function demoRounds(level: number, totalRounds: number): number {
+    return level === 1 && totalRounds > 1 ? 1 : 0;
+}

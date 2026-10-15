@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { ArrowLeft, Check, Eye, Lock, Star, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Eye, Lock, RotateCcw, SkipForward, Star, X } from "lucide-react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
@@ -318,6 +318,21 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         setOutcome(null);
         setScreen("playing");
     };
+
+    // Ekrani između igara se i izgovaraju: većina dece mlađe od 5 godina ne čita, pa im glas kaže šta da dodirnu
+    useEffect(() => {
+        const line =
+            screen === "tiers"
+                ? "Dodirni zeleno dugme."
+                : screen === "mood-before"
+                  ? "Kako si danas? Dodirni lice."
+                  : screen === "mood-after"
+                    ? "Kako si sada? Dodirni lice."
+                    : null;
+        if (!line) return;
+        const timer = setTimeout(() => void say(line, undefined, line.startsWith("Kako") ? "curious" : "neutral"), 500);
+        return () => clearTimeout(timer);
+    }, [screen, say]);
 
     /** Pokreće izabrani nivo. Bez `wanted` kreće sledeći nezavršeni nivo te težine. */
     const chooseTier = (next: TierConfig, wanted?: number) => {
@@ -1072,8 +1087,9 @@ function MoodPicker({ title, subtitle, teacher = null, onSelect }: MoodPickerPro
             <button
                 type="button"
                 onClick={() => choose(null)}
-                className="mt-6 min-h-12 rounded-xl px-5 text-base font-extrabold text-ink-soft hover:bg-brand-50 hover:text-ink"
+                className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl px-5 text-base font-extrabold text-ink-soft hover:bg-brand-50 hover:text-ink"
             >
+                <SkipForward className="h-5 w-5" aria-hidden="true" />
                 Preskoči
             </button>
         </div>
@@ -1158,25 +1174,30 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                 <div className="mt-6 flex flex-col gap-3">
                     {!limitReached && !outcome.advance && (
                         <Button chunky size="xl" variant="sun" block onClick={onRetry}>
+                            <RotateCcw className="h-6 w-6" aria-hidden="true" />
                             {outcome.practice ? "Čitaj ponovo" : "Igraj još jednom"}
                         </Button>
                     )}
                     {!limitReached && outcome.advance && !lastInTier && (
                         <Button chunky size="xl" variant="success" block onClick={onNext}>
-                            Sledeći nivo →
+                            Sledeći nivo
+                            <ArrowRight className="h-6 w-6" aria-hidden="true" />
                         </Button>
                     )}
                     {!limitReached && outcome.advance && lastInTier && nextTier && (
                         <Button chunky size="xl" variant="success" block onClick={() => onNextTier(nextTier)}>
-                            Igraj „{nextTier.label}” →
+                            Igraj „{nextTier.label}”
+                            <ArrowRight className="h-6 w-6" aria-hidden="true" />
                         </Button>
                     )}
                     {/* „Gotovo” je jednako veliko kao nastavak: prestanak igre je dobar izbor */}
                     <Button chunky size="xl" variant="secondary" block onClick={onLeave}>
+                        <Check className="h-6 w-6" aria-hidden="true" />
                         {limitReached ? "Gotovo za danas" : "Gotovo"}
                     </Button>
                     {!limitReached && outcome.advance && (
                         <Button size="lg" variant="ghost" block onClick={onRetry}>
+                            <RotateCcw className="h-5 w-5" aria-hidden="true" />
                             Igraj ovaj nivo ponovo
                         </Button>
                     )}

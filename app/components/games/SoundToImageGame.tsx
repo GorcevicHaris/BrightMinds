@@ -10,6 +10,8 @@ import { gameSoundsEnabled, playWithFade, useMuted } from "@/lib/sound";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
+    DemoHand,
+    demoRounds,
     Feedback,
     finiteOr,
     GameHud,
@@ -286,6 +288,8 @@ interface PlayButtonProps {
     playing: boolean;
     /** Kratko (tri mirna talasa) skreće pažnju na dugme: na početku runde i posle pogrešnog izbora */
     cue: boolean;
+    /** Ruka pokazuje dugme (prvi zvuk prvog nivoa) */
+    demo?: boolean;
     onClick: () => void;
 }
 
@@ -293,13 +297,13 @@ const BAR_DELAYS = ["[animation-delay:0ms]", "[animation-delay:300ms]", "[animat
 const BAR_HEIGHTS = ["h-3", "h-6", "h-4", "h-7"];
 
 /** Jedino mesto odakle kreće zvuk. Dok zvuk traje, umesto trougla stoje stubići koji mirno trepere. */
-function PlayButton({ playing, cue, onClick }: PlayButtonProps) {
+function PlayButton({ playing, cue, demo = false, onClick }: PlayButtonProps) {
     return (
         <button
             type="button"
             onClick={onClick}
             className={cn(
-                "inline-flex min-h-20 w-full min-w-48 shrink-0 items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] px-7 font-display text-xl font-extrabold text-white transition-[transform,background-color,border-width] active:translate-y-[3px] active:border-b-2 sm:w-auto sm:text-2xl",
+                "relative inline-flex min-h-20 w-full min-w-48 shrink-0 items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] px-7 font-display text-xl font-extrabold text-white transition-[transform,background-color,border-width] active:translate-y-[3px] active:border-b-2 sm:w-auto sm:text-2xl",
                 playing ? "border-emerald-800 bg-emerald-600" : "border-brand-700 bg-brand-500 hover:bg-brand-600",
                 cue && !playing && "animate-[soft-pulse_1.8s_ease-in-out_3]"
             )}
@@ -316,6 +320,7 @@ function PlayButton({ playing, cue, onClick }: PlayButtonProps) {
                 </svg>
             )}
             {playing ? "Zvuk se čuje" : "Pusti zvuk"}
+            {demo && <DemoHand />}
         </button>
     );
 }
@@ -378,6 +383,8 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     const tail = useBubbleTail();
     const solved = shown.feedback === "correct";
     const showLabels = !LEVELS[levelIndex(level)].noLabels;
+    // Prvi zvuk prvog nivoa se pokazuje rukom: prvo dugme za zvuk, pa tačna slika
+    const firstDemo = !isMonitor && level === 1 && shown.round === 1 && !shown.feedback && !shown.soundOff;
     // Slike sledećeg zvuka se učitavaju dok dete rešava tekući, da nova runda ne „iskače” deo po deo
     const upcomingImages = isMonitor ? [] : (rounds[shown.round]?.optionIds ?? []).flatMap((id) => ITEM_BY_ID[id]?.image ?? []);
     const interactive = !isMonitor && !shown.done;
@@ -596,7 +603,9 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         }
 
         lockedRef.current = true;
-        const firstTry = current.wrongIds.length === 0;
+        // Zvuk koji je pokazala ruka (prvi u prvom nivou) je pokazivanje, a ne zadatak: ne boduje se
+        const modeled = level === 1 && current.round === 1 && current.wrongIds.length === 0;
+        const firstTry = current.wrongIds.length === 0 && !modeled;
         const answered: SoundToImageView = {
             ...current,
             pickedId: id,
@@ -605,7 +614,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
             promptedCount: current.promptedCount + (current.hint ? 1 : 0),
             score: current.score + (firstTry ? 10 : 5),
         };
-        const how = firstTry ? " iz prve" : current.hint ? " uz pomoć" : ` (pogrešnih pokušaja: ${current.wrongIds.length})`;
+        const how = firstTry ? " iz prve" : current.hint || modeled ? " uz pomoć" : ` (pogrešnih pokušaja: ${current.wrongIds.length})`;
         const log = `Tačno: ${wanted.label.toLowerCase()}${how}`;
         playSfx("correct");
 
@@ -620,7 +629,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                     score: final.score,
                     durationSec: sync.elapsedSec(),
                     correct: final.correctCount,
-                    total: rounds.length,
+                    total: Math.max(rounds.length - demoRounds(level, rounds.length), 1),
                     prompted: final.promptedCount,
                 });
             });
@@ -692,7 +701,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                                 Traženi zvuk: {target ? target.label.toLowerCase() : "…"}
                             </p>
                         ) : (
-                            <PlayButton key={`${shown.round}-${shown.wrongIds.length}`} playing={playing} cue={cue} onClick={play} />
+                            <PlayButton key={`${shown.round}-${shown.wrongIds.length}`} playing={playing} cue={cue} demo={firstDemo && !shown.heard} onClick={play} />
                         )}
                     </div>
 
@@ -719,6 +728,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                                             )}
                                         </span>
                                         {showLabels && <span className="text-base leading-tight sm:text-lg">{item.label}</span>}
+                                        {firstDemo && shown.heard && !playing && shown.wrongIds.length === 0 && item.id === shown.targetId && <DemoHand />}
                                     </ChoiceCard>
                                 );
                             })}

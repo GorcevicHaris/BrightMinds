@@ -121,3 +121,13 @@ describe("values received by the live monitor", () => {
         assert.deepEqual(toIndexList(undefined, 4), []);
     });
 });
+
+describe("demoRounds", () => {
+    it("leaves out only the first task of level 1, and never a level's only task", async () => {
+        const { demoRounds } = await import("@/app/components/games/kit/utils");
+        assert.equal(demoRounds(1, 5), 1);
+        assert.equal(demoRounds(1, 1), 0);
+        assert.equal(demoRounds(2, 5), 0);
+        assert.equal(demoRounds(15, 8), 0);
+    });
+});

@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Gamepad2, LogOut, Trophy } from "lucide-react";
+import { ArrowLeft, Gamepad2, LogOut, Play, Trophy } from "lucide-react";
 import GameContainer, { WatchedBadge } from "./GameContainer";
 import { ChildSettingsProvider } from "@/app/components/ChildSettingsProvider";
 import ProgressDashboard from "@/app/components/ProgressDashboard";
@@ -68,7 +68,7 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
     useEffect(() => {
         const timer = setTimeout(() => {
             // Ime deteta se ne šalje servisu za govor (najmanje podataka o detetu)
-            void speak(`Zdravo. ${isFemale ? "Dobro došla" : "Dobro došao"}.`, { gender, emotion: "hello" });
+            void speak(`Zdravo. ${isFemale ? "Dobro došla" : "Dobro došao"}. Izaberi igru.`, { gender, emotion: "hello" });
         }, 1200);
         return () => {
             clearTimeout(timer);
@@ -222,9 +222,11 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
             <Modal open={confirmExit} onClose={() => setConfirmExit(false)} size="sm" title="Završavaš za danas?">
                 <div className="flex flex-col gap-3">
                     <Button chunky size="xl" variant="success" block onClick={() => setConfirmExit(false)}>
+                        <Play className="h-6 w-6" fill="currentColor" aria-hidden="true" />
                         Nastavi igru
                     </Button>
                     <Button chunky size="xl" variant="secondary" block onClick={handleConfirmExit}>
+                        <LogOut className="h-6 w-6" aria-hidden="true" />
                         Izađi
                     </Button>
                 </div>
