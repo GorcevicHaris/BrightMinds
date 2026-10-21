@@ -35,7 +35,7 @@ function assertValidIndexes(acceptable: readonly number[], optionCount: number, 
     }
 }
 
-// ── Šta da kažeš? ─────────────────────────────────────────────────────────────
+// ── Šta reći? ─────────────────────────────────────────────────────────────
 
 const SITUATIONS: { level: number; situation: SocialSituation }[] = LEVELS.flatMap((level) =>
     getSituationsForLevel(level).map((situation) => ({ level, situation }))
@@ -134,7 +134,7 @@ describe("social situations", () => {
     });
 });
 
-// ── Priče iz života ───────────────────────────────────────────────────────────
+// ── Socijalne priče ───────────────────────────────────────────────────────────
 
 const STORIES: { level: number; story: Story }[] = LEVELS.map((level) => ({ level, story: storyForLevel(level) }));
 const DECISIONS: { where: string; decision: StoryDecision }[] = STORIES.flatMap(({ level, story }) =>

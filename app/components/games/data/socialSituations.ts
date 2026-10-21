@@ -1,4 +1,4 @@
-// Sadržaj igre „Šta da kažeš?” (socijalna komunikacija).
+// Sadržaj igre „Šta reći?” (socijalna komunikacija).
 //
 // Igra ne ispituje „lepo i ružno ponašanje”. Ona vežba korisne rečenice (skripte):
 //  • svaka situacija prvo pokaže MODEL — drugo dete u istoj situaciji izgovara rečenicu;
