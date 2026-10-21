@@ -64,8 +64,60 @@ function rememberAudio(key: string, url: string) {
     }
 }
 
+// Snimci se čuvaju i na samom uređaju (Cache Storage): ponovljena rečenica se pušta odmah,
+// i posle zatvaranja pregledača, bez čekanja na mrežu. Lične rečenice (sa imenom) se ne čuvaju.
+const DEVICE_CACHE = "bm-voice-v1";
+/** Otisak glasa sa servera (X-Voice-Version); kad se promeni, snimci na uređaju se brišu */
+const VOICE_VERSION_KEY = "bm:voice-version";
+
+function checkVoiceVersion(version: string | null) {
+    if (!version) return;
+    try {
+        if (window.localStorage.getItem(VOICE_VERSION_KEY) === version) return;
+        window.localStorage.setItem(VOICE_VERSION_KEY, version);
+        if (typeof caches !== "undefined") void caches.delete(DEVICE_CACHE).catch(() => {});
+        // Snimci u memoriji ove stranice su takođe starim glasom
+        audioCache.forEach((url) => URL.revokeObjectURL(url));
+        audioCache.clear();
+    } catch {
+        // Bez skladišta: nema ni snimaka na uređaju koje bi trebalo obrisati
+    }
+}
+
+function deviceCacheUrl(key: string): string {
+    return `/__voice__/${encodeURIComponent(key)}`;
+}
+
+async function readDeviceCache(key: string): Promise<Blob | null> {
+    try {
+        if (typeof caches === "undefined") return null;
+        const hit = await (await caches.open(DEVICE_CACHE)).match(deviceCacheUrl(key));
+        return hit ? await hit.blob() : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeDeviceCache(key: string, blob: Blob) {
+    try {
+        if (typeof caches === "undefined") return;
+        void caches
+            .open(DEVICE_CACHE)
+            .then((cache) => cache.put(deviceCacheUrl(key), new Response(blob, { headers: { "Content-Type": "audio/mpeg" } })))
+            .catch(() => {});
+    } catch {
+        // Bez skladišta na uređaju (privatni režim): rečenica se samo ponovo traži od servera
+    }
+}
+
 async function requestAudio(key: string, text: string, emotion: VoiceEmotion, gender?: string, personal?: boolean): Promise<string | null> {
     try {
+        const stored = personal ? null : await readDeviceCache(key);
+        if (stored) {
+            const url = URL.createObjectURL(stored);
+            rememberAudio(key, url);
+            return url;
+        }
         const res = await fetch("/api/tts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -76,7 +128,10 @@ async function requestAudio(key: string, text: string, emotion: VoiceEmotion, ge
             if (res.status === 503) ttsUnavailable = true;
             return null;
         }
-        const url = URL.createObjectURL(await res.blob());
+        checkVoiceVersion(res.headers.get("X-Voice-Version"));
+        const blob = await res.blob();
+        if (!personal) writeDeviceCache(key, blob);
+        const url = URL.createObjectURL(blob);
         rememberAudio(key, url);
         return url;
     } catch {

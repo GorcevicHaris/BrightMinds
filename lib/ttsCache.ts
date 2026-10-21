@@ -9,6 +9,22 @@ import { supabaseAdmin, supabaseConfigured } from "./supabase";
 
 const BUCKET = "tts-cache";
 
+/**
+ * Najčešće rečenice („Bravo!”, uputstva) ostaju i u memoriji servera: čitanje iz skladišta traje
+ * oko pola sekunde, a iz memorije odmah. Najviše ~200 kratkih snimaka (nekoliko MB).
+ */
+const MEMORY_LIMIT = 200;
+const memory = new Map<string, ArrayBuffer>();
+
+function remember(key: string, audio: ArrayBuffer) {
+    memory.delete(key);
+    memory.set(key, audio);
+    if (memory.size > MEMORY_LIMIT) {
+        const oldest = memory.keys().next().value;
+        if (oldest !== undefined) memory.delete(oldest);
+    }
+}
+
 let bucketReady: Promise<boolean> | null = null;
 
 function ensureBucket(): Promise<boolean> {
@@ -26,18 +42,26 @@ export function ttsCacheKey(parts: readonly string[]): string {
 }
 
 export async function readCachedAudio(key: string): Promise<ArrayBuffer | null> {
+    const hot = memory.get(key);
+    if (hot) {
+        remember(key, hot);
+        return hot;
+    }
     if (!supabaseConfigured) return null;
     try {
         const { data, error } = await supabaseAdmin.storage.from(BUCKET).download(key);
         if (error || !data) return null;
         const audio = await data.arrayBuffer();
-        return audio.byteLength > 0 ? audio : null;
+        if (audio.byteLength === 0) return null;
+        remember(key, audio);
+        return audio;
     } catch {
         return null;
     }
 }
 
 export async function storeCachedAudio(key: string, audio: ArrayBuffer): Promise<void> {
+    remember(key, audio);
     if (!supabaseConfigured || !(await ensureBucket())) return;
     try {
         await supabaseAdmin.storage.from(BUCKET).upload(key, audio, { contentType: "audio/mpeg", upsert: true });
