@@ -191,8 +191,8 @@ function explanation(scenario: EmotionScenario, picked: EmotionId, lastRound: bo
 /** Posle pogrešnog izbora: blago, bez „netačno”, uz ponovljenu situaciju da dete razmisli. */
 function retryText(scenario: EmotionScenario, tried: EmotionId, hint: boolean): string {
     return hint
-        ? `Nije ${word(tried)}. Probaj još jednom, polako.`
-        : `Hm, nije baš ${word(tried)}. ${scenario.text} Probaj ponovo.`;
+        ? `Netačno, nije ${word(tried)}. Probaj još jednom, polako.`
+        : `Netačno, nije ${word(tried)}. ${scenario.text} Probaj ponovo.`;
 }
 
 /** Tačno osećanje koje svetli kao pomoć: prvo ponuđeno uobičajeno osećanje. */
@@ -202,6 +202,8 @@ function hintTarget(scenario: EmotionScenario, options: readonly EmotionId[]): E
 
 function choiceState(id: EmotionId, view: EmotionsView, scenario: EmotionScenario): ChoiceState {
     if (view.picked !== null) return id === view.picked ? "correct" : "idle";
+    // Poslednji pogrešan izbor je jasno označen kao netačan; ranije probani su samo utišani
+    if (view.tried[view.tried.length - 1] === id) return "wrong";
     if (view.tried.includes(id)) return "dimmed";
     if (view.hint && id === hintTarget(scenario, view.options)) return "hint";
     return "idle";
@@ -402,7 +404,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                                     state={state}
                                     disabled={isMonitor}
                                     aria-disabled={inactive || undefined}
-                                    aria-label={state === "correct" ? `${emotion.label}, tačno` : state === "dimmed" ? `${emotion.label}, već probano` : emotion.label}
+                                    aria-label={state === "correct" ? `${emotion.label}, tačno` : state === "wrong" ? `${emotion.label}, netačno` : state === "dimmed" ? `${emotion.label}, već probano` : emotion.label}
                                     onClick={() => handlePick(id)}
                                     className={cn("grow-0 flex-col gap-1.5 px-1.5", OPTION_BASIS[shown.options.length] ?? OPTION_BASIS[4])}
                                 >
@@ -418,8 +420,16 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
 
                     <div aria-live="polite">
                         {lastTried && (
-                            <p className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 px-4 py-3 text-center text-base font-bold text-ink sm:text-lg">
-                                Nije {word(lastTried)}. Probaj ponovo.
+                            <p
+                                key={`${shown.round}-${shown.tried.length}`}
+                                className="flex animate-fade-up items-center justify-center gap-2 rounded-card border-2 border-rose-200 bg-rose-50 px-4 py-3 text-center text-base font-bold text-ink sm:text-lg"
+                            >
+                                <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-rose-500 text-sm font-black text-white">
+                                    ✗
+                                </span>
+                                <span>
+                                    <span className="font-extrabold text-rose-700">Netačno.</span> Nije {word(lastTried)}. Probaj ponovo.
+                                </span>
                             </p>
                         )}
                         {shown.picked !== null && (
@@ -428,6 +438,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                                 icon={<EmotionFace emotion={shown.picked} className="block h-14 w-14 shrink-0" />}
                                 text={
                                     <span className="flex flex-col gap-1">
+                                        <span className="font-extrabold text-emerald-700">✓ Tačno!</span>
                                         {lines.map((line) => (
                                             <span key={line}>{line}</span>
                                         ))}

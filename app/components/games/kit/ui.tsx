@@ -271,8 +271,8 @@ const CHOICE_STATES: Record<ChoiceState, string> = {
     /** Pomoć: tačan odgovor blago pulsira posle više pogrešnih pokušaja */
     hint: "animate-soft-pulse border-brand-400 bg-brand-50",
     correct: "border-emerald-500 bg-emerald-50",
-    /** Pogrešan pokušaj: mirno, bez tresenja i crvene boje — samo se blago povuče, kao u svim igrama */
-    wrong: "border-line bg-surface opacity-45",
+    /** Upravo izabran netačan odgovor: jasno označen (blago crvenkast okvir i ✗), ali bez tresenja i bljeskanja */
+    wrong: "border-rose-300 bg-rose-50",
     dimmed: "border-line bg-surface opacity-45",
 };
 
@@ -291,6 +291,7 @@ export function ChoiceCard({ state = "idle", children, className, disabled, ...p
         >
             {children}
             {state === "correct" && <ChoiceBadge className="bg-emerald-600">✓</ChoiceBadge>}
+            {state === "wrong" && <ChoiceBadge className="bg-rose-500">✗</ChoiceBadge>}
         </button>
     );
 }
