@@ -23,7 +23,7 @@ interface Emotion {
 }
 
 /**
- * Stalan redosled prikaza i redosled uvođenja: deca sa 3 osećanja vide prva tri,
+ * Stalan redosled prikaza i redosled uvođenja: deca sa 4 osećanja vide prva četiri,
  * sa 5 prvih pet, sa 6 sva. Kartice su zato uvek na istom mestu.
  */
 const EMOTION_ORDER: readonly EmotionId[] = ["happy", "sad", "angry", "scared", "surprised", "proud"];
@@ -37,7 +37,7 @@ export const EMOTIONS: Record<EmotionId, Emotion> = {
     proud: { id: "proud", label: "Ponosno", plural: "ponosni" },
 };
 
-/** Osećanja koja dete poznaje, prema podešavanju uzrasta (3, 5 ili 6). */
+/** Osećanja koja dete poznaje, prema podešavanju uzrasta (4, 5 ili 6). */
 function allowedEmotions(emotionCount: number): EmotionId[] {
     const count = Number.isFinite(emotionCount) ? Math.min(Math.max(Math.round(emotionCount), 3), EMOTION_ORDER.length) : 3;
     return EMOTION_ORDER.slice(0, count);
@@ -344,7 +344,7 @@ interface EmotionLevel {
 }
 
 interface EmotionLevelOptions {
-    /** Koliko osećanja dete poznaje: 3, 5 ili 6 */
+    /** Koliko osećanja dete poznaje: 4, 5 ili 6 */
     emotionCount: number;
     /** Najviše zadataka u nivou za ovaj uzrast */
     maxRounds: number;

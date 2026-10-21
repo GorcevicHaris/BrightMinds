@@ -916,7 +916,7 @@ const FEEDBACK_MS = 2600;
 const SPEAK_DELAY_MS = 600;
 
 /** Broj kolona palete na telefonu prema broju ponuđenih boja (od ≥sm su uvek dve kolone sa nazivima) */
-const PALETTE_COLS: Record<number, string> = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4", 6: "grid-cols-3" };
+const PALETTE_COLS: Record<number, string> = { 2: "grid-cols-2", 3: "grid-cols-3", 4: "grid-cols-4", 6: "grid-cols-6" };
 
 /*
  * Rezultat (correct / total / prompted):
@@ -1295,7 +1295,14 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                         />
                     )}
                     {/* Uvek piše šta se boji: tražen deo slike ili, u slobodnom bojenju, šta je upravo obojeno */}
-                    <p className="mb-2 flex min-h-8 items-center justify-center gap-2 text-center text-lg font-extrabold leading-tight text-ink sm:mb-3 sm:text-2xl" aria-live="polite">
+                    {/* U bojenju po uputstvu isto piše odmah iznad, pa se na telefonu natpis ne ponavlja (mesto za boje) */}
+                    <p
+                        className={cn(
+                            "mb-2 min-h-8 items-center justify-center gap-2 text-center text-lg font-extrabold leading-tight text-ink sm:mb-3 sm:text-2xl",
+                            round ? "hidden sm:flex" : "flex"
+                        )}
+                        aria-live="polite"
+                    >
                         {round ? (
                             <>
                                 <span
@@ -1424,7 +1431,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                     <span
                                         className={cn(
                                             "relative grid w-full place-items-center rounded-2xl border-2 border-black/15 transition-opacity duration-150",
-                                            !guided ? "h-13" : swatches.length > 6 ? "h-16 sm:h-16" : "h-19 sm:h-16",
+                                            // Šest boja na telefonu staje u jedan red (niže pločice), da slika i boje budu na ekranu zajedno
+                                            !guided ? "h-13" : swatches.length > 6 ? "h-16 sm:h-16" : swatches.length === 6 ? "h-12 sm:h-16" : "h-19 sm:h-16",
                                             selected && "ring-4 ring-ink ring-offset-2 ring-offset-surface",
                                             hinted && "animate-soft-pulse ring-4 ring-brand-400 ring-offset-2 ring-offset-surface",
                                             tried && "opacity-30"
