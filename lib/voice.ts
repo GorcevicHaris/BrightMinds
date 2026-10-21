@@ -33,6 +33,10 @@ let raf: number | null = null;
 let watchdog: ReturnType<typeof setTimeout> | null = null;
 let linger: ReturnType<typeof setTimeout> | null = null;
 let unlockBound = false;
+/** Rečenica koju pregledač nije dozvolio pre prvog dodira — izgovara se čim dete dodirne ekran */
+let pendingReplay: { url: string; emotion: VoiceEmotion; token: number } | null = null;
+/** Posle dodira kratko sačekamo: ako sam dodir pokrene novu rečenicu, stara se ne pušta */
+const REPLAY_DELAY_MS = 350;
 
 function setState(next: VoiceState) {
     if (next.speaking === state.speaking && next.emotion === state.emotion) return;
@@ -77,12 +81,31 @@ async function getContext(): Promise<AudioContext | null> {
     return ctx && ctx.state === "running" ? ctx : null;
 }
 
-/** Pregledači dozvoljavaju zvuk tek posle prvog dodira — tada „budimo” kontekst */
+/**
+ * Pregledači dozvoljavaju zvuk tek posle prvog dodira (iOS: samo unutar samog dodira) — tada
+ * „budimo” kontekst. Slušamo od učitavanja stranice, ne tek od prve rečenice, da prvi dodir
+ * ne prođe neiskorišćen. Ako je rečenica pre toga ostala nema, izgovara se sada.
+ */
 function bindUnlock() {
     if (unlockBound || typeof window === "undefined") return;
     unlockBound = true;
-    window.addEventListener("pointerdown", () => void getContext(), { once: true });
+    const unlock = () => {
+        void getContext().then((audioCtx) => {
+            if (!audioCtx) return;
+            ["pointerdown", "keydown", "touchend"].forEach((type) => window.removeEventListener(type, unlock, true));
+            const replay = pendingReplay;
+            pendingReplay = null;
+            if (!replay) return;
+            setTimeout(() => {
+                // Dodir je u međuvremenu pokrenuo nešto novo (drugu rečenicu ili ćutanje) — stara rečenica je zastarela
+                if (replay.token === token && !state.speaking) void playVoice(replay.url, replay.emotion);
+            }, REPLAY_DELAY_MS);
+        });
+    };
+    ["pointerdown", "keydown", "touchend"].forEach((type) => window.addEventListener(type, unlock, true));
 }
+
+if (typeof window !== "undefined") bindUnlock();
 
 function clearTimers() {
     if (raf !== null) cancelAnimationFrame(raf);
@@ -165,6 +188,7 @@ export function mimeVoice(emotion: VoiceEmotion): () => void {
  */
 export async function playVoice(url: string, emotion: VoiceEmotion, onEnd?: () => void): Promise<void> {
     bindUnlock();
+    pendingReplay = null;
     token += 1;
     const mine = token;
     silence();
@@ -224,7 +248,14 @@ export async function playVoice(url: string, emotion: VoiceEmotion, onEnd?: () =
             await audio.play();
             if (mine !== token) return;
             simulateMouth(mine);
-        } catch {
+        } catch (error) {
+            // Zvuk je zaključan do prvog dodira: tok igre ide dalje, a rečenica čeka dodir
+            if (error instanceof DOMException && error.name === "NotAllowedError" && mine === token) {
+                element = null;
+                finish();
+                pendingReplay = { url, emotion, token };
+                return;
+            }
             finish();
         }
     }

@@ -81,9 +81,9 @@ export default function PrivacyPage() {
                 <Block title="Gde su podaci">
                     <p>
                         Podaci se čuvaju u bazi kod pružaoca Supabase. Ako je uključen glas učitelja, tekst uputstva koje se izgovara šalje
-                        se servisu ElevenLabs radi pretvaranja u govor. Pri ulasku učitelj pozdravlja dete imenom, pa se servisu šalje i ime deteta (samo ime, bez prezimena); u tekstu
+                        se servisu za govor (ElevenLabs ili Microsoft Azure) radi pretvaranja u govor. Pri ulasku učitelj pozdravlja dete imenom, pa se servisu šalje i ime deteta (samo ime, bez prezimena); u tekstu
                         igara imena nema. Priče koje sami napišete šalju se onako kako ste ih napisali. Gotovi snimci rečenica čuvaju se u Supabase
-                        skladištu, da se ista rečenica ne bi ponovo slala; pozdrav sa imenom deteta se ne čuva.
+                        skladištu i na samom uređaju, da se ista rečenica ne bi ponovo slala; pozdrav sa imenom deteta se ne čuva.
                     </p>
                     <p>
                         Na uređaju se čuvaju samo tehnički podaci: kolačić prijave, da li je zvuk isključen, današnje vreme igre i današnji

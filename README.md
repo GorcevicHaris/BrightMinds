@@ -27,7 +27,10 @@ Aplikacija je na [http://localhost:3000](http://localhost:3000). Drugi port: `np
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | da | javni ključ — samo za Realtime (praćenje uživo) |
 | `SUPABASE_SERVICE_ROLE_KEY` | da | serverski ključ — sav pristup bazi ide preko API ruta |
 | `JWT_SECRET` | da | potpisivanje sesija (`openssl rand -hex 48`) |
-| `ELEVENLABS_API_KEY` | ne | glas učitelja; bez njega se koristi glas pregledača |
+| `AZURE_SPEECH_KEY`, `AZURE_SPEECH_REGION` | ne | izvorni srpski glasovi (Azure „Sophie” / „Nicholas”, besplatno 500.000 karaktera mesečno); kad su podešeni, imaju prednost |
+| `AZURE_FEMALE_VOICE`, `AZURE_MALE_VOICE` | ne | drugi Azure glas (podrazumevano `sr-Latn-RS-SophieNeural` / `sr-Latn-RS-NicholasNeural`) |
+| `TTS_PROVIDER` | ne | `azure` ili `elevenlabs` — ručni izbor servisa za glas |
+| `ELEVENLABS_API_KEY` | ne | glas učitelja preko ElevenLabs-a; bez glasovnog servisa učitelj ćuti, a tekst ostaje na ekranu |
 | `ELEVENLABS_VOICE_ID`, `ELEVENLABS_FEMALE_VOICE_ID` | ne | muški / ženski glas |
 | `ELEVENLABS_MODEL` | ne | model glasa; podrazumevano `eleven_flash_v2_5` sa jezikom `hr` (izmereno: najmanje grešaka u izgovoru srpskog teksta) |
 
