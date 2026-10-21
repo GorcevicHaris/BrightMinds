@@ -8,7 +8,7 @@ import { ArrowLeft, ArrowRight, Check, Eye, Lock, Pause, Play, RotateCcw, SkipFo
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
-import { CelebrationLayer, GamePauseContext, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
+import { CelebrationLayer, celebrateBig, GamePauseContext, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
 import { useSpeakingLock } from "@/lib/voice";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
@@ -469,6 +469,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 saved: preview ? "ok" : "saving",
             });
             playSfx("win");
+            // Kraj nivoa je uvek uspeh: zvezdice preko celog ekrana (sloj ih ne crta kad je „Manje animacija”)
+            celebrateBig();
 
             if (advance) {
                 setUnlocked((prev) => ({

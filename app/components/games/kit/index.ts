@@ -25,5 +25,5 @@ export {
     type FeedbackKind,
 } from "./ui";
 export { usePraise } from "./praise";
-export { CelebrationLayer, celebrate } from "./Celebration";
+export { CelebrationLayer, celebrate, celebrateBig } from "./Celebration";
 export { GamePauseContext, useGamePaused } from "./pause";
