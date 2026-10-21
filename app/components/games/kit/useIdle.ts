@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useVoiceState } from "@/lib/voice";
+import { useGamePaused } from "./pause";
 
 /** Koliko dugo čekamo pre nego što blago skrenemo pažnju na dugme „Ponovi” (dete dobija vreme da razmisli). */
 export const IDLE_HINT_MS = 10_000;
@@ -14,8 +16,14 @@ export const WAIT_HINT_MS = 8_000;
  */
 export function useIdle(ms: number = IDLE_HINT_MS, resetKey?: unknown): boolean {
     const [idle, setIdle] = useState(false);
+    // Vreme čekanja ne teče dok učitelj govori ni dok je pauza: dete koje mirno sluša nije „zaglavljeno”.
+    // Kad govor (ili pauza) prestane, čekanje kreće ispočetka.
+    const { speaking } = useVoiceState();
+    const paused = useGamePaused();
+    const waiting = !speaking && !paused;
 
     useEffect(() => {
+        if (!waiting) return;
         let timer = setTimeout(() => setIdle(true), ms);
         const onActivity = () => {
             setIdle(false);
@@ -30,7 +38,7 @@ export function useIdle(ms: number = IDLE_HINT_MS, resetKey?: unknown): boolean 
             window.removeEventListener("keydown", onActivity);
             setIdle(false);
         };
-    }, [ms, resetKey]);
+    }, [ms, resetKey, waiting]);
 
     return idle;
 }

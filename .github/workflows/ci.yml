@@ -2,8 +2,10 @@
 # Jedan posao, bez tajni: testovi koriste bazu u memoriji, a build ne čita Supabase ključeve.
 name: CI
 
+# Push samo na main: grana sa izmenama se proverava kroz pull request, ne dvaput
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -27,14 +29,18 @@ jobs:
 
       # Node 26: testovi se oslanjaju na izvršavanje .ts fajlova bez prevođenja i na
       # module.registerHooks; na toj verziji su i provereni (videti README, „Testovi”).
+      # GitHub mašina ponekad zastane pri preuzimanju — bolje brzo pasti i ponoviti nego čekati
       - uses: actions/setup-node@v4
+        timeout-minutes: 4
         with:
           node-version: 26
           cache: npm
 
       - run: npm ci
+        timeout-minutes: 5
 
       - run: npm run lint
+        timeout-minutes: 4
 
       # next-env.d.ts i .next/types nisu u repozitorijumu; `next typegen` ih pravi bez build-a
       - run: npx next typegen

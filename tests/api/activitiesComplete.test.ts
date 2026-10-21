@@ -160,13 +160,13 @@ describe("POST /api/activities/complete — saving a result", () => {
         assert.equal(logs()[0].prompted_count, 4);
     });
 
-    it("gives one star for a finished activity with no graded tasks, without passing the level", async () => {
-        // Npr. priča u režimu samo čitanja: završena je, ali nije učinak koji otključava sledeći nivo
+    it("gives one star for a finished activity with no graded tasks and passes the level", async () => {
+        // Npr. priča u režimu samo čitanja: čitanje je cilj, pa otključava sledeću priču
         const body = await readJson(await post(result({ correct: 0, total: 0, prompted: 0 })));
         assert.equal(body.stars, 1);
         assert.equal(logs()[0].stars, 1);
         assert.equal(logs()[0].success_level, "partial");
-        assert.equal(logs()[0].passed, false);
+        assert.equal(logs()[0].passed, true);
     });
 
     it("grades an emotions level like every other game", async () => {

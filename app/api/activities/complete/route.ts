@@ -195,8 +195,8 @@ export async function POST(request: Request) {
         const game = parseCompletedGame(body);
 
         // Zvezdice zavise samo od SAMOSTALNO tačnih odgovora; završen nivo donosi bar jednu.
-        // Aktivnost bez ocenjivanih zadataka (npr. priča u režimu samo čitanja) je završena,
-        // ali nije učinak: jedna zvezdica, bez uticaja na statistiku tačnosti i otključavanje.
+        // Aktivnost bez ocenjivanih zadataka (npr. priča u režimu samo čitanja) je završena i
+        // otključava sledeći nivo, ali nije učinak: jedna zvezdica, bez uticaja na statistiku tačnosti.
         const stars = game.total === 0 ? 1 : starsForGame(isGradedActivity(game.activityId), game.correct, game.total);
         const successLevel = successLevelFor(stars);
         // Odluka „nivo položen” se donosi ovde, jednom, i čuva uz partiju.

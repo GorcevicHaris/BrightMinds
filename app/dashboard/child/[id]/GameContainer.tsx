@@ -1,14 +1,14 @@
 // app/dashboard/child/[id]/GameContainer.tsx
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type SyntheticEvent } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, Check, Eye, Lock, Pause, Play, RotateCcw, SkipForward, Star, X } from "lucide-react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
-import { CelebrationLayer, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
+import { CelebrationLayer, GamePauseContext, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
 import { useSpeakingLock } from "@/lib/voice";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
@@ -248,6 +248,19 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
     const playKey = `${gameId}-${level}-${attempt}`;
     const listening = useSpeakingLock();
+    // Dodir dok učitelj govori se ne prihvata, ali dete to vidi: kratko „Slušaj do kraja”
+    const [listenNote, setListenNote] = useState(0);
+    useEffect(() => {
+        if (!listenNote) return;
+        const timer = setTimeout(() => setListenNote(0), 1400);
+        return () => clearTimeout(timer);
+    }, [listenNote]);
+    const holdWhileSpeaking = (event: SyntheticEvent) => {
+        if (!listening) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.type === "pointerdown") setListenNote(Date.now());
+    };
     const onBreak = breakFor === playKey && screen === "playing" && !outcome;
     // Pauza se ne računa u dnevno vreme igre
     const clock = useSessionClock(childId, preview ? 0 : settings.sessionMinutes, screen === "playing" && !outcome && !onBreak);
@@ -443,9 +456,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             // Završen nivo uvek donosi bar jednu zvezdicu; sledeći nivo se predlaže
             // kada je bar polovina zadataka rešena samostalno
             const stars = Math.max(1, starsForGame(game.graded, result.correct, result.total)) as 1 | 2 | 3;
-            // U igrama bez pogrešnih odgovora (osećanja) svaki završen nivo vodi dalje
+            // Nivo bez ocenjivanih zadataka (priča samo pročitana) uvek vodi dalje: čitanje je cilj
             const practice = result.total === 0;
-            const advance = !practice && (!game.graded || result.correct / result.total >= ADVANCE_RATIO);
+            const advance = practice || !game.graded || result.correct / result.total >= ADVANCE_RATIO;
             setOutcome({
                 practice,
                 stars,
@@ -480,7 +493,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     score: result.score,
                     correct: result.correct,
                     total: result.total,
-                    prompted: result.prompted ?? 0,
+                    // Zaštita: samostalni i potpomognuti zajedno nikad ne premašuju broj zadataka (server bi odbio rezultat)
+                    prompted: Math.max(0, Math.min(result.prompted ?? 0, result.total - result.correct)),
                     durationSec: result.durationSec,
                     moodBefore,
                     sessionId: sessionIdRef.current,
@@ -640,16 +654,34 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 {screen === "playing" && (
                     // Dok učitelj govori, igra ne prima dodire: rečenica se ne prekida, a dete ne bira pre
                     // nego što čuje šta se traži. Dugmad u zaglavlju (pauza, zvuk, zatvori) i dalje rade.
-                    <div className={cn("flex flex-1 flex-col", listening && "pointer-events-none")} aria-busy={listening || undefined}>
-                        <GameSlot
-                            key={`${game.id}-${level}-${attempt}`}
-                            gameId={game.id}
-                            childId={childId}
-                            level={level}
-                            gender={gender}
-                            childName={childName}
-                            onComplete={handleComplete}
-                        />
+                    <div
+                        className="relative flex flex-1 flex-col"
+                        aria-busy={listening || undefined}
+                        onPointerDownCapture={holdWhileSpeaking}
+                        onClickCapture={holdWhileSpeaking}
+                        onKeyDownCapture={holdWhileSpeaking}
+                    >
+                        {listenNote > 0 && (
+                            <p
+                                key={listenNote}
+                                role="status"
+                                className="pointer-events-none absolute inset-x-0 top-2 z-20 mx-auto w-fit animate-fade-up rounded-full bg-ink/85 px-4 py-2 text-base font-extrabold text-white shadow-pop"
+                            >
+                                <span aria-hidden="true">👂 </span>Slušaj do kraja
+                            </p>
+                        )}
+                        {/* Za vreme pauze igra stoji: tajmeri čekaju, pomoć i govor igre ne kreću */}
+                        <GamePauseContext.Provider value={onBreak}>
+                            <GameSlot
+                                key={`${game.id}-${level}-${attempt}`}
+                                gameId={game.id}
+                                childId={childId}
+                                level={level}
+                                gender={gender}
+                                childName={childName}
+                                onComplete={handleComplete}
+                            />
+                        </GamePauseContext.Provider>
                     </div>
                 )}
             </div>
@@ -657,6 +689,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             {screen === "playing" && onBreak && (
                 <BreakScreen
                     teacher={settings.avatar ? (gender ?? undefined) : null}
+                    female={gender?.toLowerCase() === "female"}
                     say={say}
                     onDone={() => {
                         setBreakFor(null);
@@ -943,11 +976,13 @@ function HoldButton({ label, onConfirm, holdMs = 2000 }: { label: string; onConf
 
 interface BreakScreenProps {
     teacher: string | undefined | null;
+    /** Rod deteta za „spreman/spremna” — ne zavisi od toga da li je učitelj na ekranu */
+    female: boolean;
     say: (text: string, onEnd?: () => void, emotion?: VoiceEmotion) => unknown;
     onDone: () => void;
 }
 
-function BreakScreen({ teacher, say, onDone }: BreakScreenProps) {
+function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
     const [inhale, setInhale] = useState(true);
     // Drugi dodir dvostrukog dodira ne sme odmah da zatvori pauzu
     const guard = useInputGuard(800);
@@ -981,7 +1016,7 @@ function BreakScreen({ teacher, say, onDone }: BreakScreenProps) {
                 <span className="absolute inset-[18%] animate-breathe rounded-full bg-sky-300/60 [animation-delay:150ms]" />
                 <span className="relative font-display text-2xl font-extrabold text-sky-900 sm:text-3xl">{inhale ? "Udahni…" : "Izdahni…"}</span>
             </div>
-            <p className="text-lg font-bold text-ink-soft">Kad budeš {teacher === "female" ? "spremna" : "spreman"}, nastavi igru.</p>
+            <p className="text-lg font-bold text-ink-soft">Kad budeš {female ? "spremna" : "spreman"}, nastavi igru.</p>
             <Button
                 chunky
                 size="xl"
@@ -1267,13 +1302,20 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                 className="max-h-full w-full max-w-md animate-fade-up overflow-y-auto rounded-t-[2rem] bg-surface p-6 text-center shadow-pop outline-none sm:rounded-[2rem] sm:p-9"
             >
                 {teacher !== null && <TeacherAvatar gender={teacher} className="mx-auto -mt-1 mb-1 h-24 w-20 sm:h-28 sm:w-24" />}
-                <div className="mb-4 flex justify-center gap-2 sm:gap-3" aria-label={`${outcome.stars} od 3 zvezdice`}>
-                    {[1, 2, 3].map((s) => (
-                        <span key={s} className={cn("text-5xl sm:text-6xl", s <= outcome.stars ? "animate-pop" : "opacity-20 grayscale")} aria-hidden="true">
-                            ⭐
-                        </span>
-                    ))}
-                </div>
+                {outcome.practice ? (
+                    // Pročitana priča nije „rezultat”: bez zvezdica koje bi izgledale kao slaba ocena
+                    <p className="mb-4 text-6xl animate-pop" aria-hidden="true">
+                        📖
+                    </p>
+                ) : (
+                    <div className="mb-4 flex justify-center gap-2 sm:gap-3" aria-label={`${outcome.stars} od 3 zvezdice`}>
+                        {[1, 2, 3].map((s) => (
+                            <span key={s} className={cn("text-5xl sm:text-6xl", s <= outcome.stars ? "animate-pop" : "opacity-20 grayscale")} aria-hidden="true">
+                                ⭐
+                            </span>
+                        ))}
+                    </div>
+                )}
                 <h2 className="text-2xl font-extrabold text-ink sm:text-3xl">
                     {champion ? "🏆 " : ""}
                     {title}

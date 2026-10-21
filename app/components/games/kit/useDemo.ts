@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import type { TimerId } from "./useTimers";
 
 // Pokazivanje: uz svako uputstvo kratko se istakne ono o čemu uputstvo govori
 // (uzorak, tabla, traženi deo slike) — jedan miran puls, pa mir.
@@ -23,7 +22,7 @@ export const PULSE_ONCE: CSSProperties = { animationDuration: `${DEMO_MS}ms`, an
  */
 export function useDemo(enabled: boolean) {
     const [demo, setDemo] = useState({ on: enabled, run: 0 });
-    const timer = useRef<TimerId | null>(null);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const arm = useCallback(() => {
         if (timer.current !== null) clearTimeout(timer.current);
