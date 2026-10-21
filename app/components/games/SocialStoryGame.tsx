@@ -88,7 +88,7 @@ const AFFIRM_LABEL = "To već znam";
 const LISTENING_TEXT = "Slušamo…";
 const HELPS_TEXT = "To pomaže.";
 const RETRY_TEXT = "Probaj nešto drugo.";
-const HINT_TEXT = "Pogledaj karticu koja svetli.";
+const HINT_TEXT = "Probaj još jednom, polako.";
 const SCROLL_DELAY_MS = 60;
 const CELEBRATION_MS = 1100;
 const POINTS_FIRST_PICK = 100;
@@ -200,7 +200,9 @@ function quoted(label: string): string {
 
 function scrollIntoViewGently(element: HTMLElement | null) {
     if (!element) return;
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // I sistemsko podešavanje i roditeljevo „Manje animacija” (data-motion na stranici) gase glatko pomeranje
+    const reduceMotion =
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.querySelector('[data-motion="reduced"]') !== null;
     element.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
 }
 
@@ -428,8 +430,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
         const correct = reading ? 0 : current.correctCount;
         const done: StoryView = { ...current, phase: "done", listening: false };
         silence();
-        // Zvuk kraja nivoa pušta strana koja prikazuje rezultat
-        playSfx("correct");
+        // Zvuk kraja nivoa (i zvezdice) pušta strana koja prikazuje rezultat — ovde ništa, da se ne čuje dvaput
         commit(
             done,
             reading

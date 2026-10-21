@@ -1202,6 +1202,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         setHistory(history.slice(0, -1));
         playSfx("tap");
         commit(withFills(viewRef.current, picture, previous), "Vraćen poslednji potez");
+        // Natpis iznad slike ne sme da opisuje boju koje više nema
+        setLastPainted(null);
     };
 
     // Pomoć posle čekanja (bojenje po uputstvu): tražena boja i deo blago zasvetle

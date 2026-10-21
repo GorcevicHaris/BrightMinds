@@ -7,6 +7,8 @@ import { useSpeech } from "@/lib/speech";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
+    DemoHand,
+    demoRounds,
     ExplainPanel,
     GameHud,
     GamePrompt,
@@ -189,7 +191,7 @@ function explanation(scenario: EmotionScenario, picked: EmotionId, lastRound: bo
 /** Posle pogrešnog izbora: blago, bez „netačno”, uz ponovljenu situaciju da dete razmisli. */
 function retryText(scenario: EmotionScenario, tried: EmotionId, hint: boolean): string {
     return hint
-        ? `Nije ${word(tried)}. Pogledaj lice koje svetli.`
+        ? `Nije ${word(tried)}. Probaj još jednom, polako.`
         : `Hm, nije baš ${word(tried)}. ${scenario.text} Probaj ponovo.`;
 }
 
@@ -278,6 +280,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
     useWaitHint(!isMonitor && settings.waitHint && view.picked === null && !view.finished, `${view.round}:${view.tried.length}`, () => {
         const current = viewRef.current;
         if (current.picked !== null || current.finished || current.hint) return;
+        if (demoRounds(level, current.totalRounds) > 0 && current.round === 1 && current.tried.length === 0) return; // tu pokazuje ruka
         commit({ ...current, hint: true }, "Pomoć posle čekanja");
     });
 
@@ -293,15 +296,17 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
         guard.hold();
 
         if (target.common.includes(id)) {
-            const firstTry = current.tried.length === 0 && !current.hint;
+            // Prvi zadatak prvog nivoa pokazuje ruka: to je pokazivanje, a ne zadatak — ne ocenjuje se
+            const modeled = demoRounds(level, current.totalRounds) > 0 && current.round === 1;
+            const firstTry = current.tried.length === 0 && !current.hint && !modeled;
             const next: EmotionsView = {
                 ...current,
                 picked: id,
                 score: current.score + POINTS[Math.min(current.tried.length, POINTS.length - 1)],
                 correctCount: current.correctCount + (firstTry ? 1 : 0),
-                promptedCount: current.promptedCount + (current.hint ? 1 : 0),
+                promptedCount: current.promptedCount + (current.hint && !modeled ? 1 : 0),
             };
-            const how = firstTry ? "iz prvog pokušaja" : current.hint ? "uz pomoć" : "posle više pokušaja";
+            const how = modeled ? "(pokazni zadatak)" : firstTry ? "iz prvog pokušaja" : current.hint ? "uz pomoć" : "posle više pokušaja";
             commit(next, `Tačno ${how}: „${word(id)}”`);
             playSfx("correct");
             void say(praise(explanation(target, id, current.round >= current.totalRounds).join(" "), firstTry), undefined, "happy");
@@ -333,7 +338,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                     score: done.score,
                     durationSec: sync.elapsedSec(),
                     correct: done.correctCount,
-                    total: done.totalRounds,
+                    total: Math.max(done.totalRounds - demoRounds(level, done.totalRounds), 1),
                     prompted: done.promptedCount,
                 });
             });
@@ -381,6 +386,14 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                     >
                         {shown.options.map((id) => {
                             const emotion = EMOTIONS[id];
+                            // Prvi zadatak prvog nivoa: ruka pokazuje tačno lice; nestaje posle prvog dodira
+                            const showHand =
+                                !isMonitor &&
+                                demoRounds(level, shown.totalRounds) > 0 &&
+                                shown.round === 1 &&
+                                shown.picked === null &&
+                                shown.tried.length === 0 &&
+                                id === hintTarget(scenario, shown.options);
                             const state = choiceState(id, shown, scenario);
                             const inactive = shown.picked !== null || shown.tried.includes(id);
                             return (
@@ -397,6 +410,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                                         <EmotionFace emotion={id} className="h-full w-full" />
                                     </span>
                                     <span className="text-base leading-tight sm:text-lg">{emotion.label}</span>
+                                    {showHand && <DemoHand />}
                                 </ChoiceCard>
                             );
                         })}
@@ -405,7 +419,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                     <div aria-live="polite">
                         {lastTried && (
                             <p className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 px-4 py-3 text-center text-base font-bold text-ink sm:text-lg">
-                                Nije {word(lastTried)}. {shown.hint ? "Pogledaj lice koje svetli." : "Probaj ponovo."}
+                                Nije {word(lastTried)}. Probaj ponovo.
                             </p>
                         )}
                         {shown.picked !== null && (

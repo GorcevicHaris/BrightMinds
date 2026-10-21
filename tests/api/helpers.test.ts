@@ -48,8 +48,8 @@ describe("isLevelPassed", () => {
         assert.equal(isLevelPassed(row({ correct_count: 4, total_count: 4, stars: 0, success_level: "struggled" })), true);
     });
 
-    it("does not pass a level without tasks", () => {
-        assert.equal(isLevelPassed(row({ correct_count: 0, total_count: 0, stars: 3 })), false);
+    it("passes a level without tasks (a story that was only read)", () => {
+        assert.equal(isLevelPassed(row({ correct_count: 0, total_count: 0, stars: 1 })), true);
     });
 
     it("uses stars from the column, then from the old note, when there are no counts", () => {

@@ -762,9 +762,11 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
         if (option.shape === current.target) {
             // Zadatak koji je pokazala ruka (prvi u prvom nivou) je pokazivanje, a ne zadatak:
             // ne broji se ni kao samostalan ni kao uz pomoć, a nivo se ocenjuje bez njega (DEMO_ROUNDS)
-            const modeled = level === 1 && current.round === 1 && current.wrong.length === 0;
+            // Ceo prvi zadatak prvog nivoa je van ocene (i kad dete prvo pogreši): inače bi „uz pomoć”
+            // premašilo broj ocenjenih zadataka, pa bi server odbio rezultat.
+            const modeled = demoRounds(level, current.totalRounds) > 0 && current.round === 1;
             const firstTry = current.wrong.length === 0 && !modeled && !current.hint;
-            const prompted = current.hint;
+            const prompted = current.hint && !modeled;
             const isLast = current.round >= current.totalRounds;
             const solved: ShapesView = {
                 ...current,

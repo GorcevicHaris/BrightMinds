@@ -401,7 +401,7 @@ const STORIES: readonly Story[] = [
                     ],
                     [
                         o("🏃", "Trčim između stolova", "Konobari nose toplu hranu. Kad trčim, možemo da se sudarimo."),
-                        o("🪑", "Sednem za tuđi sto", "Za tim stolom sede drugi ljudi. Naš sto nam je pokazao konobar."),
+                        o("👥", "Sednem za tuđi sto", "Za tim stolom sede drugi ljudi. Naš sto nam je pokazao konobar."),
                     ]
                 ),
             },
@@ -487,7 +487,7 @@ const STORIES: readonly Story[] = [
                     ],
                     [
                         o("🧸", "Idem po svoje igračke", "Igračke mogu da sačekaju. Najvažnije je da ja budem napolju."),
-                        o("🚪", "Sakrijem se u ormar", "Dim može da uđe svuda u kući. Napolju je vazduh čist."),
+                        o("🫣", "Sakrijem se u ormar", "Dim može da uđe svuda u kući. Napolju je vazduh čist."),
                     ]
                 ),
             },
@@ -560,7 +560,7 @@ const STORIES: readonly Story[] = [
                     ],
                     [
                         o("☝️", "Gurnem prst u tortu", "Torta je za sve goste. Jedemo je kad je mama iseče."),
-                        o("💨", "Dunem svećice usred pesme", "Svećice se duvaju na kraju pesme. Tada svi tapšu."),
+                        o("🎶", "Dunem svećice usred pesme", "Svećice se duvaju na kraju pesme. Tada svi tapšu."),
                     ]
                 ),
             },
@@ -799,7 +799,7 @@ const STORIES: readonly Story[] = [
                     ],
                     [
                         o("🏃", "Ustanem i odem sa stolice", "Tada doktor ne može da čuje pluća. Pregled počinje ispočetka."),
-                        o("🗣️", "Pričam dok doktor sluša", "Kad pričam, doktor ne čuje kako dišem. Čuje samo kad ćutim."),
+                        o("💬", "Pričam dok doktor sluša", "Kad pričam, doktor ne čuje kako dišem. Čuje samo kad ćutim."),
                     ]
                 ),
             },
@@ -1022,7 +1022,7 @@ const STORIES: readonly Story[] = [
                     ],
                     [
                         o("🙈", "Pravim se da ne čujem", "Tata tada zove više puta i brine. Dogovor je pet minuta."),
-                        o("🤿", "Zaronim da me tata ne vidi", "Tata se tada uplaši jer me ne vidi. Dogovor je pet minuta."),
+                        o("🫧", "Zaronim da me tata ne vidi", "Tata se tada uplaši jer me ne vidi. Dogovor je pet minuta."),
                     ]
                 ),
             },
@@ -1096,7 +1096,7 @@ const STORIES: readonly Story[] = [
                     ],
                     [
                         o("🤐", "Ćutim i igram se dalje", "Promrzli prsti jako bole. Kad kažem, odrasli mi pomognu."),
-                        o("🧤", "Skinem mokre rukavice i igram se", "Bez rukavica su prsti još hladniji."),
+                        o("🖐️", "Skinem mokre rukavice i igram se", "Bez rukavica su prsti još hladniji."),
                     ]
                 ),
             },

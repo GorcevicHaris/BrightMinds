@@ -128,9 +128,9 @@ describe("unlocked levels from the session columns (migration 0001, no view)", (
         assert.equal((await unlocked()).shapes, 1);
     });
 
-    it("do not pass a level that had no tasks", async () => {
-        db.seed("progress_logs", [played(1, 0, 0, { stars: 0 })]);
-        assert.equal((await unlocked()).shapes, 1);
+    it("pass a level read without tasks (a story read in read-only mode)", async () => {
+        db.seed("progress_logs", [played(1, 0, 0, { stars: 1 })]);
+        assert.equal((await unlocked()).shapes, 2);
     });
 
     it("unlock emotions levels by the same rule as other games", async () => {

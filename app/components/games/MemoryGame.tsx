@@ -390,7 +390,7 @@ function MemoryCard({ position, animal, open, matched, hinted, disabled, classNa
 
 const TEXT_PEEK = "Pogledaj slike i zapamti gde su.";
 const TEXT_FIND = "Pronađi dve iste slike.";
-const TEXT_HINT = "Pogledaj karticu koja svetli.";
+const TEXT_HINT = "Seti se gde je bila ista slika.";
 /** Ako se slike sporo učitavaju, zavirivanje se ipak završava posle ovoliko dodatnog čekanja */
 const PEEK_GRACE_MS = 5000;
 const MATCH_FEEDBACK_MS = 1600;
@@ -712,7 +712,8 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
                                 open={open}
                                 matched={matched}
                                 hinted={shown.hint === index && !open}
-                                disabled={isMonitor || open}
+                                // Otvoren promašen par ostaje dodirljiv: dodir na njega odmah vraća obe kartice
+                                disabled={isMonitor || matched || shown.peek || (open && shown.flipped.length < 2)}
                                 className={layout.centerTail && index === shown.cards.length - 2 ? TAIL_START : undefined}
                                 onFlip={() => handleFlip(index)}
                                 onImageSettled={() => handleImageSettled(index)}

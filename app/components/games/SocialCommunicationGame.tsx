@@ -79,7 +79,7 @@ const MODEL_LABEL = "Primer";
 const LISTENING_TEXT = "Slušamo…";
 const HELPS_TEXT = "To pomaže.";
 const RETRY_TEXT = "Probaj nešto drugo.";
-const HINT_TEXT = "Pogledaj karticu koja svetli.";
+const HINT_TEXT = "Probaj još jednom, polako.";
 const KIND_LABEL: Record<SituationKind, string> = { polite: "učtivost", advocacy: "zastupanje sebe" };
 const CELEBRATE_MS = 1000;
 /** Poeni prema broju izbora koji manje pomažu pre onog koji pomaže */
@@ -304,13 +304,14 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
         if (target.acceptable.includes(index)) {
             const attempt = current.tried.length + 1;
             // Situacija koju je pokazala ruka (prva u prvom nivou) je pokazivanje, a ne zadatak: ne boduje se
-            const modeled = level === 1 && current.round === 1 && attempt === 1;
+            // Ceo prvi zadatak prvog nivoa je van ocene (i posle pogrešnog izbora), da „uz pomoć” ne premaši ocenjene zadatke
+            const modeled = demoRounds(level, current.totalRounds) > 0 && current.round === 1;
             const next: SocialView = {
                 ...current,
                 picked: index,
                 score: current.score + POINTS[Math.min(current.tried.length, POINTS.length - 1)],
                 correctCount: current.correctCount + (attempt === 1 && !modeled && !current.hint ? 1 : 0),
-                promptedCount: current.promptedCount + (current.hint ? 1 : 0),
+                promptedCount: current.promptedCount + (current.hint && !modeled ? 1 : 0),
             };
             const how = attempt === 1 ? (current.hint ? " uz pomoć" : "") : ` iz ${attempt}. pokušaja${current.hint ? ", uz pomoć" : ""}`;
             commit(next, `Izbor koji pomaže${how}: ${label}`);

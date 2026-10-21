@@ -112,7 +112,7 @@ const NUDGE_MS = 7000;
 const CHOOSE_LINES = [SAY_CHOOSE, "Šta je to bilo?", "Šta se čulo?"];
 const SAY_LISTEN_FIRST = "Prvo pusti zvuk.";
 const WRONG_TEXT = "Nije to. Poslušaj još jednom.";
-const WRONG_HINT_TEXT = "Nije to. Pogledaj sliku koja svetli.";
+const WRONG_HINT_TEXT = "Nije to. Probaj još jednom, polako.";
 const SOUND_OFF_TEXT = "Zvuk je isključen. Za ovu igru treba zvuk.";
 const SOUND_OFF_ADULT_TEXT = "Odrasli: uključite zvuk dugmetom sa zvučnikom gore desno ili u podešavanjima deteta.";
 
@@ -628,17 +628,18 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
 
         lockedRef.current = true;
         // Zvuk koji je pokazala ruka (prvi u prvom nivou) je pokazivanje, a ne zadatak: ne boduje se
-        const modeled = level === 1 && current.round === 1 && current.wrongIds.length === 0;
+        // Ceo prvi zadatak prvog nivoa je van ocene (i kad dete prvo pogreši), da „uz pomoć” ne premaši ocenjene zadatke
+        const modeled = demoRounds(level, current.totalRounds) > 0 && current.round === 1;
         const firstTry = current.wrongIds.length === 0 && !modeled && !current.hint;
         const answered: SoundToImageView = {
             ...current,
             pickedId: id,
             feedback: "correct",
             correctCount: current.correctCount + (firstTry ? 1 : 0),
-            promptedCount: current.promptedCount + (current.hint ? 1 : 0),
+            promptedCount: current.promptedCount + (current.hint && !modeled ? 1 : 0),
             score: current.score + (firstTry ? 10 : 5),
         };
-        const how = firstTry ? " iz prve" : current.hint || modeled ? " uz pomoć" : ` (pogrešnih pokušaja: ${current.wrongIds.length})`;
+        const how = modeled ? " (pokazni zadatak)" : firstTry ? " iz prve" : current.hint ? " uz pomoć" : ` (pogrešnih pokušaja: ${current.wrongIds.length})`;
         const log = `Tačno: ${wanted.label.toLowerCase()}${how}`;
         playSfx("correct");
 

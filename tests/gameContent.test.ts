@@ -167,6 +167,13 @@ describe("social stories", () => {
         }
     });
 
+    it("gives every option of a decision its own picture (children who cannot read choose by the picture)", () => {
+        for (const { where, decision } of DECISIONS) {
+            const emoji = decision.options.map((option) => option.emoji);
+            assert.equal(new Set(emoji).size, emoji.length, `${where}: ${emoji.join(" ")}`);
+        }
+    });
+
     it("has at least two decisions in every story, so a level can be scored", () => {
         for (const { level, story } of STORIES) {
             assert.ok(decisionCount(story) >= 2, `level ${level}`);

@@ -299,7 +299,10 @@ export function isLevelPassed(
 ): boolean {
     if (!graded) return true;
     if (typeof row.correct_count === "number" && typeof row.total_count === "number") {
-        return row.total_count > 0 && row.correct_count / row.total_count >= ADVANCE_RATIO;
+        // Nivo bez ocenjivanih zadataka (priča pročitana u režimu „Čitaj priču”) je pređen:
+        // kod socijalnih priča je samo čitanje cilj, pa vodi na sledeću priču
+        if (row.total_count === 0) return true;
+        return row.correct_count / row.total_count >= ADVANCE_RATIO;
     }
     const stars = typeof row.stars === "number" ? row.stars : parseLegacyNotes(row.notes).stars;
     return stars !== null ? stars >= 1 : row.success_level !== "struggled";
