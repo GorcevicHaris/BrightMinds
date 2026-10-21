@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
+    DemoHand,
     Feedback,
     GameHud,
     GamePrompt,
@@ -230,6 +231,9 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
     const praise = usePraise();
     const started = useRef(false);
     const finished = useRef(false);
+    // Prvi izbor u prvoj priči (režim „Čitaj i biraj”) pokazuje ruka: to je pokazivanje, ne zadatak
+    const firstDecision = story.steps.findIndex((item) => item.decision !== undefined);
+    const isDemoStep = (stepIndex: number, mode: StoryMode) => level === 1 && mode === "choose" && stepIndex === firstDecision;
     const topRef = useRef<HTMLSpanElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -316,6 +320,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
         const record = current.records[current.stepIndex];
         if (current.phase !== "story" || current.listening || !record || record.hint || record.picked !== null) return;
         if (!story.steps[current.stepIndex]?.decision || current.mode !== "choose") return;
+        if (isDemoStep(current.stepIndex, current.mode) && record.tried.length === 0) return; // tu pokazuje ruka
         const records = current.records.map((item, i) => (i === current.stepIndex ? { ...item, hint: true } : item));
         commit({ ...current, records }, `Korak ${current.stepIndex + 1}: pomoć posle čekanja`);
     });
@@ -363,20 +368,21 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
 
         if (currentDecision.acceptable.includes(optionIndex)) {
             const attempt = currentRecord.tried.length + 1;
+            const modeled = isDemoStep(current.stepIndex, current.mode);
             const picked: StepRecord = { ...currentRecord, picked: optionIndex };
             const next: StoryView = {
                 ...current,
                 records: withRecord(picked),
                 score: current.score + (attempt === 1 ? POINTS_FIRST_PICK : POINTS_LATER_PICK),
-                correctCount: current.correctCount + (attempt === 1 && !currentRecord.hint ? 1 : 0),
-                promptedCount: current.promptedCount + (currentRecord.hint ? 1 : 0),
+                correctCount: current.correctCount + (attempt === 1 && !currentRecord.hint && !modeled ? 1 : 0),
+                promptedCount: current.promptedCount + (currentRecord.hint && !modeled ? 1 : 0),
             };
             const how = attempt === 1 ? (currentRecord.hint ? " uz pomoć" : "") : ` iz ${attempt}. pokušaja${currentRecord.hint ? ", uz pomoć" : ""}`;
             playSfx("correct");
             commit(next, `${place}: izbor koji pomaže${how}: ${label}`);
             // Ekran se pomera ka objašnjenju: drugi dodir dvostrukog dodira ne sme da pritisne „Dalje”
             guard.hold();
-            sayAll([praise(explanationSpeech(currentDecision, picked, optionIndex, female), attempt === 1 && !currentRecord.hint)], undefined, "happy");
+            sayAll([praise(explanationSpeech(currentDecision, picked, optionIndex, female), attempt === 1 && !currentRecord.hint && !modeled)], undefined, "happy");
         } else {
             const tried = [...currentRecord.tried, optionIndex];
             const lessHelpfulOffered = currentRecord.order.filter((i) => !currentDecision.acceptable.includes(i)).length;
@@ -426,7 +432,8 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
         const current = viewRef.current;
         const reading = current.mode === "read";
         // Samo čitanje nije ocenjivan učinak: bez zadataka, da ne ulepšava statistiku tačnosti
-        const total = reading ? 0 : decisionCount(story);
+        // Pokazni izbor (prva priča) se ne ocenjuje; svaka priča ima bar dva izbora (test)
+        const total = reading ? 0 : decisionCount(story) - (level === 1 ? 1 : 0);
         const correct = reading ? 0 : current.correctCount;
         const done: StoryView = { ...current, phase: "done", listening: false };
         silence();
@@ -588,6 +595,13 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                         const wasTried = record.tried.includes(optionIndex);
                                         const locked = isMonitor || shown.listening || record.picked !== null || wasTried;
                                         const status = state === "correct" ? ", to pomaže" : wasTried ? ", već probano" : "";
+                                        const showHand =
+                                            !isMonitor &&
+                                            !shown.listening &&
+                                            isDemoStep(shown.stepIndex, shown.mode) &&
+                                            record.picked === null &&
+                                            record.tried.length === 0 &&
+                                            optionIndex === record.order.find((i) => decision.acceptable.includes(i));
                                         return (
                                             <li key={optionIndex} className="flex items-stretch gap-2">
                                                 <ChoiceCard
@@ -606,6 +620,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                                         </span>
                                                         <span className="min-w-0 flex-1 text-base leading-snug sm:text-lg">{label}</span>
                                                     </span>
+                                                    {showHand && <DemoHand />}
                                                 </ChoiceCard>
                                                 {!isMonitor && (
                                                     <OptionSpeaker label={`Pročitaj: ${label}`} disabled={shown.listening} onClick={() => speakOption(optionIndex)} />
