@@ -648,9 +648,12 @@ const LAYOUT: Record<number, string> = {
     6: "[--cols:3] [--rows:2] landscape:[--cols:6] landscape:[--rows:1]",
 };
 
+/** Mesto za traženi oblik: veliko, ali tako da ponuđeni oblici i dalje staju na ekran */
+const TARGET_STYLE: CSSProperties = { width: "clamp(6rem, 17dvh, 11rem)", height: "clamp(6rem, 17dvh, 11rem)" };
+
 const BOARD_STYLE = {
-    // ≈23rem zauzimaju zaglavlje, traka napretka, uputstvo i poruka
-    "--tile": "clamp(5rem, calc((100dvh - 23rem) / var(--rows) - var(--gap)), 15rem)",
+    // ≈23rem zauzimaju zaglavlje, traka napretka, uputstvo i poruka, a još do 12rem mesto za oblik
+    "--tile": "clamp(4.5rem, calc((100dvh - 23rem - min(17dvh, 11rem) - 1.5rem) / var(--rows) - var(--gap)), 14rem)",
     gap: "var(--gap)",
     gridTemplateColumns: "repeat(var(--cols), minmax(0, 1fr))",
     maxWidth: "calc(var(--cols) * var(--tile) + (var(--cols) - 1) * var(--gap))",
@@ -829,34 +832,35 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
     const showHand = !isMonitor && level === 1 && shown.round === 1 && shown.wrong.length === 0 && shown.feedback === null;
     const prompt = promptFor(shown);
     const message = feedbackText(shown);
+    const solved = shown.feedback === "correct";
 
     return (
         <GameStage>
             <GameHud round={shown.round} totalRounds={shown.totalRounds} score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
-            <GamePrompt
-                key={`prompt-${shown.round}`}
-                className="animate-fade-up"
-                title={prompt.title}
-                subtitle={prompt.subtitle}
-                visual={
-                    <span
-                        key={demo.run}
-                        className={cn("grid h-full w-full place-items-center rounded-2xl", demo.on && "animate-soft-pulse ring-4 ring-brand-300")}
-                        style={demo.on ? PULSE_ONCE : undefined}
-                    >
-                        <ShapeArt
-                            shape={shown.target}
-                            color={shown.targetColor}
-                            look={shown.look}
-                            label={TARGET_LABEL[shown.look](SHAPES[shown.target].name)}
-                            className="h-16 w-16 sm:h-24 sm:w-24 short:sm:h-16 short:sm:w-16"
-                        />
-                    </span>
-                }
-            />
+            <GamePrompt key={`prompt-${shown.round}`} className="animate-fade-up" title={prompt.title} subtitle={prompt.subtitle} />
 
             <PlayArea accent={GAME.accent}>
+                {/* Mesto za oblik: traženi oblik je veliki, u sredini polja, iznad ponuđenih. Kad dete
+                    pogodi, senka ili obris se „popune” bojom — oblik je stao na svoje mesto. */}
+                <div
+                    key={`target-${shown.round}-${demo.run}`}
+                    className={cn(
+                        "mb-4 grid shrink-0 animate-fade-up place-items-center rounded-3xl border-4 border-dashed bg-white/80 transition-colors sm:mb-6",
+                        solved ? "border-emerald-300" : "border-brand-200",
+                        demo.on && "animate-soft-pulse ring-4 ring-brand-300"
+                    )}
+                    style={{ ...TARGET_STYLE, ...(demo.on ? PULSE_ONCE : undefined) }}
+                >
+                    <ShapeArt
+                        key={solved ? "filled" : "empty"}
+                        shape={shown.target}
+                        color={shown.targetColor}
+                        look={solved ? "color" : shown.look}
+                        label={TARGET_LABEL[shown.look](SHAPES[shown.target].name)}
+                        className={cn("h-[72%] w-[72%]", solved && "animate-pop")}
+                    />
+                </div>
                 <div
                     key={`options-${shown.round}`}
                     role="group"
