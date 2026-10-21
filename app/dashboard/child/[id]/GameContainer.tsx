@@ -589,11 +589,15 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 ) : (
                     <span className="w-1 shrink-0 sm:w-2" />
                 )}
-                <span className={cn("grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-2xl", game.accent.gradient)} aria-hidden="true">
+                {/* Na telefonu ikonica ustupa mesto nazivu igre, da se naziv ne seče */}
+                <span
+                    className={cn("hidden h-11 w-11 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-2xl min-[420px]:grid", game.accent.gradient)}
+                    aria-hidden="true"
+                >
                     {game.icon}
                 </span>
                 <div className="min-w-0 flex-1">
-                    <p className="truncate font-display text-base font-extrabold leading-tight text-ink sm:text-lg">{game.title}</p>
+                    <p className="line-clamp-2 font-display text-base font-extrabold leading-tight text-ink sm:text-lg">{game.title}</p>
                     {screen === "playing" && (
                         <p className="flex items-center gap-2 whitespace-nowrap text-xs font-bold text-ink-soft sm:text-sm">
                             <span className={cn("rounded-full px-2 py-0.5", tier.badge)}>{tier.label}</span>

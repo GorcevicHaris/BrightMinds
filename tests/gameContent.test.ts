@@ -286,6 +286,16 @@ describe("emotion scenarios", () => {
         }
     });
 
+    it("keeps the youngest band progressing after level 5: a fourth feeling and harder stories", () => {
+        const { emotionCount, maxRounds } = BAND_PRESETS.young;
+        const easy = getEmotionLevel(5, { emotionCount, maxRounds });
+        const medium = getEmotionLevel(6, { emotionCount, maxRounds });
+        assert.ok(!easy.palette.includes("scared"));
+        assert.ok(medium.palette.includes("scared"));
+        assert.ok(medium.scenarios.some((scenario) => scenario.common[0] === "scared"));
+        assert.ok(getEmotionLevel(11, { emotionCount, maxRounds }).scenarios.every((scenario) => scenario.tier === 3));
+    });
+
     for (const band of ["young", "middle", "older"] as const) {
         const { emotionCount, maxRounds } = BAND_PRESETS[band];
 

@@ -58,14 +58,18 @@ export interface BandPreset {
     maxChoices: 2 | 3 | 4 | 6;
     memoryMaxPairs: number;
     /** Koliko emocija se nudi: srećno, tužno, ljuto → + uplašeno, iznenađeno → + ponosno */
-    emotionCount: 3 | 5 | 6;
+    /**
+     * Koliko osećanja dete upoznaje u igri „Emocije”. Najmlađi imaju četiri: prvih pet nivoa
+     * su srećno, tužno i ljuto, a od šestog dolazi i „uplašeno” — da i oni dalje napreduju.
+     */
+    emotionCount: 4 | 5 | 6;
     maxRounds: number;
     /** Poeni i brojevi se prikazuju detetu (mlađoj deci brojevi ne znače mnogo) */
     showPoints: boolean;
 }
 
 export const BAND_PRESETS: Record<AgeBand, BandPreset> = {
-    young: { label: "Mlađi", ages: "3–4 godine", maxChoices: 3, memoryMaxPairs: 4, emotionCount: 3, maxRounds: 5, showPoints: false },
+    young: { label: "Mlađi", ages: "3–4 godine", maxChoices: 3, memoryMaxPairs: 4, emotionCount: 4, maxRounds: 5, showPoints: false },
     middle: { label: "Srednji", ages: "5–6 godina", maxChoices: 4, memoryMaxPairs: 6, emotionCount: 5, maxRounds: 6, showPoints: false },
     older: { label: "Stariji", ages: "7–10 godina", maxChoices: 6, memoryMaxPairs: 10, emotionCount: 6, maxRounds: 8, showPoints: true },
 };

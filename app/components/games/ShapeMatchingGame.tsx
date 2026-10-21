@@ -649,11 +649,11 @@ const LAYOUT: Record<number, string> = {
 };
 
 /** Mesto za traženi oblik: veliko, ali tako da ponuđeni oblici i dalje staju na ekran */
-const TARGET_STYLE: CSSProperties = { width: "clamp(6rem, 17dvh, 11rem)", height: "clamp(6rem, 17dvh, 11rem)" };
+const TARGET_STYLE: CSSProperties = { width: "clamp(5rem, 16dvh, 11rem)", height: "clamp(5rem, 16dvh, 11rem)" };
 
 const BOARD_STYLE = {
     // ≈23rem zauzimaju zaglavlje, traka napretka, uputstvo i poruka, a još do 12rem mesto za oblik
-    "--tile": "clamp(4.5rem, calc((100dvh - 23rem - min(17dvh, 11rem) - 1.5rem) / var(--rows) - var(--gap)), 14rem)",
+    "--tile": "clamp(4.5rem, calc((100dvh - 23rem - min(16dvh, 11rem) - 1.5rem) / var(--rows) - var(--gap)), 14rem)",
     gap: "var(--gap)",
     gridTemplateColumns: "repeat(var(--cols), minmax(0, 1fr))",
     maxWidth: "calc(var(--cols) * var(--tile) + (var(--cols) - 1) * var(--gap))",
@@ -848,7 +848,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                 <div
                     key={`target-${shown.round}-${demo.run}`}
                     className={cn(
-                        "mb-4 grid shrink-0 animate-fade-up place-items-center rounded-3xl border-4 border-dashed bg-white/80 transition-colors sm:mb-6",
+                        "mb-3 grid shrink-0 animate-fade-up place-items-center rounded-3xl border-4 border-dashed bg-white/80 transition-colors sm:mb-6",
                         solved ? "border-emerald-300" : "border-brand-200",
                         demo.on && "animate-soft-pulse ring-4 ring-brand-300"
                     )}
