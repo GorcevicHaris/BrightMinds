@@ -188,6 +188,8 @@ interface GamePromptProps {
     subtitle?: React.ReactNode;
     /** Emodži ili slika levo od teksta */
     visual?: React.ReactNode;
+    /** Na telefonu manji okvir i slika — kad ispod ima mnogo izbora koji treba da stanu na ekran */
+    compact?: boolean;
     className?: string;
 }
 
@@ -205,19 +207,25 @@ export function useBubbleTail(): string {
     return teacher !== null && settings.avatar ? BUBBLE_TAIL : "";
 }
 
-export function GamePrompt({ title, subtitle, visual, className }: GamePromptProps) {
+export function GamePrompt({ title, subtitle, visual, compact = false, className }: GamePromptProps) {
     // Uputstvo je „oblačić” onoga ko govori
     const tail = useBubbleTail();
     return (
         <div
             className={cn(
-                "relative flex items-center gap-4 rounded-card border border-line bg-surface p-4 shadow-soft sm:gap-6 sm:p-6 short:sm:p-4",
+                "relative flex items-center gap-4 rounded-card border border-line bg-surface shadow-soft sm:gap-6 sm:p-6 short:sm:p-4",
+                compact ? "p-3" : "p-4",
                 tail,
                 className
             )}
         >
             {visual && (
-                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-brand-50 text-5xl ring-1 ring-brand-100 sm:h-28 sm:w-28 sm:text-6xl short:sm:h-20 short:sm:w-20 short:sm:text-5xl">
+                <div
+                    className={cn(
+                        "grid shrink-0 place-items-center rounded-2xl bg-brand-50 ring-1 ring-brand-100 sm:h-28 sm:w-28 sm:text-6xl short:sm:h-20 short:sm:w-20 short:sm:text-5xl",
+                        compact ? "h-14 w-14 text-4xl" : "h-20 w-20 text-5xl"
+                    )}
+                >
                     {visual}
                 </div>
             )}

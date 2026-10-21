@@ -206,6 +206,18 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
     const startedRef = useRef(false);
     const completedRef = useRef(false);
     const nextButtonRef = useRef<HTMLButtonElement>(null);
+    const optionsEndRef = useRef<HTMLSpanElement>(null);
+
+    // Na niskom ekranu izbori bi ostali ispod ivice: kad se pojave, ekran se pomeri tačno toliko da
+    // i poslednji izbor bude vidljiv (primer je već pročitan i ide iznad); kad sve staje, ništa se ne pomera.
+    useEffect(() => {
+        if (isMonitor || !view.optionsShown) return;
+        const target = optionsEndRef.current;
+        if (!target) return;
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches || document.querySelector('[data-motion="reduced"]') !== null;
+        const timer = window.setTimeout(() => target.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" }), 150);
+        return () => window.clearTimeout(timer);
+    }, [isMonitor, view.optionsShown, view.round]);
 
     // Monitor se ne pravi iznova kad se nivo promeni, pa podrazumevano stanje prati `level`.
     // Dok stanje ne stigne, monitor vidi celu prvu situaciju (primer, pitanje i izbore).
@@ -390,14 +402,22 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
             <section
                 key={situation.id}
                 aria-label={MODEL_LABEL}
-                className={cn("flex animate-fade-up items-center gap-3 rounded-card border-2 p-4 shadow-soft sm:gap-4 sm:p-5", ACCENT.soft, ACCENT.border)}
+                // Kad se pojave izbori, primer je već pročitan: na telefonu se sabije, da svi izbori stanu na ekran
+                className={cn(
+                    "flex animate-fade-up items-center gap-3 rounded-card border-2 shadow-soft sm:gap-4 sm:p-5",
+                    shown.optionsShown ? "p-2.5" : "p-4",
+                    ACCENT.soft,
+                    ACCENT.border
+                )}
             >
-                <span aria-hidden="true" className="text-4xl leading-none sm:text-5xl">
+                <span aria-hidden="true" className={cn("leading-none sm:text-5xl", shown.optionsShown ? "text-2xl" : "text-4xl")}>
                     💬
                 </span>
                 <div className="min-w-0 flex-1">
                     <p className={cn("text-sm font-extrabold sm:text-base", ACCENT.text)}>{MODEL_LABEL}</p>
-                    <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{genderText(situation.model, female)}</p>
+                    <p className={cn("font-bold leading-snug text-ink sm:text-xl", shown.optionsShown ? "text-base" : "text-lg")}>
+                        {genderText(situation.model, female)}
+                    </p>
                 </div>
             </section>
 
@@ -413,6 +433,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     <GamePrompt
                         key={`prompt-${situation.id}`}
                         className="animate-fade"
+                        compact
                         visual={<span aria-hidden="true">{situation.scene}</span>}
                         title={genderText(situation.text, female)}
                         subtitle={situation.ask}
@@ -453,6 +474,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                             );
                         })}
                     </ul>
+                    <span ref={optionsEndRef} aria-hidden="true" className="-mt-3 block h-0 scroll-mb-4" />
 
                     <Feedback kind={feedback} correctText={HELPS_TEXT} wrongText={shown.hint ? HINT_TEXT : RETRY_TEXT} />
 
