@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { getGame, type GameId } from "@/lib/games";
 import { useGameBroadcast } from "@/lib/realtime";
 import type { GameUpdate } from "@/lib/types";
+import { useGamePaused } from "./pause";
 import type { BaseView } from "./types";
 
 interface Options {
@@ -25,6 +26,18 @@ interface Options {
 export function useGameSync<V extends BaseView>({ childId, gameId, level, isMonitor = false }: Options) {
     const publish = useGameBroadcast(childId, !isMonitor);
     const startedAt = useRef<number | null>(null);
+    // Vreme na pauzi se ne računa u trajanje igre (statistika „vreme igre”)
+    const paused = useGamePaused();
+    const pausedSince = useRef<number | null>(null);
+    const pausedTotal = useRef(0);
+    useEffect(() => {
+        if (paused) {
+            pausedSince.current = Date.now();
+        } else if (pausedSince.current !== null) {
+            pausedTotal.current += Date.now() - pausedSince.current;
+            pausedSince.current = null;
+        }
+    }, [paused]);
 
     const emit = useCallback(
         (event: GameUpdate["event"], view: V, log?: string) => {
@@ -53,7 +66,11 @@ export function useGameSync<V extends BaseView>({ childId, gameId, level, isMoni
             update: (view: V, log?: string) => emit("progress", view, log),
             complete: (view: V) => emit("completed", { ...view, finalScore: view.score }),
             /** Sekunde od `start()` (najmanje 1) */
-            elapsedSec: () => (startedAt.current === null ? 1 : Math.max(1, Math.round((Date.now() - startedAt.current) / 1000))),
+            elapsedSec: () => {
+                if (startedAt.current === null) return 1;
+                const pausedMs = pausedTotal.current + (pausedSince.current === null ? 0 : Date.now() - pausedSince.current);
+                return Math.max(1, Math.round((Date.now() - startedAt.current - pausedMs) / 1000));
+            },
         }),
         [emit]
     );
