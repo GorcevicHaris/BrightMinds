@@ -111,6 +111,7 @@ const GAME_SERIES: Record<GameId, Series> = {
     "social-story": { swatch: "bg-teal-600", color: "var(--color-teal-600)" },
     emotions: { swatch: "bg-pink-600", color: "var(--color-pink-600)" },
     sorting: { swatch: "bg-amber-500", color: "var(--color-amber-500)" },
+    sequence: { swatch: "bg-lime-600", color: "var(--color-lime-600)" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */
