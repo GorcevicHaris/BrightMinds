@@ -48,6 +48,7 @@ const GAME_LOADERS = {
     social: () => import("@/app/components/games/SocialCommunicationGame"),
     "social-story": () => import("@/app/components/games/SocialStoryGame"),
     emotions: () => import("@/app/components/games/EmotionsGame"),
+    sorting: () => import("@/app/components/games/SortingGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -58,6 +59,7 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     social: dynamic(GAME_LOADERS["social"], { ssr: false, loading: GameLoading }),
     "social-story": dynamic(GAME_LOADERS["social-story"], { ssr: false, loading: GameLoading }),
     emotions: dynamic(GAME_LOADERS["emotions"], { ssr: false, loading: GameLoading }),
+    sorting: dynamic(GAME_LOADERS["sorting"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {

@@ -92,7 +92,7 @@ describe("buildProgress with no data", () => {
         assert.equal(empty.totals.promptedRate30d, null);
         assert.equal(empty.totals.lastPlayedAt, null);
         assert.equal(empty.totals.gamesTried, 0);
-        assert.equal(empty.totals.levelsAvailable, 7 * 15);
+        assert.equal(empty.totals.levelsAvailable, GAMES.length * 15);
         assert.deepEqual(empty.recentSessions, []);
     });
 

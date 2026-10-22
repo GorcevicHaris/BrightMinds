@@ -48,6 +48,7 @@ const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
     social: dynamic(() => import("@/app/components/games/SocialCommunicationGame"), { ssr: false, loading: MirrorLoading }),
     "social-story": dynamic(() => import("@/app/components/games/SocialStoryGame"), { ssr: false, loading: MirrorLoading }),
     emotions: dynamic(() => import("@/app/components/games/EmotionsGame"), { ssr: false, loading: MirrorLoading }),
+    sorting: dynamic(() => import("@/app/components/games/SortingGame"), { ssr: false, loading: MirrorLoading }),
 };
 
 const noop = () => {};
