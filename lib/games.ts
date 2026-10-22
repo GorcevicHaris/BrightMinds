@@ -9,7 +9,8 @@ export type GameId =
     | "sound-to-image"
     | "social"
     | "social-story"
-    | "emotions";
+    | "emotions"
+    | "sorting";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -19,7 +20,8 @@ export type GameType =
     | "sound-to-image"
     | "social"
     | "social-story"
-    | "emotions";
+    | "emotions"
+    | "sorting";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -205,6 +207,27 @@ export const GAMES: GameDefinition[] = [
             gradient: "from-pink-400 to-rose-500",
         },
         offscreenTip: "Dok čitate slikovnicu, pitajte: „Kako se oseća ovaj lik? Po čemu to vidiš?”",
+        graded: true,
+    },
+    {
+        id: "sorting",
+        gameType: "sorting",
+        activityId: 9,
+        title: "Razvrstaj",
+        description: "Stavi u pravu korpu",
+        skill: "Razvrstavanje",
+        icon: "🧺",
+        image: "/images/razvrstaj.svg",
+        accent: {
+            solid: "bg-amber-500",
+            edge: "border-amber-700",
+            soft: "bg-amber-50",
+            text: "text-amber-700",
+            border: "border-amber-200",
+            ring: "ring-amber-200",
+            gradient: "from-amber-400 to-orange-500",
+        },
+        offscreenTip: "Pri sklanjanju veša ili igračaka razvrstavajte zajedno: „Čarape ovde, majice tamo.” ili „Crvene kocke u ovu kutiju.”",
         graded: true,
     },
 ];
