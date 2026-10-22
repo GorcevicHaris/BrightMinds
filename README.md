@@ -2,7 +2,7 @@
 
 Edukativne igre za decu (posebno decu sa autizmom i razvojnim teškoćama), sa praćenjem napretka za roditelje, učitelje i terapeute.
 
-- **Dete** se prijavljuje vizuelnim kodom (4 sličice) i igra sedam igara u tri težine.
+- **Dete** se prijavljuje vizuelnim kodom (4 sličice) i igra devet igara u tri težine.
 - **Roditelj / učitelj / terapeut** upravlja profilima dece, gleda statistiku i prati igru uživo.
 
 > Bright Minds je vežbanka uz podršku odraslih. Nije terapija ni dijagnostički alat i ne zamenjuje logopeda, defektologa ili psihologa.
@@ -53,7 +53,7 @@ app/
   api/                       API rute (auth, children, activities, tts)
   components/
     ui/                      dugmad, polja, kartice, modal, logo
-    games/                   sedam igara
+    games/                   devet igara
     games/kit/               zajednički delovi igara (HUD, kartice odgovora, zvuk, sinhronizacija)
 lib/
   games.ts                   spisak igara, boje, zvezdice — jedini izvor istine

@@ -472,10 +472,10 @@ function ParentView({ data, childId, onRefresh, isRefreshing }: ParentViewProps)
 
     return (
         <div className="space-y-8">
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+            <div className="flex flex-col-reverse gap-3">
                 <GameFilterControl value={filter} onChange={setFilter} />
-                <div className="flex shrink-0 items-center gap-2 xl:ml-auto">
-                    <p className="mr-auto text-xs font-semibold text-ink-faint xl:hidden">Ažurirano u {updatedAt}</p>
+                <div className="flex shrink-0 items-center gap-2">
+                    <p className="mr-auto text-xs font-semibold text-ink-faint">Ažurirano u {updatedAt}</p>
                     <a
                         href={`/api/children/${childId}/export`}
                         download
@@ -546,12 +546,8 @@ function GameFilterControl({ value, onChange }: { value: GameFilter; onChange: (
                     ))}
                 </Select>
             </div>
-            {/* Jedan red: igre se ne prelamaju u drugi red ispod dugmadi, na užem ekranu red se pomera u stranu */}
-            <div
-                role="group"
-                aria-label="Filter po igri"
-                className="hidden min-w-0 gap-1 overflow-x-auto rounded-2xl bg-surface p-1 shadow-soft ring-1 ring-line [scrollbar-width:none] md:flex"
-            >
+            {/* Sve igre su uvek vidljive: kad ih ima više nego što staje u red, prelaze u drugi red */}
+            <div role="group" aria-label="Filter po igri" className="hidden min-w-0 flex-wrap gap-1 rounded-2xl bg-surface p-1 shadow-soft ring-1 ring-line md:flex">
                 {options.map((option) => (
                     <button
                         key={option.value}
@@ -1097,7 +1093,7 @@ function GameCard({ game: progress, timeZone, windowDays, onSelect }: GameCardPr
     const game = getGame(progress.gameId);
     const played = progress.plays > 0;
     // Na telefonu kartica prvo pokazuje samo najvažnije (status i nivoe); ostalo se otvara dodirom,
-    // da sedam igara ne bude sedam ekrana skrolovanja. Na širem ekranu je sve odmah vidljivo.
+    // da devet igara ne bude devet ekrana skrolovanja. Na širem ekranu je sve odmah vidljivo.
     const [open, setOpen] = useState(false);
     const moreId = useId();
     return (
