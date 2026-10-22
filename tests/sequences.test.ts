@@ -23,6 +23,19 @@ describe("sequence game content", () => {
         }
     });
 
+    it("keeps short words (se, ga, mu, me, je) in second place when a step is retold after „prvo / zatim”", () => {
+        // „Probudim se.” → „Prvo se probudim”, ne „Prvo probudim se”
+        for (const sequence of SEQUENCES) {
+            for (const step of sequence.steps) {
+                const second = step.text.replace(/\.$/, "").split(/\s+/)[1];
+                if (["se", "ga", "mu", "me", "je"].includes(second ?? "")) {
+                    assert.ok(step.retell, `${sequence.id}: „${step.text}” needs a retell form`);
+                    assert.ok(step.retell.startsWith(second + " "), `${sequence.id}: „${step.retell}”`);
+                }
+            }
+        }
+    });
+
     it("grows from two steps to five", () => {
         assert.equal(sequenceRule(1).steps, 2);
         assert.equal(sequenceRule(4).steps, 3);

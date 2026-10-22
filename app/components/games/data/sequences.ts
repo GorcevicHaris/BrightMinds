@@ -7,10 +7,15 @@
 //  • Koraci su u prvom licu sadašnjeg vremena („Obučem čarape.”) — bez roda, isto za dečake
 //    i devojčice.
 //  • Svaki korak ima svoju sličicu; u istom nizu se sličice ne ponavljaju (test).
+//  • Kad glas prepričava niz („Prvo …, zatim …”), kratke reči se, ga, mu, me, je moraju
+//    na drugo mesto u rečenici: „Probudim se.” → „Prvo se probudim”. Takvi koraci imaju
+//    i oblik za prepričavanje (`retell`).
 
 export interface SequenceStep {
     emoji: string;
     text: string;
+    /** Oblik posle „prvo / zatim / na kraju”, kad se reči moraju premestiti (malim slovom, bez tačke) */
+    retell?: string;
 }
 
 export interface Sequence {
@@ -19,7 +24,7 @@ export interface Sequence {
     steps: SequenceStep[];
 }
 
-const s = (emoji: string, text: string): SequenceStep => ({ emoji, text });
+const s = (emoji: string, text: string, retell?: string): SequenceStep => (retell ? { emoji, text, retell } : { emoji, text });
 
 export const SEQUENCES: readonly Sequence[] = [
     // Dva koraka
@@ -27,7 +32,7 @@ export const SEQUENCES: readonly Sequence[] = [
     { id: "rain", title: "Kiša", steps: [s("🌧️", "Pada kiša."), s("☂️", "Otvorim kišobran.")] },
     { id: "hands-eat", title: "Ručak", steps: [s("🧼", "Operem ruke."), s("🍽️", "Ručam.")] },
     { id: "night", title: "Veče", steps: [s("🌙", "Padne mrak."), s("🛏️", "Idem na spavanje.")] },
-    { id: "balloon", title: "Balon", steps: [s("🎈", "Naduvam balon."), s("🤾", "Igram se balonom.")] },
+    { id: "balloon", title: "Balon", steps: [s("💨", "Naduvam balon."), s("🎈", "Igram se balonom.", "se igram balonom")] },
     { id: "ice-cream", title: "Sladoled", steps: [s("🛒", "Kupim sladoled."), s("🍦", "Jedem sladoled.")] },
     { id: "egg", title: "Jaje", steps: [s("🥚", "Razbijem jaje."), s("🍳", "Ispržim jaje.")] },
     { id: "juice", title: "Sok", steps: [s("🧃", "Otvorim sok."), s("😋", "Popijem sok.")] },
@@ -35,27 +40,27 @@ export const SEQUENCES: readonly Sequence[] = [
     // Tri koraka
     { id: "teeth", title: "Pranje zuba", steps: [s("🪥", "Uzmem četkicu."), s("🦷", "Operem zube."), s("💧", "Isperem usta.")] },
     { id: "sandwich", title: "Sendvič", steps: [s("🍞", "Uzmem hleb."), s("🧈", "Namažem hleb."), s("😋", "Pojedem sendvič.")] },
-    { id: "plant", title: "Cvet", steps: [s("🌱", "Posadim seme."), s("💧", "Zalijem ga."), s("🌻", "Izraste cvet.")] },
+    { id: "plant", title: "Cvet", steps: [s("🌱", "Posadim seme."), s("💧", "Zalijem ga.", "ga zalijem"), s("🌻", "Izraste cvet.")] },
     { id: "drawing", title: "Crtež", steps: [s("✏️", "Nacrtam kuću."), s("🖍️", "Obojim crtež."), s("🖼️", "Pokažem crtež mami.")] },
-    { id: "morning", title: "Jutro", steps: [s("⏰", "Probudim se."), s("👕", "Obučem se."), s("🎒", "Idem u vrtić.")] },
-    { id: "snowman", title: "Sneško", steps: [s("❄️", "Pada sneg."), s("⛄", "Pravim Sneška."), s("🥕", "Stavim mu nos.")] },
+    { id: "morning", title: "Jutro", steps: [s("⏰", "Probudim se.", "se probudim"), s("👕", "Obučem se.", "se obučem"), s("🎒", "Idem u vrtić.")] },
+    { id: "snowman", title: "Sneško", steps: [s("❄️", "Pada sneg."), s("⛄", "Pravim Sneška."), s("🥕", "Stavim mu nos.", "mu stavim nos")] },
     { id: "birthday", title: "Rođendan", steps: [s("🎂", "Mama donese tortu."), s("🕯️", "Dunem svećice."), s("🍰", "Jedemo tortu.")] },
 
     // Četiri koraka
     { id: "wash-hands", title: "Pranje ruku", steps: [s("🚰", "Pustim vodu."), s("🧼", "Nasapunjam ruke."), s("💧", "Isperem sapun."), s("🧻", "Obrišem ruke.")] },
-    { id: "park", title: "Park", steps: [s("👟", "Obujem patike."), s("🚪", "Izađem iz kuće."), s("🌳", "Igram se u parku."), s("🏠", "Vratim se kući.")] },
+    { id: "park", title: "Park", steps: [s("👟", "Obujem patike."), s("🚪", "Izađem iz kuće."), s("🌳", "Igram se u parku.", "se igram u parku"), s("🏠", "Vratim se kući.", "se vratim kući")] },
     { id: "cereal", title: "Pahuljice", steps: [s("🥣", "Uzmem činiju."), s("🥛", "Sipam mleko i pahuljice."), s("🥄", "Jedem pahuljice."), s("🧽", "Operem činiju.")] },
     { id: "cookies", title: "Kolač", steps: [s("🥚", "Razbijemo jaja."), s("🥄", "Umešamo testo."), s("🔥", "Ispečemo kolač."), s("🍪", "Jedemo kolač.")] },
     { id: "puzzle", title: "Slagalica", steps: [s("📦", "Otvorim kutiju."), s("🧩", "Složim slagalicu."), s("👏", "Pokažem slagalicu."), s("🗃️", "Vratim delove u kutiju.")] },
-    { id: "doctor", title: "Kod doktora", steps: [s("🏥", "Uđem kod doktora."), s("🩺", "Doktor me pregleda."), s("⭐", "Dobijem nalepnicu."), s("🏠", "Idem kući.")] },
-    { id: "letter", title: "Pismo", steps: [s("✏️", "Napišem pismo baki."), s("✉️", "Stavim ga u koverat."), s("📮", "Ubacim koverat u sanduče."), s("📬", "Pismo stigne baki.")] },
+    { id: "doctor", title: "Kod doktora", steps: [s("🏥", "Uđem kod doktora."), s("🩺", "Doktor me pregleda.", "me doktor pregleda"), s("⭐", "Dobijem nalepnicu."), s("🏠", "Idem kući.")] },
+    { id: "letter", title: "Pismo", steps: [s("✏️", "Napišem pismo baki."), s("✉️", "Stavim ga u koverat.", "ga stavim u koverat"), s("📮", "Ubacim koverat u sanduče."), s("📬", "Pismo stigne baki.")] },
 
     // Pet koraka
-    { id: "garden", title: "Sadnja", steps: [s("🕳️", "Iskopam rupu."), s("🌰", "Stavim seme."), s("🟫", "Zatrpam ga zemljom."), s("💧", "Zalijem zemlju."), s("🌷", "Izraste cvet.")] },
-    { id: "teeth-5", title: "Zubi", steps: [s("🪥", "Uzmem četkicu."), s("🧴", "Stavim pastu."), s("🦷", "Operem zube."), s("💧", "Isperem usta."), s("🚰", "Operem četkicu.")] },
+    { id: "garden", title: "Sadnja", steps: [s("🕳️", "Iskopam rupu."), s("🌰", "Stavim seme."), s("🟫", "Zatrpam ga zemljom.", "ga zatrpam zemljom"), s("💧", "Zalijem zemlju."), s("🌷", "Izraste cvet.")] },
+    { id: "pancakes", title: "Palačinke", steps: [s("🥚", "Razbijemo jaja."), s("🥣", "Umešamo smesu."), s("🍳", "Ispečemo palačinku."), s("🍯", "Namažemo je medom.", "je namažemo medom"), s("😋", "Pojedemo palačinku.")] },
     { id: "shopping", title: "Prodavnica", steps: [s("📝", "Napišemo spisak."), s("🛒", "Uzmemo kolica."), s("🍎", "Stavimo voće u kolica."), s("💳", "Platimo na kasi."), s("🛍️", "Ponesemo kese kući.")] },
     { id: "wash-hands-5", title: "Čiste ruke", steps: [s("🚰", "Pustim vodu."), s("🖐️", "Pokvasim ruke."), s("🧼", "Nasapunjam ruke."), s("💧", "Isperem sapun."), s("🧻", "Obrišem ruke.")] },
-    { id: "tower", title: "Kula", steps: [s("📦", "Izvadim kocke."), s("🧱", "Stavim prvu kocku."), s("🏗️", "Slažem kocke jednu na drugu."), s("🏰", "Kula je gotova."), s("🗃️", "Vratim kocke u kutiju.")] },
+    { id: "tower", title: "Kula", steps: [s("📦", "Izvadim kocke."), s("🧱", "Stavim prvu kocku."), s("🏗️", "Slažem kocke jednu na drugu."), s("🏰", "Kula je gotova.", "je kula gotova"), s("🗃️", "Vratim kocke u kutiju.")] },
 ];
 
 // ── Nivoi ─────────────────────────────────────────────────────────────────────

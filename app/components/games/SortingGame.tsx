@@ -31,7 +31,7 @@ import {
     type GameProps,
     type TimerId,
 } from "@/app/components/games/kit";
-import { basketFor, belongsTo, buildSortLevel, getSortItem, type BasketId, type SortItem, type SortRound } from "@/app/components/games/data/sortingItems";
+import { basketFor, belongsTo, buildSortLevel, getSortItem, isBasketId, type BasketId, type SortItem, type SortRound } from "@/app/components/games/data/sortingItems";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
@@ -93,7 +93,15 @@ function emptyView(kind: SortingView["kind"], totalRounds: number): SortingView 
 function mergeMonitor(state: Partial<SortingView> | null | undefined): SortingView {
     const base = emptyView("color", 1);
     if (!state) return base;
-    const baskets = Array.isArray(state.baskets) ? state.baskets.filter((id): id is BasketId => typeof id === "string" && /^(color|category):/.test(id)) : [];
+    const baskets = Array.isArray(state.baskets) ? state.baskets.filter(isBasketId) : [];
+    // U korpi su samo poznati predmeti, kao niz — stanje sa monitora može biti iz druge verzije
+    const placed: SortingView["placed"] = {};
+    if (state.placed && typeof state.placed === "object") {
+        for (const id of baskets) {
+            const list = (state.placed as Record<string, unknown>)[id];
+            if (Array.isArray(list)) placed[id] = list.filter((itemId): itemId is string => typeof itemId === "string" && getSortItem(itemId) !== undefined);
+        }
+    }
     const item = typeof state.itemId === "string" ? getSortItem(state.itemId) : undefined;
     const totalRounds = Math.max(toCount(state.totalRounds, 1), 1);
     return {
@@ -111,7 +119,7 @@ function mergeMonitor(state: Partial<SortingView> | null | undefined): SortingVi
         picked: baskets.find((id) => id === state.picked) ?? null,
         feedback: state.feedback === "correct" || state.feedback === "wrong" ? state.feedback : null,
         hint: state.hint === true,
-        placed: state.placed && typeof state.placed === "object" ? state.placed : {},
+        placed,
     };
 }
 
@@ -244,8 +252,11 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
     });
 
     const repeatInstruction = () => {
-        const item = getSortItem(viewRef.current.itemId);
-        if (item) say(`${instructionFor(viewRef.current.kind)} ${capitalized(item.name)}.`);
+        const current = viewRef.current;
+        const item = getSortItem(current.itemId);
+        // Predmet je već u korpi: ništa se ne ponavlja (i ne prekida se pohvala)
+        if (!item || current.feedback === "correct") return;
+        say(`${instructionFor(current.kind)} ${capitalized(item.name)}.`);
     };
 
     const shown = isMonitor ? mergeMonitor(monitorState) : view;
@@ -310,9 +321,10 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                                 disabled={isMonitor || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(id)}
                                 aria-label={`Korpa: ${basket.label}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
-                                className="min-h-36 flex-col gap-2 sm:min-h-44"
+                                className="min-h-28 flex-col gap-1.5 px-1.5 sm:min-h-44 sm:gap-2 sm:px-3"
                             >
-                                <span className="flex items-center gap-2 text-lg sm:text-xl">
+                                {/* Na telefonu je sličica iznad naziva, da i „Životinje” stanu u uzanu korpu */}
+                                <span className="flex flex-col items-center gap-1 text-base leading-tight sm:flex-row sm:gap-2 sm:text-xl">
                                     {basket.swatch ? (
                                         <span aria-hidden="true" className="h-7 w-7 shrink-0 rounded-full border-2 border-white shadow-soft ring-1 ring-line sm:h-8 sm:w-8" style={{ background: basket.swatch }} />
                                     ) : (
@@ -323,7 +335,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                                     {basket.label}
                                 </span>
                                 {/* Korpa: ono što je već razvrstano */}
-                                <span aria-hidden="true" className="flex min-h-12 w-full flex-wrap content-end items-end justify-center gap-0.5 rounded-b-2xl border-x-4 border-b-4 border-amber-700/60 bg-amber-100/70 px-1 pb-1 pt-2 text-2xl leading-none">
+                                <span aria-hidden="true" className="flex min-h-10 w-full flex-wrap content-end items-end justify-center gap-0.5 rounded-b-2xl border-x-4 border-b-4 border-amber-700/60 bg-amber-100/70 px-1 pb-1 pt-2 text-xl leading-none sm:min-h-12 sm:text-2xl">
                                     {placed.map((emoji, i) => (
                                         <span key={`${emoji}-${i}`} className={cn(i === placed.length - 1 && solved && shown.picked === id && "animate-pop")}>
                                             {emoji}

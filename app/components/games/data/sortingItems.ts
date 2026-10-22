@@ -49,9 +49,9 @@ const COLOR_WORDS: Record<SortColor, { label: string; hex: string; forms: Record
 const CATEGORY_WORDS: Record<SortCategory, { label: string; emoji: string; noun: string }> = {
     fruit: { label: "Voće", emoji: "🧺", noun: "voće" },
     animals: { label: "Životinje", emoji: "🐾", noun: "životinja" },
-    vehicles: { label: "Vozila", emoji: "🛣️", noun: "vozilo" },
+    vehicles: { label: "Vozila", emoji: "🚦", noun: "vozilo" },
     clothes: { label: "Odeća", emoji: "👚", noun: "odeća" },
-    toys: { label: "Igračke", emoji: "🪀", noun: "igračka" },
+    toys: { label: "Igračke", emoji: "🎁", noun: "igračka" },
 };
 
 export function basketFor(id: BasketId): Basket {
@@ -62,6 +62,13 @@ export function basketFor(id: BasketId): Basket {
     }
     const word = CATEGORY_WORDS[key as SortCategory];
     return { id, label: word.label, emoji: word.emoji, describe: () => word.noun };
+}
+
+/** Da li je oznaka korpe poznata (stanje sa monitora može doći iz druge verzije aplikacije) */
+export function isBasketId(value: unknown): value is BasketId {
+    if (typeof value !== "string") return false;
+    const [kind, key] = value.split(":");
+    return (kind === "color" && key in COLOR_WORDS) || (kind === "category" && key in CATEGORY_WORDS);
 }
 
 export function belongsTo(item: SortItem, basket: BasketId): boolean {
@@ -92,7 +99,6 @@ export const SORT_ITEMS: readonly SortItem[] = [
     { id: "whale", emoji: "🐳", name: "kit", g: "m", color: "blue", category: "animals" },
     { id: "heart-blue", emoji: "💙", name: "srce", g: "n", color: "blue" },
     { id: "drop", emoji: "💧", name: "kap vode", g: "f", color: "blue" },
-    { id: "blueberries", emoji: "🫐", name: "borovnica", g: "f", color: "blue", category: "fruit" },
     { id: "butterfly", emoji: "🦋", name: "leptir", g: "m", color: "blue", category: "animals" },
 
     // Vrste (srednje): tipični predstavnici
@@ -119,7 +125,6 @@ export const SORT_ITEMS: readonly SortItem[] = [
     { id: "ball", emoji: "⚽", name: "lopta", g: "f", category: "toys" },
     { id: "kite", emoji: "🪁", name: "zmaj", g: "m", category: "toys" },
     { id: "puzzle", emoji: "🧩", name: "slagalica", g: "f", category: "toys" },
-    { id: "yoyo", emoji: "🪀", name: "jo-jo", g: "m", category: "toys" },
 
     // Vrste (teško): manje tipični predstavnici
     { id: "coconut", emoji: "🥥", name: "kokos", g: "m", category: "fruit", hard: true },
@@ -133,7 +138,7 @@ export const SORT_ITEMS: readonly SortItem[] = [
     { id: "boat", emoji: "⛵", name: "brod", g: "m", category: "vehicles", hard: true },
     { id: "gloves", emoji: "🧤", name: "rukavica", g: "f", category: "clothes", hard: true },
     { id: "scarf", emoji: "🧣", name: "šal", g: "m", category: "clothes", hard: true },
-    { id: "boot", emoji: "🥾", name: "čizma", g: "f", category: "clothes", hard: true },
+    { id: "shirt", emoji: "👔", name: "košulja", g: "f", category: "clothes", hard: true },
     { id: "balloon", emoji: "🎈", name: "balon", g: "m", category: "toys", hard: true },
     { id: "dice", emoji: "🎲", name: "kocka", g: "f", category: "toys", hard: true },
     { id: "drum", emoji: "🥁", name: "doboš", g: "m", category: "toys", hard: true },
