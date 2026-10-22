@@ -10,7 +10,8 @@ export type GameId =
     | "social"
     | "social-story"
     | "emotions"
-    | "sorting";
+    | "sorting"
+    | "sequence";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -21,7 +22,8 @@ export type GameType =
     | "social"
     | "social-story"
     | "emotions"
-    | "sorting";
+    | "sorting"
+    | "sequence";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -228,6 +230,27 @@ export const GAMES: GameDefinition[] = [
             gradient: "from-amber-400 to-orange-500",
         },
         offscreenTip: "Pri sklanjanju veša ili igračaka razvrstavajte zajedno: „Čarape ovde, majice tamo.” ili „Crvene kocke u ovu kutiju.”",
+        graded: true,
+    },
+    {
+        id: "sequence",
+        gameType: "sequence",
+        activityId: 10,
+        title: "Šta je prvo?",
+        description: "Složi korake redom",
+        skill: "Redosled i planiranje",
+        icon: "🔢",
+        image: "/images/redosled.svg",
+        accent: {
+            solid: "bg-lime-500",
+            edge: "border-lime-700",
+            soft: "bg-lime-50",
+            text: "text-lime-700",
+            border: "border-lime-200",
+            ring: "ring-lime-200",
+            gradient: "from-lime-400 to-green-500",
+        },
+        offscreenTip: "Pre nove aktivnosti recite korake redom: „Prvo obučemo jaknu, zatim obujemo cipele, na kraju idemo napolje.”",
         graded: true,
     },
 ];
