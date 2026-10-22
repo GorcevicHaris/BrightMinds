@@ -31,13 +31,25 @@ import {
     type GameProps,
     type TimerId,
 } from "@/app/components/games/kit";
-import { basketFor, belongsTo, buildSortLevel, getSortItem, isBasketId, type BasketId, type SortItem, type SortRound } from "@/app/components/games/data/sortingItems";
+import {
+    basketFor,
+    belongsTo,
+    buildSortLevel,
+    colorHex,
+    getSortItem,
+    isBasketId,
+    type BasketId,
+    type SortItem,
+    type SortKind,
+    type SortRound,
+    type SortShape,
+} from "@/app/components/games/data/sortingItems";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
 
 export interface SortingView extends BaseView {
-    kind: "color" | "category";
+    kind: SortKind;
     itemId: string;
     baskets: BasketId[];
     /** Korpe probane pogrešno u ovom zadatku */
@@ -59,15 +71,53 @@ function capitalized(text: string): string {
 }
 
 function instructionFor(kind: SortingView["kind"]): string {
-    return kind === "color" ? "Stavi u korpu iste boje." : "Stavi u pravu korpu.";
+    if (kind === "color") return "Stavi u korpu iste boje.";
+    return kind === "shape" ? "Stavi u korpu istog oblika." : "Stavi u pravu korpu.";
+}
+
+/** U nivoima oblika naziv bi odao odgovor („Krug.”), pa se predmet ne imenuje */
+function namesAnswer(kind: SortingView["kind"], item: SortItem): boolean {
+    return kind === "shape" && item.shape !== undefined;
+}
+
+/** Šta glas kaže kad se pojavi predmet */
+function itemPrompt(kind: SortingView["kind"], item: SortItem): string {
+    return namesAnswer(kind, item) ? "Gde ide ovaj oblik?" : `${capitalized(item.name)}.`;
 }
 
 function correctText(item: SortItem, basket: BasketId): string {
+    if (basket.startsWith("shape:")) return `To je ${basketFor(basket).describe(item)}.`;
     return `${capitalized(item.name)} je ${basketFor(basket).describe(item)}.`;
 }
 
 function wrongText(item: SortItem, basket: BasketId, hint: boolean): string {
-    return `Netačno. ${capitalized(item.name)} nije ${basketFor(basket).describe(item)}. ${hint ? "Probaj još jednom, polako." : "Probaj ponovo."}`;
+    const retry = hint ? "Probaj još jednom, polako." : "Probaj ponovo.";
+    if (basket.startsWith("shape:")) return `Netačno. To nije ${basketFor(basket).describe(item)}. ${retry}`;
+    return `Netačno. ${capitalized(item.name)} nije ${basketFor(basket).describe(item)}. ${retry}`;
+}
+
+/** Geometrijski oblik (krug, kvadrat, trougao, zvezda) u zadatoj boji */
+function ShapeGlyph({ shape, fill, className }: { shape: SortShape; fill: string; className?: string }) {
+    return (
+        <svg viewBox="0 0 100 100" className={className} aria-hidden="true">
+            <g fill={fill} stroke="rgba(0,0,0,0.18)" strokeWidth="4" strokeLinejoin="round">
+                {shape === "circle" && <circle cx="50" cy="50" r="42" />}
+                {shape === "square" && <rect x="10" y="10" width="80" height="80" rx="10" />}
+                {shape === "triangle" && <path d="M50 8 L93 88 H7 Z" />}
+                {shape === "star" && <path d="M50 6 L62 37 L95 38 L69 58 L78 91 L50 72 L22 91 L31 58 L5 38 L38 37 Z" />}
+            </g>
+        </svg>
+    );
+}
+
+/** Predmet: emodži ili nacrtan oblik */
+function ItemPicture({ item, className }: { item: SortItem; className: string }) {
+    if (item.shape && item.color) return <ShapeGlyph shape={item.shape} fill={colorHex(item.color)} className={className} />;
+    return (
+        <span className={className} aria-hidden="true">
+            {item.emoji}
+        </span>
+    );
 }
 
 function emptyView(kind: SortingView["kind"], totalRounds: number): SortingView {
@@ -112,7 +162,7 @@ function mergeMonitor(state: Partial<SortingView> | null | undefined): SortingVi
         promptedCount: toCount(state.promptedCount, 0),
         round: Math.min(Math.max(toCount(state.round, 1), 1), totalRounds),
         totalRounds,
-        kind: state.kind === "category" ? "category" : "color",
+        kind: state.kind === "category" || state.kind === "shape" ? state.kind : "color",
         itemId: item ? item.id : "",
         baskets,
         wrong: Array.isArray(state.wrong) ? state.wrong.filter((id) => baskets.includes(id)) : [],
@@ -172,7 +222,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
         guard.hold();
         sync.start(viewRef.current);
         const item = getSortItem(viewRef.current.itemId);
-        if (item) say(`${instructionFor(viewRef.current.kind)} ${capitalized(item.name)}.`);
+        if (item) say(`${instructionFor(viewRef.current.kind)} ${itemPrompt(viewRef.current.kind, item)}`);
     }, [isMonitor, sync, guard, say]);
 
     const finish = () => {
@@ -197,7 +247,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
         guard.hold();
         commit({ ...viewRef.current, itemId: round.itemId, round: index + 1, wrong: [], picked: null, feedback: null, hint: false }, `Zadatak ${index + 1}: ${item?.name ?? ""}`);
         // Posle prvog zadatka dete zna šta se radi: dovoljan je naziv predmeta
-        if (item) say(`${capitalized(item.name)}.`);
+        if (item) say(itemPrompt(viewRef.current.kind, item));
     };
 
     const handlePick = (basket: BasketId) => {
@@ -256,7 +306,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
         const item = getSortItem(current.itemId);
         // Predmet je već u korpi: ništa se ne ponavlja (i ne prekida se pohvala)
         if (!item || current.feedback === "correct") return;
-        say(`${instructionFor(current.kind)} ${capitalized(item.name)}.`);
+        say(`${instructionFor(current.kind)} ${itemPrompt(current.kind, item)}`);
     };
 
     const shown = isMonitor ? mergeMonitor(monitorState) : view;
@@ -297,12 +347,17 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                     )}
                     style={{ width: "clamp(6rem, 18dvh, 10rem)", height: "clamp(6rem, 18dvh, 10rem)" }}
                 >
-                    <span className={cn("text-[clamp(3.5rem,11dvh,6.5rem)] leading-none", solved && "opacity-30")} aria-hidden="true">
-                        {item.emoji}
-                    </span>
+                    <ItemPicture
+                        item={item}
+                        className={cn(
+                            item.shape ? "h-[70%] w-[70%]" : "text-[clamp(3.5rem,11dvh,6.5rem)] leading-none",
+                            solved && "opacity-30"
+                        )}
+                    />
                 </div>
-                <p className="-mt-2 mb-4 text-center font-display text-xl font-extrabold text-ink sm:mb-6 sm:text-2xl" aria-live="polite">
-                    {capitalized(item.name)}
+                {/* U nivoima oblika naziv bi odao odgovor, pa se ne prikazuje (mesto ostaje, da se ništa ne pomera) */}
+                <p className="-mt-2 mb-4 min-h-7 text-center font-display text-xl font-extrabold text-ink sm:mb-6 sm:min-h-8 sm:text-2xl" aria-live="polite">
+                    {namesAnswer(shown.kind, item) ? "" : capitalized(item.name)}
                 </p>
 
                 <div
@@ -313,7 +368,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                     {shown.baskets.map((id) => {
                         const basket = basketFor(id);
                         const state = basketState(shown, item, id);
-                        const placed = (shown.placed[id] ?? []).map((placedId) => getSortItem(placedId)?.emoji).filter(Boolean);
+                        const placed = (shown.placed[id] ?? []).map((placedId) => getSortItem(placedId)).filter((placedItem): placedItem is SortItem => placedItem !== undefined);
                         return (
                             <ChoiceCard
                                 key={id}
@@ -327,6 +382,9 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                                 <span className="flex flex-col items-center gap-1 text-base leading-tight sm:flex-row sm:gap-2 sm:text-xl">
                                     {basket.swatch ? (
                                         <span aria-hidden="true" className="h-7 w-7 shrink-0 rounded-full border-2 border-white shadow-soft ring-1 ring-line sm:h-8 sm:w-8" style={{ background: basket.swatch }} />
+                                    ) : basket.shape ? (
+                                        // Oblik na korpi je siv: korpa traži oblik, a ne boju
+                                        <ShapeGlyph shape={basket.shape} fill="#94a3b8" className="h-7 w-7 shrink-0 sm:h-8 sm:w-8" />
                                     ) : (
                                         <span aria-hidden="true" className="text-2xl sm:text-3xl">
                                             {basket.emoji}
@@ -336,9 +394,9 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                                 </span>
                                 {/* Korpa: ono što je već razvrstano */}
                                 <span aria-hidden="true" className="flex min-h-10 w-full flex-wrap content-end items-end justify-center gap-0.5 rounded-b-2xl border-x-4 border-b-4 border-amber-700/60 bg-amber-100/70 px-1 pb-1 pt-2 text-xl leading-none sm:min-h-12 sm:text-2xl">
-                                    {placed.map((emoji, i) => (
-                                        <span key={`${emoji}-${i}`} className={cn(i === placed.length - 1 && solved && shown.picked === id && "animate-pop")}>
-                                            {emoji}
+                                    {placed.map((placedItem, i) => (
+                                        <span key={placedItem.id} className={cn("inline-grid place-items-center", i === placed.length - 1 && solved && shown.picked === id && "animate-pop")}>
+                                            <ItemPicture item={placedItem} className={placedItem.shape ? "h-6 w-6 sm:h-7 sm:w-7" : ""} />
                                         </span>
                                     ))}
                                 </span>
