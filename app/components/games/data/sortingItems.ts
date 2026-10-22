@@ -1,8 +1,9 @@
 // Sadržaj igre „Razvrstaj”: predmeti, korpe i raspored po nivoima.
 //
 // Napredovanje prati redosled iz programa rane podrške (VB-MAPP, vizuelna percepcija):
-// prvo razvrstavanje po JEDNOM vidljivom svojstvu (boja), pa po VRSTI (voće, životinje…),
-// pa tri i četiri korpe i predmeti koji manje liče na „tipične” predstavnike vrste.
+// prvo razvrstavanje po JEDNOM vidljivom svojstvu (boja ili oblik — oboje oko treće godine),
+// pa po VRSTI (voće, životinje…), pa tri i četiri korpe i manje „tipični” predmeti.
+// Oblici su u raznim bojama: dete mora da gleda oblik, a ne boju.
 //
 // Pravila pisanja:
 //  • Svaki predmet je jedan emodži koji svuda ima jasnu, jednu boju i jasnu vrstu.
@@ -12,7 +13,9 @@
 
 export type SortColor = "red" | "yellow" | "green" | "blue";
 export type SortCategory = "fruit" | "animals" | "vehicles" | "clothes" | "toys";
-export type BasketId = `color:${SortColor}` | `category:${SortCategory}`;
+export type SortShape = "circle" | "square" | "triangle" | "star";
+export type SortKind = "color" | "shape" | "category";
+export type BasketId = `color:${SortColor}` | `shape:${SortShape}` | `category:${SortCategory}`;
 
 type Gender = "m" | "f" | "n";
 
@@ -24,6 +27,8 @@ export interface SortItem {
     g: Gender;
     color?: SortColor;
     category?: SortCategory;
+    /** Geometrijski oblik (crta se, nije emodži); boja oblika je `color` */
+    shape?: SortShape;
     /** Manje tipičan predstavnik vrste — dolazi tek na teškim nivoima */
     hard?: boolean;
 }
@@ -34,9 +39,15 @@ export interface Basket {
     label: string;
     /** Za objašnjenje: „Banana je …” (boja zavisi od roda predmeta) */
     describe: (item: SortItem) => string;
-    /** Boja korpe (krug na natpisu) ili sličica vrste */
+    /** Boja korpe (krug na natpisu), oblik ili sličica vrste */
     swatch?: string;
+    shape?: SortShape;
     emoji?: string;
+}
+
+/** Boja kojom se crta geometrijski oblik (ista kao boja korpe) */
+export function colorHex(color: SortColor): string {
+    return COLOR_WORDS[color].hex;
 }
 
 const COLOR_WORDS: Record<SortColor, { label: string; hex: string; forms: Record<Gender, string> }> = {
@@ -44,6 +55,13 @@ const COLOR_WORDS: Record<SortColor, { label: string; hex: string; forms: Record
     yellow: { label: "Žuto", hex: "#f5c518", forms: { m: "žut", f: "žuta", n: "žuto" } },
     green: { label: "Zeleno", hex: "#30a46c", forms: { m: "zelen", f: "zelena", n: "zeleno" } },
     blue: { label: "Plavo", hex: "#3e7bfa", forms: { m: "plav", f: "plava", n: "plavo" } },
+};
+
+const SHAPE_WORDS: Record<SortShape, { label: string; noun: string }> = {
+    circle: { label: "Krug", noun: "krug" },
+    square: { label: "Kvadrat", noun: "kvadrat" },
+    triangle: { label: "Trougao", noun: "trougao" },
+    star: { label: "Zvezda", noun: "zvezda" },
 };
 
 const CATEGORY_WORDS: Record<SortCategory, { label: string; emoji: string; noun: string }> = {
@@ -55,10 +73,14 @@ const CATEGORY_WORDS: Record<SortCategory, { label: string; emoji: string; noun:
 };
 
 export function basketFor(id: BasketId): Basket {
-    const [kind, key] = id.split(":") as ["color" | "category", string];
+    const [kind, key] = id.split(":") as [SortKind, string];
     if (kind === "color") {
         const word = COLOR_WORDS[key as SortColor];
         return { id, label: word.label, swatch: word.hex, describe: (item) => word.forms[item.g] };
+    }
+    if (kind === "shape") {
+        const word = SHAPE_WORDS[key as SortShape];
+        return { id, label: word.label, shape: key as SortShape, describe: () => word.noun };
     }
     const word = CATEGORY_WORDS[key as SortCategory];
     return { id, label: word.label, emoji: word.emoji, describe: () => word.noun };
@@ -68,15 +90,30 @@ export function basketFor(id: BasketId): Basket {
 export function isBasketId(value: unknown): value is BasketId {
     if (typeof value !== "string") return false;
     const [kind, key] = value.split(":");
-    return (kind === "color" && key in COLOR_WORDS) || (kind === "category" && key in CATEGORY_WORDS);
+    return (kind === "color" && key in COLOR_WORDS) || (kind === "shape" && key in SHAPE_WORDS) || (kind === "category" && key in CATEGORY_WORDS);
 }
 
 export function belongsTo(item: SortItem, basket: BasketId): boolean {
     const [kind, key] = basket.split(":");
-    return kind === "color" ? item.color === key : item.category === key;
+    return kind === "color" ? item.color === key : kind === "shape" ? item.shape === key : item.category === key;
 }
 
+const SHAPE_GENDER: Record<SortShape, Gender> = { circle: "m", square: "m", triangle: "m", star: "f" };
+
+/** Oblici u svakoj od četiri boje: „Krug je crven.” u nivoima boja, „To je krug.” u nivoima oblika */
+const SHAPE_ITEMS: SortItem[] = (Object.keys(SHAPE_WORDS) as SortShape[]).flatMap((shape) =>
+    (Object.keys(COLOR_WORDS) as SortColor[]).map((color) => ({
+        id: `shape-${shape}-${color}`,
+        emoji: "",
+        name: SHAPE_WORDS[shape].noun,
+        g: SHAPE_GENDER[shape],
+        color,
+        shape,
+    }))
+);
+
 export const SORT_ITEMS: readonly SortItem[] = [
+    ...SHAPE_ITEMS,
     // Boje (lako): predmeti koji su na svakom telefonu iste, jasne boje
     { id: "apple-red", emoji: "🍎", name: "jabuka", g: "f", color: "red", category: "fruit" },
     { id: "strawberry", emoji: "🍓", name: "jagoda", g: "f", color: "red", category: "fruit" },
@@ -149,7 +186,7 @@ export const SORT_ITEMS: readonly SortItem[] = [
 interface LevelRule {
     first: number;
     last: number;
-    kind: "color" | "category";
+    kind: SortKind;
     /** Broj korpi */
     baskets: number;
     rounds: number;
@@ -158,8 +195,11 @@ interface LevelRule {
 }
 
 const RULES: readonly LevelRule[] = [
-    { first: 1, last: 2, kind: "color", baskets: 2, rounds: 5, hard: false },
-    { first: 3, last: 5, kind: "color", baskets: 3, rounds: 6, hard: false },
+    { first: 1, last: 1, kind: "color", baskets: 2, rounds: 5, hard: false },
+    { first: 2, last: 2, kind: "shape", baskets: 2, rounds: 5, hard: false },
+    { first: 3, last: 3, kind: "color", baskets: 3, rounds: 6, hard: false },
+    { first: 4, last: 4, kind: "shape", baskets: 3, rounds: 6, hard: false },
+    { first: 5, last: 5, kind: "color", baskets: 3, rounds: 6, hard: false },
     { first: 6, last: 8, kind: "category", baskets: 2, rounds: 6, hard: false },
     { first: 9, last: 10, kind: "category", baskets: 3, rounds: 7, hard: false },
     { first: 11, last: 13, kind: "category", baskets: 3, rounds: 8, hard: true },
@@ -170,6 +210,7 @@ export const SORT_MAX_LEVEL = 15;
 
 const COLORS: readonly SortColor[] = ["red", "yellow", "green", "blue"];
 const CATEGORIES: readonly SortCategory[] = ["fruit", "animals", "vehicles", "clothes", "toys"];
+const SHAPES: readonly SortShape[] = ["circle", "square", "triangle", "star"];
 
 export interface SortRound {
     itemId: string;
@@ -178,7 +219,7 @@ export interface SortRound {
 }
 
 export interface SortLevel {
-    kind: "color" | "category";
+    kind: SortKind;
     baskets: BasketId[];
     rounds: SortRound[];
 }
@@ -207,7 +248,8 @@ export function buildSortLevel(level: number, { maxBaskets, maxRounds, random = 
         return copy;
     };
 
-    const keys = rule.kind === "color" ? shuffle(COLORS).slice(0, basketCount) : shuffle(CATEGORIES).slice(0, basketCount);
+    const all = rule.kind === "color" ? COLORS : rule.kind === "shape" ? SHAPES : CATEGORIES;
+    const keys = shuffle<string>(all).slice(0, basketCount);
     const baskets = keys.map((key) => `${rule.kind}:${key}` as BasketId);
 
     // Predmet ide samo u jednu korpu ovog nivoa; na lakšim nivoima bez manje tipičnih predmeta

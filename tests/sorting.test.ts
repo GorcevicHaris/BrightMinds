@@ -19,8 +19,8 @@ describe("sorting game content", () => {
         const ids = SORT_ITEMS.map((item) => item.id);
         assert.equal(new Set(ids).size, ids.length);
         for (const item of SORT_ITEMS) {
-            assert.ok(item.emoji && item.name.trim(), item.id);
-            assert.ok(item.color || item.category, item.id);
+            assert.ok((item.emoji || item.shape) && item.name.trim(), item.id);
+            assert.ok(item.color || item.category || item.shape, item.id);
             assert.equal(item.name, item.name.toLocaleLowerCase("sr"), `${item.id}: name is lowercase`);
         }
     });
@@ -35,9 +35,23 @@ describe("sorting game content", () => {
 
     it("sorts by color first, then by kind, with more baskets later (VB-MAPP order)", () => {
         assert.equal(ruleForLevel(1).kind, "color");
+        assert.equal(ruleForLevel(2).kind, "shape");
+        assert.equal(ruleForLevel(4).kind, "shape");
         assert.equal(ruleForLevel(5).kind, "color");
         assert.equal(ruleForLevel(6).kind, "category");
         assert.ok(ruleForLevel(14).baskets > ruleForLevel(1).baskets);
+    });
+
+    it("makes shape levels about shape, not color: each shape basket gets shapes of different colors", () => {
+        for (const seed of [3, 9, 27]) {
+            const built = buildSortLevel(4, { maxBaskets: 3, maxRounds: 6, random: seeded(seed) });
+            assert.ok(built.baskets.every((basket) => basket.startsWith("shape:")));
+            const items = built.rounds.map((round) => getSortItem(round.itemId)!);
+            assert.ok(items.every((item) => item.shape), "only drawn shapes");
+            assert.ok(new Set(items.map((item) => item.color)).size >= 2, `seed ${seed}: colors vary`);
+        }
+        assert.equal(basketFor("shape:star").describe(getSortItem("shape-star-red")!), "zvezda");
+        assert.equal(basketFor("color:red").describe(getSortItem("shape-circle-red")!), "crven");
     });
 
     for (const band of ["young", "middle", "older"] as const) {
