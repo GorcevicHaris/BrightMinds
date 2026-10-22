@@ -198,7 +198,7 @@ export const GAMES: GameDefinition[] = [
         description: "Kako se oseća dete u priči?",
         skill: "Prepoznavanje emocija",
         icon: "😊",
-        image: "/images/emocije.webp",
+        image: "/images/emocije.svg",
         accent: {
             solid: "bg-pink-500",
             edge: "border-pink-700",

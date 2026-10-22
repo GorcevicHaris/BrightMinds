@@ -16,10 +16,12 @@ import {
     GamePrompt,
     GameStage,
     hintDue,
+    listenLimitFor,
     PlayArea,
     playSfx,
     shuffle,
     toCount,
+    toIndexList,
     useGameSync,
     useInputGuard,
     usePraise,
@@ -74,9 +76,9 @@ function lowerFirst(text: string): string {
     return text.charAt(0).toLocaleLowerCase("sr") + text.slice(1);
 }
 
-/** „Prvo obučem čarape, zatim obujem patike.” */
+/** „Prvo obučem čarape, posle obujem patike.” — reči se/ga/mu/me/je ostaju na drugom mestu (`retell`) */
 function retell(sequence: Sequence): string {
-    const parts = sequence.steps.map((step, i) => `${positionWord(i, sequence.steps.length)} ${lowerFirst(step.text.replace(/\.$/, ""))}`);
+    const parts = sequence.steps.map((step, i) => `${positionWord(i, sequence.steps.length)} ${step.retell ?? lowerFirst(step.text.replace(/\.$/, ""))}`);
     const sentence = parts.join(", ");
     return `${sentence.charAt(0).toLocaleUpperCase("sr")}${sentence.slice(1)}.`;
 }
@@ -117,7 +119,7 @@ function mergeMonitor(state: Partial<SequenceView> | null | undefined): Sequence
     const sequence = typeof state.sequenceId === "string" ? getSequence(state.sequenceId) : undefined;
     const count = sequence?.steps.length ?? 0;
     const totalRounds = Math.max(toCount(state.totalRounds, 1), 1);
-    const order = Array.isArray(state.order) ? state.order.filter((i): i is number => Number.isInteger(i) && i >= 0 && i < count) : [];
+    const order = toIndexList(state.order, count);
     return {
         ...base,
         score: toCount(state.score, 0),
@@ -248,7 +250,9 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
             commit(solved, `Niz složen ${how}: ${sequence.title}`);
             playSfx("correct");
             const isLast = current.round >= current.totalRounds;
-            sayThen(praise(retell(sequence), firstTry), isLast ? finish : () => startRound(current.round), { emotion: "happy", max: 9000 });
+            // Dug niz se prepričava i do petnaestak sekundi: sledeći niz ne sme da ga preseče
+            const told = praise(retell(sequence), firstTry);
+            sayThen(told, isLast ? finish : () => startRound(current.round), { emotion: "happy", max: Math.max(9000, listenLimitFor(told)) });
             return;
         }
 
@@ -273,13 +277,18 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
         const current = viewRef.current;
         if (finishedRef.current || current.hint || current.feedback) return;
         if (demoRounds(level, current.totalRounds) > 0 && current.round === 1 && !current.missed) return; // tu pokazuje ruka
+        // Ostao je samo jedan korak: nema šta da se bira, pa ni pomoć ne sme da „pokvari” niz
+        const sequence = getSequence(current.sequenceId);
+        if (!sequence || sequence.steps.length - current.placed <= 1) return;
         commit({ ...current, hint: true }, "Pomoć posle čekanja");
     });
 
     const repeatInstruction = () => {
         const current = viewRef.current;
         const sequence = getSequence(current.sequenceId);
-        if (sequence) say(`${sequence.title}. ${questionFor(current.placed, sequence.steps.length)}`);
+        // Složen niz: ništa se ne pita (i ne prekida se pohvala koja upravo teče)
+        if (!sequence || current.feedback === "correct") return;
+        say(`${sequence.title}. ${questionFor(current.placed, sequence.steps.length)}`);
     };
 
     const shown = isMonitor ? mergeMonitor(monitorState) : view;
@@ -332,7 +341,8 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
                                         <span key={`placed-${index}`} className="animate-pop text-3xl leading-none sm:text-5xl" aria-hidden="true">
                                             {step.emoji}
                                         </span>
-                                        <span className="line-clamp-2 text-[11px] font-bold leading-tight text-ink sm:text-sm">{step.text}</span>
+                                        {/* Na telefonu su mesta uska: sličica i broj su dovoljni, rečenica je na kartici i u glasu */}
+                                        <span className="hidden text-sm font-bold leading-tight text-ink sm:line-clamp-2">{step.text}</span>
                                     </>
                                 ) : (
                                     <span className="text-2xl font-extrabold text-ink-faint" aria-label={`Mesto ${index + 1}, prazno`}>
@@ -370,7 +380,8 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
                 </div>
             </PlayArea>
 
-            <Feedback kind={shown.feedback} correctText={retell(sequence)} wrongText={`Netačno. To dolazi kasnije.`} />
+            {/* Kratko, da se raspored ne pomeri; ceo niz se čuje i vidi u mestima iznad */}
+            <Feedback kind={shown.feedback} correctText="Složeno!" wrongText="Netačno. To dolazi kasnije." />
         </GameStage>
     );
 }
