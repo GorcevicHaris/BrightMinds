@@ -4,6 +4,7 @@
 import { useId, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Background, BackgroundOverlay } from "./backgrounds";
+import { cameraFor, cameraTransform } from "./camera";
 import { Figure, heldPoint, isAdult } from "./figures";
 import { Prop } from "./props";
 import { isBubble, isFigure, isInset, VIEW_H, VIEW_W, type BubbleItem, type FigureItem, type HeroLook, type PropItem, type SceneItem, type SceneSpec } from "./types";
@@ -135,10 +136,13 @@ export function SceneArt({ spec, hero, className }: SceneArtProps) {
                 <rect width={VIEW_W} height={VIEW_H} rx={10} />
             </clipPath>
             <g clipPath={`url(#${uid}-frame)`}>
-                <Background id={spec.bg} view={spec.view} />
-                {/* Mrak pada na sobu, a likovi ostaju svetli: lice mora da se vidi */}
-                <BackgroundOverlay id={spec.bg} view={spec.view} />
-                <Items items={spec.items} hero={hero} idPrefix={uid} />
+                {/* Kamera se približava delu slike u kome se nešto dešava, da lica budu krupna */}
+                <g transform={cameraTransform(cameraFor(spec))}>
+                    <Background id={spec.bg} view={spec.view} />
+                    {/* Mrak pada na sobu, a likovi ostaju svetli: lice mora da se vidi */}
+                    <BackgroundOverlay id={spec.bg} view={spec.view} />
+                    <Items items={spec.items} hero={hero} idPrefix={uid} />
+                </g>
             </g>
         </svg>
     );

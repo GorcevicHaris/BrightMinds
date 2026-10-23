@@ -42,8 +42,13 @@ export type BackgroundId = (typeof BACKGROUND_IDS)[number];
 export const VIEW_IDS = ["day", "clear", "night", "stars", "dusk", "rain", "storm", "snow", "rainbow", "dark"] as const;
 export type ViewId = (typeof VIEW_IDS)[number];
 
-/** Izrazi lica: šest osećanja iz igre (isti crtež kao na karticama) i tri mirna izraza */
-export type Face = EmotionId | "calm" | "talk" | "sleep";
+/**
+ * Izrazi lica: šest osećanja iz igre (isti crtež kao na karticama) i izrazi za ostale situacije.
+ * „calm” i „talk” su blago nasmejani (prijatne situacije); „neutral” je bez osmeha, „worried”
+ * zabrinuto i nelagodno, „firm” ozbiljno i odlučno („Stani.”), „tired” umorno, „sleep” spava.
+ * Lice mora da odgovara situaciji: dete koje kaže „Pusti me” se ne smeje.
+ */
+export type Face = EmotionId | "calm" | "talk" | "sleep" | "neutral" | "worried" | "firm" | "tired";
 
 /** Deca sa imenima iz igara, sporedna deca i lik deteta koje igra (priče su u prvom licu) */
 export const LOOK_IDS = [
@@ -394,6 +399,8 @@ export interface SceneSpec {
     bg: BackgroundId;
     view?: ViewId;
     items: readonly SceneItem[];
+    /** „fixed”: cela slika, bez približavanja (podrazumevano kamera prati likove i predmete) */
+    camera?: "fixed";
 }
 
 /** Glavni lik, kako ga zadaje igra */

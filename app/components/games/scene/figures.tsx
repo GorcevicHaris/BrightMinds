@@ -5,6 +5,7 @@
 import type { ReactNode } from "react";
 import { EmotionFeatures, Medal } from "../EmotionFace";
 import { Cheeks, INK, LINE, MOUTH } from "../faceParts";
+import type { EmotionId } from "../data/emotionScenarios";
 import type { AdultId, Face, LookId, PoseId, WearId } from "./types";
 
 // ── Izgled ────────────────────────────────────────────────────────────────────
@@ -190,7 +191,45 @@ function hairOnBackOfHead(look: Look): ReactNode {
 // ── Lice ──────────────────────────────────────────────────────────────────────
 
 /** Mirni izrazi u koordinatama lica 100 × 100 (kao EmotionFace) */
-const CALM_FACES: Record<"calm" | "talk" | "sleep", ReactNode> = {
+type OtherFace = Exclude<Face, EmotionId>;
+
+const CALM_FACES: Record<OtherFace, ReactNode> = {
+    // Bez osmeha: mirne oči i ravna usta
+    neutral: (
+        <>
+            <path d="M27 36 Q34 34 41 36 M59 36 Q66 34 73 36" {...LINE} strokeWidth={3} />
+            <ellipse cx={35} cy={47} rx={4.5} ry={5.5} fill={INK} />
+            <ellipse cx={65} cy={47} rx={4.5} ry={5.5} fill={INK} />
+            <path d="M41 68 H59" {...LINE} />
+        </>
+    ),
+    // Zabrinuto, nelagodno: unutrašnji krajevi obrva podignuti, usta blago nadole (bez suze)
+    worried: (
+        <>
+            <path d="M27 38 L41 33 M59 33 L73 38" {...LINE} strokeWidth={3.5} />
+            <ellipse cx={35} cy={48} rx={4.5} ry={5.5} fill={INK} />
+            <ellipse cx={65} cy={48} rx={4.5} ry={5.5} fill={INK} />
+            <path d="M39 71 Q50 64 61 71" {...LINE} />
+        </>
+    ),
+    // Ozbiljno i odlučno (ne ljuto): ravne obrve, ravna usta
+    firm: (
+        <>
+            <path d="M27 37 H42 M58 37 H73" {...LINE} strokeWidth={4} />
+            <ellipse cx={35} cy={48} rx={4.5} ry={5} fill={INK} />
+            <ellipse cx={65} cy={48} rx={4.5} ry={5} fill={INK} />
+            <path d="M39 69 H61" {...LINE} strokeWidth={4.5} />
+        </>
+    ),
+    // Umorno: oči napola zatvorene, mala ravna usta
+    tired: (
+        <>
+            <path d="M27 38 Q34 37 41 39 M59 39 Q66 37 73 38" {...LINE} strokeWidth={3} />
+            <path d="M29 47 H41 Q40 53 35 53 Q30 53 29 47Z M59 47 H71 Q70 53 65 53 Q60 53 59 47Z" fill={INK} />
+            <path d="M28 46 H42 M58 46 H72" {...LINE} strokeWidth={3} />
+            <path d="M44 69 Q50 67 56 69" {...LINE} />
+        </>
+    ),
     calm: (
         <>
             <Cheeks />
@@ -221,7 +260,7 @@ const FACE_SCALE = 17 / 43;
 const FACE_TRANSFORM = `translate(${-50 * FACE_SCALE} ${-52 * FACE_SCALE}) scale(${FACE_SCALE})`;
 
 function FaceFeatures({ face }: { face: Face }) {
-    const node = face === "calm" || face === "talk" || face === "sleep" ? CALM_FACES[face] : <EmotionFeatures emotion={face} />;
+    const node = Object.hasOwn(CALM_FACES, face) ? CALM_FACES[face as OtherFace] : <EmotionFeatures emotion={face as EmotionId} />;
     return <g transform={FACE_TRANSFORM}>{node}</g>;
 }
 
