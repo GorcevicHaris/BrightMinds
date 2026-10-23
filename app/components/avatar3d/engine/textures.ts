@@ -15,6 +15,11 @@ function cached<T extends THREE.Texture>(key: string, make: () => T): T {
     return texture;
 }
 
+const smoothstep01 = (x: number) => {
+    const t = Math.min(1, Math.max(0, x));
+    return t * t * (3 - 2 * t);
+};
+
 function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
     const el = document.createElement("canvas");
     el.width = w;
@@ -231,8 +236,8 @@ export function irisTexture(color: string): THREE.Texture {
         const light = base.clone().lerp(new THREE.Color("#FFFFFF"), 0.45);
         const sclera = new THREE.Color("#FBF8F4");
         const tmp = new THREE.Color();
-        const IRIS = 0.6;
-        const PUPIL = 0.2;
+        const IRIS = 0.66;
+        const PUPIL = 0.19;
         for (let y = 0; y < h; y++) {
             const theta = ((y + 0.5) / h) * Math.PI;
             for (let x = 0; x < w; x++) {
@@ -247,7 +252,9 @@ export function irisTexture(color: string): THREE.Texture {
                 } else if (angle < IRIS) {
                     const t = (angle - PUPIL) / (IRIS - PUPIL);
                     const fibers = 0.5 + 0.5 * Math.sin(around * 38 + Math.sin(around * 7) * 2);
-                    tmp.copy(light).lerp(base, Math.min(1, t * 1.5)).lerp(dark, Math.pow(t, 4) * 0.9);
+                    tmp.copy(light).lerp(base, Math.min(1, t * 1.5)).lerp(dark, Math.pow(t, 4) * 0.6);
+                    // Tamni limbalni prsten na ivici dužice
+                    tmp.lerp(dark.clone().multiplyScalar(0.55), smoothstep01((t - 0.82) / 0.18) * 0.85);
                     tmp.multiplyScalar(0.88 + fibers * 0.2 * (1 - t));
                     // Tamniji gornji deo dužice (senka kapka) — oko deluje dublje
                     if (dy > 0) tmp.multiplyScalar(1 - dy * 0.3);

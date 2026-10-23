@@ -6,13 +6,15 @@
 // je ostalo. Cilj može biti jedan predmet, ceo komplet (`set:<id>`) ili poseban izgled
 // drugara (`skin:<drugar>:<izgled>`, npr. tigrasta mačka).
 
-import Companion, { COMPANIONS } from "@/app/components/avatar/Companion";
-import { skinLabel, skinPrice } from "@/app/components/avatar/skins";
+import { Shirt } from "lucide-react";
 import WearThumb from "@/app/components/avatar/WearThumb";
-import { getWearItem, getWearSet, type WearItem, type WearSet } from "@/app/components/avatar/wearables";
+import { getWearItem } from "@/app/components/avatar/wearables";
+import CompanionPicture from "@/app/components/avatar3d/CompanionPicture";
+import { COMPANION_LABELS, type CompanionKind, type ItemData, type SetData } from "@/app/components/avatar3d/data";
+import { animalSkins, getItem, getSet, skinPrice } from "@/app/components/avatar3d/manifest";
 import { CoinIcon } from "@/app/components/ui/CoinIcon";
 import { cn } from "@/lib/cn";
-import { goalSetId, goalSkin, setMissing, skinKey, type CompanionKindId, type WearSlotId } from "@/lib/companion";
+import { goalSetId, goalSkin, setMissing, skinKey } from "@/lib/companion";
 import { chosenSkin, LOCAL_CATALOG, useCompanion } from "./companionState";
 
 /** 1 novčić, 21 novčić; sve ostalo „novčića” (2–4 i 5+ imaju isti oblik) */
@@ -30,18 +32,32 @@ export function Coins({ count, className }: { count: number; className?: string 
     );
 }
 
-/** Sličica predmeta u prodavnici, na početnoj i posle nivoa */
-export function ItemThumb({ item, className }: { item: WearItem; className?: string }) {
-    return <WearThumb item={item} className={className} />;
+/**
+ * Sličica predmeta u prodavnici, na početnoj i posle nivoa: 3D snimak predmeta na izabranom
+ * drugaru (bez tela); dok 3D nije moguć — dosadašnji 2D crtež (ili znak odeće za nove predmete).
+ */
+export function ItemThumb({ item, className }: { item: ItemData; className?: string }) {
+    const companion = useCompanion();
+    const old = getWearItem(item.id);
+    const fallback = old ? <WearThumb item={old} className="h-full w-full" /> : <Shirt className="m-auto h-1/2 w-1/2 text-ink-soft" aria-hidden="true" />;
+    return (
+        <CompanionPicture
+            kind={companion?.kind ?? "woman"}
+            skin={chosenSkin(companion)}
+            item={{ slot: item.slot, id: item.id }}
+            className={cn("grid", className)}
+            fallback={<span className="grid h-full w-full place-items-center">{fallback}</span>}
+        />
+    );
 }
 
 /** Sličica kompleta: izabrani drugar (u svom izgledu) u celom kompletu; miruje (mreža sličica se ne mrda) */
-export function SetThumb({ set, kind, skin, className }: { set: WearSet; kind: string; skin?: string; className?: string }) {
-    return <Companion kind={kind as CompanionKindId} wear={set.items} skin={skin} variant="full" still className={className} />;
+export function SetThumb({ set, kind, skin, className }: { set: SetData; kind: string; skin?: string; className?: string }) {
+    return <CompanionPicture kind={kind} wear={set.items} skin={skin} variant="full" emotion="happy" className={className} />;
 }
 
 /** Kolika je cena kompleta za ovo dete: zbir cena predmeta koji mu još nedostaju */
-export function setProgress(set: WearSet, owned: readonly string[]): { have: number; total: number; price: number } {
+export function setProgress(set: SetData, owned: readonly string[]): { have: number; total: number; price: number } {
     const missing = setMissing(set.id, owned, LOCAL_CATALOG);
     const total = Object.keys(set.items).length;
     return { have: total - (missing?.items.length ?? total), total, price: missing?.price ?? 0 };
@@ -56,8 +72,8 @@ export interface GoalProgress {
     coins: number;
     /** Koliko novčića još nedostaje (0 = može da kupi) */
     missing: number;
-    item?: WearItem;
-    set?: WearSet;
+    item?: ItemData;
+    set?: SetData;
     /** Poseban izgled drugara */
     skin?: { kind: string; id: string };
 }
@@ -68,8 +84,8 @@ export function goalProgress(goal: string | undefined, owned: readonly string[],
     const target = goalSkin(goal);
     if (target) {
         const price = skinPrice(target.kind, target.skin) ?? 0;
-        const name = skinLabel(target.kind, target.skin);
-        const companion = COMPANIONS.find((entry) => entry.kind === target.kind)?.label;
+        const name = animalSkins(target.kind).find((entry) => entry.id === target.skin)?.label;
+        const companion = COMPANION_LABELS[target.kind as CompanionKind];
         if (price === 0 || !name || !companion || skins.includes(skinKey(target.kind, target.skin))) return null;
         // „Mačka: tigrasta” — jasno je čiji je izgled i kad dete trenutno ima drugog drugara
         const label = `${companion}: ${name.toLocaleLowerCase("sr")}`;
@@ -77,13 +93,13 @@ export function goalProgress(goal: string | undefined, owned: readonly string[],
     }
     const setId = goalSetId(goal);
     if (setId !== null) {
-        const set = getWearSet(setId);
+        const set = getSet(setId);
         if (!set) return null;
         const { price, have, total } = setProgress(set, owned);
         if (have >= total) return null;
         return { id: goal, label: set.label, price, coins, missing: Math.max(0, price - coins), set };
     }
-    const item = getWearItem(goal);
+    const item = getItem(goal);
     if (!item || owned.includes(item.id)) return null;
     return { id: goal, label: item.label, price: item.price, coins, missing: Math.max(0, item.price - coins), item };
 }
@@ -97,7 +113,7 @@ export function useGoal(): GoalProgress | null {
 
 /** Sličica cilja: predmet, drugar u kompletu ili lice drugara u posebnom izgledu */
 export function GoalThumb({ goal, kind, skin, itemClassName, setClassName }: { goal: GoalProgress; kind: string; skin?: string; itemClassName?: string; setClassName?: string }) {
-    if (goal.skin) return <Companion kind={goal.skin.kind as CompanionKindId} skin={goal.skin.id} variant="face" emotion="happy" className={itemClassName} />;
+    if (goal.skin) return <CompanionPicture kind={goal.skin.kind} skin={goal.skin.id} variant="face" emotion="happy" className={itemClassName} />;
     if (goal.set) return <SetThumb set={goal.set} kind={kind} skin={skin} className={setClassName} />;
     return goal.item ? <ItemThumb item={goal.item} className={itemClassName} /> : null;
 }

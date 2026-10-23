@@ -183,7 +183,9 @@ export function handGeometry(rig: Rig, side: 1 | -1): THREE.BufferGeometry {
     thumb.translate(-0.005 * side * k, -0.016 * k, 0.0155 * k);
     parts.push(thumb);
     // Zglob: kratak valjak koji ulazi u podlakticu
-    const wrist = new THREE.CylinderGeometry(0.0145 * k, 0.0135 * k, 0.026 * k, 14);
+    // Zglob je malo uži od podlaktice (bez vidljivog šava na spoju)
+    const wristR = rig.shape.armR(1) * 0.86;
+    const wrist = new THREE.CylinderGeometry(wristR, wristR * 0.95, 0.026 * k, 18);
     wrist.translate(0, 0.004, 0);
     parts.push(wrist);
     for (const g of parts) g.deleteAttribute("uv");

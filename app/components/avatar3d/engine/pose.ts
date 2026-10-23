@@ -109,8 +109,8 @@ export function solvePose(rig: Rig, name: PoseName): PoseSolution {
             const arm = (side: 1 | -1): ArmTarget => ({
                 wrist: new THREE.Vector3(side * 0.028 * scale, y - 0.03 * scale, z),
                 elbow: new THREE.Vector3(side * 0.7, -1, 0.15),
-                bend: 0.5,
-                twist: side * -1.35,
+                bend: 0.1,
+                twist: side * -1.6,
             });
             return { left: solveArm(rig, 1, arm(1)), right: solveArm(rig, -1, arm(-1)) };
         }

@@ -11,11 +11,12 @@ import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import { CelebrationLayer, celebrateBig, GamePauseContext, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
 import { useSpeakingLock } from "@/lib/voice";
-import BackgroundArt, { SHARP } from "@/app/components/avatar/BackgroundArt";
-import Companion, { type CompanionAction as CompanionMove } from "@/app/components/avatar/Companion";
+import CompanionPicture from "@/app/components/avatar3d/CompanionPicture";
+import CompanionStage from "@/app/components/avatar3d/CompanionStage";
+import type { CompanionAction as CompanionMove } from "@/app/components/avatar/Companion";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import type { VoiceEmotion as TeacherEmotion } from "@/lib/emotion";
-import { COINS_PER_STAR, type CompanionKindId } from "@/lib/companion";
+import { COINS_PER_STAR } from "@/lib/companion";
 import { chosenSkin, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
@@ -1339,10 +1340,9 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                 {/* Ceo drugar sa svim što je dete kupilo: kraj nivoa je trenutak nagrade */}
                 {teacher !== null && (
                     // Drugar stoji u svojoj pozadini, preko cele širine vrha prozora
-                    <div className="relative -mx-6 -mt-6 mb-3 flex h-40 justify-center overflow-hidden bg-gradient-to-b from-brand-100 to-brand-50 sm:-mx-9 sm:-mt-9 sm:h-48">
-                        <ResultScene />
-                        {/* Kad se pojave zvezdice drugar dva puta skoči i pljesne (pročitana priča: mali skok) */}
-                        <Teacher gender={teacher} variant="full" background={false} action={outcome.practice ? "hop" : outcome.stars > 0 ? "cheer" : undefined} className="relative h-full w-32 sm:w-40" />
+                    <div className="relative -mx-6 -mt-6 mb-3 h-44 overflow-hidden bg-[#E4E6EB] sm:-mx-9 sm:-mt-9 sm:h-56">
+                        {/* Kad se pojave zvezdice drugar navija u svom svetu (pročitana priča: mali skok) */}
+                        <Teacher gender={teacher} variant="full" action={outcome.practice ? "hop" : outcome.stars > 0 ? "cheer" : undefined} className="absolute inset-0 h-full w-full" />
                     </div>
                 )}
                 {outcome.practice ? (
@@ -1425,12 +1425,6 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
 
 // ── Pratilac ──────────────────────────────────────────────────────────────────
 
-/** Kupljena pozadina drugara iza njega na kraju nivoa (bez nje: blagi prelaz boja) */
-function ResultScene() {
-    const background = useCompanion()?.wear.background;
-    return background ? <BackgroundArt id={background} sharp={SHARP.center} /> : null;
-}
-
 /** Lik koji govori: pratilac koga je dete izabralo (sa odećom i izgledom), a bez njega dosadašnji učitelj */
 function Teacher({
     gender,
@@ -1450,10 +1444,11 @@ function Teacher({
 }) {
     const companion = useCompanion();
     if (companion) {
-        const { background: worn, ...rest } = companion.wear;
-        const wear = background ? companion.wear : rest;
-        void worn;
-        return <Companion kind={companion.kind as CompanionKindId} wear={wear} skin={chosenSkin(companion)} variant={variant} emotion={emotion} action={action} className={className} />;
+        // Ceo lik (kraj nivoa) je živ 3D prikaz u svom svetu; mali portreti su 3D slike
+        if (variant === "full") {
+            return <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="full" background={background} emotion={emotion} action={action} actionKey={action} className={className} />;
+        }
+        return <CompanionPicture kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} variant={variant === "face" ? "face" : variant === "bust" ? "bust" : "portrait"} background={background} emotion={emotion} className={className} eager />;
     }
     return <TeacherAvatar gender={gender} variant={variant} emotion={emotion} action={action} className={className} />;
 }

@@ -39,7 +39,7 @@ export function headInfo(shape: BodyShape): HeadInfo {
     const { w, h, d, up, fwd, chin, cheeks } = shape.head;
     const center = new THREE.Vector3(0, up, fwd);
     const child = shape.kind === "girl" || shape.kind === "boy";
-    const nose = child ? 0.95 : shape.kind === "man" ? 1.3 : 1.1;
+    const nose = child ? 1.25 : shape.kind === "man" ? 1.6 : 1.4;
     const fn: SurfaceFn = (u, v, out) => {
         const th = (u - 0.5) * Math.PI * 2;
         const ph = Math.min(Math.PI, Math.max(0, v * Math.PI));
@@ -118,11 +118,17 @@ function headColors(geometry: THREE.BufferGeometry, info: HeadInfo) {
         const z = (position.getZ(i) - center.z) / (d / 2);
         const cheek = Math.max(gauss3(x, y, z, 0.56, -0.3, 0.75, 0.17), gauss3(x, y, z, -0.56, -0.3, 0.75, 0.17));
         c.setRGB(1, 1, 1).lerp(blush, cheek * 0.42);
-        // Nozdrve i ugao nosa: blago tamnije (senka udubljenja)
-        const nostril = Math.max(gauss3(x, y, z, 0.042, -0.425, 0.9, 0.024), gauss3(x, y, z, -0.042, -0.425, 0.9, 0.024));
-        c.multiplyScalar(1 - nostril * 0.35);
-        // Usne malo rumenije oko usta, vrh nosa topliji
-        c.lerp(blush, gauss3(x, y, z, 0, -0.36, 0.93, 0.07) * 0.12);
+        // Nozdrve i ugao nosa: tamnije (senka udubljenja)
+        const nostril = Math.max(gauss3(x, y, z, 0.042, -0.425, 0.9, 0.026), gauss3(x, y, z, -0.042, -0.425, 0.9, 0.026));
+        c.multiplyScalar(1 - nostril * 0.5);
+        // Senke u udubljenjima (kao AO): oko očiju, ispod nosa, ispod donje usne, uz vilicu
+        const socket = Math.max(gauss3(x, y, z, 0.34, -0.1, 0.9, 0.12), gauss3(x, y, z, -0.34, -0.1, 0.9, 0.12));
+        const underNose = gauss3(x, y, z, 0, -0.46, 0.88, 0.05);
+        const underLip = gauss3(x, y, z, 0, -0.76, 0.66, 0.06);
+        const jaw = Math.max(0, -y - 0.55) * (1 - Math.abs(z) * 0.6);
+        c.multiplyScalar(1 - socket * 0.12 - underNose * 0.14 - underLip * 0.12 - jaw * 0.3);
+        // Rumen vrh nosa i obrazi
+        c.lerp(blush, gauss3(x, y, z, 0, -0.37, 0.94, 0.06) * 0.22);
         // Blago tamnije ispod brade i na vratu (meka senka)
         const under = Math.max(0, -y - 0.75) * 1.2;
         c.multiplyScalar(1 - under * 0.25);
@@ -213,11 +219,25 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
         eye.rotation.set(0, side * 0.12, side * 0.09, "YXZ");
         // Bademast oblik (Bitmoji): oko šire nego više, spoljni ugao blago podignut
         eye.scale.set(1.22, 0.9, 1);
-        const ball = new THREE.Mesh(new THREE.SphereGeometry(re, 40, 24), eyeMat);
+        // Rožnjača blago ispupčena iznad dužice (odsjaj „klizi” preko oka kao kod pravog oka)
+        const ballGeo = new THREE.SphereGeometry(re, 48, 32);
+        {
+            const p = ballGeo.getAttribute("position");
+            const v = new THREE.Vector3();
+            for (let i = 0; i < p.count; i++) {
+                v.fromBufferAttribute(p, i);
+                const angle = Math.acos(Math.max(-1, Math.min(1, v.z / re)));
+                const k = Math.min(1, Math.max(0, 1 - angle / (0.66 * 1.08)));
+                v.multiplyScalar(1 + 0.07 * k * k * (3 - 2 * k));
+                p.setXYZ(i, v.x, v.y, v.z);
+            }
+            ballGeo.computeVertexNormals();
+        }
+        const ball = new THREE.Mesh(ballGeo, eyeMat);
         eye.add(ball);
         // Odsjaj: mali beli oval gore-levo (gledano spreda), uvek isti — „živ” pogled
-        const shine = new THREE.Mesh(new THREE.SphereGeometry(re * 0.12, 14, 10), shineMat);
-        shine.scale.set(1, 1.2, 0.35);
+        const shine = new THREE.Mesh(new THREE.SphereGeometry(re * 0.15, 14, 10), shineMat);
+        shine.scale.set(1, 1.15, 0.3);
         const dir = new THREE.Vector3(-0.2, 0.24, 0.95).normalize();
         shine.position.copy(dir).multiplyScalar(re * 1.0);
         eye.add(shine);
@@ -274,7 +294,7 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
     const nv = child ? 0.625 : 0.615;
 
     // ── Obrve (svaka u svojoj grupi sa središtem u sredini obrve, da se diže i naginje) ──
-    const browMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(browColor).multiplyScalar(0.85), roughness: 0.85 });
+    const browMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(browColor).multiplyScalar(0.62), roughness: 0.85 });
     const brows: THREE.Object3D[] = [];
     for (const side of [1, -1]) {
         const brow = new THREE.Group();
@@ -283,7 +303,7 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
         const browU = (t: number) => 0.5 + side * (info.eyeU - 0.036 + t * 0.074);
         // Jasan luk obrve: najviša tačka na dve trećine, spoljni kraj spušten
         const browV = (t: number) => info.eyeV - 0.1 - Math.sin(Math.pow(t, 0.8) * Math.PI) * 0.026 + t * 0.012;
-        const thick = (t: number) => (girlish ? 0.0135 : 0.016) * (0.35 + 0.65 * Math.pow(Math.sin(Math.min(1, t * 1.05 + 0.06) * Math.PI), 0.7));
+        const thick = (t: number) => (girlish ? 0.0165 : 0.019) * (0.35 + 0.65 * Math.pow(Math.sin(Math.min(1, t * 1.05 + 0.06) * Math.PI), 0.7));
         const fn: SurfaceFn = (t, q, out) => {
             const u = browU(t);
             const v = browV(t) + (q - 0.5) * thick(t);
@@ -302,8 +322,8 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
     }
 
     // ── Usta (prava 3D površina: usne, unutrašnjost, zubi, jezik) ──
-    const lip = "#" + new THREE.Color(skinHex).lerp(new THREE.Color(girlish ? "#C8566A" : "#A85A5E"), girlish ? 0.6 : 0.4).getHexString();
-    const mouth = new Mouth(mouthSurfaceFrom(info.fn, info.normal, 0.5, child ? 0.712 : 0.705, 0.0019, 0.0031, child ? 0.0046 : 0.0052), lip);
+    const lip = "#" + new THREE.Color(skinHex).lerp(new THREE.Color(girlish ? "#B65562" : "#9E5A58"), girlish ? 0.58 : 0.42).getHexString();
+    const mouth = new Mouth(mouthSurfaceFrom(info.fn, info.normal, 0.5, child ? 0.712 : 0.705, 0.0022, 0.0032, child ? 0.0058 : 0.0064), lip);
     group.add(mouth.group);
 
     // ── Izraz: brojevi iz FACE_POSES, meko mešanje; usta dodatno otvara glas ──
