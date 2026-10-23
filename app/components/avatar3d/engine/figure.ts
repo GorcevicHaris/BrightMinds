@@ -21,6 +21,7 @@ import {
     type Slot,
     type Wear,
 } from "../contract";
+import { humanLookId } from "../looks";
 import { getItem } from "../manifest";
 import { FACE_POSES } from "./expressions";
 import { solvePose, type PoseName, type PoseSolution } from "./pose";
@@ -91,8 +92,7 @@ export function makeItemContext(body: FigureBody, wear: Wear, extras: { hairCrow
 }
 
 function lookKey(look: CompanionLook): string {
-    const h = look.human;
-    return h ? `${look.kind}|${h.tone}.${h.eye}.${h.hair}.${h.style}.${h.hijab}` : `${look.kind}|${look.skin}`;
+    return look.human ? `${look.kind}|${humanLookId(look.human)}` : `${look.kind}|${look.skin}`;
 }
 
 export interface FigureOptions {
@@ -133,6 +133,12 @@ export class Figure {
     private poseHold: { name: PoseName; until: number } | null = null;
     /** Sama menja mirne poze (stalnim redom, bez nasumičnosti) dok je lik „živ” */
     autoPose = true;
+    // Pogled: kratki skokovi pogleda (sakade) oko pravca ka gledaocu
+    private gazeTarget = new THREE.Vector2();
+    private gaze = new THREE.Vector2();
+    private nextSaccade = 0;
+    private worldQ = new THREE.Quaternion();
+    private worldE = new THREE.Euler();
     /** Jačina glasa 0–1 (lib/voice mouthLevel), čita se u svakom kadru dok lik govori */
     mouthLevel: () => number = () => 0;
 
@@ -324,8 +330,10 @@ export class Figure {
             if (!mesh.isMesh) return;
             const material = mesh.material as THREE.Material;
             const transparent = Array.isArray(material) ? false : material.transparent;
-            mesh.castShadow = !transparent;
-            mesh.receiveShadow = !transparent;
+            // Sitni delovi lica (oči, kapci, trepavice, obrve) bez senke: mapa senke je za njih gruba
+            const shadow = !transparent && !mesh.userData.noShadow;
+            mesh.castShadow = shadow;
+            mesh.receiveShadow = shadow;
         });
     }
 
@@ -425,7 +433,17 @@ export class Figure {
     private nextAutoPose(): PoseName {
         // Prekrštene ruke se preskaču uz predmete koji bi se sudarili sa rukama (krut deo na grudima)
         const noCross = [...this.worn.values()].some((w) => NO_CROSSED_ARMS.has(w.id));
-        const order: PoseName[] = this.worn.has("hand") ? ["relaxed", "hips"] : noCross ? ["relaxed", "hips", "relaxed", "behind"] : ["relaxed", "hips", "relaxed", "crossed", "relaxed", "behind"];
+        // Nove poze (džepovi, razmišljanje, slegnuta ramena) samo kod ljudi; životinje kao ranije
+        const human = isHumanBody(this.body);
+        const order: PoseName[] = this.worn.has("hand")
+            ? ["relaxed", "hips"]
+            : !human
+              ? noCross
+                  ? ["relaxed", "hips", "relaxed", "behind"]
+                  : ["relaxed", "hips", "relaxed", "crossed", "relaxed", "behind"]
+              : noCross
+              ? ["relaxed", "hips", "relaxed", "pockets", "relaxed", "think", "relaxed", "behind"]
+              : ["relaxed", "hips", "relaxed", "crossed", "relaxed", "pockets", "relaxed", "think", "relaxed", "shrug", "relaxed", "behind"];
         // Peraja (pingvin) ne idu na kukove
         const usable: PoseName[] = this.body.anchors.hands.kind === "flipper" ? order.filter((p) => p !== "hips") : order;
         const i = usable.indexOf(this.poseName);
@@ -558,6 +576,8 @@ export class Figure {
             }
         }
 
+        if (isHumanBody(this.body)) this.updateGaze(time, dt, live);
+
         // Predmeti sa svojim pokretom (balon, ljubimac) i dodatni pokreti tela (rep)
         for (const worn of this.worn.values()) {
             worn.animate?.(time, dt, live);
@@ -565,6 +585,32 @@ export class Figure {
         }
         this.body.animate?.(time, dt, live);
         return busy;
+    }
+
+    /**
+     * Oči gledaju malo ka gledaocu (lik je okrenut u 3/4, a i glava se pomera), uz retke
+     * kratke skokove pogleda — pogled nije ukočen u sredini.
+     */
+    private updateGaze(time: number, dt: number, live: boolean) {
+        const face = this.body.face;
+        if (!face.setGaze) return;
+        this.root.getWorldQuaternion(this.worldQ);
+        this.worldE.setFromQuaternion(this.worldQ, "YXZ");
+        const head = this.body.rig.bone("head");
+        const yaw = this.worldE.y + head.rotation.y;
+        // Jabučica se okreće ≈ 0,34 rad po jedinici pogleda: pola ugla ka gledaocu
+        const baseX = THREE.MathUtils.clamp((-yaw * 0.5) / 0.34, -0.75, 0.75);
+        const baseY = THREE.MathUtils.clamp(0.06 - head.rotation.x * 0.8, -0.4, 0.4);
+        if (live && time > this.nextSaccade) {
+            const r = Math.random();
+            // Najčešće nazad ka gledaocu, ponekad malo u stranu ili gore
+            this.gazeTarget.set(r < 0.5 ? 0 : (Math.random() - 0.5) * 0.7, r < 0.5 ? 0 : (Math.random() - 0.4) * 0.35);
+            this.nextSaccade = time + 0.8 + Math.random() * 2.6;
+        }
+        if (!live) this.gazeTarget.set(0, 0);
+        const k = live ? 1 - Math.exp(-dt / 0.035) : 1;
+        this.gaze.lerp(this.gazeTarget, k);
+        face.setGaze(baseX + this.gaze.x, baseY + this.gaze.y);
     }
 
     /** Disanje (≈ 16 udaha u minuti), prenošenje težine, pogled levo-desno, treptanje */
@@ -577,6 +623,9 @@ export class Figure {
         rig.bone("hips").position.x += sway * 0.004;
         rig.bone("thighL").rotation.z -= sway * 0.016;
         rig.bone("thighR").rotation.z -= sway * 0.016;
+        // Težina na jednoj nozi: druga je u kolenu jedva savijena
+        rig.bone("shinL").rotation.x += Math.max(0, -sway) * 0.05;
+        rig.bone("shinR").rotation.x += Math.max(0, sway) * 0.05;
         rig.bone("spine").rotation.z -= sway * 0.011;
         rig.bone("spine").rotation.x += breath * 0.006;
         rig.bone("chest").rotation.x -= breath * 0.012;
@@ -585,7 +634,8 @@ export class Figure {
         const look = Math.sin(t * 0.31) * 0.6 + Math.sin(t * 0.13) * 0.4;
         const head = rig.bone("head");
         head.rotation.y += look * 0.08;
-        head.rotation.z += sway * 0.022 + Math.sin(t * 0.4) * 0.01;
+        // Glava se blago naginje uz prenošenje težine (živahnije, ne ukočeno)
+        head.rotation.z += sway * 0.03 + Math.sin(t * 0.4) * 0.014;
         head.rotation.x += Math.sin(t * 0.27) * 0.018;
         rig.bone("upperArmL").rotation.z += breath * 0.01 + sway * 0.01;
         rig.bone("upperArmR").rotation.z += -breath * 0.01 + sway * 0.01;
