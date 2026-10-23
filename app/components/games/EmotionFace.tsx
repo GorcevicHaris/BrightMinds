@@ -72,12 +72,20 @@ const FEATURES: Record<EmotionId, ReactNode> = {
             <ellipse cx={50} cy={73} rx={8} ry={10} fill={MOUTH} stroke={INK} strokeWidth={3} />
         </>
     ),
-    // Ponosno: zatvorene nasmejane oči, miran osmeh, podignuta brada i medalja
+    // Ponosno: zatvorene nasmejane oči, miran osmeh, podignuta brada (medalja je posebno, niže)
     proud: (
         <>
             <path d="M26 33 Q34 28 42 32 M58 32 Q66 28 74 33" {...LINE} strokeWidth={3.5} />
             <path d="M28 46 Q35 39 42 46 M58 46 Q65 39 72 46" {...LINE} />
             <path d="M34 60 Q50 75 66 60" {...LINE} />
+        </>
+    ),
+};
+
+/** Medalja uz ponosno lice. Na slici situacije lik je nosi na grudima, pa se crta odvojeno od lica. */
+export function Medal(): ReactNode {
+    return (
+        <>
             <path d="M67 60 L76 60 L80 77 L73 79 Z" fill="#4f7be8" />
             <path d="M87 60 L78 60 L74 77 L81 79 Z" fill="#3a63cc" />
             <circle cx={77} cy={85} r={11} fill="#f7b500" stroke="#b87900" strokeWidth={2.5} />
@@ -86,8 +94,16 @@ const FEATURES: Record<EmotionId, ReactNode> = {
                 fill="#fff3c4"
             />
         </>
-    ),
-};
+    );
+}
+
+/**
+ * Obrve, oči i usta jednog osećanja u koordinatama lica 100 × 100 (glava je krug r=43 oko 50,52).
+ * Isti crtež koriste kartice osećanja i likovi na slikama situacija, pa dete prepoznaje isto lice.
+ */
+export function EmotionFeatures({ emotion }: { emotion: EmotionId }): ReactNode {
+    return FEATURES[emotion];
+}
 
 interface EmotionFaceProps {
     emotion: EmotionId;
@@ -100,6 +116,7 @@ export function EmotionFace({ emotion, className }: EmotionFaceProps) {
         <svg viewBox="0 0 100 100" role="img" aria-label={EMOTIONS[emotion].label} focusable="false" className={className}>
             <FaceBase />
             {FEATURES[emotion]}
+            {emotion === "proud" && <Medal />}
         </svg>
     );
 }

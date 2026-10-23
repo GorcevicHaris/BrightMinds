@@ -189,10 +189,21 @@ interface GamePromptProps {
     subtitle?: React.ReactNode;
     /** Emodži ili slika levo od teksta */
     visual?: React.ReactNode;
+    /**
+     * Velika slika situacije (scene/SceneArt, odnos 3 : 2) iznad teksta. Visina je ograničena delom
+     * visine ekrana, pa zadatak i izbori i dalje staju bez skrolovanja.
+     */
+    illustration?: React.ReactNode;
     /** Na telefonu manji okvir i slika — kad ispod ima mnogo izbora koji treba da stanu na ekran */
     compact?: boolean;
     className?: string;
 }
+
+/** Najveća širina slike situacije: tolika da joj visina (2/3 širine) ne pređe zadati deo ekrana */
+const ILLUSTRATION_WIDTH = {
+    normal: "max-w-[min(100%,39dvh)] short:max-w-[min(100%,33dvh)]",
+    compact: "max-w-[min(100%,27dvh)] short:max-w-[min(100%,24dvh)]",
+};
 
 /**
  * Repić „oblačića”: kartica sa uputstvom pokazuje na učitelja u traci iznad sebe.
@@ -208,9 +219,29 @@ export function useBubbleTail(): string {
     return teacher !== null && settings.avatar ? BUBBLE_TAIL : "";
 }
 
-export function GamePrompt({ title, subtitle, visual, compact = false, className }: GamePromptProps) {
+export function GamePrompt({ title, subtitle, visual, illustration, compact = false, className }: GamePromptProps) {
     // Uputstvo je „oblačić” onoga ko govori
     const tail = useBubbleTail();
+    if (illustration) {
+        return (
+            <div
+                className={cn(
+                    "relative flex flex-col items-stretch gap-2.5 rounded-card border border-line bg-surface shadow-soft sm:gap-4 sm:p-5 short:sm:p-3",
+                    compact ? "p-2.5" : "p-3",
+                    tail,
+                    className
+                )}
+            >
+                <div className={cn("mx-auto w-full overflow-hidden rounded-2xl ring-1 ring-brand-100", ILLUSTRATION_WIDTH[compact ? "compact" : "normal"])}>
+                    {illustration}
+                </div>
+                <div className="min-w-0 px-1 text-center">
+                    <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{title}</p>
+                    {subtitle && <p className="mt-1 text-base font-bold text-ink-soft sm:text-lg">{subtitle}</p>}
+                </div>
+            </div>
+        );
+    }
     return (
         <div
             className={cn(

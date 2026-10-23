@@ -34,6 +34,10 @@ import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
 import { decisionCount, storyForLevel, type SceneTone, type Story, type StoryDecision, type StoryStep } from "./data/socialStories";
+import { storyScene } from "./data/storyScenes";
+import { storyHero } from "./scene/heroes";
+import { SceneArt } from "./scene/SceneArt";
+import type { SceneSpec } from "./scene/types";
 
 // ── Stanje igre ───────────────────────────────────────────────────────────────
 // Sve što utiče na prikaz je u jednom JSON objektu koji se šalje live monitoru.
@@ -500,7 +504,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                     className="mx-auto w-full max-w-2xl animate-pop overflow-hidden rounded-card border border-line bg-surface shadow-lift"
                 >
                     <div aria-hidden="true" className={cn("h-2 bg-linear-to-r", ACCENT.gradient)} />
-                    <Scene emojis={story.cover} tone={story.tone} size="cover" />
+                    <Scene emojis={story.cover} tone={story.tone} size="cover" picture={storyScene(level, "cover")} female={female} />
                     <div className="flex flex-col items-center gap-3 px-4 py-5 text-center sm:gap-4 sm:px-8 sm:py-8">
                         <p className={cn("rounded-full border px-3 py-1 text-sm font-extrabold", ACCENT.soft, ACCENT.text, ACCENT.border)}>
                             Priča u {story.steps.length} koraka
@@ -547,7 +551,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                         className={cn("grid animate-fade-up gap-4 sm:gap-5", choosing ? "lg:grid-cols-2 lg:items-start" : "mx-auto w-full max-w-2xl")}
                     >
                         <article className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
-                            <Scene emojis={step.scene} tone={story.tone} label={`${story.icon} ${story.title}`} />
+                            <Scene emojis={step.scene} tone={story.tone} label={`${story.icon} ${story.title}`} picture={storyScene(level, shown.stepIndex)} female={female} />
                             <div className="flex flex-col gap-3 px-4 py-4 sm:px-6 sm:py-5">
                                 {step.affirm && (
                                     <p className={cn("self-start rounded-full border px-3 py-1 text-sm font-extrabold", ACCENT.soft, ACCENT.text, ACCENT.border)}>
@@ -706,21 +710,46 @@ const SCENE_SIZES = {
 };
 
 interface SceneProps {
-    /** Prvi emodži je glavni; uz dva sporedna glavni stoji u sredini */
+    /** Prvi emodži je glavni; uz dva sporedna glavni stoji u sredini (rezerva kad nema crteža) */
     emojis: readonly string[];
     tone: SceneTone;
     size?: keyof typeof SCENE_SIZES;
     /** Naziv priče u uglu slike */
     label?: string;
+    /** Crtež stranice (data/storyScenes.ts) */
+    picture?: SceneSpec;
+    /** Pol deteta: priča je u prvom licu, pa je glavni lik na crtežu dete koje igra */
+    female: boolean;
 }
 
-/** Slika jedne stranice: nebo, tlo i nekoliko velikih emodžija, kao ilustracija u slikovnici. */
-function Scene({ emojis, tone, size = "page", label }: SceneProps) {
+/** Najveća širina crteža: tolika da mu visina (2/3 širine) ne pređe zadati deo ekrana */
+const PICTURE_WIDTH = {
+    page: "max-w-[min(100%,30dvh)] short:max-w-[min(100%,27dvh)] lg:max-w-[min(100%,40dvh)]",
+    cover: "max-w-[min(100%,42dvh)] short:max-w-[min(100%,34dvh)]",
+};
+
+/** Slika jedne stranice: crtež situacije (ili nebo, tlo i nekoliko velikih emodžija), kao ilustracija u slikovnici. */
+function Scene({ emojis, tone, size = "page", label, picture, female }: SceneProps) {
     const [main, ...sides] = emojis;
     const figures = sides.length >= 2 ? [sides[0], main, sides[1]] : [main, ...sides];
     const mainAt = sides.length >= 2 ? 1 : 0;
     const colors = SCENE_TONES[tone];
     const sizes = SCENE_SIZES[size];
+
+    if (picture) {
+        return (
+            <div className={cn("relative bg-linear-to-b p-3 sm:px-5 sm:pb-4", colors.sky)}>
+                <div className={cn("relative mx-auto w-full overflow-hidden rounded-2xl bg-surface shadow-soft ring-1 ring-black/5", PICTURE_WIDTH[size])}>
+                    <SceneArt spec={picture} hero={storyHero(female)} className="h-auto w-full" />
+                </div>
+                {label && (
+                    <p className={cn("absolute left-2 top-2 rounded-full border bg-surface px-2.5 py-0.5 text-xs font-extrabold sm:left-3 sm:top-3 sm:px-3 sm:py-1 sm:text-sm", ACCENT.text, ACCENT.border)}>
+                        {label}
+                    </p>
+                )}
+            </div>
+        );
+    }
 
     return (
         <div className={cn("relative flex items-end justify-center gap-4 overflow-hidden bg-linear-to-b px-4 pb-6 sm:gap-6 sm:pb-8", sizes.box, colors.sky)}>
