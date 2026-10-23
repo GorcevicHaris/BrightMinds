@@ -92,7 +92,9 @@ export class StageScene {
         const key = new THREE.DirectionalLight("#FFF1E0", 3.7);
         key.position.set(-1.3, 2.7, 3.0);
         key.castShadow = true;
-        key.shadow.mapSize.set(2048, 2048);
+        // Telefon: manja mapa senke (brže na slabijem GPU-u); tablet i računar: oštrija
+        const shadowSize = typeof window !== "undefined" && Math.min(window.innerWidth, window.innerHeight) < 700 ? 1024 : 2048;
+        key.shadow.mapSize.set(shadowSize, shadowSize);
         key.shadow.intensity = 0.5;
         key.shadow.bias = -0.0004;
         key.shadow.normalBias = 0.003;
