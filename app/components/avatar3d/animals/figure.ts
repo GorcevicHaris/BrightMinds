@@ -16,8 +16,8 @@ import { animalHead, headGeometry, type AnimalHead, type HeadSpec } from "./head
 import { FUR_TILE, furMaterial, hornyMaterial, padMaterial } from "./materials";
 import { coatColor, col, paintGeometry, type PaintContext, type PaintPoint } from "./paint";
 import {
-    earGeometry, flipperHand, furUv, hoofFoot, hoofHand, pawFoot, pawHand, tailGeometry,
-    type EarShape, type Side, type TailSpec,
+    clumpGeometry, earGeometry, flipperHand, furUv, hoofFoot, hoofHand, pawFoot, pawHand, tailGeometry,
+    type Clump, type EarShape, type Side, type TailSpec,
 } from "./parts";
 import { animalShape, type ShapeParams } from "./shape";
 
@@ -66,6 +66,8 @@ export interface AnimalSpec {
      * promeni, sve te mere se srazmerno prilagode (jedan broj umesto desetina).
      */
     ref?: number;
+    /** Krzno ispod brade i na obrazima koje prekriva spoj glave i vrata (0 = bez; podrazumevano 1) */
+    ruff?: number;
     /** Sopstvena šara vrste (posle ugrađenih šara, pre senke) */
     paint?: (pp: PaintPoint, ctx: PaintContext, out: THREE.Color) => void;
     /** Sopstvena šaka/stopalo umesto ugrađenih (anchors.hands/feet.kind i dalje iz `hands`/`feet`) */
@@ -99,6 +101,8 @@ export interface AnimalBuild {
     setHorn: (horn: { base: THREE.Vector3; tip: THREE.Vector3; radius: number }) => void;
     /** Dodatni pokret svakog kadra (griva, krila…) */
     onAnimate: (fn: (time: number, dt: number, live: boolean) => void) => void;
+    /** Srazmera mera vrste (AnimalSpec.ref): apsolutne mere u posebnim delovima množi ovim */
+    k: number;
     /** Kljun umesto usta: pomeraj donjeg kljuna za otvaranje */
     face?: { setJaw?: (open: number, smile: number) => void; mouth?: THREE.Object3D };
 }
@@ -264,7 +268,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     let horn: Anchors["horn"];
     const animators: ((time: number, dt: number, live: boolean) => void)[] = [];
     const build: AnimalBuild = {
-        spec, coat, skin, rig, shape, head, headGroup, paint, quality, fur, boneAt,
+        spec, coat, skin, rig, shape, head, headGroup, paint, quality, fur, boneAt, k,
         bone: (name) => rig.bones.find((b) => b.name === name),
         part: addPart,
         setHorn: (h) => (horn = h),
@@ -278,8 +282,8 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     const torsoFn = torsoSurface(shape, y0, y1, 0);
     const circ = Math.PI * 2 * shape.torsoW(shape.waistY) * 0.95;
     const torso = buildSurface(torsoFn, {
-        nu: hi ? 64 : 40,
-        nv: hi ? 72 : 40,
+        nu: hi ? 56 : 36,
+        nv: hi ? 60 : 34,
         closedU: true,
         inside: (_u, v, out) => out.set(0, y0 + (y1 - y0) * v, 0),
         weights: (_u, _v, p) => torsoWeights(shape, p),
@@ -460,6 +464,28 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     headMesh.name = "glava-krzno";
     headGroup.add(headMesh);
 
+    // Krzno ispod brade: kratki čuperci po donjoj ivici glave (prelaz glava → vrat, preko kragne)
+    const ruff = spec.ruff ?? 0;
+    if (ruff > 0) {
+        const clumps: Clump[] = [];
+        const n = hi ? 44 : 22;
+        const c = new THREE.Color();
+        for (let i = 0; i < n; i++) {
+            const u = (i + 0.5) / n;
+            const front = Math.max(0, Math.cos((u - 0.5) * Math.PI * 2));
+            const v = 0.8 + 0.018 * Math.sin(i * 2.1) + front * 0.015;
+            const base = head.offsetPoint(u, v, -0.004);
+            const nn = head.normal(u, v);
+            const dir = nn.clone().multiplyScalar(0.9).add(new THREE.Vector3(0, -1, 0)).normalize();
+            const s = head.sample(u, v);
+            coatColor(paint, { p: base.clone().add(headBone), region: "head", muzzle: s.muzzle }, c);
+            clumps.push({ base, dir, len: (0.016 + 0.01 * front) * k * ruff, r: 0.02 * k, color: "#" + c.getHexString(), taper: 0.3, shade: 0.08, flat: 0.55, curl: new THREE.Vector3(0, -0.3, 0) });
+        }
+        const ruffMesh = new THREE.Mesh(clumpGeometry(clumps, quality), fur);
+        ruffMesh.name = "krzno-brada";
+        headGroup.add(ruffMesh);
+    }
+
     spec.extras?.(build);
 
     const browHex = mix(coat.fur, coat.brow, 0.92);
@@ -472,10 +498,17 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
         paintLid: (g, eyeCenter) => paintGeometry(g, paint, (_i, p) => ({ p: p.clone().add(eyeCenter).add(headBone), region: "lid", muzzle: 0 })),
         browMaterial: fur,
         paintBrow: (g) => {
+            // Obrva je tamnije krzno koje se meko utapa u okolno (ivice su boje krzna)
             const n = g.getAttribute("position").count;
+            const uvA = g.getAttribute("uv");
             const arr = new Float32Array(n * 3);
-            const c = col(browHex);
-            for (let i = 0; i < n; i++) arr.set([c.r, c.g, c.b], i * 3);
+            const c = new THREE.Color();
+            for (let i = 0; i < n; i++) {
+                const top = Math.max(0, Math.sin(uvA.getX(i) * Math.PI * 2));
+                const along = Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, uvA.getY(i)))), 0.6);
+                c.copy(col(coat.fur)).lerp(col(browHex), Math.pow(top, 0.8) * along);
+                arr.set([c.r, c.g, c.b], i * 3);
+            }
             g.setAttribute("color", new THREE.BufferAttribute(arr, 3));
         },
     }, quality, build.face?.mouth || build.face?.setJaw ? { mouth: build.face.mouth, jaw: build.face.setJaw } : undefined);

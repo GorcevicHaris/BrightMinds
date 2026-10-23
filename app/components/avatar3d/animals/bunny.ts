@@ -9,7 +9,7 @@ import { ANIMAL_SKINS } from "./skins.data";
 export const BUNNY: AnimalSpec = {
     kind: "bunny",
     skins: ANIMAL_SKINS.bunny,
-    shape: { kind: "bunny", girth: 0.97, belly: 1.04, head: { w: 0.357, h: 0.349, d: 0.332 }, foot: { len: 0.178, w: 0.084, h: 0.066, back: 0.042 } },
+    shape: { kind: "bunny", girth: 0.97, belly: 1.04, head: { w: 0.321, h: 0.314, d: 0.299 }, foot: { len: 0.178, w: 0.084, h: 0.066, back: 0.042 } },
     ref: 0.42,
     head: {
         flat: 0.12,
@@ -34,7 +34,7 @@ export const BUNNY: AnimalSpec = {
     }),
     ears: {
         kind: "tall",
-        shape: { len: 0.3, width: 0.1, depth: 0.036, profile: EAR_PROFILES.tall, bend: 0.035, cup: 0.65, inner: 0.72 },
+        shape: { len: 0.3, width: 0.108, depth: 0.048, profile: (t) => EAR_PROFILES.tall(t) * (1 + 0.18 * (1 - t) * (1 - t)), bend: 0.035, cup: 0.65, inner: 0.72 },
         u: 0.565,
         v: 0.1,
         sink: 0.014,
@@ -42,7 +42,7 @@ export const BUNNY: AnimalSpec = {
         inner: "pad",
     },
     earMotion: "swing",
-    tail: { points: [[0, 0, 0], [0, 0.01, -0.03], [0, 0.015, -0.05]], radius: () => 0.04, pom: 0.05, motion: "none", height: 0.05 },
+    tail: { points: [[0, 0, 0], [0, 0.01, -0.03], [0, 0.015, -0.05]], radius: () => 0.04, pom: 0.066, motion: "none", height: 0.05 },
     hands: "paw",
     feet: "paw",
     belly: 0.55,
