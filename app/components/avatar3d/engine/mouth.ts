@@ -154,7 +154,7 @@ export class Mouth {
                 const y = lip === 0 ? c.top - 1.1 - gap * 0.6 - bow * 1.1 : c.bottom + 1.6 + gap * 0.8;
                 // Debljina: najdeblje u sredini, tanko u uglovima; donja usna punija
                 const mid = 1 - Math.pow(ax, 2.2);
-                const r = s.lip * (lip === 0 ? 0.6 + 0.12 * bow : 0.95) * (0.2 + 0.8 * mid);
+                const r = s.lip * (lip === 0 ? 0.62 + 0.12 * bow : 1.12) * (0.2 + 0.8 * mid);
                 this.at(x, y, r * 0.55, center);
                 this.at(Math.max(-w, x - 0.6), y, r * 0.55, prev);
                 this.at(Math.min(w, x + 0.6), y, r * 0.55, next);

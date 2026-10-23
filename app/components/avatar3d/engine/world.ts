@@ -6,16 +6,16 @@ import * as THREE from "three";
 import { backgroundBuilder, type Environment, type EnvironmentContext } from "../contract";
 import { disposeObject } from "./materials";
 
-const SKY_TOP = "#E3E6EC";
-const SKY_BOTTOM = "#F3F4F7";
-const FLOOR = "#ECEDF1";
+const SKY_TOP = "#D6D9E0";
+const SKY_BOTTOM = "#EBECF0";
+const FLOOR = "#DADCE2";
 
 /** Podrazumevani svet: tih, svetlosiv, sa krupnim geometrijskim „zgradama” u izmaglici */
 export function defaultEnvironment(ctx: EnvironmentContext): Environment {
     const root = new THREE.Group();
     root.name = "svet";
     const low = ctx.quality === "low";
-    const shades = ["#F4F5F8", "#E8EAEF", "#DDE1E8", "#EEF0F4", "#D6DBE4"];
+    const shades = ["#E4E6EB", "#D9DCE3", "#CED3DC", "#E0E3E9", "#C9CFD9"];
     const material = (i: number) => new THREE.MeshStandardMaterial({ color: shades[i % shades.length], roughness: 0.95, metalness: 0 });
     const materials = shades.map((_, i) => material(i));
     // Stalan raspored (bez nasumičnosti): blokovi različite visine levo i desno, dalje od lika
@@ -50,7 +50,7 @@ export function defaultEnvironment(ctx: EnvironmentContext): Environment {
     return {
         root,
         sky: [SKY_TOP, SKY_BOTTOM],
-        fog: { color: SKY_BOTTOM, near: 7, far: 26 },
+        fog: { color: SKY_BOTTOM, near: 4.5, far: 22 },
         floor: "default",
         floorColor: FLOOR,
     };

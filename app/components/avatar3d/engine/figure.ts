@@ -639,6 +639,15 @@ export class Figure {
         this.root.clear();
     }
 
+    get hasPet(): boolean {
+        return this.worn.has("pet");
+    }
+
+    /** Samo mirno disanje (bez pokreta, prelaza i govora) — dovoljno je ređe crtanje */
+    get isCalm(): boolean {
+        return !this.action && !this.pendingAction && this.exprT >= 1 && this.poseT >= 1 && !this.speaking;
+    }
+
     /** Vreme poslednjeg kadra (za probne stranice) */
     get time(): number {
         return this.clock;

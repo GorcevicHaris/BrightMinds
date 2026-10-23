@@ -33,9 +33,9 @@ export const SKIN_TONES: readonly ColorLookPart[] = [
 export const EYE_COLORS: readonly ColorLookPart[] = [
     { id: "smedje", label: "Smeđe oči", hex: "#8A5630" },
     { id: "tamne", label: "Tamne oči", hex: "#5A3522" },
-    { id: "lesnik", label: "Oči boje lešnika", hex: "#A07A34" },
-    { id: "zelene", label: "Zelene oči", hex: "#5FA35A" },
-    { id: "plave", label: "Plave oči", hex: "#4A93D4" },
+    { id: "lesnik", label: "Oči boje lešnika", hex: "#B08A3C" },
+    { id: "zelene", label: "Zelene oči", hex: "#6DB565" },
+    { id: "plave", label: "Plave oči", hex: "#5AA8E8" },
     { id: "sive", label: "Sive oči", hex: "#7D8A96" },
 ];
 
@@ -127,8 +127,8 @@ export interface HumanLook {
 }
 
 export const HUMAN_DEFAULT: Record<HumanKind, HumanLook> = {
-    girl: { tone: "svetla", eye: "smedje", hair: "smedja", style: "duga", hijab: NO_HIJAB },
-    boy: { tone: "svetla", eye: "smedje", hair: "smedja", style: "kratka", hijab: NO_HIJAB },
+    girl: { tone: "psenicna", eye: "lesnik", hair: "smedja", style: "duga", hijab: NO_HIJAB },
+    boy: { tone: "svetla", eye: "plave", hair: "smedja", style: "kratka", hijab: NO_HIJAB },
     // Kao dosadašnja 2D učiteljica i učitelj (skins.ts HUMAN_DEFAULT)
     woman: { tone: "vrlo-svetla", eye: "smedje", hair: "kestenjasta", style: "do-ramena", hijab: NO_HIJAB },
     man: { tone: "svetla", eye: "smedje", hair: "smedja", style: "kratka", hijab: NO_HIJAB },

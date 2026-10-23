@@ -44,7 +44,9 @@ export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabSt
         const th = thetaOf(u);
         // Pozadi tkanina ide preko skupljene kose (blaga punđa), sa strane meki nabori
         return 0.011 + 0.02 * gauss(Math.abs(th), Math.PI, 0.75) * gauss(v, 0.38, 0.13) + 0.004 * (1 - smoothstep(0.1, 0.4, v)) + 0.006 * smoothstep(0.7, 0.92, v)
-            + 0.0025 * Math.sin(th * 6 + v * 4) * smoothstep(0.45, 0.8, v) * smoothstep(0.6, 1.4, Math.abs(th));
+            + 0.0025 * Math.sin(th * 6 + v * 4) * smoothstep(0.45, 0.8, v) * smoothstep(0.6, 1.4, Math.abs(th))
+            // Uspravni nabori tkanine pored lica (od slepoočnica ka bradi)
+            + 0.0035 * Math.pow(Math.abs(Math.sin(th * 9)), 0.7) * smoothstep(0.5, 0.75, v) * gauss(Math.abs(th), 1.25, 0.35);
     };
     const offset = (u: number, v: number) => {
         const f = open(u, v);
