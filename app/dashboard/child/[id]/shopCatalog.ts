@@ -44,7 +44,7 @@ export function itemsInSlot(slot: Slot): readonly ItemData[] {
 
 /** Podvrsta kad je katalog ne navodi: pogađa se po id-ju predmeta */
 const GUESS: Partial<Record<Slot, [RegExp, string][]>> = {
-    hat: [[/kruna|tijara/, "krune"], [/slem/, "slemovi"], [/sesir/, "sesiri"], [/venac|masna|antene|traka|snala/, "za-kosu"], [/kap/, "kape"]],
+    hat: [[/kruna|tijara/, "krune"], [/slem/, "slemovi"], [/sesir|cilindar/, "sesiri"], [/venac|masna|antene|traka|snala|ukosnic/, "za-kosu"], [/./, "kape"]],
     glasses: [[/maska/, "maske"], [/./, "naocare"]],
     neck: [[/mindjuse/, "mindjuse"], [/masna|kravata/, "masne"], [/sal|marama/, "marame"], [/./, "ogrlice"]],
     outfit: [
