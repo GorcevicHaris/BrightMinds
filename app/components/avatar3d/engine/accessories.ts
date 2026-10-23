@@ -6,14 +6,14 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 import type { Item3D, Swatch } from "../catalog";
 import { footFn, torsoPoint } from "./body";
 import { hairCrown } from "./hair";
-import { Kit, SIDES, type Side } from "./kit";
+import { Kit, SIDES, type GarmentContext, type Side } from "./kit";
 import { fabricMaterial, gemMaterial, glossyMaterial, leatherMaterial, lensMaterial, metalMaterial, skinMaterial } from "./materials";
 import { torsoWeights, type BodyShape } from "./rig";
 import { buildSurface, polyPath, ringTube, smoothstep, taperedTube, type SurfaceFn } from "./surface";
 
 const gauss = (x: number, mu: number, s: number) => Math.exp(-((x - mu) ** 2) / (2 * s * s));
 
-export function buildAccessory(kit: Kit, item: Item3D, sw: Swatch) {
+export function buildAccessory(kit: Kit<GarmentContext>, item: Item3D, sw: Swatch) {
     switch (item.id) {
         case "patike":
             for (const side of SIDES) sneaker(kit, side, sw);
@@ -79,7 +79,7 @@ function soleFn(shape: BodyShape, grow: number, height: number, toeLift = 0): Su
     };
 }
 
-function addFoot(kit: Kit, side: Side, geometry: THREE.BufferGeometry, material: THREE.Material, mirror = true): THREE.Mesh {
+function addFoot(kit: Kit<GarmentContext>, side: Side, geometry: THREE.BufferGeometry, material: THREE.Material, mirror = true): THREE.Mesh {
     const mesh = new THREE.Mesh(geometry, material);
     if (mirror && side === -1) {
         mesh.scale.x = -1;
@@ -95,7 +95,7 @@ function upperPoint(fn: SurfaceFn, th: number, ph: number, lift: number, out = n
     return out.addScaledVector(n, lift);
 }
 
-function sneaker(kit: Kit, side: Side, sw: Swatch) {
+function sneaker(kit: Kit<GarmentContext>, side: Side, sw: Swatch) {
     const shape = kit.shape;
     const accent = sw.accent ?? "#4C8DDB";
     const rubber = glossyMaterial("#F7F7F5", 0.55, 0.2);
@@ -145,7 +145,7 @@ function sneaker(kit: Kit, side: Side, sw: Swatch) {
     kit.rigid(footBone(side), tab);
 }
 
-function boot(kit: Kit, side: Side, sw: Swatch) {
+function boot(kit: Kit<GarmentContext>, side: Side, sw: Swatch) {
     const shape = kit.shape;
     const rubberBoot = sw.id === "zute";
     const main = rubberBoot ? glossyMaterial(sw.hex, 0.3, 0.7) : leatherMaterial(sw.hex);
@@ -164,7 +164,7 @@ function boot(kit: Kit, side: Side, sw: Swatch) {
     }
 }
 
-function sandal(kit: Kit, side: Side, sw: Swatch) {
+function sandal(kit: Kit<GarmentContext>, side: Side, sw: Swatch) {
     const shape = kit.shape;
     const strap = leatherMaterial(sw.hex);
     const soleMat = fabricMaterial(sw.accent ?? "#E9DCC6", "felt", { roughness: 0.85, sheen: 0.2 });
@@ -203,7 +203,7 @@ function sandal(kit: Kit, side: Side, sw: Swatch) {
     }
 }
 
-function slipper(kit: Kit, side: Side, sw: Swatch) {
+function slipper(kit: Kit<GarmentContext>, side: Side, sw: Swatch) {
     const shape = kit.shape;
     const plush = fabricMaterial(sw.hex, "fleece", { sheen: 1, sheenLift: 0.55, roughness: 0.9, normalScale: 0.8 });
     const fluff = fabricMaterial(sw.accent ?? "#FFFFFF", "fleece", { sheen: 1, sheenLift: 0.6, roughness: 0.95, normalScale: 1 });
@@ -225,7 +225,7 @@ function slipper(kit: Kit, side: Side, sw: Swatch) {
 const thetaOf = (u: number) => (u - 0.5) * Math.PI * 2;
 
 /** Hidžab: tkanina uokviruje lice (čelo, obrazi, brada), pokriva kosu, uši i vrat i pada preko ramena */
-function hijab(kit: Kit, sw: Swatch) {
+function hijab(kit: Kit<GarmentContext>, sw: Swatch) {
     const { head, rig, look } = kit.ctx;
     const shape = rig.shape;
     const cloth = fabricMaterial(sw.hex, "cotton", { roughness: 0.7, sheen: 0.8, sheenLift: 0.3, normalScale: 0.3, side: THREE.DoubleSide });
@@ -323,7 +323,7 @@ function hijab(kit: Kit, sw: Swatch) {
 }
 
 /** Kupola kape po glavi: v od temena do ivice edge(θ), pomerena za `lift` iznad glave */
-function domeFn(kit: Kit, edge: (th: number) => number, lift: (u: number, w: number) => number): SurfaceFn {
+function domeFn(kit: Kit<GarmentContext>, edge: (th: number) => number, lift: (u: number, w: number) => number): SurfaceFn {
     const head = kit.ctx.head;
     const n = new THREE.Vector3();
     return (u, w, out) => {
@@ -334,7 +334,7 @@ function domeFn(kit: Kit, edge: (th: number) => number, lift: (u: number, w: num
     };
 }
 
-function cap(kit: Kit, sw: Swatch) {
+function cap(kit: Kit<GarmentContext>, sw: Swatch) {
     const { head, look } = kit.ctx;
     const crownT = hairCrown(look.hair, true) + 0.006;
     const main = fabricMaterial(sw.hex, "cotton", { roughness: 0.7, side: THREE.DoubleSide });
@@ -376,7 +376,7 @@ function cap(kit: Kit, sw: Swatch) {
     kit.rigid("head", new THREE.Mesh(taperedTube(polyPath(rimPts), () => 0.0022, 48, 6), main));
 }
 
-function beanie(kit: Kit, sw: Swatch) {
+function beanie(kit: Kit<GarmentContext>, sw: Swatch) {
     const { head, look } = kit.ctx;
     const crownT = hairCrown(look.hair, true) + 0.007;
     const knit = fabricMaterial(sw.hex, "knit", { sheen: 0.9, normalScale: 0.6, side: THREE.DoubleSide });
@@ -395,7 +395,7 @@ function beanie(kit: Kit, sw: Swatch) {
     kit.rigid("head", pom);
 }
 
-function crown(kit: Kit, sw: Swatch) {
+function crown(kit: Kit<GarmentContext>, sw: Swatch) {
     const { head, look } = kit.ctx;
     const gold = metalMaterial(sw.hex);
     const gem = gemMaterial(sw.accent ?? "#E0455A");
@@ -430,7 +430,7 @@ function crown(kit: Kit, sw: Swatch) {
 
 // ── Naočare ───────────────────────────────────────────────────────────────────
 
-function glasses(kit: Kit, sw: Swatch, kind: "round" | "sun") {
+function glasses(kit: Kit<GarmentContext>, sw: Swatch, kind: "round" | "sun") {
     const { head, look } = kit.ctx;
     const frame = glossyMaterial(sw.hex, 0.3, 0.8);
     const lens = kind === "sun" ? lensMaterial(sw.accent ?? "#30343C", 0.82) : lensMaterial("#E8F2FF", 0.14);
@@ -481,7 +481,7 @@ function glasses(kit: Kit, sw: Swatch, kind: "round" | "sun") {
 
 // ── Ranac ─────────────────────────────────────────────────────────────────────
 
-function backpack(kit: Kit, sw: Swatch) {
+function backpack(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const look = kit.ctx.look;
     const nylon = fabricMaterial(sw.hex, "cotton", { roughness: 0.55, sheen: 0.35, normalScale: 0.25 });

@@ -4,7 +4,7 @@
 
 import type { VoiceEmotion } from "@/lib/emotion";
 import AnimalAvatar from "./AnimalAvatar";
-import type { CompanionKind } from "./companions";
+import { isCompanionKind, type CompanionKind } from "./companions";
 import type { CompanionAction } from "./motion";
 import TeacherAvatar from "./TeacherAvatar";
 import type { Wear } from "./wearables";
@@ -12,8 +12,25 @@ import type { Wear } from "./wearables";
 export { COMPANIONS, isCompanionKind, type CompanionKind } from "./companions";
 export { COMPANION_ACTIONS, type CompanionAction } from "./motion";
 
+/**
+ * 2D crtež postoji za učiteljicu, učitelja i četiri životinje. Ostali drugari (3D) se u 2D
+ * (kad WebGL ne radi) crtaju kao najsličniji: devojčica → učiteljica, dečak → učitelj…
+ */
+const FALLBACK_2D: Record<string, CompanionKind> = { girl: "woman", boy: "man", fox: "cat", lion: "bear", penguin: "bear", unicorn: "bunny" };
+
+export function companion2DKind(kind: string): CompanionKind {
+    return FALLBACK_2D[kind] ?? (isCompanionKind(kind) ? kind : "woman");
+}
+
+/** 3D izgled čoveka `koža.oči.kosa.frizura.hidžab` → 2D `koža.kosa.frizura` (nepoznat deo → dosadašnji crtež) */
+function skin2D(skin: string | undefined): string | undefined {
+    const parts = skin?.split(".");
+    return parts && parts.length === 5 ? `${parts[0]}.${parts[2]}.${parts[3]}` : skin;
+}
+
 interface CompanionProps {
-    kind: CompanionKind;
+    /** Bilo koji drugar (i 3D vrste koje nemaju 2D crtež — crtaju se kao najsličniji) */
+    kind: string;
     /** `bust` = glava i ramena (može da maše); `face` = samo lice, za mala mesta;
      *  `full` = ceo lik od glave do stopala, sa svim predmetima (prodavnica);
      *  `portrait` = gornji deo celog lika sa pozadinom i krilima (mali portret u igri) */
@@ -41,8 +58,11 @@ interface CompanionProps {
  * Ceo lik i portret se i sami mirno kreću (disanje, rep, uši, kosa, plašt, balon, ljubimac,
  * pozadina), a dok govore mahnu, poskoče ili klimnu; nov predmet kratko iskoči (motion.ts).
  */
-export default function Companion({ kind, variant = "bust", emotion, wear, skin, action, actionKey, still, className }: CompanionProps) {
+export default function Companion({ kind: anyKind, variant = "bust", emotion, wear, skin: anySkin, action, actionKey, still, className }: CompanionProps) {
     const motion = { action, actionKey, still };
+    const kind = companion2DKind(anyKind);
+    // Izgled druge vrste (npr. lisice) ne važi za 2D zamenu (mačku) — tada dosadašnji crtež
+    const skin = kind === anyKind ? skin2D(anySkin) : undefined;
     if (kind === "woman" || kind === "man") {
         return <TeacherAvatar gender={kind === "woman" ? "female" : "male"} variant={variant} emotion={emotion} wear={wear} skin={skin} {...motion} className={className} />;
     }

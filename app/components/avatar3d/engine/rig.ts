@@ -3,53 +3,15 @@
 // pa pokret jedne kosti = rotacija oko svetskih osa iz njenog zgloba.
 
 import * as THREE from "three";
-import type { BodyKind } from "../catalog";
+import { BONES, type BodyShape, type BoneName, type ExtraBoneName, type Joints, type Rig } from "../contract";
+import type { HumanKind } from "../data";
 import { profile, smoothstep, type BoneWeights } from "./surface";
 
-export const BONES = [
-    "root", "hips", "spine", "chest", "neck", "head",
-    "upperArmL", "forearmL", "handL", "upperArmR", "forearmR", "handR",
-    "thighL", "shinL", "footL", "thighR", "shinR", "footR",
-] as const;
-export type BoneName = (typeof BONES)[number];
+export { BONES, type BodyShape, type BoneName, type Joints, type Rig } from "../contract";
 export const B = Object.fromEntries(BONES.map((name, i) => [name, i])) as Record<BoneName, number>;
 
-export interface BodyShape {
-    kind: BodyKind;
-    /** Visine (y) važnih tačaka trupa */
-    crotchY: number;
-    hipY: number;
-    waistY: number;
-    chestY: number;
-    shoulderY: number;
-    neckBaseY: number;
-    headBoneY: number;
-    /** Glava: širina, visina, dubina; središte iznad kosti glave */
-    head: { w: number; h: number; d: number; up: number; fwd: number; chin: number; cheeks: number };
-    /** Profil trupa po visini: poluširina, dubina napred, dubina pozadi */
-    torsoW: (y: number) => number;
-    torsoFront: (y: number) => number;
-    torsoBack: (y: number) => number;
-    /** Grudi odrasle žene (0 = bez) */
-    bust: number;
-    neckR: number;
-    /** Ruke: zglob ramena, ugao od tela, dužine, poluprečnik duž ruke (s ∈ [0, 1]) */
-    shoulderX: number;
-    armAngle: number;
-    upperArm: number;
-    forearm: number;
-    armR: (s: number) => number;
-    hand: number;
-    /** Noge */
-    hipX: number;
-    thigh: number;
-    shin: number;
-    legR: (s: number) => number;
-    ankleY: number;
-    foot: { len: number; w: number; h: number; back: number };
-    /** Ukupna visina (za kameru) */
-    height: number;
-}
+/** Ljudska tela (motor); životinje prave svoj BodyShape u animals/ */
+export type HumanBodyKind = HumanKind;
 
 /** Dete 6–9 godina: velika glava (≈ ¼ visine), kratki udovi, mekan trup */
 function childShape(kind: "girl" | "boy"): BodyShape {
@@ -57,6 +19,7 @@ function childShape(kind: "girl" | "boy"): BodyShape {
     const k = girl ? 1 : 1.02;
     return {
         kind,
+        proportion: "child",
         crotchY: 0.455,
         hipY: 0.5,
         waistY: 0.615,
@@ -103,6 +66,7 @@ function adultShape(kind: "woman" | "man"): BodyShape {
     const y = (v: number) => v * s;
     return {
         kind,
+        proportion: "adult",
         crotchY: y(0.74),
         hipY: y(0.8),
         waistY: y(0.98),
@@ -145,9 +109,9 @@ function adultShape(kind: "woman" | "man"): BodyShape {
     };
 }
 
-const SHAPES = new Map<BodyKind, BodyShape>();
+const SHAPES = new Map<HumanKind, BodyShape>();
 
-export function bodyShape(kind: BodyKind): BodyShape {
+export function bodyShape(kind: HumanKind): BodyShape {
     let shape = SHAPES.get(kind);
     if (!shape) {
         shape = kind === "girl" || kind === "boy" ? childShape(kind) : adultShape(kind);
@@ -157,15 +121,6 @@ export function bodyShape(kind: BodyKind): BodyShape {
 }
 
 // ── Zglobovi u mirovanju (svetske koordinate) ───────────────────────────────────
-
-export interface Joints {
-    shoulder: THREE.Vector3;
-    elbow: THREE.Vector3;
-    wrist: THREE.Vector3;
-    hip: THREE.Vector3;
-    knee: THREE.Vector3;
-    ankle: THREE.Vector3;
-}
 
 /** Zglobovi leve (+x) strane; desna je ogledalo (x → −x) */
 export function joints(shape: BodyShape, side: 1 | -1): Joints {
@@ -181,18 +136,19 @@ export function joints(shape: BodyShape, side: 1 | -1): Joints {
     return { shoulder, elbow, wrist, hip, knee, ankle };
 }
 
-export interface Rig {
-    shape: BodyShape;
-    bones: THREE.Bone[];
-    skeleton: THREE.Skeleton;
-    root: THREE.Bone;
-    bone: (name: BoneName) => THREE.Bone;
-    left: Joints;
-    right: Joints;
+/** Dodatna kost životinje (rep, uši): roditelj i položaj zgloba u prostoru tela */
+export interface ExtraBone {
+    name: ExtraBoneName;
+    parent: BoneName | ExtraBoneName;
+    at: THREE.Vector3;
 }
 
-/** Pravi kostur u mirovanju; posle ovoga se SkinnedMesh vezuje za njega */
-export function createRig(shape: BodyShape): Rig {
+/**
+ * Pravi kostur u mirovanju; posle ovoga se SkinnedMesh vezuje za njega. Zglobovi 18 obaveznih
+ * kostiju slede iz mera tela (shape); dodatne kosti (životinje) idu posle njih, istim redom.
+ * Indeks kosti u težinama (skinIndex) je njen redni broj u `rig.bones`.
+ */
+export function createRig(shape: BodyShape, extras: readonly ExtraBone[] = []): Rig {
     const left = joints(shape, 1);
     const right = joints(shape, -1);
     const world: Record<BoneName, THREE.Vector3> = {
@@ -229,6 +185,20 @@ export function createRig(shape: BodyShape): Rig {
             bone.position.copy(world[name]);
         }
     });
+    const at = new Map<string, THREE.Vector3>(BONES.map((name) => [name, world[name]]));
+    const byName = new Map<string, THREE.Bone>(BONES.map((name, i) => [name, bones[i]]));
+    for (const extra of extras) {
+        const bone = new THREE.Bone();
+        bone.name = extra.name;
+        const parentBone = byName.get(extra.parent);
+        const parentAt = at.get(extra.parent);
+        if (!parentBone || !parentAt) throw new Error(`Nepoznata roditeljska kost: ${extra.parent}`);
+        parentBone.add(bone);
+        bone.position.copy(extra.at).sub(parentAt);
+        at.set(extra.name, extra.at);
+        byName.set(extra.name, bone);
+        bones.push(bone);
+    }
     bones[0].updateMatrixWorld(true);
     const skeleton = new THREE.Skeleton(bones);
     return { shape, bones, skeleton, root: bones[0], bone: (name) => bones[B[name]], left, right };

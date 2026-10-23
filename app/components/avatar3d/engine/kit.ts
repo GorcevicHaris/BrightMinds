@@ -9,22 +9,27 @@ import type { HeadInfo } from "./head";
 import { armWeights, legWeights, torsoWeights, type BoneName, type Rig } from "./rig";
 import { buildSurface, ringTube, smoothstep, sweepFn, type SurfaceFn } from "./surface";
 
-export interface GarmentContext {
+/** Ono što krojenju treba: kostur tela i roditelj za SkinnedMesh */
+export interface KitContext {
     rig: Rig;
+    /** Roditelj za SkinnedMesh (isti kao telo) */
+    root: THREE.Object3D;
+}
+
+/** Prototip (engine/garments.ts, accessories.ts): uz kostur i glava, izgled i boja kože */
+export interface GarmentContext extends KitContext {
     head: HeadInfo;
     look: AvatarLook;
     skin: string;
-    /** Roditelj za SkinnedMesh (isti kao telo) */
-    root: THREE.Object3D;
 }
 
 export type Side = 1 | -1;
 export const SIDES: readonly Side[] = [1, -1];
 
-export class Kit {
+export class Kit<C extends KitContext = KitContext> {
     readonly objects: THREE.Object3D[] = [];
 
-    constructor(readonly ctx: GarmentContext) {}
+    constructor(readonly ctx: C) {}
 
     get shape() {
         return this.ctx.rig.shape;

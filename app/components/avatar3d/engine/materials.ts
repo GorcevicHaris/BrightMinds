@@ -159,3 +159,67 @@ export function lensMaterial(tint: string, opacity: number): THREE.MeshPhysicalM
 export function basicMaterial(hex: string, opacity = 1): THREE.MeshBasicMaterial {
     return cached(`basic-${hex}-${opacity}`, () => new THREE.MeshBasicMaterial({ color: new THREE.Color(hex), transparent: opacity < 1, opacity, depthWrite: opacity >= 1 }));
 }
+
+/** Krzno životinja (i plišane igračke): meki sheen po ivicama, mat */
+export function furMaterial(hex: string, options: { sheenLift?: number; normalScale?: number } = {}): THREE.MeshPhysicalMaterial {
+    return fabricMaterial(hex, "fleece", { sheen: 1, sheenLift: options.sheenLift ?? 0.5, roughness: 0.85, normalScale: options.normalScale ?? 0.35 });
+}
+
+/** Vrste materijala za opštu fabriku `material()` */
+export type MaterialKind =
+    | "cotton" | "knit" | "denim" | "rib" | "fleece" | "satin" | "felt" | "mesh"
+    | "leather" | "rubber" | "plastic" | "metal" | "gem" | "glass" | "wood" | "fur" | "skin" | "hair" | "basic" | "glow";
+
+export interface MaterialSpec {
+    kind: MaterialKind;
+    color: string;
+    /** Šara/crtež (printTexture, stripes, plaid…): boja materijala je tada nijansa preko mape */
+    map?: THREE.Texture;
+    roughness?: number;
+    side?: THREE.Side;
+    /** Providnost (staklo) */
+    opacity?: number;
+}
+
+/**
+ * Jedna fabrika za sve predmete: isti spec → isti (keširani) materijal. Tkanine imaju
+ * mapu normala i sheen, plastika i guma blagi lak, metal i dragulji odsjaj okruženja.
+ */
+export function material(spec: MaterialSpec): THREE.Material {
+    const { kind, color, map, roughness, side } = spec;
+    switch (kind) {
+        case "cotton":
+        case "knit":
+        case "denim":
+        case "rib":
+        case "fleece":
+        case "satin":
+        case "felt":
+        case "mesh":
+            return map ? patternedFabric(map, kind, color, { side, roughness }) : fabricMaterial(color, kind, { roughness, side });
+        case "leather":
+            return leatherMaterial(color);
+        case "rubber":
+            return glossyMaterial(color, roughness ?? 0.6, 0.15);
+        case "plastic":
+            return glossyMaterial(color, roughness ?? 0.32, 0.6);
+        case "metal":
+            return metalMaterial(color);
+        case "gem":
+            return gemMaterial(color);
+        case "glass":
+            return lensMaterial(color, spec.opacity ?? 0.35);
+        case "wood":
+            return cached(`wood-${color}-${roughness ?? ""}`, () => new THREE.MeshPhysicalMaterial({ color: new THREE.Color(color), roughness: roughness ?? 0.7, normalMap: fabricNormal("felt"), normalScale: new THREE.Vector2(0.2, 0.2) }));
+        case "fur":
+            return furMaterial(color);
+        case "skin":
+            return skinMaterial(color);
+        case "hair":
+            return hairMaterial(color);
+        case "basic":
+            return basicMaterial(color, spec.opacity ?? 1);
+        case "glow":
+            return cached(`glow-${color}`, () => new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color), emissiveIntensity: 0.9, roughness: 0.5 }));
+    }
+}

@@ -72,10 +72,10 @@ export function buildGarment(ctx: GarmentContext, item: Item3D, color: number): 
 // ── Zajednički delovi ─────────────────────────────────────────────────────────
 
 /** Okrugli izrez (napred malo niže) */
-const crewNeck = (kit: Kit, drop = 0.012) => (a: number) => kit.shape.neckBaseY - 0.003 - drop * Math.pow(Math.max(0, Math.cos(a)), 2);
+const crewNeck = (kit: Kit<GarmentContext>, drop = 0.012) => (a: number) => kit.shape.neckBaseY - 0.003 - drop * Math.pow(Math.max(0, Math.cos(a)), 2);
 
 /** Mala dugmad (kruto na kosti trupa koja je najbliža) */
-function button(kit: Kit, a: number, y: number, offset: number, material: THREE.Material, r = 0.0055) {
+function button(kit: Kit<GarmentContext>, a: number, y: number, offset: number, material: THREE.Material, r = 0.0055) {
     const p = torsoPoint(kit.shape, a, y, offset, new THREE.Vector3());
     const q = torsoPoint(kit.shape, a, y, offset + 0.01, new THREE.Vector3());
     const geometry = new THREE.CylinderGeometry(r, r, 0.0028, 16);
@@ -89,14 +89,14 @@ function button(kit: Kit, a: number, y: number, offset: number, material: THREE.
 }
 
 /** Šav ili štep: tanka cev preko površine trupa (tačke (a, y)) */
-function torsoStitch(kit: Kit, points: [number, number][], offset: number, material: THREE.Material, r = 0.0011, bone: BoneName = "hips") {
+function torsoStitch(kit: Kit<GarmentContext>, points: [number, number][], offset: number, material: THREE.Material, r = 0.0011, bone: BoneName = "hips") {
     const world = points.map(([a, y]) => torsoPoint(kit.shape, a, y, offset, new THREE.Vector3()));
     const local = world.map((p) => kit.toBone(bone, p));
     kit.rigid(bone, new THREE.Mesh(taperedTube(polyPath(local), () => r, Math.max(12, points.length * 6), 5), material));
 }
 
 /** Okovratnik (košulja, kaput): preklopljen list od potiljka do vrha napred */
-function collarFlap(kit: Kit, side: Side, material: THREE.Material, options: { offset: number; frontA: number; height: number; tip: number; frontDrop?: number; yNeck: (a: number) => number; lift?: number }) {
+function collarFlap(kit: Kit<GarmentContext>, side: Side, material: THREE.Material, options: { offset: number; frontA: number; height: number; tip: number; frontDrop?: number; yNeck: (a: number) => number; lift?: number }) {
     const shape = kit.shape;
     const fn = (u: number, w: number, out: THREE.Vector3) => {
         const a = side * (Math.PI - u * (Math.PI - options.frontA));
@@ -131,7 +131,7 @@ function fabricSide(hex: string, kind: Parameters<typeof fabricMaterial>[1], opt
 // ── Gornji deo ────────────────────────────────────────────────────────────────
 
 /** Majica kratkih rukava sa zvezdom na grudima */
-function tshirt(kit: Kit, sw: Swatch) {
+function tshirt(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const cloth = fabricSide(sw.hex, "cotton");
     const rib = fabricMaterial(sw.hex, "rib");
@@ -167,7 +167,7 @@ function tshirt(kit: Kit, sw: Swatch) {
 }
 
 /** Majica dugih rukava na pruge */
-function longSleeve(kit: Kit, sw: Swatch) {
+function longSleeve(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const map = stripes(sw.hex, sw.accent ?? sw.hex);
     const cloth = patternedFabric(map, "cotton", "#FFFFFF", { side: THREE.DoubleSide });
@@ -185,7 +185,7 @@ function longSleeve(kit: Kit, sw: Swatch) {
 }
 
 /** Duks sa kapuljačom: rebrasti porub i manžetne, kengur-džep, pertle, kapuljača na leđima */
-function hoodie(kit: Kit, sw: Swatch) {
+function hoodie(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const cloth = fabricSide(sw.hex, "fleece", { sheen: 1, sheenLift: 0.45 });
     const rib = fabricMaterial(sw.hex, "rib");
@@ -234,7 +234,7 @@ function hoodie(kit: Kit, sw: Swatch) {
     }
 }
 
-function buildHoodRing(kit: Kit, loop: (q: number, out: THREE.Vector3) => THREE.Vector3): THREE.BufferGeometry {
+function buildHoodRing(kit: Kit<GarmentContext>, loop: (q: number, out: THREE.Vector3) => THREE.Vector3): THREE.BufferGeometry {
     const center = new THREE.Vector3();
     const p = new THREE.Vector3();
     const p1 = new THREE.Vector3();
@@ -266,7 +266,7 @@ function buildHoodRing(kit: Kit, loop: (q: number, out: THREE.Vector3) => THREE.
 }
 
 /** Pleteni džemper sa pletenicama napred i rebrastim ivicama */
-function sweater(kit: Kit, sw: Swatch) {
+function sweater(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const cloth = fabricSide(sw.hex, "knit", { sheen: 0.9, sheenLift: 0.3, normalScale: 1 });
     const rib = fabricMaterial(sw.hex, "rib", { normalScale: 0.8 });
@@ -289,7 +289,7 @@ function sweater(kit: Kit, sw: Swatch) {
 }
 
 /** Košulja na kocke: okovratnik, lajsna sa dugmadima, džep, manžetne */
-function shirt(kit: Kit, sw: Swatch) {
+function shirt(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const map = plaid(sw.hex, sw.accent ?? "#222222");
     const cloth = patternedFabric(map, "cotton", "#FFFFFF", { side: THREE.DoubleSide });
@@ -316,7 +316,7 @@ function shirt(kit: Kit, sw: Swatch) {
 }
 
 /** Sportski dres: V-izrez i rubovi u drugoj boji, broj na leđima i grudima, bočne trake */
-function jersey(kit: Kit, sw: Swatch) {
+function jersey(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const accent = sw.accent ?? "#FFFFFF";
     const cloth = fabricSide(sw.hex, "mesh", { roughness: 0.62, sheen: 0.5 });
@@ -354,13 +354,13 @@ function jersey(kit: Kit, sw: Swatch) {
 // ── Donji deo ─────────────────────────────────────────────────────────────────
 
 /** Karlica pantalona (od međunožja do pojasa) */
-function pelvis(kit: Kit, top: number, offset: number, material: THREE.Material) {
+function pelvis(kit: Kit<GarmentContext>, top: number, offset: number, material: THREE.Material) {
     const s = kit.shape;
     const bottom = s.crotchY - 0.018;
     kit.torso(bottom, top, offset, material, undefined, 28);
 }
 
-function jeans(kit: Kit, sw: Swatch) {
+function jeans(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const denim = patternedFabric(denimColor(), "denim", sw.hex, { side: THREE.DoubleSide });
     const stitch = fabricMaterial(sw.accent ?? "#E3A54A", "cotton", { roughness: 0.7 });
@@ -388,7 +388,7 @@ function jeans(kit: Kit, sw: Swatch) {
     }
 }
 
-function joggers(kit: Kit, sw: Swatch) {
+function joggers(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const cloth = fabricSide(sw.hex, "fleece", { sheen: 1, sheenLift: 0.4 });
     const rib = fabricMaterial(sw.hex, "rib");
@@ -415,7 +415,7 @@ function joggers(kit: Kit, sw: Swatch) {
 }
 
 /** Plisirana suknja */
-function skirt(kit: Kit, sw: Swatch) {
+function skirt(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const cloth = fabricSide(sw.hex, "felt", { sheen: 0.7 });
     const top = s.waistY - 0.025;
@@ -428,7 +428,7 @@ function skirt(kit: Kit, sw: Swatch) {
     kit.edgeRing(edge, 0.0028, 0.004, cloth);
 }
 
-function shorts(kit: Kit, sw: Swatch) {
+function shorts(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const cloth = fabricSide(sw.hex, "cotton", { roughness: 0.78 });
     const off = LAYER.bottom + 0.001;
@@ -447,7 +447,7 @@ function shorts(kit: Kit, sw: Swatch) {
 // ── Dugačko ───────────────────────────────────────────────────────────────────
 
 /** Haljina: steznik, puf-rukavi, zvono-suknja, pojas sa mašnom pozadi */
-function dress(kit: Kit, sw: Swatch) {
+function dress(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const accent = sw.accent ?? "#FFFFFF";
     const cloth = fabricSide(sw.hex, "cotton", { sheen: 0.9 });
@@ -487,7 +487,7 @@ function dress(kit: Kit, sw: Swatch) {
 }
 
 /** Dugi kaput (mantil): revers, dvoredna dugmad, pojas, džepovi, do pola lista */
-function coat(kit: Kit, sw: Swatch) {
+function coat(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const accent = sw.accent ?? "#5A4A3A";
     const cloth = fabricSide(sw.hex, "felt", { sheen: 0.8, sheenLift: 0.25, roughness: 0.78 });
@@ -532,7 +532,7 @@ function coat(kit: Kit, sw: Swatch) {
 }
 
 /** Abaja: duga široka haljina do članaka, zvonasti rukavi, zlatni vez na rubovima i napred */
-function abaya(kit: Kit, sw: Swatch) {
+function abaya(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const accent = sw.accent ?? "#C9A55A";
     const cloth = fabricSide(sw.hex, "satin", { roughness: 0.62, sheen: 0.6, sheenLift: 0.35 });

@@ -66,6 +66,7 @@ const SLOT_TABS: Record<WearSlotId, { label: string; Icon: LucideIcon; tint: str
     glasses: { label: "Naočare i maske", Icon: Glasses, tint: "bg-sky-100 text-sky-700" },
     neck: { label: "Oko vrata", Icon: Gem, tint: "bg-violet-100 text-violet-700" },
     outfit: { label: "Odeća i kostimi", Icon: Shirt, tint: "bg-brand-100 text-brand-700" },
+    bottom: { label: "Donji deo", Icon: Shirt, tint: "bg-indigo-100 text-indigo-700" },
     feet: { label: "Obuća", Icon: Footprints, tint: "bg-amber-100 text-amber-800" },
     hand: { label: "U ruci", Icon: WandSparkles, tint: "bg-emerald-100 text-emerald-700" },
     back: { label: "Na leđima", Icon: Backpack, tint: "bg-teal-100 text-teal-700" },

@@ -24,8 +24,11 @@ export const POINTS_PER_STAR = 5;
 /** Novčića po zvezdici. Novčići se računaju iz svih zarađenih zvezdica, pa promena važi i unazad. */
 export const COINS_PER_STAR = 2;
 
-/** Pratioci koje dete može da izabere (crteži: app/components/avatar/Companion) */
-export const COMPANION_KINDS = ["woman", "man", "cat", "dog", "bunny", "bear"] as const;
+/**
+ * Pratioci koje dete može da izabere: ljudi (devojčica, dečak, učiteljica, učitelj) i životinje.
+ * 3D crteži: app/components/avatar3d; 2D (kad WebGL ne radi): app/components/avatar/Companion.
+ */
+export const COMPANION_KINDS = ["girl", "boy", "woman", "man", "cat", "dog", "bunny", "bear", "fox", "lion", "penguin", "unicorn"] as const;
 export type CompanionKindId = (typeof COMPANION_KINDS)[number];
 
 export function isCompanionKindId(value: unknown): value is CompanionKindId {
@@ -33,7 +36,7 @@ export function isCompanionKindId(value: unknown): value is CompanionKindId {
 }
 
 /** Mesta na liku; na svakom mestu je najviše jedan predmet, a sva mesta se nose istovremeno */
-export const WEAR_SLOT_IDS = ["hat", "glasses", "neck", "outfit", "feet", "hand", "back", "pet", "background"] as const;
+export const WEAR_SLOT_IDS = ["hat", "glasses", "neck", "outfit", "bottom", "feet", "hand", "back", "pet", "background"] as const;
 export type WearSlotId = (typeof WEAR_SLOT_IDS)[number];
 
 export function isWearSlotId(value: unknown): value is WearSlotId {

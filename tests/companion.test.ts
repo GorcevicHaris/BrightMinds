@@ -74,8 +74,8 @@ describe("companion state", () => {
         assert.equal("goal" in state, false);
     });
 
-    it("has nine slots in a fixed order and wears all of them at once", () => {
-        assert.deepEqual(WEAR_SLOT_IDS, ["hat", "glasses", "neck", "outfit", "feet", "hand", "back", "pet", "background"]);
+    it("has ten slots in a fixed order and wears all of them at once", () => {
+        assert.deepEqual(WEAR_SLOT_IDS, ["hat", "glasses", "neck", "outfit", "bottom", "feet", "hand", "back", "pet", "background"]);
         const owned = ["cap", "glasses", "boots", "wings", "puppy", "beach"];
         const wear = { hat: "cap", glasses: "glasses", feet: "boots", back: "wings", pet: "puppy", background: "beach" };
         assert.deepEqual(sanitizeCompanion({ kind: "dog", owned, wear, spent: 0, v: 1 }, null, catalog).wear, wear);
