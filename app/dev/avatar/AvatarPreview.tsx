@@ -10,6 +10,7 @@ import { VOICE_EMOTIONS, type VoiceEmotion } from "@/lib/emotion";
 import { speak } from "@/lib/speech";
 import { mimeVoice, playVoice } from "@/lib/voice";
 import ShopPreview from "./ShopPreview";
+import SkinsPreview from "./SkinsPreview";
 
 /** Bilo koji snimak iz aplikacije: proverava puštanje kroz analizator i pomeranje usta */
 const SAMPLE_SOUND = "/sounds/ptica.mp3";
@@ -91,6 +92,7 @@ function CompanionPreview() {
 export default function AvatarPreview() {
     return (
         <main className="min-h-screen bg-canvas p-6">
+            <SkinsPreview />
             <ShopPreview />
             <CompanionPreview />
             {/* Lica za pitanje „Kako si?” i za igru emocija */}

@@ -19,12 +19,14 @@ interface CompanionProps {
     emotion?: VoiceEmotion;
     /** Predmeti iz prodavnice; poprsje i lice crtaju samo kapu, naočare, vrat i odeću */
     wear?: Wear;
+    /** Izgled iz skins.ts (krzno, ili koža, kosa i frizura); bez njega dosadašnji crtež */
+    skin?: string;
     className?: string;
 }
 
-export default function Companion({ kind, variant = "bust", emotion, wear, className }: CompanionProps) {
+export default function Companion({ kind, variant = "bust", emotion, wear, skin, className }: CompanionProps) {
     if (kind === "woman" || kind === "man") {
-        return <TeacherAvatar gender={kind === "woman" ? "female" : "male"} variant={variant} emotion={emotion} wear={wear} className={className} />;
+        return <TeacherAvatar gender={kind === "woman" ? "female" : "male"} variant={variant} emotion={emotion} wear={wear} skin={skin} className={className} />;
     }
-    return <AnimalAvatar kind={kind} variant={variant} emotion={emotion} wear={wear} className={className} />;
+    return <AnimalAvatar kind={kind} variant={variant} emotion={emotion} wear={wear} skin={skin} className={className} />;
 }

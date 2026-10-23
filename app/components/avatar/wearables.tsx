@@ -64,9 +64,9 @@ export interface WearItem {
     /**
      * SVG elementi. Kapa, naočare, vrat, odeća, obuća, leđa i pozadina su u zajedničkom
      * sistemu crteža (geometry.ts); predmet u ruci i ljubimac u sopstvenom (0, 0 = šaka / tlo).
-     * Bez argumenata crta poprsje (kao ranije).
+     * Bez argumenata crta poprsje (kao ranije). `tone` je boja kože ili krzna lika (bosa stopala u sandalama).
      */
-    render: (variant?: WearVariant, kind?: CompanionKind) => ReactNode;
+    render: (variant?: WearVariant, kind?: CompanionKind, tone?: string) => ReactNode;
     /** Na leđima: deo koji se vidi spreda (kaiševi, kopča), crta se preko odeće */
     front?: (variant?: WearVariant, kind?: CompanionKind) => ReactNode;
     /** Odeća: boja rukava (ruke celog lika i podignuta ruka na poprsju) */
@@ -109,13 +109,15 @@ interface RenderOptions {
     kind?: CompanionKind;
     /** Deo predmeta na leđima koji se vidi spreda */
     front?: boolean;
+    /** Boja kože ili krzna lika (izabrani izgled) */
+    tone?: string;
 }
 
 /** Crtež predmeta na tom mestu, ili ništa (i kada se to mesto u tom obliku lika ne vidi) */
-export function renderWorn(wear: Wear | undefined, slot: WearSlot, { variant = "bust", kind, front = false }: RenderOptions = {}): ReactNode {
+export function renderWorn(wear: Wear | undefined, slot: WearSlot, { variant = "bust", kind, front = false, tone }: RenderOptions = {}): ReactNode {
     const item = wornItem(wear, slot);
     if (!item || !slotVisible(slot, variant)) return null;
-    const art = front ? item.front?.(variant, kind) : item.render(variant, kind);
+    const art = front ? item.front?.(variant, kind) : item.render(variant, kind, tone);
     if (!art) return null;
     return (
         <g data-wear={item.id} transform={PLACE[slot]}>

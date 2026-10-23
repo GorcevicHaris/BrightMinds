@@ -127,11 +127,11 @@ function rainBoots(color: string, shade: string, spots?: string): () => ReactNod
     );
 }
 
-function sandals(strap: string): (variant?: WearVariant, kind?: CompanionKind) => ReactNode {
-    return (_variant, kind) => (
+function sandals(strap: string): (variant?: WearVariant, kind?: CompanionKind, tone?: string) => ReactNode {
+    return (_variant, kind, tone) => (
         <>
             {pair([
-                [FLAT, FOOT_TONE[kind ?? "man"]],
+                [FLAT, tone ?? FOOT_TONE[kind ?? "man"]],
                 ["M77 404H118V407Q118 412 110 412H84Q77 412 77 407Z", strap],
                 ["M82 398Q98 388 116 398", "none", strap],
                 ["M86 404Q90 394 96 392", "none", strap],
