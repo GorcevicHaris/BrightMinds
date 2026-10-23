@@ -7,10 +7,9 @@
 //       uvek proverava server; upis uspeva samo ako se stanje u međuvremenu nije
 //       promenilo (dva brza dodira ne mogu dvaput da potroše iste novčiće).
 import { NextResponse } from "next/server";
-import { skinPrice } from "@/app/components/avatar/skins";
-import { getWearItem, getWearSet } from "@/app/components/avatar/wearables";
+import { COMPANION_CATALOG } from "@/app/components/avatar3d/manifest";
 import { requireChildAccess } from "@/lib/auth";
-import { applyCompanionAction, coinsAvailable, isCompanionKindId, parseCompanionAction, sanitizeCompanion, type CompanionCatalog } from "@/lib/companion";
+import { applyCompanionAction, coinsAvailable, parseCompanionAction, sanitizeCompanion, type CompanionCatalog } from "@/lib/companion";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isRecord } from "@/lib/validation";
 import { CHILD_NOT_FOUND } from "../../../_lib/children";
@@ -20,18 +19,9 @@ interface RouteContext {
     params: Promise<{ id: string }>;
 }
 
-const CATALOG: CompanionCatalog = {
-    isKind: isCompanionKindId,
-    item: (id) => {
-        const item = getWearItem(id);
-        return item ? { slot: item.slot, price: item.price } : undefined;
-    },
-    set: getWearSet,
-    skin: (kind, id) => {
-        const price = skinPrice(kind, id);
-        return price === undefined ? undefined : { price };
-    },
-};
+// Katalog 3D drugara (čisti podaci, bez three.js): svi stari predmeti (isti id i cena),
+// donji deo, kompleti, krzna životinja i besplatan izgled čoveka (looks.ts)
+const CATALOG: CompanionCatalog = COMPANION_CATALOG;
 
 const MESSAGES = {
     unknown: "Nepoznat izbor",

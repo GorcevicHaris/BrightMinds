@@ -7,7 +7,7 @@
 // Stari 2D zapis od tri dela `<koža>.<kosa>.<frizura>` i dalje važi (oči smeđe, bez hidžaba),
 // pa izgled koji je dete ranije izabralo ostaje isti.
 
-import type { HumanKind } from "./data";
+import { isHumanKind, type HumanKind } from "./data";
 
 export interface LookPart {
     id: string;
@@ -164,4 +164,9 @@ export function hairShape(kind: HumanKind, style: string): HairShape {
 
 export function partHex(list: readonly ColorLookPart[], id: string): string {
     return (list.find((part) => part.id === id) ?? list[0]).hex;
+}
+
+/** Izgled za 3D motor: čovek dobija delove izgleda, životinja id krzna (nepoznat → prvi) */
+export function companionLook(kind: string, skin: string | undefined): { kind: string; skin: string; human?: HumanLook } {
+    return isHumanKind(kind) ? { kind, skin: "", human: humanLook(kind, skin) } : { kind, skin: skin ?? "" };
 }
