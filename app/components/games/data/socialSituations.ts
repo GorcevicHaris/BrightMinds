@@ -15,9 +15,10 @@
 //  • Zagrljaj, poljubac i gledanje u oči se nikad ne traže.
 //  • Oblik koji zavisi od pola deteta piše se kao par {muški|ženski} — vidi `genderText()` u kit/utils.
 //
-// Raspored: 15 nivoa po 4 situacije. Situacije 1–15 se ponavljaju na tri težine
+// Raspored: 15 nivoa po 5 situacija. Situacije 1–15 se ponavljaju na tri težine
 // (ID-jevi 1–45: nivoi 1–5 nude 2 izbora, 6–10 nude 3, 11–15 nude 4), a svaki nivo
-// dobija i jednu situaciju zastupanja sebe koja se ne ponavlja (ID-jevi 46–60).
+// dobija i jednu situaciju zastupanja sebe (ID-jevi 46–60) i jednu novu situaciju
+// (ID-jevi 61–75) koje se ne ponavljaju, pa nijedan nivo nije isti kao drugi.
 
 export type SituationKind = "polite" | "advocacy";
 
@@ -600,6 +601,272 @@ const ADVOCACY: Draft[] = [
     },
 ];
 
+// ── Nove situacije: po jedna za svaki nivo (ID-jevi 61–75) ─────────────────────
+// Ne ponavljaju se, pa svaki nivo ima dve situacije koje dete još nije videlo. Napisane su sa
+// dva i dva izbora; nivo bira koliko se nudi, isto kao kod situacija koje se ponavljaju
+// (laki nivoi 1 + 1, srednji 1 + 2, teški 2 + 2). Situacije postaju teže iz nivoa u nivo.
+
+const FRESH: Draft[] = [
+    // Laki nivoi (1–5)
+    {
+        id: 61,
+        kind: "polite",
+        scene: "🍪",
+        model: "Baka daje Amaru kolačić. Amar kaže: „Mmm, hvala ti, bako!”",
+        text: "Baka ti daje kolačić.",
+        ask: ASK_SAY_OR_DO,
+        script: "Hvala!",
+        good: [
+            say("🙏", "Hvala!", "Kad kažemo „Hvala”, baka zna da nam je drago."),
+            act("🙂", "Nasmešim se i klimnem glavom.", "Osmeh i klimanje glavom takođe kažu „Hvala”."),
+        ],
+        other: [
+            act("✊", "Zgrabim celu kutiju kolačića.", "Baka je dala jedan kolačić. Ako uzmemo sve, drugi ostanu bez kolačića."),
+            act("🗑️", "Bacim kolačić na pod.", "Kolačić na podu se isprlja. Niko ne može da ga pojede."),
+        ],
+    },
+    {
+        id: 62,
+        kind: "advocacy",
+        scene: "🚽",
+        model: "Selmi treba toalet. Selma kaže vaspitačici: „Moram u toalet, molim vas.”",
+        text: "U vrtiću si. Treba ti toalet.",
+        ask: ASK_SAY_OR_DO,
+        script: "Treba mi toalet.",
+        good: [
+            say("🚽", "Treba mi toalet.", "Kad kažemo šta nam treba, vaspitačica može odmah da pomogne."),
+            act("🙋", "Podignem ruku i pokažem na vrata toaleta.", "I kad pokažemo, vaspitačica zna šta nam treba."),
+        ],
+        other: [
+            act("🤐", "Čekam i ništa ne kažem.", "Ako ne kažemo, niko ne zna da nam treba toalet. Može biti kasno."),
+            act("🏃", "Istrčim iz sobe i nikome ne kažem.", "Vaspitačica ne zna gde smo. Može da se zabrine."),
+        ],
+    },
+    {
+        id: 63,
+        kind: "advocacy",
+        scene: "🖍️",
+        model: "Ilma crta. Drug ima plavu bojicu. Ilma pita: „Daš li mi plavu kad završiš?”",
+        text: "Crtaš. Treba ti bojica. Bojicu ima drug.",
+        ask: ASK_SAY,
+        script: "Možeš li da mi daš bojicu?",
+        good: [
+            say("🖍️", "Možeš li da mi daš bojicu?", "Kad pitamo, drug zna šta nam treba. Može da nam da bojicu."),
+            say("⏳", "Mogu li ja posle tebe?", "Kad pitamo za red, drug zna da čekamo bojicu."),
+        ],
+        other: [
+            act("✊", "Otmem mu bojicu iz ruke.", "Bojica može da se polomi. Drug može da se naljuti."),
+            act("😠", "Bacim svoj crtež.", "Crtež se izgužva. Bojicu i dalje nemamo."),
+        ],
+    },
+    {
+        id: 64,
+        kind: "polite",
+        scene: "🚪",
+        model: "Nejla otvara vrata. Iza nje ide baka. Nejla kaže: „Izvolite, bako, prođite.”",
+        text: "Otvaraš vrata. Iza tebe ide jedna baka.",
+        ask: ASK_SAY_OR_DO,
+        script: "Izvolite.",
+        good: [
+            say("🙂", "Izvolite.", "„Izvolite” kaže baki da može da prođe pre nas."),
+            act("🚪", "Pridržim vrata dok baka ne prođe.", "Kad pridržimo vrata, baka lako prođe. Vrata je ne udare."),
+        ],
+        other: [
+            act("💨", "Pustim vrata da se zalupe.", "Vrata mogu da udare baku. Glasan zvuk može da je uplaši."),
+            act("🏃", "Protrčim ispred bake.", "Baka može da se uplaši ili izgubi ravnotežu."),
+        ],
+    },
+    {
+        id: 65,
+        kind: "advocacy",
+        scene: "🧥",
+        model: "Kenanu je vruće u jakni. Kenan kaže: „Toplo mi je. Mogu li da skinem jaknu?”",
+        text: "Napolju je toplo. Nosiš debelu jaknu. Vruće ti je.",
+        ask: ASK_SAY_OR_DO,
+        script: "Vruće mi je.",
+        good: [
+            say("🥵", "Vruće mi je.", "Kad kažemo da nam je vruće, odrasli mogu da pomognu."),
+            act("🧥", "Pokažem mami jaknu.", "Mama vidi jaknu i pita da li želimo da je skinemo."),
+        ],
+        other: [
+            act("😣", "Trpim i ništa ne kažem.", "Ne moraš da trpiš. Smeš da kažeš: „Vruće mi je.”"),
+            act("🗑️", "Bacim jaknu na zemlju i odem.", "Jakna se isprlja ili izgubi. Mama ne zna gde je."),
+        ],
+    },
+    // Srednji nivoi (6–10)
+    {
+        id: 66,
+        kind: "polite",
+        scene: "🤧",
+        model: "Drug kija. Faris mu kaže: „Nazdravlje, drugar!”",
+        text: "Drug pored tebe kine.",
+        ask: ASK_SAY_OR_DO,
+        script: "Nazdravlje!",
+        good: [
+            say("🙂", "Nazdravlje!", "„Nazdravlje” kažemo kad neko kine. Drug zna da mislimo na njega."),
+            act("🧻", "Dam mu maramicu.", "Maramica mu pomaže da obriše nos."),
+        ],
+        other: [
+            say("🤢", "Fuj, beži od mene!", "Kijanje se desi svakome. Posle tih reči drug može da se rastuži."),
+            act("😆", "Smejem se glasno.", "Drug ne zna zašto se smejemo. Može da mu bude neprijatno."),
+        ],
+    },
+    {
+        id: 67,
+        kind: "advocacy",
+        scene: "🌙",
+        model: "Lamija se plaši mraka. Lamija kaže: „Mama, ostavi malo svetla, molim te.”",
+        text: "Uveče je mrak u sobi. Ti se plašiš mraka.",
+        ask: ASK_SAY_OR_DO,
+        script: "Mogu li da ostane svetlo?",
+        good: [
+            say("💡", "Mogu li da ostane svetlo?", "Kad kažemo šta nam treba, mama može da ostavi malo svetla."),
+            act("🧸", "Uzmem medu u krevet.", "Meda u krevetu pomaže da se osećamo sigurno."),
+        ],
+        other: [
+            act("😶", "Ćutim i ne spavam celu noć.", "Mama ne zna da nam je strah. Kad kažemo, ona može da pomogne."),
+            act("📣", "Vrištim dok svi ne dođu.", "Vrisak može da uplaši druge. Mirne reči kažu šta nam treba."),
+        ],
+    },
+    {
+        id: 68,
+        kind: "polite",
+        scene: "🧸",
+        model: "Mlađi brat plače. Emir mu kaže: „Evo, možeš malo da se igraš mojim medom.”",
+        text: "Tvoj mlađi brat plače. On želi da se igra sa tobom.",
+        ask: ASK_SAY_OR_DO,
+        script: "Hoćeš da se igramo zajedno?",
+        good: [
+            say("🧸", "Hoćeš da se igramo zajedno?", "Kad pozovemo brata u igru, on prestaje da bude tužan."),
+            act("🎁", "Dam mu jednu svoju igračku.", "Brat dobija igračku. Mi se i dalje igramo svojom."),
+        ],
+        other: [
+            say("📣", "Beži, ovo je samo moje!", "Posle vike brat može još više da plače."),
+            act("🙈", "Sakrijem sve igračke od njega.", "Brat i dalje plače. Niko se ne igra."),
+        ],
+    },
+    {
+        id: 69,
+        kind: "polite",
+        scene: "🏃",
+        model: "Tarik i drug trče do drveta. Drug stiže prvi. Tarik kaže: „Bravo, bio si brži!”",
+        text: "Trčiš sa drugom. Drug je stigao prvi.",
+        ask: ASK_SAY_OR_DO,
+        script: "Bravo!",
+        good: [
+            say("👏", "Bravo!", "Kad kažemo „Bravo”, drug je srećan. Sledeći put možda pobedimo mi."),
+            act("🤝", "Pružim mu ruku.", "Pružena ruka kaže: „Lepo smo se igrali.”"),
+        ],
+        other: [
+            say("😠", "Ti si varao!", "Drug nije varao. Posle tih reči može da se naljuti."),
+            act("🦶", "Udarim nogom o zemlju i odem.", "Drug ne zna šta nam je. Igra se završi."),
+        ],
+    },
+    {
+        id: 70,
+        kind: "advocacy",
+        scene: "🚌",
+        model: "U autobusu je buka. Adnan kaže mami: „Previše mi je glasno. Mogu li da stavim slušalice?”",
+        text: "U autobusu je gužva i buka. Tebi je previše.",
+        ask: ASK_SAY_OR_DO,
+        script: "Previše mi je buke.",
+        good: [
+            say("🔊", "Previše mi je buke.", "Kad kažemo da nam je previše, mama može da pomogne."),
+            act("🙉", "Pokrijem uši rukama.", "Pokrivene uši stišaju buku. To je u redu."),
+        ],
+        other: [
+            act("📣", "Vičem da svi ućute.", "Posle vike je još glasnije. Ljudi se mogu uplašiti."),
+            act("🚪", "Krenem {sam|sama} do vrata autobusa.", "Autobus vozi. Kod vrata možemo da padnemo."),
+        ],
+    },
+    // Teški nivoi (11–15)
+    {
+        id: 71,
+        kind: "polite",
+        scene: "📞",
+        model: "Zvoni telefon. Amina se javlja: „Halo, ovde Amina. Ko je to?”",
+        text: "Zvoni telefon. Mama ti kaže da se javiš.",
+        ask: ASK_SAY,
+        script: "Halo?",
+        good: [
+            say("📞", "Halo?", "„Halo” kaže osobi da je slušamo."),
+            say("🙂", "Dobar dan, ko je to?", "Tako saznamo ko zove. Onda možemo da pozovemo mamu."),
+        ],
+        other: [
+            act("📵", "Spustim slušalicu bez reči.", "Osoba ne zna šta se desilo. Može ponovo da zove."),
+            act("📣", "Viknem u telefon.", "Vika u telefonu jako boli uši."),
+        ],
+    },
+    {
+        id: 72,
+        kind: "advocacy",
+        scene: "🤒",
+        model: "Merjem se ne oseća dobro na času. Merjem kaže: „Učiteljice, boli me stomak.”",
+        text: "U školi si. Odjednom te boli stomak.",
+        ask: ASK_SAY_OR_DO,
+        script: "Boli me stomak.",
+        good: [
+            say("🤒", "Boli me stomak.", "Kad kažemo šta nas boli, učiteljica može da pomogne."),
+            act("🙋", "Odem do učiteljice i pokažem stomak.", "I kad pokažemo, učiteljica zna gde nas boli."),
+        ],
+        other: [
+            act("😣", "Ćutim i trpim do kraja dana.", "Ako ne kažemo, niko ne zna da nas boli."),
+            act("🏃", "Izađem iz škole i nikome ne kažem.", "Učiteljica ne zna gde smo. Napolju možemo da se izgubimo."),
+        ],
+    },
+    {
+        id: 73,
+        kind: "polite",
+        scene: "🎁",
+        model: "Selma je dobila poklon. Poklon joj se ne sviđa. Selma kaže: „Hvala što si mislila na mene.”",
+        text: "Drugarica ti daje poklon. Poklon ti se ne sviđa.",
+        ask: ASK_SAY,
+        script: "Hvala ti.",
+        good: [
+            say("🙏", "Hvala ti.", "Drugarica je mislila na nas. „Hvala” joj kaže da to vidimo."),
+            say("🙂", "Hvala što si se setila.", "Tako drugarica zna da nam je drago što je mislila na nas."),
+        ],
+        other: [
+            say("🤢", "Fuj, ovo mi se ne sviđa!", "Drugarica se trudila oko poklona. Posle tih reči može da se rastuži."),
+            act("🗑️", "Bacim poklon u ugao.", "Poklon može da se polomi. Drugarica može da se rastuži."),
+        ],
+    },
+    {
+        id: 74,
+        kind: "advocacy",
+        scene: "🔁",
+        model: "Bazen je danas zatvoren. Haris kaže tati: „Baš sam se radovao. Šta ćemo sada?”",
+        text: "Krenuli ste na bazen. Bazen je danas zatvoren. Plan se promenio.",
+        ask: ASK_SAY_OR_DO,
+        script: "Šta ćemo da radimo umesto toga?",
+        good: [
+            say("❓", "Šta ćemo da radimo umesto toga?", "Kad pitamo, tata kaže novi plan. Novi plan pomaže da se smirimo."),
+            act("🌬️", "Dišem polako i brojim do pet.", "Polako disanje pomaže kad se plan promeni."),
+        ],
+        other: [
+            act("🚪", "Lupam rukama po vratima bazena.", "Vrata ostaju zatvorena. Ruke mogu da zabole."),
+            act("😶", "Ćutim i neću nigde da idem.", "Tata ne zna šta mislimo. Kad kažemo, lakše je naći novi plan."),
+        ],
+    },
+    {
+        id: 75,
+        kind: "polite",
+        scene: "👋",
+        model: "U razred je došao novi dečak. Lejla mu kaže: „Zdravo, ja sam Lejla. Kako se ti zoveš?”",
+        text: "U razred je došao novi dečak. On stoji sam.",
+        ask: ASK_SAY_OR_DO,
+        script: "Zdravo! Hoćeš da se igraš sa nama?",
+        good: [
+            say("👋", "Zdravo! Hoćeš da se igraš sa nama?", "Novi dečak više nije sam. Lakše mu je prvog dana."),
+            act("🙋", "Mahnem mu i pokažem mu gde je naša igra.", "I kad mahnemo, dečak zna da je dobrodošao."),
+        ],
+        other: [
+            act("👉", "Pokazujem ga prstom i smejem se.", "Dečak ne zna zašto se smejemo. Može da mu bude neprijatno."),
+            say("🙅", "Kažem drugima: „Ne igrajte se sa njim.”", "Dečak ostaje sam. Može da se rastuži."),
+        ],
+    },
+];
+
 // ── Slaganje nivoa ────────────────────────────────────────────────────────────
 
 function toSituation({ good, other, ...base }: Draft): SocialSituation {
@@ -611,23 +878,26 @@ function toSituation({ good, other, ...base }: Draft): SocialSituation {
  * Broj ponuđenih izbora raste (2 → 3 → 4), pa nijedna težina nije lakša od prethodne;
  * na teškoj dete uz to uči da više od jednog odgovora može da pomogne.
  */
-function forTier(draft: Draft, tier: number): SocialSituation {
+function forTier(draft: Draft, tier: number, repeated = true): SocialSituation {
     return toSituation({
         ...draft,
-        id: draft.id + tier * REPEATED_PER_TIER,
+        id: repeated ? draft.id + tier * REPEATED_PER_TIER : draft.id,
         good: draft.good.slice(0, tier === TIER_COUNT - 1 ? 2 : 1),
         other: draft.other.slice(0, tier === 0 ? 1 : 2),
     });
 }
 
-/** Zastupanje sebe je drugo po redu, pa ostaje u nivou i kad je broj zadataka skraćen. */
+/**
+ * Zastupanje sebe je drugo po redu, a nova situacija nivoa treća, pa obe ostaju u nivou i kad
+ * je broj zadataka skraćen (najmanje 5 zadataka po nivou).
+ */
 function buildLevel(level: number): SocialSituation[] {
     const tier = Math.floor((level - 1) / GROUP_COUNT);
     const [first, ...rest] = GROUPS[(level - 1) % GROUP_COUNT].map((draft) => forTier(draft, tier));
-    return [first, toSituation(ADVOCACY[level - 1]), ...rest];
+    return [first, toSituation(ADVOCACY[level - 1]), forTier(FRESH[level - 1], tier, false), ...rest];
 }
 
-/** Situacije po nivoima 1–15 (ID-jevi 1–45 imaju isti raspored kao ranije; 46–60 su novi). */
+/** Situacije po nivoima 1–15 (ID-jevi 1–45 se ponavljaju na tri težine; 46–75 su jedinstvene). */
 const SITUATIONS_BY_LEVEL: Record<number, SocialSituation[]> = Object.fromEntries(
     Array.from({ length: MAX_LEVEL }, (_, i) => [i + 1, buildLevel(i + 1)])
 );
