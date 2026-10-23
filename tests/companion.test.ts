@@ -2,9 +2,11 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
     applyCompanionAction,
+    COINS_PER_STAR,
     coinsAvailable,
     defaultCompanion,
     parseCompanionAction,
+    POINTS_PER_STAR,
     sanitizeCompanion,
     setMissing,
     skinGoalId,
@@ -12,6 +14,9 @@ import {
     type CompanionCatalog,
     type WearSlotId,
 } from "@/lib/companion";
+
+/** Poeni iskustva za tačno `coins` novčića (5 poena = jedna zvezdica = COINS_PER_STAR novčića) */
+const xp = (coins: number) => (coins / COINS_PER_STAR) * POINTS_PER_STAR;
 
 const ITEMS: Record<string, { slot: WearSlotId; price: number }> = {
     crown: { slot: "hat", price: 10 },
@@ -116,9 +121,9 @@ describe("companion state", () => {
         assert.equal(sanitizeCompanion({ goal: "skin:cat" }, null, catalog).goal, undefined);
     });
 
-    it("turns stars into coins: one star is one coin, spent coins are subtracted, never below zero", () => {
-        assert.equal(coinsAvailable(15, 0), 3); // 3 zvezdice × 5 poena
-        assert.equal(coinsAvailable(50, 4), 6);
+    it("turns stars into coins: one star is two coins, spent coins are subtracted, never below zero", () => {
+        assert.equal(coinsAvailable(15, 0), 6); // 3 zvezdice × 5 poena → 6 novčića
+        assert.equal(coinsAvailable(50, 4), 16);
         assert.equal(coinsAvailable(5, 9), 0);
         assert.equal(coinsAvailable(null, 0), 0);
     });
@@ -134,14 +139,14 @@ describe("companion actions", () => {
     });
 
     it("buys an item only with enough coins, then wears it right away", () => {
-        assert.deepEqual(applyCompanionAction(start, { action: "buy", item: "crown" }, 9 * 5, catalog), { ok: false, reason: "coins" });
-        const bought = applyCompanionAction(start, { action: "buy", item: "crown" }, 10 * 5, catalog);
+        assert.deepEqual(applyCompanionAction(start, { action: "buy", item: "crown" }, xp(9), catalog), { ok: false, reason: "coins" });
+        const bought = applyCompanionAction(start, { action: "buy", item: "crown" }, xp(10), catalog);
         assert.ok(bought.ok);
         assert.deepEqual(bought.state.owned, ["crown"]);
         assert.equal(bought.state.spent, 10);
         assert.equal(bought.state.wear.hat, "crown");
         // Isti predmet se ne kupuje dvaput
-        assert.deepEqual(applyCompanionAction(bought.state, { action: "buy", item: "crown" }, 100 * 5, catalog), { ok: false, reason: "owned" });
+        assert.deepEqual(applyCompanionAction(bought.state, { action: "buy", item: "crown" }, xp(100), catalog), { ok: false, reason: "owned" });
     });
 
     it("wears and takes off only owned items, each in its own slot", () => {
@@ -169,9 +174,9 @@ describe("companion actions", () => {
 
     it("clears the goal when the child buys that item, and keeps it when buying something else", () => {
         const withGoal = { ...start, goal: "wings" };
-        const other = applyCompanionAction(withGoal, { action: "buy", item: "cap" }, 20 * 5, catalog);
+        const other = applyCompanionAction(withGoal, { action: "buy", item: "cap" }, xp(20), catalog);
         assert.ok(other.ok && other.state.goal === "wings");
-        const reached = applyCompanionAction(other.state, { action: "buy", item: "wings" }, 20 * 5, catalog);
+        const reached = applyCompanionAction(other.state, { action: "buy", item: "wings" }, xp(20), catalog);
         assert.ok(reached.ok);
         assert.equal("goal" in reached.state, false);
         assert.equal(reached.state.wear.back, "wings");
@@ -203,8 +208,8 @@ describe("companion actions", () => {
     it("buys the missing items of a set at once, at the sum of their fixed prices, and wears the whole set", () => {
         const some = { ...start, owned: ["crown"], wear: { glasses: "glasses" }, spent: 10, goal: "set:king" };
         // Nedostaju krila (14) i štene (12): 26 novčića; jedan manje — ne kupuje se ništa
-        assert.deepEqual(applyCompanionAction(some, { action: "buySet", set: "king" }, (10 + 25) * 5, catalog), { ok: false, reason: "coins" });
-        const bought = applyCompanionAction(some, { action: "buySet", set: "king" }, (10 + 26) * 5, catalog);
+        assert.deepEqual(applyCompanionAction(some, { action: "buySet", set: "king" }, xp(10 + 25), catalog), { ok: false, reason: "coins" });
+        const bought = applyCompanionAction(some, { action: "buySet", set: "king" }, xp(10 + 26), catalog);
         assert.ok(bought.ok);
         assert.deepEqual(bought.state.owned, ["crown", "wings", "puppy"]);
         assert.equal(bought.state.spent, 36);
@@ -227,12 +232,12 @@ describe("companion actions", () => {
         assert.deepEqual(applyCompanionAction({ ...start, owned: ["cap", "glasses", "beach"] }, { action: "goal", item: "set:beach" }, 0, catalog), { ok: false, reason: "owned" });
         let state = goal.state;
         for (const item of ["cap", "glasses"]) {
-            const result = applyCompanionAction(state, { action: "buy", item }, 99 * 5, catalog);
+            const result = applyCompanionAction(state, { action: "buy", item }, xp(99), catalog);
             assert.ok(result.ok);
             state = result.state;
             assert.equal(state.goal, "set:beach");
         }
-        const last = applyCompanionAction(state, { action: "buy", item: "beach" }, 99 * 5, catalog);
+        const last = applyCompanionAction(state, { action: "buy", item: "beach" }, xp(99), catalog);
         assert.ok(last.ok && !("goal" in last.state));
     });
 
@@ -260,8 +265,8 @@ describe("companion actions", () => {
 
     it("buys a special look at its fixed price, puts it on and clears it as a goal", () => {
         const withGoal = { ...start, skin: { dog: "brown" }, goal: skinGoalId("cat", "tiger") };
-        assert.deepEqual(applyCompanionAction(withGoal, { action: "buySkin", kind: "cat", skin: "tiger" }, 11 * 5, catalog), { ok: false, reason: "coins" });
-        const bought = applyCompanionAction(withGoal, { action: "buySkin", kind: "cat", skin: "tiger" }, 12 * 5, catalog);
+        assert.deepEqual(applyCompanionAction(withGoal, { action: "buySkin", kind: "cat", skin: "tiger" }, xp(11), catalog), { ok: false, reason: "coins" });
+        const bought = applyCompanionAction(withGoal, { action: "buySkin", kind: "cat", skin: "tiger" }, xp(12), catalog);
         assert.ok(bought.ok);
         assert.deepEqual(bought.state.skins, ["cat:tiger"]);
         assert.deepEqual(bought.state.skin, { dog: "brown", cat: "tiger" });
@@ -272,7 +277,7 @@ describe("companion actions", () => {
         assert.deepEqual(applyCompanionAction(start, { action: "buySkin", kind: "cat", skin: "grey" }, 999, catalog), { ok: false, reason: "owned" });
         assert.deepEqual(applyCompanionAction(start, { action: "buySkin", kind: "cat", skin: "nope" }, 999, catalog), { ok: false, reason: "unknown" });
         // Novčići potrošeni na izgled se ne mogu potrošiti ponovo
-        assert.deepEqual(applyCompanionAction(bought.state, { action: "buy", item: "wings" }, 12 * 5 + 13 * 5, catalog), { ok: false, reason: "coins" });
+        assert.deepEqual(applyCompanionAction(bought.state, { action: "buy", item: "wings" }, xp(12) + xp(13), catalog), { ok: false, reason: "coins" });
     });
 
     it("takes a paid look as a goal; a free or bought look cannot be one", () => {
@@ -282,7 +287,7 @@ describe("companion actions", () => {
         assert.deepEqual(applyCompanionAction(start, { action: "goal", item: "skin:cat:nope" }, 0, catalog), { ok: false, reason: "unknown" });
         assert.deepEqual(applyCompanionAction({ ...start, skins: ["cat:gold"] }, { action: "goal", item: "skin:cat:gold" }, 0, catalog), { ok: false, reason: "owned" });
         // Kupovina predmeta ne briše cilj izgleda
-        const other = applyCompanionAction(goal.state, { action: "buy", item: "cap" }, 99 * 5, catalog);
+        const other = applyCompanionAction(goal.state, { action: "buy", item: "cap" }, xp(99), catalog);
         assert.ok(other.ok && other.state.goal === "skin:cat:gold");
     });
 

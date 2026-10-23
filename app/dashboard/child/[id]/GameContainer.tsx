@@ -14,7 +14,7 @@ import { useSpeakingLock } from "@/lib/voice";
 import Companion from "@/app/components/avatar/Companion";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import type { VoiceEmotion as TeacherEmotion } from "@/lib/emotion";
-import type { CompanionKindId } from "@/lib/companion";
+import { COINS_PER_STAR, type CompanionKindId } from "@/lib/companion";
 import { chosenSkin, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
@@ -1350,10 +1350,10 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                     {champion ? "🏆 " : ""}
                     {title}
                 </h2>
-                {/* Svaka zvezdica je novčić za drugara */}
+                {/* Svaka zvezdica donosi novčiće za drugara */}
                 <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sun-100 px-4 py-1.5 text-lg font-extrabold text-sun-700 ring-1 ring-sun-300">
-                    + {outcome.stars} <CoinIcon className="h-6 w-6" />
-                    <span className="sr-only">{outcome.stars === 1 ? "novčić" : "novčića"}</span>
+                    + {outcome.stars * COINS_PER_STAR} <CoinIcon className="h-6 w-6" />
+                    <span className="sr-only">novčića</span>
                 </p>
                 {/* Cilj deteta: koliko je još do predmeta za koji skuplja (samo kad je izabran) */}
                 <GoalChip className="mx-auto mt-2 flex w-fit bg-sun-50 ring-1 ring-sun-200" />

@@ -366,7 +366,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                                 className={selected ? "hidden lg:flex" : undefined}
                             />
                         )}
-                        {!selected && !goalNow && <p className="text-sm font-bold text-ink-soft lg:text-center">Svaka zvezdica u igri je jedan novčić.</p>}
+                        {!selected && !goalNow && <p className="text-sm font-bold text-ink-soft lg:text-center">Svaka zvezdica u igri donosi dva novčića.</p>}
                         {message && (
                             <p role="status" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700">
                                 {message}
