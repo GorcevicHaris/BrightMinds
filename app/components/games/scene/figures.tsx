@@ -444,7 +444,7 @@ function ChildFigure({ look, small, pose, face, back, wear, held }: BodyProps & 
             <g transform="translate(0 -60)">
                 <Head look={look} face={face} back={back} glasses={has("glasses")} />
                 {has("partyHat") && <path d="M-8 -15 L0 -36 L8 -15 Z" fill="#f4b73f" stroke="#d97f06" strokeWidth={1.2} />}
-                {has("beanie") && <path d="M-18 -4 C-19 -26 19 -26 18 -4 Z M-3 -24 a4 4 0 1 0 6 0" fill="#e0574f" />}
+                {has("beanie") && <path d="M-18.5 -9 C-19 -29 19 -29 18.5 -9 Q0 -12 -18.5 -9Z M-3.5 -25 a4 4 0 1 1 7 0" fill="#e0574f" />}
             </g>
             {armsOverHead && arms}
         </g>

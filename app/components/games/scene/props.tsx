@@ -507,9 +507,9 @@ const PROPS: Record<PropId, Draw> = {
             ))}
         </g>
     ),
-    pencil: () => (
+    pencil: (tone = "#f4c94a") => (
         <g transform="rotate(-30)">
-            <rect x={-2} y={-22} width={4} height={18} fill="#f4c94a" {...stroke("#c98a12", 0.8)} />
+            <rect x={-2} y={-22} width={4} height={18} fill={tone} {...stroke("#00000044", 0.8)} />
             <path d="M-2 -4 L0 1 L2 -4Z" fill="#f0d2b0" />
             <rect x={-2} y={-24} width={4} height={3} fill="#f28b6e" />
         </g>

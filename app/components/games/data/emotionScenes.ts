@@ -157,7 +157,7 @@ export const EMOTION_SCENES: Readonly<Record<number, SceneSpec>> = {
     405: scene("street", [who("baka", 76), thing("bag", 102, 134, { s: 1.3 }), me(130, { pose: "give", flip: true })]),
     406: scene("room", [thing("coatHook", 204, 148), me(118, { wear: ["jacket"] }), thing("sparkle", 146, 70)]),
     407: scene("room", [me(64, { pose: "give", hold: { prop: "pencil", s: 1 } }), thing("table", 140, 150, { s: 1.1 }), thing("paper", 140, 112, { s: 1.6 }), thing("letters", 140, 94, { s: 0.75 })]),
-    408: scene("pool", [thing("laneRope", 120, 112), thing("lifebuoy", 30, 66), me(170, { pose: "swim", y: 120 })]),
+    408: scene("pool", [thing("laneRope", 120, 100), thing("lifebuoy", 30, 66), me(170, { pose: "swim", y: 118 })]),
 };
 
 export function emotionScene(id: number): SceneSpec | undefined {

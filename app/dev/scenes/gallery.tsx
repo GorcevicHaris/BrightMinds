@@ -4,8 +4,10 @@ import type { ReactNode } from "react";
 import { allScenarios, EMOTIONS } from "@/app/components/games/data/emotionScenarios";
 import { emotionScene } from "@/app/components/games/data/emotionScenes";
 import { socialScene } from "@/app/components/games/data/socialScenes";
+import { storyForLevel } from "@/app/components/games/data/socialStories";
+import { storyScene } from "@/app/components/games/data/storyScenes";
 import { getSituationsForLevel, type SocialSituation } from "@/app/components/games/data/socialSituations";
-import { emotionHero } from "@/app/components/games/scene/heroes";
+import { emotionHero, storyHero } from "@/app/components/games/scene/heroes";
 import { genderText } from "@/app/components/games/kit/utils";
 import { SceneArt } from "@/app/components/games/scene/SceneArt";
 import {
@@ -143,8 +145,33 @@ function socialPart(): Part {
     return { title: "Šta reći?", note: "Slika prikazuje primer: dete iz primera u toj situaciji (oblačić kad govori). Situacije 1–15 imaju istu sliku na sve tri težine.", cards };
 }
 
+function storiesPart(): Part {
+    const cards: Card[] = [];
+    for (let level = 1; level <= 15; level += 1) {
+        const story = storyForLevel(level);
+        // Priče su u prvom licu: glavni lik je dete koje igra (ovde naizmenično dečak i devojčica)
+        const female = level % 2 === 0;
+        const pages: { key: string; label: string; text: string; spec: ReturnType<typeof storyScene>; emoji: string }[] = [
+            { key: "cover", label: "naslovna", text: story.intro, spec: storyScene(level, "cover"), emoji: story.cover.join("") },
+            ...story.steps.map((step, i) => ({ key: String(i), label: `korak ${i + 1}`, text: step.text, spec: storyScene(level, i), emoji: step.scene.join("") })),
+        ];
+        for (const page of pages) {
+            cards.push({
+                key: `story-${level}-${page.key}`,
+                label: `Nivo ${level} · ${story.title} · ${page.label}`,
+                text: genderText(page.text, female),
+                sub: story.steps[Number(page.key)]?.decision ? genderText(story.steps[Number(page.key)].decision!.question, female) : undefined,
+                picture: page.spec ? <SceneArt spec={page.spec} hero={storyHero(female)} /> : <Missing text={page.emoji} />,
+            });
+        }
+    }
+    return { title: "Socijalne priče", note: "Naslovna slika i po jedna slika za svaku stranicu. Slika ne pokazuje odgovor na pitanje sa stranice.", cards };
+}
+
 export function galleryPart(id: GalleryPartId): Part {
     switch (id) {
+        case "stories":
+            return storiesPart();
         case "social":
             return socialPart();
         case "emotions":

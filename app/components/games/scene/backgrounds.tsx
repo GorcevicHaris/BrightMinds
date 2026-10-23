@@ -326,13 +326,16 @@ const BACKGROUNDS: Record<BackgroundId, (view: ViewId) => ReactNode> = {
             </g>
         </g>
     ),
+    // Bazen: voda u sredini, ivica od pločica napred (tu stoje oni koji nisu u vodi)
     pool: () => (
         <g>
             <Tiles y0={0} y1={70} color="#e8f4fa" line="#d2e6f0" size={14} />
             <rect x={0} y={66} width={240} height={8} fill="#cfe0ea" />
-            <rect x={0} y={74} width={240} height={86} fill="#7fd0ee" />
+            <rect x={0} y={74} width={240} height={56} fill="#7fd0ee" />
             <path d="M0 90 Q20 86 40 90 T80 90 T120 90 T160 90 T200 90 T240 90" stroke="#ffffff" strokeWidth={2} fill="none" opacity={0.6} />
-            <path d="M0 124 Q20 120 40 124 T80 124 T120 124 T160 124 T200 124 T240 124" stroke="#ffffff" strokeWidth={2} fill="none" opacity={0.5} />
+            <path d="M0 116 Q20 112 40 116 T80 116 T120 116 T160 116 T200 116 T240 116" stroke="#ffffff" strokeWidth={2} fill="none" opacity={0.5} />
+            <Tiles y0={130} y1={160} color="#e2eef4" line="#c9dbe6" size={15} />
+            <rect x={0} y={128} width={240} height={4} fill="#b9cfdc" />
         </g>
     ),
     station: (view) => (

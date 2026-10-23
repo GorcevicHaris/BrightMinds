@@ -8,6 +8,8 @@ import { allScenarios } from "@/app/components/games/data/emotionScenarios";
 import { EMOTION_SCENES } from "@/app/components/games/data/emotionScenes";
 import { socialScene } from "@/app/components/games/data/socialScenes";
 import { getSituationsForLevel } from "@/app/components/games/data/socialSituations";
+import { storyForLevel } from "@/app/components/games/data/socialStories";
+import { STORY_SCENES, storyScene } from "@/app/components/games/data/storyScenes";
 import { BACKGROUND_IDS, hero, inBed, PROP_IDS, scene, sceneParts, thing, think, type SceneSpec } from "@/app/components/games/scene/types";
 
 /** Svaki deo slike postoji u kompletu: pozadine, predmeti i likovi */
@@ -85,6 +87,25 @@ describe("social scenes", () => {
             // „Harisov brat”, „Ilmin prijatelj”, „Selmi”: ime je u primeru, bar bez poslednjeg slova
             const name = picture.hero[0].toUpperCase() + picture.hero.slice(1);
             assert.ok(situation.model.includes(name.slice(0, -1)), `situacija ${situation.id}: u primeru nema imena ${name}`);
+        }
+    });
+});
+
+describe("story scenes", () => {
+    it("has a cover and one picture per page for every story", () => {
+        for (let level = 1; level <= 15; level += 1) {
+            const story = storyForLevel(level);
+            assert.ok(storyScene(level, "cover"), `nivo ${level}: nema naslovne slike`);
+            assert.equal(STORY_SCENES[level].steps.length, story.steps.length, `nivo ${level}: broj slika ≠ broj stranica`);
+            story.steps.forEach((_, i) => assert.ok(storyScene(level, i), `nivo ${level}, stranica ${i + 1}: nema slike`));
+        }
+        assert.deepEqual(Object.keys(STORY_SCENES).map(Number), Array.from({ length: 15 }, (_, i) => i + 1));
+    });
+
+    it("draws every page from existing parts", () => {
+        for (const [level, pictures] of Object.entries(STORY_SCENES)) {
+            assertDrawable(pictures.cover, `nivo ${level}, naslovna`);
+            pictures.steps.forEach((spec, i) => assertDrawable(spec, `nivo ${level}, stranica ${i + 1}`));
         }
     });
 });
