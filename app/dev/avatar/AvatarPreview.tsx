@@ -2,13 +2,14 @@
 
 import Companion, { COMPANIONS } from "@/app/components/avatar/Companion";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
-import { WEAR_ITEMS, WEAR_SLOTS, type Wear } from "@/app/components/avatar/wearables";
+import type { Wear } from "@/app/components/avatar/wearables";
 import { EmotionFace } from "@/app/components/games/EmotionFace";
 import { MoodFace } from "@/app/components/games/MoodFace";
 import { OwlPicture, WindPicture } from "@/app/components/games/SoundPictures";
 import { VOICE_EMOTIONS, type VoiceEmotion } from "@/lib/emotion";
 import { speak } from "@/lib/speech";
 import { mimeVoice, playVoice } from "@/lib/voice";
+import ShopPreview from "./ShopPreview";
 
 /** Bilo koji snimak iz aplikacije: proverava puštanje kroz analizator i pomeranje usta */
 const SAMPLE_SOUND = "/sounds/ptica.mp3";
@@ -74,23 +75,6 @@ function CompanionPreview() {
                 </div>
             </section>
 
-            {/* Svaki predmet iz prodavnice na svakom drugaru */}
-            <section className="mb-8 rounded-card border border-line bg-surface p-4">
-                <div className="grid grid-cols-[8rem_repeat(6,minmax(0,1fr))] items-center gap-2">
-                    {WEAR_SLOTS.flatMap((slot) => WEAR_ITEMS.filter((item) => item.slot === slot)).map((item) => (
-                        <div key={item.id} className="contents" data-wear-row={item.id}>
-                            <p className="text-sm font-extrabold text-ink">
-                                {item.label}
-                                <span className="block text-xs text-ink-soft">{item.price} novčića</span>
-                            </p>
-                            {COMPANIONS.map(({ kind }) => (
-                                <Companion key={kind} kind={kind} emotion="happy" wear={{ [item.slot]: item.id }} className="mx-auto h-28 w-24" />
-                            ))}
-                        </div>
-                    ))}
-                </div>
-            </section>
-
             {/* Kompleti i malo lice sa kapom */}
             <section className="mb-8 flex flex-wrap items-end gap-3 rounded-card border border-line bg-surface p-4">
                 {OUTFITS.map((wear, index) =>
@@ -107,6 +91,7 @@ function CompanionPreview() {
 export default function AvatarPreview() {
     return (
         <main className="min-h-screen bg-canvas p-6">
+            <ShopPreview />
             <CompanionPreview />
             {/* Lica za pitanje „Kako si?” i za igru emocija */}
             <section className="mb-8 flex flex-wrap items-end gap-4 rounded-card border border-line bg-surface p-4">

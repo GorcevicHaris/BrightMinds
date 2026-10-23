@@ -1,5 +1,5 @@
-// Pregled učitelja i učiteljice u svim izrazima (samo u razvoju).
-// /dev/avatar — statični izrazi; dugmad puštaju govor sa tom emocijom.
+// Pregled drugara (samo u razvoju): ceo lik sa kompletima, sličice prodavnice, svaki predmet
+// na svakom drugaru, i učitelj u svim izrazima. Dugmad puštaju govor sa tom emocijom.
 import { notFound } from "next/navigation";
 import AvatarPreview from "./AvatarPreview";
 
