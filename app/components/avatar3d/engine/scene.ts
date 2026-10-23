@@ -178,6 +178,15 @@ export class StageScene {
         this.frameCamera();
     }
 
+    /** Najviša tačka nacrtanog lika sa predmetima (u odnosu na tlo); 0 kad lika nema */
+    private drawnTop(): number {
+        const root = this.figure?.root;
+        if (!root) return 0;
+        root.updateWorldMatrix(true, true);
+        const box = new THREE.Box3().setFromObject(root);
+        return box.isEmpty() ? 0 : box.max.y - this.turntable.position.y;
+    }
+
     frameCamera() {
         const figure = this.figure;
         const H = figure?.height ?? 1.3;
@@ -198,8 +207,10 @@ export class StageScene {
             this.dirty = true;
             return;
         }
-        // Vrh lika: teme, ili vrh ušiju/roga (zeka, jednorog) — da se u krupnom kadru ne odseku
-        const top = a ? Math.max(a.head.top.y, a.ears.tipL.y, a.ears.tipR.y, a.horn?.tip.y ?? 0) : H;
+        // Vrh lika: teme, ili vrh ušiju/roga (zeka, jednorog) — da se u krupnom kadru ne odseku.
+        // Uz to i stvarni vrh crteža sa svim što nosi (kapa, krila, oči žabe): sidra ne znaju za predmete,
+        // a mere tela nekih životinja su manje od nacrtanog lika, pa bi kadar odsekao glavu.
+        const top = Math.max(a ? Math.max(a.head.top.y, a.ears.tipL.y, a.ears.tipR.y, a.horn?.tip.y ?? 0) : H, this.drawnTop());
         switch (this.options.framing) {
             case "face":
                 target = a ? a.head.center.y : H * 0.85;
@@ -217,16 +228,16 @@ export class StageScene {
                 width = span * 0.8;
                 break;
             case "wide":
-                // Baner: lik ≈ 90 % visine banera
+                // Baner: ceo lik (sa kapom i ušima) ≈ 80 % visine banera, malo vazduha iznad glave
                 target = Math.max(H, top) * 0.5;
-                span = Math.max(H, top) * 1.06;
-                width = H * 0.62;
+                span = Math.max(H, top) * 1.24;
+                width = H * 0.7;
                 break;
             default:
-                // Ceo lik ≈ 88 % visine prikaza
-                target = Math.max(H, top) * 0.5;
-                span = Math.max(H, top) * 1.08;
-                width = H * (this.figure && this.figure.hasPet ? 1.05 : 0.66);
+                // Ceo lik ≈ 76 % visine prikaza; ispod nogu ostaje mesta za traku „Kupi” u prodavnici
+                target = Math.max(H, top) * 0.44;
+                span = Math.max(H, top) * 1.32;
+                width = Math.max(H, top) * (this.figure && this.figure.hasPet ? 1.15 : 0.78);
         }
         const vDist = span / 2 / tan;
         const hDist = width / 2 / tan / this.aspect;
