@@ -8,7 +8,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, RotateCcw, X } from "lucide-react";
 import { SpeakButton, playSfx, useInputGuard } from "@/app/components/games/kit";
 import SpeakingTeacher from "@/app/components/avatar/SpeakingTeacher";
-import { useCompanion } from "@/app/dashboard/child/[id]/companionState";
+import { chosenSkin, useCompanion } from "@/app/dashboard/child/[id]/companionState";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import { cn } from "@/lib/cn";
 import {
@@ -325,7 +325,7 @@ function StoryReader({ story, gender, onSpeak, onClose }: ReaderProps) {
                 <footer className="shrink-0 border-t border-line bg-surface px-3 pb-[max(env(safe-area-inset-bottom),0.75rem)] pt-3 sm:px-6">
                     <div className="mx-auto w-full max-w-2xl">
                         <div className="flex items-center gap-3">
-                            <SpeakingTeacher gender={gender} kind={companion?.kind} wear={companion?.wear} className="h-12 w-12 sm:h-14 sm:w-14" />
+                            <SpeakingTeacher gender={gender} kind={companion?.kind} wear={companion?.wear} skin={chosenSkin(companion)} className="h-12 w-12 sm:h-14 sm:w-14" />
                             <StoryStepIndicator current={index + 1} total={total} className="min-w-0 flex-1" />
                             <SpeakButton onClick={() => onSpeak(step.text)} label="Pročitaj ponovo" />
                         </div>
