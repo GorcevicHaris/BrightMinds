@@ -230,6 +230,11 @@ const SCENARIOS: readonly EmotionScenario[] = [
 
 const SCENARIOS_BY_ID = new Map<number, EmotionScenario>(SCENARIOS.map((scenario) => [scenario.id, scenario]));
 
+/** Svi scenariji, redom (pregled slika i testovi) */
+export function allScenarios(): readonly EmotionScenario[] {
+    return SCENARIOS;
+}
+
 // ── Imenjaci ──────────────────────────────────────────────────────────────────
 // Kad se dete zove isto kao lik, pitanje „Kako se Lejla oseća?” zvuči kao pitanje o samom
 // detetu. Takav scenario se zato ispriča o drugom liku istog roda (rod glagola, prideva i

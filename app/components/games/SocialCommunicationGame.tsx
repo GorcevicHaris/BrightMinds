@@ -41,6 +41,8 @@ import {
     type SocialOption,
     type SocialSituation,
 } from "./data/socialSituations";
+import { socialScene } from "./data/socialScenes";
+import { SceneArt } from "./scene/SceneArt";
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
 // Sve što utiče na prikaz je u jednom JSON objektu koji se šalje live monitoru.
@@ -224,6 +226,8 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
     const fallbackView = useMemo(() => ({ ...initialView(buildRounds(level, Infinity, Infinity, false)), optionsShown: true }), [level]);
     const shown = isMonitor ? mergeMonitorView(fallbackView, monitorState) : view;
     const situation = getSituation(shown.situationId) ?? getSituationsForLevel(level)[0];
+    // Slika primera: dete iz primera u toj situaciji (emodži ostaje samo kao rezerva)
+    const picture = socialScene(situation.id);
     const lastTried = shown.tried.length > 0 ? shown.tried[shown.tried.length - 1] : null;
     const feedback: FeedbackKind = shown.picked !== null ? "correct" : lastTried !== null ? "wrong" : null;
 
@@ -402,17 +406,29 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
             <section
                 key={situation.id}
                 aria-label={MODEL_LABEL}
-                // Kad se pojave izbori, primer je već pročitan: na telefonu se sabije, da svi izbori stanu na ekran
+                // Kad se pojave izbori, primer je već pročitan: na telefonu se sabije, da svi izbori stanu na ekran.
+                // Dok se primer čita, slika je velika, iznad teksta; posle ostaje mala, levo od teksta.
                 className={cn(
-                    "flex animate-fade-up items-center gap-3 rounded-card border-2 shadow-soft sm:gap-4 sm:p-5",
-                    shown.optionsShown ? "p-2.5" : "p-4",
+                    "flex animate-fade-up rounded-card border-2 shadow-soft sm:gap-4 sm:p-5",
+                    shown.optionsShown ? "items-center gap-3 p-2.5" : picture ? "flex-col items-stretch gap-3 p-3" : "items-center gap-3 p-4",
                     ACCENT.soft,
                     ACCENT.border
                 )}
             >
-                <span aria-hidden="true" className={cn("leading-none sm:text-5xl", shown.optionsShown ? "text-2xl" : "text-4xl")}>
-                    💬
-                </span>
+                {picture ? (
+                    <div
+                        className={cn(
+                            "shrink-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-brand-100",
+                            shown.optionsShown ? "w-28 sm:w-44" : "mx-auto w-full max-w-[min(100%,48dvh)] short:max-w-[min(100%,40dvh)]"
+                        )}
+                    >
+                        <SceneArt spec={picture.scene} hero={{ look: picture.hero }} className="h-auto w-full" />
+                    </div>
+                ) : (
+                    <span aria-hidden="true" className={cn("leading-none sm:text-5xl", shown.optionsShown ? "text-2xl" : "text-4xl")}>
+                        💬
+                    </span>
+                )}
                 <div className="min-w-0 flex-1">
                     <p className={cn("text-sm font-extrabold sm:text-base", ACCENT.text)}>{MODEL_LABEL}</p>
                     <p className={cn("font-bold leading-snug text-ink sm:text-xl", shown.optionsShown ? "text-base" : "text-lg")}>
@@ -434,7 +450,8 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                         key={`prompt-${situation.id}`}
                         className="animate-fade"
                         compact
-                        visual={<span aria-hidden="true">{situation.scene}</span>}
+                        // Slika je već u primeru iznad; emodži samo kad slike nema
+                        visual={picture ? undefined : <span aria-hidden="true">{situation.scene}</span>}
                         title={genderText(situation.text, female)}
                         subtitle={situation.ask}
                     />
