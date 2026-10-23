@@ -98,7 +98,7 @@ export function headInfo(shape: BodyShape): HeadInfo {
         normal(u, v, n);
         return out.addScaledVector(n, offset(u, v));
     };
-    const eyeR = w * (child ? 0.138 : 0.114);
+    const eyeR = w * (child ? 0.148 : 0.122);
     return { shape, center, fn, point, normal, offsetFn, eyeU: child ? 0.068 : 0.064, eyeV: child ? 0.55 : 0.535, eyeR };
 }
 
@@ -318,7 +318,7 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
             brow.rotation.z = side * pose.browTilt;
         });
         // Ivica gornjeg kapka: otvoreno ≈ 37° iznad središta, zatvoreno ≈ 12° ispod
-        const openEdge = 0.66 * pose.eye + (pose.eye - 1) * 0.3;
+        const openEdge = 0.74 * pose.eye + (pose.eye - 1) * 0.3;
         const upperEdge = THREE.MathUtils.lerp(openEdge, -0.22, blink);
         const lowerRest = THREE.MathUtils.lerp(-0.62, -0.3, pose.lid);
         const lowerEdge = THREE.MathUtils.lerp(lowerRest, -0.22, blink);

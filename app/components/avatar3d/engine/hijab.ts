@@ -98,7 +98,7 @@ export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabSt
     // sa jasnim naborom na gornjoj ivici — po tome se vidi da je marama omotana, a ne kapuljača
     if (style === "classic") {
         const n = new THREE.Vector3();
-        const path: [number, number][] = [[0.43, 0.9], [0.56, 0.86], [0.66, 0.74], [0.72, 0.6], [0.78, 0.46], [0.86, 0.34], [0.96, 0.3]];
+        const path: [number, number][] = [[0.5, 0.91], [0.6, 0.86], [0.68, 0.74], [0.73, 0.6], [0.79, 0.46], [0.87, 0.35], [0.97, 0.31]];
         const along = (s: number): [number, number] => {
             const x = Math.min(1, Math.max(0, s)) * (path.length - 1);
             const i = Math.min(path.length - 2, Math.floor(x));
@@ -114,7 +114,7 @@ export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabSt
             const u = u0 + (0.5 - q) * 0.03;
             shell(u, v, out);
             head.normal(u, v, n);
-            const lift = 0.0015 + 0.009 * Math.pow(q, 2) * (1 - smoothstep(0.86, 1, q)) + 0.002 * Math.sin(q * Math.PI) * Math.sin(s * 9);
+            const lift = 0.0015 + 0.009 * Math.pow(q, 2) * (1 - smoothstep(0.86, 1, q));
             const fade = smoothstep(0, 0.12, s) * smoothstep(1, 0.8, s);
             return out.addScaledVector(n, lift * fade);
         };
