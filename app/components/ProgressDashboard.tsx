@@ -114,6 +114,7 @@ const GAME_SERIES: Record<GameId, Series> = {
     sequence: { swatch: "bg-lime-600", color: "var(--color-lime-600)" },
     where: { swatch: "bg-cyan-500", color: "var(--color-cyan-500)" },
     uses: { swatch: "bg-fuchsia-600", color: "var(--color-fuchsia-600)" },
+    counting: { swatch: "bg-blue-600", color: "var(--color-blue-600)" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */
