@@ -1,11 +1,15 @@
 // Izgledi (krzna) životinja — čisti podaci (bez three.js), uvozi ih i server. Vlasnik: #2 (životinje).
 // Mačka, pas, zeka i meda zadržavaju id-jeve 2D izgleda (app/components/avatar/skins.ts) jer su
 // sačuvani u bazi (children.settings.companion.skin / skins). Prvi izgled je podrazumevani i besplatan.
-// Nove životinje (lisica, lav, pingvin, jednorog) za sad imaju po jedan besplatan izgled; #2 dodaje ostale.
+// Nove životinje (lisica, lav, pingvin, jednorog): prirodne boje besplatno, posebna krzna 10–30 novčića.
+// 3D boje i šare svakog izgleda su u coats.ts (pod istim id-jem).
 
 import type { AnimalKind, SkinData } from "../data";
+import { EXTRA_SKINS } from "./extra/skins.data";
 
-export const ANIMAL_SKINS: Record<AnimalKind, readonly SkinData[]> = {
+/** Glavne vrste (ANIMAL_KINDS) i dodatne vrste (extra/skins.data.ts, #2b) */
+export const ANIMAL_SKINS: Record<AnimalKind, readonly SkinData[]> & Readonly<Record<string, readonly SkinData[]>> = {
+    ...EXTRA_SKINS,
     cat: [
         { id: "narandzasta", label: "Narandžasta", price: 0 },
         { id: "siva", label: "Siva", price: 0 },
@@ -51,14 +55,37 @@ export const ANIMAL_SKINS: Record<AnimalKind, readonly SkinData[]> = {
     ],
     fox: [
         { id: "narandzasta", label: "Narandžasta", price: 0 },
+        { id: "crvena", label: "Crvena", price: 0 },
+        { id: "polarna", label: "Polarna", price: 0 },
+        { id: "pustinjska", label: "Pustinjska", price: 0 },
+        { id: "srebrna", label: "Srebrna", price: 12 },
+        { id: "zlatna", label: "Zlatna", price: 25 },
+        { id: "duga", label: "Duga", price: 30 },
     ],
     lion: [
         { id: "zlatna-griva", label: "Zlatna griva", price: 0 },
+        { id: "smedja-griva", label: "Smeđa griva", price: 0 },
+        { id: "rida", label: "Riđa griva", price: 0 },
+        { id: "beli", label: "Beli lav", price: 0 },
+        { id: "zlatna", label: "Zlatna sjajna", price: 25 },
+        { id: "duga", label: "Duga", price: 30 },
     ],
     penguin: [
         { id: "crno-beli", label: "Crno-beli", price: 0 },
+        { id: "carski", label: "Carski", price: 0 },
+        { id: "mali-plavi", label: "Mali plavi", price: 0 },
+        { id: "cupavi", label: "Čupavi", price: 10 },
+        { id: "roze", label: "Roze", price: 12 },
+        { id: "zlatna", label: "Zlatna", price: 25 },
+        { id: "duga", label: "Duga", price: 30 },
     ],
     unicorn: [
         { id: "beli", label: "Beli", price: 0 },
+        { id: "roze", label: "Roze", price: 0 },
+        { id: "ljubicasti", label: "Ljubičasti", price: 0 },
+        { id: "plavi", label: "Plavi", price: 0 },
+        { id: "dugin", label: "Dugin", price: 20 },
+        { id: "zlatni", label: "Zlatni", price: 25 },
+        { id: "zvezdani", label: "Zvezdani", price: 30 },
     ],
 };
