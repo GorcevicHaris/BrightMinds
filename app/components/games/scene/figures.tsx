@@ -292,6 +292,7 @@ const CHILD_HANDS: Record<PoseId, readonly [Point, Point]> = {
     shrug: [[-20, -43], [20, -43]],
     sit: [[-13, -14], [13, -14]],
     sitHold: [[-7, -22], [7, -22]],
+    sitReach: [[-13, -14], [26, -70]],
     lie: [[-6, -6], [10, -6]],
     swim: [[-22, -10], [22, -10]],
     ride: [[16, -38], [22, -38]],
@@ -316,6 +317,7 @@ const ADULT_HANDS: Record<PoseId, readonly [Point, Point]> = {
     shrug: [[-26, -80], [26, -80]],
     sit: [[-17, -34], [17, -34]],
     sitHold: [[-9, -46], [9, -46]],
+    sitReach: [[-17, -34], [30, -118]],
     lie: [[-8, -6], [12, -6]],
     swim: [[-28, -12], [28, -12]],
     ride: [[20, -70], [28, -70]],
@@ -341,7 +343,7 @@ interface FigureProps {
     held?: ReactNode;
 }
 
-const SIT_POSES: readonly PoseId[] = ["sit", "sitHold", "ride"];
+const SIT_POSES: readonly PoseId[] = ["sit", "sitHold", "sitReach", "ride"];
 
 /** Ruka od ramena do šake: rukav u boji odeće i šaka u boji kože */
 function Arm({ from, to, sleeve, skin, width }: { from: Point; to: Point; sleeve: string; skin: string; width: number }) {

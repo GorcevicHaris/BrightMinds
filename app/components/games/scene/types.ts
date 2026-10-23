@@ -111,6 +111,7 @@ export const POSE_IDS = [
     "shrug",
     "sit",
     "sitHold",
+    "sitReach",
     "lie",
     "swim",
     "ride",

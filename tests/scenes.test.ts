@@ -6,6 +6,8 @@ import { emotionHero } from "@/app/components/games/scene/heroes";
 import { hasProp } from "@/app/components/games/scene/props";
 import { allScenarios } from "@/app/components/games/data/emotionScenarios";
 import { EMOTION_SCENES } from "@/app/components/games/data/emotionScenes";
+import { socialScene } from "@/app/components/games/data/socialScenes";
+import { getSituationsForLevel } from "@/app/components/games/data/socialSituations";
 import { BACKGROUND_IDS, hero, inBed, PROP_IDS, scene, sceneParts, thing, think, type SceneSpec } from "@/app/components/games/scene/types";
 
 /** Svaki deo slike postoji u kompletu: pozadine, predmeti i likovi */
@@ -62,6 +64,27 @@ describe("emotion scenes", () => {
             }
             assert.equal(revealed.face, scenario.common[0]);
             assert.notEqual(revealed.back, true);
+        }
+    });
+});
+
+describe("social scenes", () => {
+    const situations = Array.from({ length: 15 }, (_, i) => getSituationsForLevel(i + 1)).flat();
+
+    it("has a picture for every situation on every level", () => {
+        const missing = situations.filter((situation) => !socialScene(situation.id)).map((situation) => situation.id);
+        assert.deepEqual(missing, [], `bez slike: ${missing.join(", ")}`);
+        assert.equal(new Set(situations.map((situation) => situation.id)).size, 60);
+    });
+
+    it("draws the child from the example, by name, from existing parts", () => {
+        for (const situation of situations) {
+            const picture = socialScene(situation.id)!;
+            assertDrawable(picture.scene, `situacija ${situation.id}`);
+            assert.ok(sceneParts(picture.scene).figures.includes("hero"), `situacija ${situation.id}: nema deteta iz primera`);
+            // „Harisov brat”, „Ilmin prijatelj”, „Selmi”: ime je u primeru, bar bez poslednjeg slova
+            const name = picture.hero[0].toUpperCase() + picture.hero.slice(1);
+            assert.ok(situation.model.includes(name.slice(0, -1)), `situacija ${situation.id}: u primeru nema imena ${name}`);
         }
     });
 });

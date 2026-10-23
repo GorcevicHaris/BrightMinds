@@ -3,7 +3,10 @@
 import type { ReactNode } from "react";
 import { allScenarios, EMOTIONS } from "@/app/components/games/data/emotionScenarios";
 import { emotionScene } from "@/app/components/games/data/emotionScenes";
+import { socialScene } from "@/app/components/games/data/socialScenes";
+import { getSituationsForLevel, type SocialSituation } from "@/app/components/games/data/socialSituations";
 import { emotionHero } from "@/app/components/games/scene/heroes";
+import { genderText } from "@/app/components/games/kit/utils";
 import { SceneArt } from "@/app/components/games/scene/SceneArt";
 import {
     ADULT_IDS,
@@ -117,8 +120,33 @@ function emotionsPart(): Part {
     return { title: "Emocije", note: "Na lakim nivoima lik pokazuje tačno osećanje; na srednjim i teškim je okrenut leđima dok dete ne dobije pomoć.", cards };
 }
 
+/** Situacije svih nivoa, bez ponavljanja (situacije 1–15 se ponavljaju na tri težine) */
+function uniqueSituations(): SocialSituation[] {
+    const seen = new Map<number, SocialSituation>();
+    for (let level = 1; level <= 15; level += 1) for (const situation of getSituationsForLevel(level)) seen.set(situation.id, situation);
+    return [...seen.values()].sort((a, b) => a.id - b.id);
+}
+
+function socialPart(): Part {
+    const cards = uniqueSituations()
+        .filter((situation) => situation.id <= 15 || situation.id > 45)
+        .map((situation): Card => {
+            const picture = socialScene(situation.id);
+            return {
+                key: `social-${situation.id}`,
+                label: `${situation.id}${situation.id <= 15 ? ` (i ${situation.id + 15}, ${situation.id + 30})` : ""} · ${situation.kind === "polite" ? "učtivost" : "zastupanje sebe"}`,
+                text: genderText(situation.model, false),
+                sub: genderText(situation.text, false),
+                picture: picture ? <SceneArt spec={picture.scene} hero={{ look: picture.hero }} /> : <Missing text={situation.scene} />,
+            };
+        });
+    return { title: "Šta reći?", note: "Slika prikazuje primer: dete iz primera u toj situaciji (oblačić kad govori). Situacije 1–15 imaju istu sliku na sve tri težine.", cards };
+}
+
 export function galleryPart(id: GalleryPartId): Part {
     switch (id) {
+        case "social":
+            return socialPart();
         case "emotions":
             return emotionsPart();
         default:
