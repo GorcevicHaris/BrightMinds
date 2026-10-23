@@ -6,11 +6,10 @@
 //       uvek proverava server; upis uspeva samo ako se stanje u međuvremenu nije
 //       promenilo (dva brza dodira ne mogu dvaput da potroše iste novčiće).
 import { NextResponse } from "next/server";
-import { getWearItem } from "@/app/components/avatar/wearables";
+import { getWearItem, getWearSet } from "@/app/components/avatar/wearables";
 import { requireChildAccess } from "@/lib/auth";
 import { applyCompanionAction, coinsAvailable, isCompanionKindId, parseCompanionAction, sanitizeCompanion, type CompanionCatalog } from "@/lib/companion";
 import { supabaseAdmin } from "@/lib/supabase";
-import { getWearSet } from "@/lib/wearSets";
 import { isRecord } from "@/lib/validation";
 import { CHILD_NOT_FOUND } from "../../../_lib/children";
 import { errorResponse, HttpError, parseIdParam, readJsonObject } from "../../../_lib/http";

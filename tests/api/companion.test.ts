@@ -3,10 +3,8 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
 import { GET, PUT } from "@/app/api/children/[id]/companion/route";
-import { WEAR_ITEMS, type WearItem } from "@/app/components/avatar/wearables";
+import { WEAR_ITEMS, WEAR_SETS, type WearItem, type WearSet } from "@/app/components/avatar/wearables";
 import { POINTS_PER_STAR, setGoalId } from "@/lib/companion";
-// posle spajanja: WEAR_SETS (uvoz iz wearables)
-import { WEAR_SETS, type WearSet } from "@/lib/wearSets";
 import { CHILD_ID, OTHER_CHILD_ID, db, idParams, jsonRequest, readJson, resetWorld, seedFamily, signInAsChild, signInAsParent } from "../setup/api";
 
 const put = (body: unknown, childId = CHILD_ID) => PUT(jsonRequest("PUT", body), idParams(childId));

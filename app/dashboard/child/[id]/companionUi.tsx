@@ -6,11 +6,11 @@
 // je ostalo. Cilj može biti jedan predmet ili ceo komplet (`set:<id>`).
 
 import Companion from "@/app/components/avatar/Companion";
-import { getWearItem, type WearItem } from "@/app/components/avatar/wearables";
+import WearThumb from "@/app/components/avatar/WearThumb";
+import { getWearItem, getWearSet, type WearItem, type WearSet } from "@/app/components/avatar/wearables";
 import { CoinIcon } from "@/app/components/ui/CoinIcon";
 import { cn } from "@/lib/cn";
 import { goalSetId, setMissing, type CompanionKindId, type WearSlotId } from "@/lib/companion";
-import { getWearSet, type WearSet } from "@/lib/wearSets";
 import { LOCAL_CATALOG, useCompanion } from "./companionState";
 
 /** 1 novčić, 21 novčić; sve ostalo „novčića” (2–4 i 5+ imaju isti oblik) */
@@ -28,28 +28,14 @@ export function Coins({ count, className }: { count: number; className?: string 
     );
 }
 
-/** Deo crteža (240×280) u kome stoji predmet; za nova mesta ceo crtež */
-const SLOT_VIEW: Partial<Record<WearSlotId, string>> = {
-    hat: "30 -6 180 96",
-    glasses: "52 84 136 64",
-    neck: "64 156 112 76",
-    outfit: "16 176 208 108",
-};
-
 /** Sličica predmeta u prodavnici, na početnoj i posle nivoa */
-// posle spajanja: WearThumb
 export function ItemThumb({ item, className }: { item: WearItem; className?: string }) {
-    return (
-        <svg viewBox={SLOT_VIEW[item.slot] ?? "0 0 240 280"} className={className} aria-hidden="true">
-            {item.render()}
-        </svg>
-    );
+    return <WearThumb item={item} className={className} />;
 }
 
 /** Sličica kompleta: izabrani drugar u celom kompletu */
 export function SetThumb({ set, kind, className }: { set: WearSet; kind: string; className?: string }) {
-    // posle spajanja: variant="full"
-    return <Companion kind={kind as CompanionKindId} wear={set.items} variant="bust" className={className} />;
+    return <Companion kind={kind as CompanionKindId} wear={set.items} variant="full" className={className} />;
 }
 
 /** Kolika je cena kompleta za ovo dete: zbir cena predmeta koji mu još nedostaju */

@@ -6,7 +6,7 @@
 // Tu je i cilj deteta: predmet za koji skuplja novčiće (vidi se u sobi, na početnoj i posle nivoa).
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { getWearItem } from "@/app/components/avatar/wearables";
+import { getWearItem, getWearSet } from "@/app/components/avatar/wearables";
 import {
     applyCompanionAction,
     coinsAvailable,
@@ -17,7 +17,6 @@ import {
     type CompanionCatalog,
     type CompanionState,
 } from "@/lib/companion";
-import { getWearSet } from "@/lib/wearSets";
 
 export interface CompanionView {
     kind: string;

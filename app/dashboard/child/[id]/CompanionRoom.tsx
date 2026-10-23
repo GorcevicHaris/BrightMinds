@@ -33,7 +33,7 @@ import {
     type LucideIcon,
 } from "lucide-react";
 import Companion, { COMPANIONS } from "@/app/components/avatar/Companion";
-import { WEAR_ITEMS, type WearItem } from "@/app/components/avatar/wearables";
+import { WEAR_ITEMS, WEAR_SETS, type WearItem, type WearSet } from "@/app/components/avatar/wearables";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { playSfx, celebrateBig } from "@/app/components/games/kit";
 import { CoinIcon } from "@/app/components/ui/CoinIcon";
@@ -41,8 +41,6 @@ import { Button } from "@/app/components/ui/Button";
 import { cn } from "@/lib/cn";
 import { WEAR_SLOT_IDS, setGoalId, type CompanionAction, type CompanionKindId, type CompanionWear, type WearSlotId } from "@/lib/companion";
 import { useSpeech } from "@/lib/speech";
-// posle spajanja: WEAR_SETS (uvoz iz app/components/avatar/wearables)
-import { WEAR_SETS, type WearSet } from "@/lib/wearSets";
 import { useCompanion } from "./companionState";
 import { Coins, GoalBar, GoalStatus, GoalThumb, ItemThumb, SetThumb, coinWord, goalProgress, setProgress, type GoalProgress } from "./companionUi";
 
@@ -224,8 +222,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
             >
                 <div className="flex items-center gap-3 lg:flex-col lg:items-stretch">
                     <div className="relative flex shrink-0 justify-center">
-                        {/* posle spajanja: variant="full" */}
-                        <Companion kind={kind as CompanionKindId} wear={previewWear} className="h-32 w-28 sm:h-40 sm:w-36 lg:h-56 lg:w-48 xl:h-64 xl:w-56" />
+                        <Companion kind={kind as CompanionKindId} wear={previewWear} variant="full" className="h-40 w-32 sm:h-48 sm:w-40 lg:h-80 lg:w-64 xl:h-96 xl:w-80" />
                         {selected && (
                             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-0.5 text-xs font-extrabold text-brand-700 shadow-soft ring-1 ring-brand-200">
                                 Probaš
