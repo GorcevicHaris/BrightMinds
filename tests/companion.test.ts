@@ -49,9 +49,9 @@ const catalog: CompanionCatalog = {
 
 describe("companion state", () => {
     it("starts with the teacher the child already knows (girl → woman, boy → man)", () => {
-        assert.equal(defaultCompanion("female").kind, "woman");
-        assert.equal(defaultCompanion("male").kind, "man");
-        assert.equal(defaultCompanion(null).kind, "man");
+        assert.equal(defaultCompanion("female").kind, "girl");
+        assert.equal(defaultCompanion("male").kind, "boy");
+        assert.equal(defaultCompanion(null).kind, "boy");
     });
 
     it("drops unknown companions and items, and never wears an item that was not bought", () => {
@@ -60,7 +60,7 @@ describe("companion state", () => {
             "female",
             catalog
         );
-        assert.equal(state.kind, "woman");
+        assert.equal(state.kind, "girl");
         assert.deepEqual(state.owned, ["cap"]);
         assert.deepEqual(state.wear, {});
         assert.equal(state.spent, 0);
@@ -74,8 +74,8 @@ describe("companion state", () => {
         assert.equal("goal" in state, false);
     });
 
-    it("has nine slots in a fixed order and wears all of them at once", () => {
-        assert.deepEqual(WEAR_SLOT_IDS, ["hat", "glasses", "neck", "outfit", "feet", "hand", "back", "pet", "background"]);
+    it("has ten slots in a fixed order and wears all of them at once", () => {
+        assert.deepEqual(WEAR_SLOT_IDS, ["hat", "glasses", "neck", "outfit", "bottom", "feet", "hand", "back", "pet", "background"]);
         const owned = ["cap", "glasses", "boots", "wings", "puppy", "beach"];
         const wear = { hat: "cap", glasses: "glasses", feet: "boots", back: "wings", pet: "puppy", background: "beach" };
         assert.deepEqual(sanitizeCompanion({ kind: "dog", owned, wear, spent: 0, v: 1 }, null, catalog).wear, wear);

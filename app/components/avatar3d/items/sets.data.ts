@@ -1,0 +1,56 @@
+// Kompleti — čisti podaci (bez three.js), uvozi ih i server. Vlasnik: #3 (katalog).
+// Preneti iz 2D (app/components/avatar/wearables.tsx); id-jevi se ne menjaju (cilj „set:<id>” je u bazi).
+// Kompleti čija odeća ne pokriva noge dobijaju i donji deo (`bottom`). Novi kompleti (posle
+// starih 30) prave se i za životinje: sve na njima staje i mački, zeki, pingvinu…
+
+import type { SetData } from "../data";
+
+export const SETS: readonly SetData[] = [
+    { id: "astronaut", label: "Astronaut", items: { hat: "astronautski-slem", outfit: "kostim-astronauta", feet: "cizme-astronauta", back: "raketa-ranac", hand: "dvogled", background: "svemir" } },
+    { id: "vatrogasac", label: "Vatrogasac", items: { hat: "vatrogasni-slem", outfit: "kostim-vatrogasca", feet: "vatrogasne-cizme", hand: "lampa", pet: "kuce", background: "grad" } },
+    { id: "pirat", label: "Pirat", items: { hat: "piratski-sesir", outfit: "kostim-pirata", neck: "marama", hand: "mapa", pet: "papagaj", background: "plaza" } },
+    { id: "princeza", label: "Princeza", items: { hat: "tijara", outfit: "haljina-princeze", neck: "ogrlica-srce", feet: "cipele-masna", hand: "stapic-zvezda", background: "zamak" } },
+    { id: "princ", label: "Princ", items: { hat: "kruna", outfit: "kostim-princa", back: "kraljevski-plast", feet: "lakovane-cipele", pet: "poni", background: "zamak" } },
+    { id: "vitez", label: "Vitez", items: { hat: "slem-viteza", outfit: "kostim-viteza", back: "plast", feet: "kaubojske-cizme", pet: "poni", background: "zamak" } },
+    { id: "superheroj", label: "Superheroj", items: { glasses: "maska-superheroja", outfit: "kostim-superheroja", back: "kraljevski-plast", feet: "cizme-superheroja", background: "grad" } },
+    { id: "doktor", label: "Doktor", items: { glasses: "naocare", outfit: "kostim-doktora", feet: "plave-patike", hand: "medvedic", pet: "mace", background: "soba" } },
+    { id: "kuvar", label: "Kuvar", items: { hat: "kuvarska-kapa", neck: "marama", outfit: "kostim-kuvara", feet: "lakovane-cipele", hand: "varjaca", background: "soba" } },
+    { id: "pcelica", label: "Pčelica", items: { hat: "antene", outfit: "kostim-pcelice", back: "krila-pcelice", feet: "zute-patike", hand: "cvet", background: "livada" } },
+    { id: "bubamara", label: "Bubamara", items: { hat: "antene", outfit: "kostim-bubamare", back: "krila-bubamare", feet: "crvene-patike", hand: "suncokret", background: "livada" } },
+    { id: "dinosaurus", label: "Dinosaurus", items: { hat: "kapa-dino", outfit: "kostim-dinosaurusa", feet: "zelene-patike", pet: "kornjaca", hand: "jabuka", background: "suma" } },
+    { id: "meda", label: "Meda", items: { hat: "kapa-meda", outfit: "kostim-mede", feet: "papuce-mede", back: "ranac-meda", hand: "kolacic", background: "suma" } },
+    { id: "zimski", label: "Zimski dan", items: { hat: "zimska-kapa", glasses: "skijaske-naocare", neck: "prugasti-sal", outfit: "zimska-jakna", bottom: "tamne-farmerke", feet: "cizme-sneg", pet: "pingvin", background: "zimski-dan" } },
+    { id: "plaza", label: "Na plaži", items: { hat: "sesir", glasses: "suncane-naocare", neck: "ogrlica-cvece", outfit: "kupaci-ribice", feet: "sandale", hand: "kofica", background: "plaza" } },
+    { id: "ronilac", label: "Ronilac", items: { glasses: "ronilacka-maska", outfit: "kostim-ronioca", feet: "peraja", back: "boca-ronioca", pet: "ribica", background: "podvodni-svet" } },
+    { id: "fudbaler", label: "Fudbaler", items: { hat: "kapa-siltom", neck: "pistaljka", outfit: "fudbalski-dres", bottom: "sportski-sorc", feet: "kopacke", hand: "lopta", background: "park" } },
+    { id: "kosarkas", label: "Košarkaš", items: { hat: "zelena-kapa-siltom", neck: "medalja", outfit: "kosarkaski-dres", bottom: "crni-sorc", feet: "narandzaste-kopacke", background: "grad" } },
+    { id: "carobnjak", label: "Čarobnjak", items: { hat: "sesir-carobnjaka", outfit: "kostim-carobnjaka", back: "plast", hand: "stapic-zvezda", pet: "zecic", background: "svemir" } },
+    { id: "kauboj", label: "Kauboj", items: { hat: "kaubojski-sesir", neck: "marama", outfit: "kostim-kauboja", feet: "kaubojske-cizme", hand: "laso", pet: "poni", background: "farma" } },
+    { id: "balerina", label: "Balerina", items: { hat: "tijara", outfit: "kostim-balerine", feet: "baletanke", back: "krila-vile", hand: "cvet", background: "soba" } },
+    { id: "pilot", label: "Pilot", items: { hat: "kapa-pilota", glasses: "pilotske-naocare", outfit: "kostim-pilota", feet: "lakovane-cipele", back: "krila-ptice", background: "duga" } },
+    { id: "farmer", label: "Farmer", items: { hat: "slamnati-sesir", outfit: "kosulja-prsluk", bottom: "farmerke-zakrpe", feet: "zute-cizme", hand: "kantica", pet: "pile", background: "farma" } },
+    { id: "mornar", label: "Mornar", items: { hat: "mornarska-kapa", neck: "kravata", outfit: "majica-pruge", bottom: "teget-pantalone", feet: "plave-patike", hand: "dvogled", background: "plaza" } },
+    { id: "kisni-dan", label: "Kišni dan", items: { hat: "zimska-kapa", outfit: "zuta-kabanica", bottom: "farmerke", feet: "zute-cizme", hand: "kisobran", pet: "patkica", background: "park" } },
+    { id: "laku-noc", label: "Laku noć", items: { outfit: "pidzama", feet: "papuce-zeke", hand: "knjiga", back: "ranac-meda", pet: "mace", background: "soba" } },
+    { id: "rodjendan", label: "Rođendan", items: { hat: "rodjendanska-kapa", neck: "leptir-masna", outfit: "haljina-zvezde", feet: "sjajne-patike", hand: "tri-balona", background: "vasar" } },
+    { id: "vila", label: "Vila", items: { hat: "cvetni-venac", glasses: "maska-leptira", outfit: "haljina-cvece", back: "krila-vile", hand: "stapic-zvezda", background: "livada" } },
+    { id: "slikar", label: "Mali slikar", items: { hat: "sesir", neck: "leptir-masna-tufne", outfit: "kombinezon", feet: "crvene-patike", hand: "cetkica", background: "soba" } },
+    { id: "muzicar", label: "Muzičar", items: { glasses: "naocare-zvezde", neck: "leptir-masna", outfit: "odelo", feet: "lakovane-cipele", hand: "gitara", background: "vasar" } },
+    // ── Novi kompleti ──
+    { id: "skola", label: "Škola", items: { outfit: "majica-dugi-rukav-pruge", bottom: "farmerke", feet: "bele-patike", back: "skolska-torba", hand: "knjiga", background: "grad" } },
+    { id: "sport", label: "Sport", items: { hat: "kapa-siltom", outfit: "zelena-sportska-jakna", bottom: "crne-trenerke", feet: "crno-bele-patike", hand: "flasica", background: "park" } },
+    { id: "svecano", label: "Svečano", items: { neck: "leptir-masna", outfit: "teget-sako", bottom: "teget-pantalone", feet: "lakovane-cipele", hand: "cvet", background: "zamak" } },
+    { id: "zimska-setnja", label: "Zimska šetnja", items: { hat: "roze-zimska-kapa", neck: "krzneni-sal", outfit: "crna-pernata-jakna", bottom: "sive-siroke-farmerke", feet: "cizme-krzno", pet: "pingvin", background: "zimski-dan" } },
+    { id: "leto", label: "Leto", items: { hat: "slamnati-sesir", glasses: "suncane-naocare", outfit: "bela-majica", bottom: "teksas-sorc", feet: "sandale", hand: "sladoled", background: "plaza" } },
+    { id: "skromna-setnja", label: "Šetnja u dugom kaputu", items: { outfit: "dugi-kaput", bottom: "duga-suknja", feet: "cizme-do-kolena", neck: "ogrlica-kamencici", hand: "cvet", background: "park" } },
+    { id: "praznicni-dan", label: "Praznični dan", items: { outfit: "abaja", feet: "mokasine", neck: "ogrlica-perle", hand: "balon-srce", background: "vasar" } },
+    { id: "detektiv", label: "Mali detektiv", items: { hat: "sesir", outfit: "kostim-detektiva", feet: "mokasine", hand: "lupa", pet: "kuce", background: "grad" } },
+    { id: "naucnik", label: "Mali naučnik", items: { glasses: "naocare", outfit: "kostim-naucnika", feet: "bele-patike", hand: "lupa", background: "soba" } },
+    { id: "bastovan", label: "Baštovan", items: { hat: "slamnati-sesir", outfit: "kostim-bastovana", feet: "zute-cizme", hand: "kantica", pet: "zecic", background: "farma" } },
+    { id: "pidzama-zurka", label: "Pidžama žurka", items: { outfit: "pidzama-meseci", feet: "papuce-mede", hand: "medvedic", back: "ranac-zeka", background: "soba" } },
+    { id: "gradski-stil", label: "Gradski stil", items: { glasses: "suncane-naocare", outfit: "beli-pernati-prsluk", bottom: "sive-siroke-farmerke", feet: "bele-patike", back: "ranac", background: "grad" } },
+    { id: "udoban-dan", label: "Udoban dan", items: { outfit: "tamnozeleni-duks", bottom: "sive-trenerke", feet: "krem-patike", hand: "kokice", background: "park" } },
+    { id: "plivanje", label: "Plivanje", items: { glasses: "plivacke-naocare", outfit: "kupaci-dugi", feet: "peraja", hand: "lopta", pet: "patkica", background: "plaza" } },
+    { id: "jesenja-setnja", label: "Jesenja šetnja", items: { neck: "sal", outfit: "zuti-kardigan", bottom: "karirana-suknja", feet: "cizme-krzno", hand: "suncokret", background: "suma" } },
+    { id: "slikarka", label: "Mala umetnica", items: { hat: "traka-cvet", outfit: "teksas-kombinezon", feet: "crvene-patike", hand: "bojica", background: "livada" } },
+];

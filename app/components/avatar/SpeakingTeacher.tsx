@@ -3,8 +3,8 @@
 import { cn } from "@/lib/cn";
 import { useVoiceState } from "@/lib/voice";
 import { useChildSettings } from "../ChildSettingsProvider";
-import Companion from "./Companion";
-import { isCompanionKind } from "./companions";
+import CompanionPicture from "../avatar3d/CompanionPicture";
+import { isCompanionKindId } from "@/lib/companion";
 import TeacherAvatar from "./TeacherAvatar";
 import type { Wear } from "./wearables";
 
@@ -20,13 +20,13 @@ interface SpeakingTeacherProps {
 }
 
 /**
- * Portret učitelja koji čita: izraz prati ton rečenice, usta se pomeraju, a dok govori
- * oko portreta svetli prsten — jasno je ko se obraća detetu. Ne crta se kada je učitelj
+ * Portret učitelja koji čita: izraz prati ton rečenice, a dok govori oko portreta svetli
+ * prsten — jasno je ko se obraća detetu. Ne crta se kada je učitelj
  * isključen u podešavanjima deteta.
  */
 export default function SpeakingTeacher({ gender, kind, wear, skin, className }: SpeakingTeacherProps) {
     const settings = useChildSettings();
-    const { speaking } = useVoiceState();
+    const { speaking, emotion } = useVoiceState();
     if (!settings.avatar) return null;
     return (
         <span
@@ -36,8 +36,9 @@ export default function SpeakingTeacher({ gender, kind, wear, skin, className }:
                 className
             )}
         >
-            {isCompanionKind(kind) ? (
-                <Companion kind={kind} wear={wear} skin={skin} variant="portrait" className="h-full w-full" />
+            {isCompanionKindId(kind) ? (
+                // 3D slika drugara (izraz prati glas; slike su keširane, pa se lice menja odmah)
+                <CompanionPicture kind={kind} wear={wear} skin={skin} variant="portrait" background emotion={emotion} className="h-full w-full" eager />
             ) : (
                 <TeacherAvatar gender={gender} variant="face" className="h-full w-full" />
             )}

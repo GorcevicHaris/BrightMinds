@@ -49,7 +49,7 @@ describe("GET /api/children/[id]/companion", () => {
         assert.equal(response.status, 200);
         assert.equal(response.headers.get("cache-control"), "no-store");
         assert.deepEqual(await readJson(response), {
-            companion: { kind: "woman", owned: [], wear: {}, goal: null, skin: {}, skins: [] },
+            companion: { kind: "girl", owned: [], wear: {}, goal: null, skin: {}, skins: [] },
             coins: START,
         });
     });
@@ -91,7 +91,7 @@ describe("PUT /api/children/[id]/companion", () => {
     it("clears the goal when the child buys that item", async () => {
         await put({ action: "goal", item: priciest.id });
         const body = await readJson(await put({ action: "buy", item: priciest.id }));
-        assert.deepEqual(body.companion, { kind: "woman", owned: [priciest.id], wear: { [priciest.slot]: priciest.id }, goal: null, skin: {}, skins: [] });
+        assert.deepEqual(body.companion, { kind: "girl", owned: [priciest.id], wear: { [priciest.slot]: priciest.id }, goal: null, skin: {}, skins: [] });
         assert.equal(body.coins, START - priciest.price);
         assert.equal("goal" in stored(), false);
         assert.equal(stored().v, 2);
@@ -111,7 +111,7 @@ describe("PUT /api/children/[id]/companion", () => {
         await put({ action: "buy", item: hat.id });
         await put({ action: "buy", item: glasses.id });
         const body = await readJson(await put({ action: "undress" }));
-        assert.deepEqual(body.companion, { kind: "woman", owned: [hat.id, glasses.id], wear: {}, goal: null, skin: {}, skins: [] });
+        assert.deepEqual(body.companion, { kind: "girl", owned: [hat.id, glasses.id], wear: {}, goal: null, skin: {}, skins: [] });
         assert.equal(body.coins, START - hat.price - glasses.price);
     });
 
@@ -228,7 +228,8 @@ describe("PUT /api/children/[id]/companion — izgled drugara", () => {
         assert.deepEqual((body.companion as Record<string, unknown>).skin, { cat: freeCat.id, woman: womanLook });
         assert.equal(body.coins, START);
         assert.equal(stored().spent, 0);
-        assert.equal(((await readJson(await get())).companion as Record<string, unknown>).kind, "woman");
+        // Izgled se pamti po drugaru; izabran ostaje podrazumevani (devojčica)
+        assert.equal(((await readJson(await get())).companion as Record<string, unknown>).kind, "girl");
     });
 
     it("refuses a paid look that is not bought, an unknown look, and writes nothing", async () => {
