@@ -44,7 +44,20 @@ interface Worn {
     builder: ItemBuilder;
     motion?: ItemMotion;
     animate?: (time: number, dt: number, live: boolean) => void;
+    /** Osnovna odeća (nije kupljena; skida se čim dete obuče svoj predmet na to mesto) */
+    base?: boolean;
 }
+
+/** Predmeti uz koje lik ne prekršta ruke (krut deo na grudima) */
+const NO_CROSSED_ARMS = new Set(["kostim-astronauta"]);
+
+/** Osnovna odeća iz kataloga (#3): obične stvari koje idu uz sve */
+const BASE_ITEMS: Record<string, Partial<Record<"outfit" | "bottom" | "feet", string>>> = {
+    girl: { outfit: "bela-majica", bottom: "farmerke", feet: "bele-patike" },
+    boy: { outfit: "majica-pruge", bottom: "farmerke", feet: "plave-patike" },
+    woman: { outfit: "bordo-majica-dugi-rukav", bottom: "siroke-farmerke", feet: "krem-patike" },
+    man: { outfit: "plava-polo-majica", bottom: "teget-pantalone", feet: "crno-bele-patike" },
+};
 
 /** Osnovna odeća čoveka (prototip motora) kad je mesto prazno — lik nikad nije neobučen */
 const BASE: Record<string, Partial<Record<"outfit" | "bottom" | "feet", [string, number]>>> = {
@@ -196,7 +209,8 @@ export class Figure {
             const skip = !id || !entry || entry.slot !== slot || hidden.has(slot) || (human?.hijab && entry.builder.withHijab === "hide");
             const current = this.worn.get(slot);
             if (skip) {
-                if (current) this.takeOff(slot);
+                // Osnovna odeća ostaje dok je mesto prazno i nije skriveno (dodaje se ispod)
+                if (current && !(current.base && !id && !hidden.has(slot))) this.takeOff(slot);
                 continue;
             }
             const key = `${id}|${this.dependency(entry.builder, wear)}|${this.hairCrown}`;
@@ -204,12 +218,25 @@ export class Figure {
             if (current) this.takeOff(slot);
             this.putOn(slot, id, key, entry.builder, wear);
         }
-        // Osnovna odeća čoveka na praznim mestima
+        // Osnovna odeća čoveka na praznim mestima: obični predmeti iz kataloga (ako postoje u 3D),
+        // inače odeća iz prototipa motora. Ne kupuju se i ne vide u ormaru — samo da lik nije neobučen.
+        if (human) {
+            for (const slot of ["bottom", "outfit", "feet"] as const) {
+                const id = BASE_ITEMS[body.kind]?.[slot];
+                const entry = id ? itemBuilder(id) : undefined;
+                const needed = Boolean(entry) && !this.worn.has(slot) && !hidden.has(slot);
+                if (needed && id && entry) {
+                    this.putOn(slot, id, `osnova|${id}|${this.hairCrown}`, entry.builder, wear);
+                    const worn = this.worn.get(slot);
+                    if (worn) worn.base = true;
+                }
+            }
+        }
         if (human) {
             const base = BASE[body.kind] ?? {};
             for (const slot of ["bottom", "outfit", "feet"] as const) {
                 const want = base[slot];
-                const needed = want && !this.worn.has(slot) && !hidden.has(slot);
+                const needed = want && !this.worn.has(slot) && !hidden.has(slot) && !itemBuilder(BASE_ITEMS[body.kind]?.[slot] ?? "");
                 const key = needed ? `${want[0]}:${want[1]}` : "";
                 const current = this.base.get(slot);
                 if (current?.key === key) continue;
@@ -378,7 +405,9 @@ export class Figure {
 
     /** Redosled mirnih poza (stalan, bez nasumičnosti); sa predmetom u ruci samo slobodnom rukom */
     private nextAutoPose(): PoseName {
-        const order: PoseName[] = this.worn.has("hand") ? ["relaxed", "hips"] : ["relaxed", "hips", "relaxed", "crossed", "relaxed", "behind"];
+        // Prekrštene ruke se preskaču uz predmete koji bi se sudarili sa rukama (krut deo na grudima)
+        const noCross = [...this.worn.values()].some((w) => NO_CROSSED_ARMS.has(w.id));
+        const order: PoseName[] = this.worn.has("hand") ? ["relaxed", "hips"] : noCross ? ["relaxed", "hips", "relaxed", "behind"] : ["relaxed", "hips", "relaxed", "crossed", "relaxed", "behind"];
         const i = order.indexOf(this.poseName);
         return order[(i + 1) % order.length];
     }

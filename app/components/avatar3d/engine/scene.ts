@@ -215,8 +215,8 @@ export class StageScene {
                 width = span * 0.8;
                 break;
             case "wide":
-                target = Math.max(H, top) * 0.52;
-                span = Math.max(H, top) * 1.3;
+                target = Math.max(H, top) * 0.53;
+                span = Math.max(H, top) * 1.12;
                 width = H * 0.62;
                 break;
             default:

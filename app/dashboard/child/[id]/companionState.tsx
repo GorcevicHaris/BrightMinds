@@ -6,13 +6,11 @@
 // Tu je i cilj deteta: predmet za koji skuplja novčiće (vidi se u sobi, na početnoj i posle nivoa).
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { skinPrice } from "@/app/components/avatar/skins";
-import { getWearItem, getWearSet } from "@/app/components/avatar/wearables";
+import { COMPANION_CATALOG } from "@/app/components/avatar3d/manifest";
 import {
     applyCompanionAction,
     coinsAvailable,
     defaultCompanion,
-    isCompanionKindId,
     COINS_PER_STAR,
     POINTS_PER_STAR,
     type CompanionAction,
@@ -49,18 +47,7 @@ const NO_SKIN: Partial<Record<string, string>> = {};
 const NO_SKINS: string[] = [];
 
 /** Katalog za proveru na ekranu (probni prikaz, cena kompleta); server proverava isto */
-export const LOCAL_CATALOG: CompanionCatalog = {
-    isKind: isCompanionKindId,
-    item: (id) => {
-        const item = getWearItem(id);
-        return item ? { slot: item.slot, price: item.price } : undefined;
-    },
-    set: getWearSet,
-    skin: (kind, id) => {
-        const price = skinPrice(kind, id);
-        return price === undefined ? undefined : { price };
-    },
-};
+export const LOCAL_CATALOG: CompanionCatalog = COMPANION_CATALOG;
 
 /** Odgovor servera → izmena stanja (server šalje `goal: null` kad cilja nema) */
 function fromServer(companion: Record<string, unknown>): Partial<CompanionState> {

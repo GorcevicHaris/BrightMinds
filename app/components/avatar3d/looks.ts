@@ -7,7 +7,7 @@
 // Stari 2D zapis od tri dela `<koža>.<kosa>.<frizura>` i dalje važi (oči smeđe, bez hidžaba),
 // pa izgled koji je dete ranije izabralo ostaje isti.
 
-import type { HumanKind } from "./data";
+import { isHumanKind, type HumanKind } from "./data";
 
 export interface LookPart {
     id: string;
@@ -21,6 +21,7 @@ export interface ColorLookPart extends LookPart {
 
 /** Boje kože (iste id-jeve ima 2D izgled, skins.ts), od najsvetlije do najtamnije */
 export const SKIN_TONES: readonly ColorLookPart[] = [
+    // Prvih sedam su dosadašnji izgledi (isti id-jevi kao 2D); ostali su dodati za veći izbor
     { id: "vrlo-svetla", label: "Vrlo svetla koža", hex: "#F8CFB2" },
     { id: "svetla", label: "Svetla koža", hex: "#F2BE96" },
     { id: "psenicna", label: "Pšenična koža", hex: "#E2A374" },
@@ -28,6 +29,23 @@ export const SKIN_TONES: readonly ColorLookPart[] = [
     { id: "smedja", label: "Smeđa koža", hex: "#A2673F" },
     { id: "tamna", label: "Tamna koža", hex: "#7E4A2C" },
     { id: "vrlo-tamna", label: "Vrlo tamna koža", hex: "#5E3521" },
+    { id: "porcelan", label: "Porcelanska koža", hex: "#FBDCC8" },
+    { id: "ruzicasta", label: "Ružičasta koža", hex: "#F5C6B0" },
+    { id: "breskva", label: "Koža boje breskve", hex: "#F4B98F" },
+    { id: "medena", label: "Medena koža", hex: "#E7B077" },
+    { id: "zlatna", label: "Zlatna koža", hex: "#DDA066" },
+    { id: "karamel", label: "Karamel koža", hex: "#C98E5E" },
+    { id: "bakarna", label: "Bakarna koža", hex: "#BD7B4E" },
+    { id: "lesnik", label: "Koža boje lešnika", hex: "#B27448" },
+    { id: "cimet", label: "Koža boje cimeta", hex: "#9C5F3B" },
+    { id: "kakao", label: "Koža boje kakaa", hex: "#8A5534" },
+    { id: "kafa", label: "Koža boje kafe", hex: "#6F4229" },
+    { id: "espreso", label: "Koža boje espresa", hex: "#55311F" },
+    { id: "ebanovina", label: "Koža boje ebanovine", hex: "#46281A" },
+    { id: "pesak", label: "Koža boje peska", hex: "#D9A27A" },
+    { id: "maslina-svetla", label: "Svetla maslinasta koža", hex: "#D0A06C" },
+    { id: "maslina-tamna", label: "Tamna maslinasta koža", hex: "#A87A4E" },
+    { id: "topla-smedja", label: "Topla smeđa koža", hex: "#93603E" },
 ];
 
 export const EYE_COLORS: readonly ColorLookPart[] = [
@@ -164,4 +182,9 @@ export function hairShape(kind: HumanKind, style: string): HairShape {
 
 export function partHex(list: readonly ColorLookPart[], id: string): string {
     return (list.find((part) => part.id === id) ?? list[0]).hex;
+}
+
+/** Izgled za 3D motor: čovek dobija delove izgleda, životinja id krzna (nepoznat → prvi) */
+export function companionLook(kind: string, skin: string | undefined): { kind: string; skin: string; human?: HumanLook } {
+    return isHumanKind(kind) ? { kind, skin: "", human: humanLook(kind, skin) } : { kind, skin: skin ?? "" };
 }
