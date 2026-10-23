@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
 import { GET, PUT } from "@/app/api/children/[id]/companion/route";
 import { WEAR_ITEMS, type WearItem } from "@/app/components/avatar/wearables";
-import { POINTS_PER_STAR } from "@/lib/companion";
+import { POINTS_PER_STAR, setGoalId } from "@/lib/companion";
+// posle spajanja: WEAR_SETS (uvoz iz wearables)
+import { WEAR_SETS, type WearSet } from "@/lib/wearSets";
 import { CHILD_ID, OTHER_CHILD_ID, db, idParams, jsonRequest, readJson, resetWorld, seedFamily, signInAsChild, signInAsParent } from "../setup/api";
 
 const put = (body: unknown, childId = CHILD_ID) => PUT(jsonRequest("PUT", body), idParams(childId));
@@ -19,6 +21,12 @@ const priciest = byPrice[byPrice.length - 1];
 const hat = cheapest("hat");
 const glasses = cheapest("glasses");
 const stars = (count: number) => count * POINTS_PER_STAR;
+
+// Komplet iz kataloga; dok katalog nema komplete, probni od najjeftinijeg šešira i naočara
+if (WEAR_SETS.length === 0) (WEAR_SETS as WearSet[]).push({ id: "probni-komplet", label: "Probni komplet", items: { hat: hat.id, glasses: glasses.id } });
+const set = WEAR_SETS[0];
+const setItems = Object.values(set.items) as string[];
+const setPrice = setItems.reduce((sum, id) => sum + (WEAR_ITEMS.find((item) => item.id === id)?.price ?? 0), 0);
 
 beforeEach(() => {
     resetWorld();
@@ -127,6 +135,28 @@ describe("PUT /api/children/[id]/companion", () => {
         for (const body of [{ action: "outfit", wear: { tail: hat.id } }, { action: "outfit", wear: [hat.id] }, { action: "goal" }, { action: "goal", item: 7 }, { action: "wear", slot: "shoes", item: hat.id }]) {
             assert.equal((await put(body)).status, 400, JSON.stringify(body));
         }
+        assert.equal(db.count("children", "update"), 0);
+    });
+
+    it("buys a whole set in one request, at the sum of the missing prices, wears it and clears the set goal", async () => {
+        childRow().experience_points = stars(setPrice);
+        await put({ action: "goal", item: setGoalId(set.id) });
+        assert.equal(stored().goal, setGoalId(set.id));
+        const response = await put({ action: "buySet", set: set.id });
+        assert.equal(response.status, 200);
+        const body = await readJson(response);
+        assert.equal(body.coins, 0);
+        assert.deepEqual([...((body.companion as Record<string, unknown>).owned as string[])].sort(), [...setItems].sort());
+        assert.deepEqual((body.companion as Record<string, unknown>).wear, set.items);
+        assert.equal((body.companion as Record<string, unknown>).goal, null);
+        assert.equal(stored().spent, setPrice);
+        assert.equal((await put({ action: "buySet", set: set.id })).status, 400);
+    });
+
+    it("buys nothing of a set without coins for all of it", async () => {
+        childRow().experience_points = stars(setPrice - 1);
+        assert.equal((await put({ action: "buySet", set: set.id })).status, 402);
+        assert.equal((await put({ action: "buySet", set: "nema-takvog" })).status, 400);
         assert.equal(db.count("children", "update"), 0);
     });
 

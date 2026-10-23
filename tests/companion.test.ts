@@ -6,6 +6,7 @@ import {
     defaultCompanion,
     parseCompanionAction,
     sanitizeCompanion,
+    setMissing,
     WEAR_SLOT_IDS,
     type CompanionCatalog,
     type WearSlotId,
@@ -20,9 +21,17 @@ const ITEMS: Record<string, { slot: WearSlotId; price: number }> = {
     puppy: { slot: "pet", price: 12 },
     beach: { slot: "background", price: 8 },
 };
+const SETS: Record<string, { items: Partial<Record<WearSlotId, string>> }> = {
+    king: { items: { hat: "crown", back: "wings", pet: "puppy" } },
+    beach: { items: { hat: "cap", glasses: "glasses", background: "beach" } },
+    broken: { items: { hat: "rocket" } },
+    wrongSlot: { items: { feet: "crown" } },
+    empty: { items: {} },
+};
 const catalog: CompanionCatalog = {
     isKind: (value) => typeof value === "string" && ["woman", "man", "cat", "dog", "bunny", "bear"].includes(value),
     item: (id) => ITEMS[id],
+    set: (id) => SETS[id],
 };
 
 describe("companion state", () => {
@@ -66,6 +75,10 @@ describe("companion state", () => {
         assert.equal(sanitizeCompanion({ owned: ["wings"], goal: "wings" }, null, catalog).goal, undefined);
         assert.equal(sanitizeCompanion({ owned: [], goal: "rocket" }, null, catalog).goal, undefined);
         assert.equal(sanitizeCompanion({ owned: [], goal: 5 }, null, catalog).goal, undefined);
+        // Komplet: važi dok mu nešto nedostaje
+        assert.equal(sanitizeCompanion({ owned: ["crown"], goal: "set:king" }, null, catalog).goal, "set:king");
+        assert.equal(sanitizeCompanion({ owned: ["crown", "wings", "puppy"], goal: "set:king" }, null, catalog).goal, undefined);
+        assert.equal(sanitizeCompanion({ owned: [], goal: "set:nope" }, null, catalog).goal, undefined);
     });
 
     it("turns stars into coins: one star is one coin, spent coins are subtracted, never below zero", () => {
@@ -152,7 +165,51 @@ describe("companion actions", () => {
         assert.ok(empty.ok && Object.keys(empty.state.wear).length === 0);
     });
 
+    it("buys the missing items of a set at once, at the sum of their fixed prices, and wears the whole set", () => {
+        const some = { ...start, owned: ["crown"], wear: { glasses: "glasses" }, spent: 10, goal: "set:king" };
+        // Nedostaju krila (14) i štene (12): 26 novčića; jedan manje — ne kupuje se ništa
+        assert.deepEqual(applyCompanionAction(some, { action: "buySet", set: "king" }, (10 + 25) * 5, catalog), { ok: false, reason: "coins" });
+        const bought = applyCompanionAction(some, { action: "buySet", set: "king" }, (10 + 26) * 5, catalog);
+        assert.ok(bought.ok);
+        assert.deepEqual(bought.state.owned, ["crown", "wings", "puppy"]);
+        assert.equal(bought.state.spent, 36);
+        assert.deepEqual(bought.state.wear, { hat: "crown", back: "wings", pet: "puppy" });
+        assert.equal("goal" in bought.state, false);
+        assert.equal(bought.state.v, 1);
+        assert.deepEqual(applyCompanionAction(bought.state, { action: "buySet", set: "king" }, 999, catalog), { ok: false, reason: "owned" });
+    });
+
+    it("refuses unknown or broken sets", () => {
+        for (const set of ["nope", "broken", "wrongSlot", "empty"]) {
+            assert.deepEqual(applyCompanionAction(start, { action: "buySet", set }, 999, catalog), { ok: false, reason: "unknown" }, set);
+        }
+    });
+
+    it("takes a set as a goal and clears it once every item of the set is owned, bought one by one too", () => {
+        const goal = applyCompanionAction(start, { action: "goal", item: "set:beach" }, 0, catalog);
+        assert.ok(goal.ok && goal.state.goal === "set:beach");
+        assert.deepEqual(applyCompanionAction(start, { action: "goal", item: "set:nope" }, 0, catalog), { ok: false, reason: "unknown" });
+        assert.deepEqual(applyCompanionAction({ ...start, owned: ["cap", "glasses", "beach"] }, { action: "goal", item: "set:beach" }, 0, catalog), { ok: false, reason: "owned" });
+        let state = goal.state;
+        for (const item of ["cap", "glasses"]) {
+            const result = applyCompanionAction(state, { action: "buy", item }, 99 * 5, catalog);
+            assert.ok(result.ok);
+            state = result.state;
+            assert.equal(state.goal, "set:beach");
+        }
+        const last = applyCompanionAction(state, { action: "buy", item: "beach" }, 99 * 5, catalog);
+        assert.ok(last.ok && !("goal" in last.state));
+    });
+
+    it("tells what is still missing from a set and what it costs", () => {
+        assert.deepEqual(setMissing("king", ["wings"], catalog), { items: ["crown", "puppy"], price: 22 });
+        assert.deepEqual(setMissing("king", ["crown", "wings", "puppy"], catalog), { items: [], price: 0 });
+        assert.equal(setMissing("broken", [], catalog), undefined);
+    });
+
     it("parses only well-formed requests", () => {
+        assert.deepEqual(parseCompanionAction({ action: "buySet", set: "king" }), { action: "buySet", set: "king" });
+        assert.equal(parseCompanionAction({ action: "buySet", set: ["king"] }), null);
         assert.deepEqual(parseCompanionAction({ action: "undress" }), { action: "undress" });
         assert.deepEqual(parseCompanionAction({ action: "goal", item: "wings" }), { action: "goal", item: "wings" });
         assert.deepEqual(parseCompanionAction({ action: "goal", item: null }), { action: "goal", item: null });

@@ -17,6 +17,7 @@ import {
     type CompanionCatalog,
     type CompanionState,
 } from "@/lib/companion";
+import { getWearSet } from "@/lib/wearSets";
 
 export interface CompanionView {
     kind: string;
@@ -38,12 +39,14 @@ interface CompanionContextValue extends CompanionView {
 
 const CompanionContext = createContext<CompanionContextValue | null>(null);
 
-const LOCAL_CATALOG: CompanionCatalog = {
+/** Katalog za proveru na ekranu (probni prikaz, cena kompleta); server proverava isto */
+export const LOCAL_CATALOG: CompanionCatalog = {
     isKind: isCompanionKindId,
     item: (id) => {
         const item = getWearItem(id);
         return item ? { slot: item.slot, price: item.price } : undefined;
     },
+    set: getWearSet,
 };
 
 /** Odgovor servera → izmena stanja (server šalje `goal: null` kad cilja nema) */

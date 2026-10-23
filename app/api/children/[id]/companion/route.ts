@@ -1,8 +1,8 @@
 // app/api/children/[id]/companion/route.ts
 // Pratilac deteta i novčići (model: lib/companion.ts).
 // GET — roditelj ili dečja sesija tog deteta: izabrani pratilac, odeća i novčići.
-// PUT — isto: dete samo bira pratioca, kupuje, oblači i skida odeću i bira cilj
-//       (predmet za koji skuplja novčiće). Radnje: lib/companion.ts. Cenu i stanje novčića
+// PUT — isto: dete samo bira pratioca, kupuje predmete i komplete, oblači i skida odeću
+//       i bira cilj (predmet ili komplet za koji skuplja novčiće). Radnje: lib/companion.ts. Cenu i stanje novčića
 //       uvek proverava server; upis uspeva samo ako se stanje u međuvremenu nije
 //       promenilo (dva brza dodira ne mogu dvaput da potroše iste novčiće).
 import { NextResponse } from "next/server";
@@ -10,6 +10,7 @@ import { getWearItem } from "@/app/components/avatar/wearables";
 import { requireChildAccess } from "@/lib/auth";
 import { applyCompanionAction, coinsAvailable, isCompanionKindId, parseCompanionAction, sanitizeCompanion, type CompanionCatalog } from "@/lib/companion";
 import { supabaseAdmin } from "@/lib/supabase";
+import { getWearSet } from "@/lib/wearSets";
 import { isRecord } from "@/lib/validation";
 import { CHILD_NOT_FOUND } from "../../../_lib/children";
 import { errorResponse, HttpError, parseIdParam, readJsonObject } from "../../../_lib/http";
@@ -24,6 +25,7 @@ const CATALOG: CompanionCatalog = {
         const item = getWearItem(id);
         return item ? { slot: item.slot, price: item.price } : undefined;
     },
+    set: getWearSet,
 };
 
 const MESSAGES = {

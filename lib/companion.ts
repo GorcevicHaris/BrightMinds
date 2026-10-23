@@ -6,8 +6,10 @@
 //    može da izgubi — samo da ih potroši na odeću (šešir, naočare, odelo…). Nema nasumičnih
 //    nagrada ni „kutija iznenađenja”: svaki predmet ima stalnu cenu i dete zna šta dobija.
 //    (Sistem žetona — token economy — u ABA terapiji je pozitivno potkrepljenje bez kazni.)
-//  • Dete može da izabere predmet za koji „radi” (cilj, kao tabla sa žetonima u ABA terapiji):
-//    vidi koliko novčića još treba. Kad kupi taj predmet, cilj se sam briše.
+//  • Kompleti su gotovi izgledi (npr. gusar: šešir, odelo, papagaj). Komplet se kupuje odjednom
+//    po zbiru cena predmeta koji detetu još nedostaju — bez popusta, cena je uvek predvidiva.
+//  • Dete može da izabere predmet ili komplet za koji „radi” (cilj, kao tabla sa žetonima u ABA
+//    terapiji): vidi koliko novčića još treba. Kad ga kupi, cilj se sam briše.
 //  • Stanje se čuva u postojećem JSON polju children.settings pod ključem `companion`, pa
 //    nije potrebna promena tabele. Broj zarađenih zvezdica se izvodi iz experience_points
 //    (5 poena po zvezdici, app/api/activities/complete).
@@ -41,7 +43,7 @@ export interface CompanionState {
     owned: string[];
     /** Šta pratilac trenutno nosi, po mestu */
     wear: CompanionWear;
-    /** Predmet za koji dete skuplja novčiće (još nije kupljen); bez cilja — nema ključa */
+    /** Za šta dete skuplja novčiće: id predmeta ili `set:<id kompleta>`; bez cilja — nema ključa */
     goal?: string;
     /** Ukupno potrošeni novčići */
     spent: number;
@@ -54,6 +56,51 @@ export interface CompanionCatalog {
     isKind: (value: unknown) => boolean;
     /** Mesto i cena predmeta, ili undefined za nepoznat predmet */
     item: (id: string) => { slot: WearSlotId; price: number } | undefined;
+    /** Predmeti kompleta po mestu, ili undefined za nepoznat komplet */
+    set: (id: string) => { items: CompanionWear } | undefined;
+}
+
+/** Cilj koji je komplet ima oblik `set:<id>` */
+export const SET_GOAL_PREFIX = "set:";
+
+export function setGoalId(setId: string): string {
+    return SET_GOAL_PREFIX + setId;
+}
+
+/** Id kompleta iz cilja, ili null kad je cilj jedan predmet */
+export function goalSetId(goal: string): string | null {
+    return goal.startsWith(SET_GOAL_PREFIX) ? goal.slice(SET_GOAL_PREFIX.length) : null;
+}
+
+/**
+ * Šta detetu još nedostaje do kompleta: predmeti koji nisu kupljeni i zbir njihovih cena.
+ * Undefined za nepoznat komplet (ili komplet sa nepoznatim predmetom ili predmetom na tuđem mestu).
+ */
+export function setMissing(setId: string, owned: readonly string[], catalog: CompanionCatalog): { items: string[]; price: number } | undefined {
+    const set = catalog.set(setId);
+    if (!set) return undefined;
+    const items: string[] = [];
+    let price = 0;
+    let size = 0;
+    for (const slot of WEAR_SLOT_IDS) {
+        const id = set.items[slot];
+        if (id === undefined) continue;
+        const item = catalog.item(id);
+        if (!item || item.slot !== slot) return undefined;
+        size += 1;
+        if (!owned.includes(id)) {
+            items.push(id);
+            price += item.price;
+        }
+    }
+    return size > 0 ? { items, price } : undefined;
+}
+
+/** Cilj još važi: poznat predmet koji nije kupljen, ili komplet kome nešto nedostaje */
+function isOpenGoal(goal: string, owned: readonly string[], catalog: CompanionCatalog): boolean {
+    const setId = goalSetId(goal);
+    if (setId !== null) return (setMissing(setId, owned, catalog)?.items.length ?? 0) > 0;
+    return catalog.item(goal) !== undefined && !owned.includes(goal);
 }
 
 /** Podrazumevani pratilac: isti kao dosadašnji učitelj (devojčica — učiteljica, dečak — učitelj) */
@@ -81,8 +128,8 @@ export function sanitizeCompanion(raw: unknown, gender: string | null | undefine
     const spent = typeof raw.spent === "number" && Number.isFinite(raw.spent) && raw.spent > 0 ? Math.floor(raw.spent) : 0;
     const v = typeof raw.v === "number" && Number.isInteger(raw.v) && raw.v >= 0 ? raw.v : 0;
     const state: CompanionState = { kind: catalog.isKind(raw.kind) ? (raw.kind as string) : base.kind, owned, wear, spent, v };
-    // Cilj je samo poznat predmet koji još nije kupljen
-    if (typeof raw.goal === "string" && catalog.item(raw.goal) !== undefined && !owned.includes(raw.goal)) state.goal = raw.goal;
+    // Cilj je samo poznat predmet koji još nije kupljen, ili komplet kome nešto nedostaje
+    if (typeof raw.goal === "string" && isOpenGoal(raw.goal, owned, catalog)) state.goal = raw.goal;
     return state;
 }
 
@@ -95,12 +142,14 @@ export function coinsAvailable(experiencePoints: number | null | undefined, spen
 export type CompanionAction =
     | { action: "choose"; kind: string }
     | { action: "buy"; item: string }
+    /** Kupuje sve predmete kompleta koji nedostaju (zbir njihovih cena) i oblači ceo komplet */
+    | { action: "buySet"; set: string }
     | { action: "wear"; slot: WearSlotId; item: string | null }
     /** Ceo izgled odjednom (npr. sačuvana kombinacija): mesta kojih nema ostaju prazna */
     | { action: "outfit"; wear: CompanionWear }
     /** Skini sve (ništa se ne gubi — predmeti ostaju u ormaru) */
     | { action: "undress" }
-    /** Predmet za koji dete skuplja novčiće; null briše cilj */
+    /** Predmet ili `set:<id>` za koji dete skuplja novčiće; null briše cilj */
     | { action: "goal"; item: string | null };
 
 export type CompanionResult = { ok: true; state: CompanionState } | { ok: false; reason: "unknown" | "not-owned" | "owned" | "coins" };
@@ -125,8 +174,21 @@ export function applyCompanionAction(
             if (coinsAvailable(experiencePoints, state.spent) < item.price) return { ok: false, reason: "coins" };
             // Kupljen predmet pratilac odmah obuče — dete odmah vidi šta je dobilo
             const bought: CompanionState = { ...next, owned: [...next.owned, action.item], spent: state.spent + item.price, wear: { ...next.wear, [item.slot]: action.item } };
-            // Cilj je ostvaren
-            if (bought.goal === action.item) delete bought.goal;
+            // Cilj je ostvaren (i komplet kome je ovo bio poslednji predmet)
+            if (bought.goal && !isOpenGoal(bought.goal, bought.owned, catalog)) delete bought.goal;
+            return { ok: true, state: bought };
+        }
+
+        case "buySet": {
+            const missing = setMissing(action.set, state.owned, catalog);
+            const set = catalog.set(action.set);
+            if (!missing || !set) return { ok: false, reason: "unknown" };
+            if (missing.items.length === 0) return { ok: false, reason: "owned" };
+            // Sve ili ništa: bez dovoljno novčića za ceo ostatak ne kupuje se ni deo
+            if (coinsAvailable(experiencePoints, state.spent) < missing.price) return { ok: false, reason: "coins" };
+            // Pratilac odmah obuče ceo komplet — tačno kao na sličici kompleta
+            const bought: CompanionState = { ...next, owned: [...next.owned, ...missing.items], spent: state.spent + missing.price, wear: { ...set.items } };
+            if (bought.goal && !isOpenGoal(bought.goal, bought.owned, catalog)) delete bought.goal;
             return { ok: true, state: bought };
         }
 
@@ -161,8 +223,15 @@ export function applyCompanionAction(
                 delete next.goal;
                 return { ok: true, state: next };
             }
-            if (!catalog.item(action.item)) return { ok: false, reason: "unknown" };
-            if (state.owned.includes(action.item)) return { ok: false, reason: "owned" };
+            const setId = goalSetId(action.item);
+            if (setId !== null) {
+                const missing = setMissing(setId, state.owned, catalog);
+                if (!missing) return { ok: false, reason: "unknown" };
+                if (missing.items.length === 0) return { ok: false, reason: "owned" };
+            } else {
+                if (!catalog.item(action.item)) return { ok: false, reason: "unknown" };
+                if (state.owned.includes(action.item)) return { ok: false, reason: "owned" };
+            }
             return { ok: true, state: { ...next, goal: action.item } };
         }
     }
@@ -173,6 +242,7 @@ export function parseCompanionAction(body: unknown): CompanionAction | null {
     if (!isRecord(body)) return null;
     if (body.action === "choose" && typeof body.kind === "string") return { action: "choose", kind: body.kind };
     if (body.action === "buy" && typeof body.item === "string") return { action: "buy", item: body.item };
+    if (body.action === "buySet" && typeof body.set === "string") return { action: "buySet", set: body.set };
     if (body.action === "wear" && isWearSlotId(body.slot) && (body.item === null || typeof body.item === "string")) {
         return { action: "wear", slot: body.slot, item: body.item as string | null };
     }
