@@ -357,9 +357,10 @@ export function coatColor(ctx: PaintContext, pp: PaintPoint, out: THREE.Color): 
         }
         case "gold":
         case "stars": {
-            const s = spots(p, 0.026, 77, 0.35);
-            const twinkle = hash3(Math.floor(p.x * 400), Math.floor(p.y * 400), Math.floor(p.z * 400), 9);
-            const fleck = coat.pattern === "gold" ? s * 0.35 + (twinkle > 0.985 ? 0.5 : 0) : s * 0.9;
+            // Zlatna: meki svetliji prelivi (bez „mrvica”); zvezdana: retke svetle tačkice
+            const fleck = coat.pattern === "gold"
+                ? smoothstep(0.52, 0.8, fbm3(p.x * 26, p.y * 26, p.z * 26, 77)) * 0.3
+                : spots(p, 0.03, 77, 0.22) * 0.9;
             if (pp.region !== "mane") out.lerp(col(marks[0] ?? "#FFFFFF"), fleck * (pp.region === "head" ? 1 - smoothstep(0.1, 0.5, pp.muzzle ?? 0) : 1));
             break;
         }
@@ -379,8 +380,8 @@ export function coatColor(ctx: PaintContext, pp: PaintPoint, out: THREE.Color): 
             if (pp.region === "arm") out.lerp(col(coat.paws ?? marks[0] ?? coat.fur), smoothstep(0.6, 0.85, t));
             if (pp.region === "ear" && pp.inner) out.lerp(col("#FFFFFF"), pp.inner * 0.85);
             if (coat.pattern === "silver" && pp.region !== "hand" && pp.region !== "foot") {
-                const frost = fbm3(p.x * 40, p.y * 40, p.z * 40, 51);
-                out.lerp(dark, smoothstep(0.55, 0.75, frost) * 0.45 * (pp.region === "torso" ? 1 - bellyMask(ctx, p) : 1));
+                const frost = fbm3(p.x * 70, p.y * 70, p.z * 70, 51);
+                out.lerp(dark, smoothstep(0.5, 0.75, frost) * 0.3 * (pp.region === "torso" ? 1 - bellyMask(ctx, p) : 1));
             }
             break;
         }
