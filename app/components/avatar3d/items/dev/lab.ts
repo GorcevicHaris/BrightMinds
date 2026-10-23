@@ -8,6 +8,7 @@ import type { CompanionKind, Environment, Slot, ThumbHint, Wear } from "../../co
 import { backgroundBuilder, itemBuilder } from "../../contract";
 import { getItem } from "../../manifest";
 import { blobTexture } from "../../engine/textures";
+import { solvePose, type PoseName } from "../../engine/pose";
 import { buildTestFigure, takeOff, triangles, wearItem, type TestFigure, type Worn } from "./harness";
 import "../index";
 
@@ -47,6 +48,10 @@ export interface CellRequest {
     wide?: boolean;
     /** Vreme animacije (oblaci, mehurići) — da se vidi i pokret */
     time?: number;
+    /** "low" kao u sličicama prodavnice */
+    quality?: "high" | "low";
+    /** Poza ruku (engine/pose.ts): prekrštene ruke, šake na ustima… */
+    pose?: PoseName;
 }
 
 export interface CellResult {
@@ -201,11 +206,10 @@ export class Lab {
                 continue;
             }
             try {
-                const w = wearItem(figure, id, req.wear);
+                const w = wearItem(figure, id, req.wear, req.quality ?? "high");
                 if (w) {
                     worn.push(w);
                     tris[id] = triangles(w.objects);
-                    w.animate?.(req.time ?? 1.2, 0.016, false);
                 }
             } catch (error) {
                 errors.push(`${id}: ${(error as Error).message}`);
@@ -217,7 +221,7 @@ export class Lab {
             if (!bb) missing.push(req.background);
             else {
                 try {
-                    env = bb.build({ figureHeight: figure.body.anchors.height, wide: Boolean(req.wide), quality: "high" });
+                    env = bb.build({ figureHeight: figure.body.anchors.height, wide: Boolean(req.wide), quality: req.quality ?? "high" });
                     this.scene.add(env.root);
                     tris[req.background] = triangles([env.root]);
                     env.animate?.(req.time ?? 3, 0.016, true);
@@ -228,10 +232,26 @@ export class Lab {
         }
         this.applyEnvironment(env);
         this.frame(figure, req);
+        const rig = figure.body.rig;
+        if (req.pose && req.pose !== "relaxed") {
+            const sol = solvePose(rig, req.pose);
+            for (const [side, arm] of [["L", sol.left], ["R", sol.right]] as const) {
+                if (!arm) continue;
+                rig.bone(`upperArm${side}`).quaternion.copy(arm.upper);
+                rig.bone(`forearm${side}`).quaternion.copy(arm.fore);
+                rig.bone(`hand${side}`).quaternion.copy(arm.hand);
+            }
+        }
         this.renderer.setSize(req.width, req.height, false);
         figure.body.root.updateMatrixWorld(true);
         this.renderer.render(this.scene, this.camera);
+        // Pokreti predmeta (posle poze: balon i kišobran se ispravljaju prema ruci)
+        figure.body.root.updateMatrixWorld(true);
+        for (const w of worn) w.animate?.(req.time ?? 1.2, 0.016, false);
+        figure.body.root.updateMatrixWorld(true);
+        this.renderer.render(this.scene, this.camera);
         const url = this.renderer.domElement.toDataURL("image/png");
+        for (const bone of rig.bones) bone.quaternion.identity();
         for (const w of worn.reverse()) takeOff(w);
         this.scene.remove(figure.body.root);
         if (env) {

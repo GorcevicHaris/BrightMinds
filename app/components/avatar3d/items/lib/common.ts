@@ -21,8 +21,7 @@ export const TAU = Math.PI * 2;
 
 /** Umnožak broja podela: 1 na liku, 0,5 u sličicama i na slabijem uređaju */
 export function res(ctx: ItemContext): number {
-    const quality = (ctx as ItemContext & { quality?: "high" | "low" }).quality;
-    return quality === "low" ? 0.5 : 1;
+    return ctx.quality === "low" ? 0.5 : 1;
 }
 
 /** Zaokružen broj podela (najmanje `min`) */
@@ -152,4 +151,16 @@ export function placed(geometry: THREE.BufferGeometry, at: THREE.Vector3, rotati
     const q = rotation instanceof THREE.Quaternion ? rotation : new THREE.Quaternion().setFromEuler(rotation ?? new THREE.Euler());
     m.compose(at, q, scale ?? new THREE.Vector3(1, 1, 1));
     return geometry.applyMatrix4(m);
+}
+
+/**
+ * Koliko je debelo ono što lik nosi na trupu (od kože do spoljne površine), da se predmet
+ * preko toga (tregeri, ranac, ogrlica) ne utisne u odeću. Procena po id-ju odeće.
+ */
+export function torsoLayer(ctx: ItemContext): number {
+    const id = ctx.wear.outfit ?? "";
+    if (!id) return 0.012;
+    if (/jakna|kabanica|kaput|mantil|abaja|kostim-(astronauta|vatrogasca|mede|dinosaurusa|viteza|pilota|princa|doktora|kuvara)/.test(id)) return 0.042;
+    if (/duks|dzemper|trenerka|pidzama|kostim|odelo|prsluk|haljina-princeze/.test(id)) return 0.028;
+    return 0.021;
 }

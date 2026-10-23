@@ -44,6 +44,9 @@ export const crewNeck = (t: Tailor, drop = 0.012) => (a: number) => t.s.neckBase
 /** V-izrez dubine `depth` */
 export const vNeck = (t: Tailor, depth = 0.045, width = 0.3) => (a: number) => t.s.neckBaseY - 0.003 - depth * Math.exp(-((a / width) ** 2));
 
+/** Porub gornjeg dela ne sme niže od početka međunožja (tu se trup sužava) */
+export const safeHem = (t: Tailor, y: number) => Math.max(y, t.s.crotchY + 0.03);
+
 /** Visina „struka” trupa u metrima (razmera za šare i džepove) */
 export const torsoSpan = (t: Tailor) => t.s.shoulderY - t.s.waistY;
 
@@ -103,6 +106,8 @@ export interface TeeOptions {
     length?: number;
     offset?: number;
     loose?: number;
+    /** Široka (oversized): spušteno rame, rukav do lakta, duža, mekši veći nabori */
+    oversized?: boolean;
 }
 
 export function tee(t: Tailor, o: TeeOptions) {
@@ -112,10 +117,21 @@ export function tee(t: Tailor, o: TeeOptions) {
     const trimHex = o.trim ?? o.body.color;
     const rib = fabric(trimHex, "rib");
     const neck = o.neck === "v" ? vNeck(t) : o.neck === "scoop" ? crewNeck(t, 0.03) : crewNeck(t);
-    const extra = softFolds(t, 1, o.loose ?? 0.005);
-    const hem = s.hipY - 0.012 - (o.length ?? 0) * torsoSpan(t);
+    const big = o.oversized ?? false;
+    const extra = softFolds(t, big ? 1.8 : 1, o.loose ?? (big ? 0.013 : 0.005));
+    const want = s.hipY - 0.012 - ((o.length ?? 0) + (big ? 0.16 : 0)) * torsoSpan(t);
+    // Trup se ispod kukova sužava (međunožje): duža majica dalje pada ravno, kao tunika
+    const minY = s.crotchY + 0.035;
+    const hem = Math.max(want, minY);
     t.torso(hem, neck, off, main, extra, 44);
-    t.ring(hem, off + extra(0, hem) + 0.001, 0.0032, 0.0065, main, undefined, 64, 6);
+    if (want < minY - 0.005) {
+        const scale = s.height / 1.19;
+        const r = extra(0, hem) + off;
+        const { edge } = t.skirt(hem + 0.004, want, r - 0.002, { rx: s.torsoW(hem) + r + 0.012 * scale, rz: s.torsoFront(hem) + r + 0.008 * scale }, main, (a, v) => 0.003 * v * Math.sin(a * 7), 10, 1.2);
+        t.edgeRing(edge, 0.003, 0.006, main);
+    } else {
+        t.ring(hem, off + extra(0, hem) + 0.001, 0.0032, 0.0065, main, undefined, 64, 6);
+    }
     t.ring(neck, off - 0.001, 0.0042, 0.0078, rib);
     seams(t, hem, off, o.body.color, extra);
     const sleeveMat = o.sleeveCloth ? clothMaterial(o.sleeveCloth) : main;
@@ -124,8 +140,10 @@ export function tee(t: Tailor, o: TeeOptions) {
             sleevelessTrim(t, side, off + 0.002, rib);
             continue;
         }
-        const len = o.sleeve === "long" ? 0.94 : o.sleeve === "cap" ? 0.16 : 0.3;
-        const flare: LimbExtra = o.sleeve === "long" ? sleeveFolds(1, 0.0022) : (tt) => 0.007 * smoothstep(0.05, 0.3, tt);
+        const len = o.sleeve === "long" ? 0.94 : o.sleeve === "cap" ? 0.16 : big ? 0.44 : 0.3;
+        const flare: LimbExtra = o.sleeve === "long"
+            ? (big ? (tt, a) => sleeveFolds(1.6, 0.005)(tt, a) + 0.004 * smoothstep(0.75, 0.9, tt) * Math.sin(a * 3 + tt * 60) : sleeveFolds(1, 0.0022))
+            : big ? (tt, a) => 0.006 + 0.01 * smoothstep(0.02, 0.4, tt) + 0.0015 * Math.sin(a * 3 + tt * 30) : (tt) => 0.007 * smoothstep(0.05, 0.3, tt);
         t.sleeve(side, 0, len, off, sleeveMat, flare);
         if (o.sleeve === "long") t.armRing(side, len, off - 0.001, 0.0042, 0.013, fabric(trimHex, "rib"));
         else t.armRing(side, len, off + flare(len, 0) + 0.0005, 0.003, 0.0058, sleeveMat);
@@ -155,7 +173,7 @@ export function hoodie(t: Tailor, o: HoodieOptions) {
     const off = o.offset ?? 0.0145;
     const neck = crewNeck(t, 0.008);
     const puff: TorsoExtra = (a, y) => 0.003 + 0.003 * gauss(y, s.waistY, 0.06) + softFolds(t, 1.2, 0)(a, y);
-    const hem = s.hipY - 0.03;
+    const hem = safeHem(t, s.hipY - 0.03);
     t.torso(hem + 0.013, neck, off, fleece, puff, 44);
     t.ring(hem + 0.013, off + 0.003, 0.0058, 0.015, rib);
     seams(t, hem + 0.03, off + 0.003, o.body.color, puff);
@@ -250,7 +268,7 @@ export function sweater(t: Tailor, o: SweaterOptions) {
         const twist = 0.5 + 0.5 * Math.sin(y * 150 + Math.sign(Math.sin(a * 5.2)) * 1.5);
         return base + 0.0032 * col * (0.55 + 0.45 * twist);
     };
-    const hem = s.hipY - 0.02;
+    const hem = safeHem(t, s.hipY - 0.02);
     t.torso(hem + 0.012, neck, off, knit, cable, o.cable ? 64 : 44, o.cable ? 80 : 60);
     t.ring(hem + 0.012, off + 0.002, 0.005, 0.016, rib);
     t.ring(neck, off - 0.001, 0.006, 0.011, rib);
@@ -280,7 +298,7 @@ export function shirt(t: Tailor, o: ShirtOptions) {
     const off = o.offset ?? LAYER.top;
     const neck = (a: number) => s.neckBaseY - 0.002 - 0.016 * Math.pow(Math.max(0, Math.cos(a)), 6);
     const extra = softFolds(t, 1, 0.004);
-    const hem = s.hipY - 0.018;
+    const hem = safeHem(t, s.hipY - 0.018);
     t.torso(hem, neck, off, main, extra, 44);
     t.ring(hem, off + 0.004, 0.0025, 0.004, main);
     seams(t, hem, off, o.body.color, extra);
@@ -361,7 +379,7 @@ export function jersey(t: Tailor, o: JerseyOptions) {
     const off = 0.0125;
     const neck = o.neck === "crew" ? crewNeck(t, 0.02) : vNeck(t, 0.045);
     const loose: TorsoExtra = (a, y) => 0.004 + 0.004 * (1 - smoothstep(s.hipY, s.waistY, y)) + softFolds(t, 0.8, 0)(a, y);
-    const hem = s.hipY - 0.03;
+    const hem = safeHem(t, s.hipY - 0.03);
     t.torso(hem, neck, off, mesh, loose, 44);
     t.ring(hem, off + 0.006, 0.003, 0.006, mesh);
     t.ring(neck, off + 0.001, 0.0042, 0.0095, trim);
@@ -396,7 +414,7 @@ export function vest(t: Tailor, o: { body: Cloth; offset?: number; buttons?: str
     const main = clothMaterial({ kind: "felt", ...o.body });
     const off = o.offset ?? LAYER.top + 0.008;
     const open = o.open ?? 0.32;
-    const hem = s.hipY - 0.005 - (o.length ?? 0);
+    const hem = safeHem(t, s.hipY - 0.005 - (o.length ?? 0));
     // Ljuska bez prednjeg dela: ugao preko leđa (u ∈ (open, 2π − open))
     const neck = (a: number) => s.neckBaseY - 0.004 - 0.075 * Math.pow(Math.max(0, Math.cos(a)), 2);
     const fn = (u: number, v: number, out: THREE.Vector3) => {
@@ -459,9 +477,9 @@ export function puffer(t: Tailor, o: PufferOptions) {
         const puff = Math.pow(Math.sin(Math.max(0, k) * Math.PI), 0.6);
         return 0.004 + 0.009 * puff + 0.002 * (1 - smoothstep(s.hipY, s.waistY, y)) + 0.001 * Math.sin(a * 8) * puff;
     };
-    const hem = s.hipY - 0.035;
+    const hem = safeHem(t, s.hipY - 0.035);
     const neckY = s.neckBaseY + 0.008;
-    t.torso(hem, neckY, off, shell, quilt, 64, 64);
+    t.torso(hem, neckY, off, shell, quilt, 50, 56);
     // Visoka kragna (stoji uz vrat)
     t.torso(neckY - 0.004, neckY + 0.03 * Math.min(1.3, s.height / 1.19), off - 0.006, shell, () => 0.004, 8, 48);
     t.ring(neckY + 0.03 * Math.min(1.3, s.height / 1.19), off - 0.002, 0.004, 0.005, shell);
@@ -487,12 +505,12 @@ export function raincoat(t: Tailor, o: RaincoatOptions) {
     const shell = cloth(o.body.color, "satin", { roughness: 0.22, sheen: 0.25 });
     const off = LAYER.outer;
     const neck = (a: number) => s.neckBaseY - 0.004 - 0.014 * Math.pow(Math.max(0, Math.cos(a)), 4);
-    t.torso(s.hipY + 0.01, neck, off, shell, (a, y) => softFolds(t, 1, 0)(a, y) + 0.002, 44);
+    t.torso(s.hipY + 0.01, neck, off, shell, (a, y) => softFolds(t, 1, 0)(a, y) + 0.002, 34);
     const scale = s.height / 1.19;
     const knee = s.hipY - s.thigh * 0.55;
     const legOuter = s.hipX + s.legR(0.1) + 0.03;
     const { edge, fn } = t.skirt(s.hipY + 0.012, knee, off + 0.002, { rx: Math.max(legOuter + 0.03 * scale, 0.15 * scale), rz: 0.13 * scale }, shell, (a, v) => 0.004 * v * Math.sin(a * 7), 18, 1.4);
-    t.kit.edgeRing(edge, 0.004, 0.007, shell);
+    t.edgeRing(edge, 0.004, 0.007, shell);
     const trim = fabric(o.trim ?? darker(o.body.color, 0.15), "satin", { roughness: 0.3 });
     t.kit.strip(fn, 0.0, 0.012, 0.0014, trim, 0, 0.99);
     t.patch(-0.03, 0.03, s.hipY + 0.008, neck(0) - 0.004, off + 0.0016, trim, { nu: 2, nv: 12 });
@@ -514,3 +532,121 @@ export function raincoat(t: Tailor, o: RaincoatOptions) {
 export const FRONT = 0;
 export const BACK = Math.PI;
 export { lighter };
+
+// ── Polo majica ─────────────────────────────────────────────────────────────
+
+export function polo(t: Tailor, o: { body: Cloth; collar?: string; buttons?: string; print?: Print }) {
+    const s = t.s;
+    const main = clothMaterial({ kind: "cotton", ...o.body });
+    const off = LAYER.top;
+    const neck = (a: number) => s.neckBaseY - 0.002 - 0.012 * Math.pow(Math.max(0, Math.cos(a)), 6);
+    const extra = softFolds(t, 1.1, 0.006);
+    const hem = safeHem(t, s.hipY - 0.02);
+    t.torso(hem, neck, off, main, extra, 44);
+    t.ring(hem, off + extra(0, hem) + 0.001, 0.0032, 0.0065, main);
+    seams(t, hem, off, o.body.color, extra);
+    // Lajsna sa dva dugmeta
+    const placketBot = s.chestY - 0.01;
+    t.patch(-0.06, 0.06, placketBot, neck(0) - 0.002, off + 0.0015, main, { puff: 0.001, soft: 0.25, nu: 4, nv: 8 });
+    t.stitch([[-0.06, placketBot], [0.06, placketBot]], off + 0.002, fabric(darker(o.body.color, 0.15), "cotton"), 0.0009);
+    const btn = plastic(o.buttons ?? lighter(o.body.color, 0.5), 0.3);
+    for (let i = 0; i < 2; i++) t.button(0, neck(0) - 0.016 - i * 0.02 * Math.min(1.3, s.height / 1.19), off + 0.003, btn, 0.0042);
+    const collarMat = fabric(o.collar ?? o.body.color, "rib", { side: THREE.DoubleSide });
+    for (const side of SIDES) {
+        collarFlap(t, side, collarMat, { offset: off, frontA: 0.1, height: 0.022, tip: 0.012, yNeck: neck, lift: 0.008 });
+        const flare: LimbExtra = (tt, a) => 0.005 + 0.007 * smoothstep(0.02, 0.32, tt) + 0.001 * Math.sin(a * 3);
+        t.sleeve(side, 0, 0.33, off, main, flare);
+        t.armRing(side, 0.33, off + flare(0.33, 0) - 0.001, 0.0035, 0.009, fabric(o.collar ?? o.body.color, "rib"), flare);
+    }
+    if (o.print) chestPrint(t, { ...o.print, size: (o.print.size ?? 1) * 0.3, lift: 0.1 }, off, extra);
+}
+
+// ── Kardigan (pleteni džemper na kopčanje, otvoren preko majice) ───────────
+
+export function cardigan(t: Tailor, o: { body: Cloth; under: Cloth; buttons?: string }) {
+    const s = t.s;
+    tee(t, { body: o.under, neck: "scoop", offset: LAYER.top - 0.003, length: 0.05 });
+    const knit = clothMaterial({ kind: "knit", ...o.body });
+    const rib = fabric(o.body.color, "rib", { side: THREE.DoubleSide });
+    const off = LAYER.top + 0.008;
+    const open = 0.22;
+    const neck = (a: number) => s.neckBaseY - 0.004 - (s.neckBaseY - s.chestY + 0.02) * Math.pow(Math.max(0, Math.cos(a)), 3);
+    const hem = safeHem(t, s.hipY - 0.03);
+    const cable: TorsoExtra = (a, y) => {
+        const col = Math.abs(a) < 0.95 && Math.abs(a) > open + 0.1 ? Math.pow(Math.max(0, Math.cos((Math.abs(a) - 0.6) * 9)), 4) : 0;
+        return 0.004 + 0.003 * col * (0.6 + 0.4 * Math.sin(y * 140)) + softFolds(t, 1.4, 0.004)(a, y);
+    };
+    const fn = (u: number, v: number, out: THREE.Vector3) => {
+        const a = open + u * (Math.PI * 2 - 2 * open);
+        const y = hem + (neck(a) - hem) * v;
+        return t.point(a, y, off, cable, out);
+    };
+    const geometry = buildSurface(fn, {
+        nu: Math.round(64 * t.r),
+        nv: Math.round(44 * t.r),
+        inside: (u, v, out) => {
+            fn(u, v, out);
+            return out.set(0, out.y, 0);
+        },
+        weights: (_u, _v, p) => torsoWeights(s, p),
+        uv: (u, v) => [u * 0.6, v * 0.3],
+    });
+    t.kit.skinned(geometry, knit, "kardigan");
+    // Rebrasti rubovi napred (lajsne) i porub
+    const edge: [number, number][] = [];
+    for (let i = 0; i <= 14; i++) edge.push([open, hem + ((neck(open) - hem) * i) / 14]);
+    t.strap(edge, off + cable(open, s.waistY) + 0.002, rib, 0.012 * Math.min(1.3, s.height / 1.19), 0.004);
+    t.strap(edge.map(([a, y]) => [-a, y]), off + cable(open, s.waistY) + 0.002, rib, 0.012 * Math.min(1.3, s.height / 1.19), 0.004);
+    const hemPts: [number, number][] = [];
+    for (let i = 0; i <= 30; i++) hemPts.push([open + (i / 30) * (Math.PI * 2 - 2 * open), hem + 0.006]);
+    t.strap(hemPts, off + 0.006, rib, 0.016, 0.005);
+    const btn = plastic(o.buttons ?? "#F6F2EA", 0.3);
+    for (let i = 0; i < 4; i++) t.button(open + 0.02, s.chestY - 0.02 - i * ((s.chestY - hem - 0.03) / 3.2), off + cable(open, s.waistY) + 0.005, btn, 0.0045);
+    for (const side of SIDES) {
+        t.sleeve(side, 0, 0.92, off - 0.003, knit, (tt, a) => 0.004 + sleeveFolds(1.5, 0.004)(tt, a));
+        t.armRing(side, 0.93, off - 0.004, 0.0052, 0.016, rib);
+    }
+}
+
+// ── Pernati prsluk ──────────────────────────────────────────────────────────
+
+export function pufferVest(t: Tailor, o: { body: Cloth; under: Cloth; longSleeve?: boolean }) {
+    const s = t.s;
+    tee(t, { body: o.under, sleeve: o.longSleeve ? "long" : "short", offset: LAYER.top - 0.002, oversized: !o.longSleeve });
+    const shell = cloth(o.body.color, "satin", { roughness: 0.38, sheen: 0.55 });
+    const off = LAYER.outer + 0.004;
+    const span = torsoSpan(t);
+    const band = span * 0.22;
+    const quilt: TorsoExtra = (a, y) => {
+        const k = (((y - s.hipY) / band) % 1 + 1) % 1;
+        const puff = Math.pow(Math.sin(k * Math.PI), 0.55);
+        return 0.006 + 0.012 * puff + 0.002 * Math.sin(a * 6) * puff;
+    };
+    const hem = safeHem(t, s.hipY - 0.03);
+    const neckY = s.neckBaseY + 0.004;
+    // Bez rukava: ljuska se sužava oko ramena (otvor za ruku)
+    const armhole: TorsoExtra = (a, y) => quilt(a, y) - 0.014 * Math.pow(Math.abs(Math.sin(a)), 8) * smoothstep(s.chestY - 0.01, s.shoulderY - 0.02, y);
+    t.torso(hem, neckY, off, shell, armhole, 64, 64);
+    const collarH = 0.034 * Math.min(1.3, s.height / 1.19);
+    t.torso(neckY - 0.006, neckY + collarH, off - 0.008, shell, (a, y) => 0.008 + 0.004 * Math.sin(Math.PI * (y - neckY + 0.006) / (collarH + 0.006)), 10, 48);
+    t.ring(neckY + collarH, off - 0.0, 0.004, 0.005, shell);
+    t.ring(hem, off + 0.006, 0.006, 0.01, fabric(darker(o.body.color, 0.08), "rib"));
+    for (const side of SIDES) {
+        t.sleeve(side, 0, 0.05, off - 0.008, shell, () => 0.008);
+        t.armRing(side, 0.05, off - 0.004, 0.006, 0.01, fabric(darker(o.body.color, 0.08), "rib"));
+    }
+    t.zipper(hem + 0.01, neckY + collarH - 0.003, off + quilt(0, s.chestY) + 0.002, fabric(darker(o.body.color, 0.2), "cotton"), metal("#C9CCD3"), quilt);
+    // Šavovi kanala (prošiveni)
+    const seam = fabric(darker(o.body.color, 0.12), "cotton");
+    for (let i = 1; i < 5; i++) {
+        const y = s.hipY + band * i;
+        if (y > s.shoulderY - 0.015) break;
+        t.stitchRing(y, off + 0.006, seam, 0.0012);
+    }
+}
+
+/** Pernata jakna sa širokim kanalima (moderna) — boja i sjaj najlona */
+export function pufferJacket(t: Tailor, o: { body: Cloth; under?: Cloth }) {
+    if (o.under) tee(t, { body: o.under, offset: LAYER.top - 0.003 });
+    puffer(t, { body: o.body, trim: darker(o.body.color, 0.1) });
+}

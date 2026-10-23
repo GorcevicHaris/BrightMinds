@@ -507,3 +507,36 @@ export function checkerTexture(a: string, b: string, tile = 0.03): THREE.Texture
     tex.repeat.set(1 / tile, 1 / tile);
     return tex;
 }
+
+/** Broj na dresu (leđa i grudi) */
+export function printNumber(text: string, color: string, outline: string): THREE.Texture {
+    return motifTexture(`broj-${text}-${color}-${outline}`, MOTIFS.number(text, color, outline));
+}
+
+/**
+ * Teksas (boja se množi nijansom materijala): fine kose linije kepera i jedva vidljive
+ * niti — mirnije od grube šare, da noge ne izgledaju kao somot. Ponavljanje ≈ 2,5 cm.
+ */
+export function denimTexture(): THREE.Texture {
+    const tex = printTexture("teksas-fini", (ctx, w, h) => {
+        const image = ctx.createImageData(w, h);
+        const rnd = (x: number, y: number) => {
+            const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+            return n - Math.floor(n);
+        };
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const twill = 0.5 + 0.5 * Math.sin(((x + y) / w) * Math.PI * 2 * 18);
+                const thread = rnd(x % w, Math.floor(y / 3)) * 0.05;
+                const k = 0.9 + twill * 0.07 - thread;
+                const i = (y * w + x) * 4;
+                image.data[i] = image.data[i + 1] = image.data[i + 2] = Math.round(k * 255);
+                image.data[i + 3] = 255;
+            }
+        }
+        ctx.putImageData(image, 0, 0);
+    }, 128, 128);
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(40, 40);
+    return tex;
+}

@@ -145,6 +145,12 @@ export default function ItemsLab() {
             const view = q.get("view") ?? "slot";
             setTitle(view === "slot" ? `${SLOT_LABELS[(q.get("slot") ?? "hat") as Slot]}` : view);
             const list = buildCells();
+            const quality = q.get("q") === "low" ? "low" : "high";
+            const pose = q.get("pose") as CellRequest["pose"] | null;
+            for (const cell of list) {
+                cell.req.quality = quality;
+                if (pose) cell.req.pose = pose;
+            }
             setCells(list);
             const lab = new Lab();
             for (let i = 0; i < list.length && alive; i++) {

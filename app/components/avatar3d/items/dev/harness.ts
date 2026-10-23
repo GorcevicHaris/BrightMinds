@@ -6,10 +6,14 @@
 
 import * as THREE from "three";
 import type { Anchors, BodyPart, BodyShape, BoneName, CompanionKind, EarKind, FigureBody, FootKind, HandKind, HeadSurface, ItemBuild, ItemContext, Wear } from "../../contract";
-import { isHumanKind, itemBuilder, shade } from "../../contract";
+import { companionBuilder, isHumanKind, itemBuilder, shade } from "../../contract";
+import { makeItemContext } from "../../engine/figure";
+import { buildHuman } from "../../engine/human";
+import { HIJAB_COLORS, HUMAN_DEFAULT, NO_HIJAB } from "../../looks";
 import { buildBody, torsoPoint } from "../../engine/body";
 import { buildHair, hairCrown } from "../../engine/hair";
 import { buildHead, headInfo, type HeadInfo } from "../../engine/head";
+import { buildHijab, HIJAB_THICKNESS } from "../../engine/hijab";
 import { Kit } from "../../engine/kit";
 import { fabricMaterial, furMaterial, glossyMaterial, skinMaterial } from "../../engine/materials";
 import { bodyShape, createRig, type Rig } from "../../engine/rig";
@@ -176,24 +180,6 @@ function headSurface(info: HeadInfo, inflate: number): HeadSurface {
     };
 }
 
-/** Jednostavan hidžab za probu (pravi crta motor): ljuska glave sa otvorom za lice i pad na ramena */
-function testHijab(rig: Rig, info: HeadInfo, hex: string, root: THREE.Object3D): THREE.Object3D[] {
-    const s = rig.shape;
-    const cloth = fabricMaterial(hex, "cotton", { side: THREE.DoubleSide, sheen: 0.8 });
-    const open = (u: number, v: number) => Math.pow((u - 0.5) / 0.18, 2) + Math.pow((v - 0.6) / 0.3, 2);
-    const shell = buildSurface((u, v, out) => {
-        const vv = v * 0.95;
-        info.point(u, vv, out);
-        const k = smoothstep(1.0, 1.25, open(u, vv));
-        return out.addScaledVector(info.normal(u, vv), -0.004 + 0.03 * k);
-    }, { nu: 72, nv: 48, closedU: true, inside: () => info.center.clone() });
-    const mesh = new THREE.Mesh(shell, cloth);
-    rig.bone("head").add(mesh);
-    const drape = new Kit({ rig, root });
-    drape.torso(s.chestY - 0.01, s.neckBaseY + 0.05, 0.03, cloth, (a, y) => 0.01 * smoothstep(s.neckBaseY + 0.05, s.shoulderY, y) * (1 + Math.cos(a)) * 0.5, 16);
-    return [mesh, ...drape.objects];
-}
-
 // ── Probni lik ────────────────────────────────────────────────────────────────
 
 export interface TestFigure {
@@ -218,7 +204,28 @@ const HUMAN_HAIR: Record<string, { style: HairStyle; color: string }> = {
     man: { style: "short", color: "#2A2224" },
 };
 
+/**
+ * Probni lik: ljudi iz motora (buildHuman — prave mere, kosa ispod kape, hidžab), životinje iz
+ * animals/ kad ih #2 registruje, a do tada zamena istih vrsta sidara.
+ */
 export function buildTestFigure(kind: CompanionKind, options: TestFigureOptions): TestFigure {
+    if (isHumanKind(kind)) {
+        const hijabId = options.hijab ? (HIJAB_COLORS.find((c) => c.hex.toLowerCase() === options.hijab!.toLowerCase())?.id ?? "roze") : NO_HIJAB;
+        const look = { ...HUMAN_DEFAULT[kind], hijab: kind === "girl" || kind === "woman" ? hijabId : NO_HIJAB };
+        const body = buildHuman(kind, look, { quality: "high" });
+        const crown = body.setHeadwear(options.hat);
+        return { body, hijab: body.hijab, hairCrown: crown, extra: [] };
+    }
+    const real = companionBuilder(kind);
+    if (real && !(real as { standIn?: boolean }).standIn) {
+        const body = real.build({ kind, skin: "" }, { quality: "high" });
+        return { body, hijab: null, hairCrown: 0.004, extra: [] };
+    }
+    return buildStandIn(kind, options);
+}
+
+/** Zamena životinje (dok #2 ne registruje pravu) */
+function buildStandIn(kind: CompanionKind, options: TestFigureOptions): TestFigure {
     const root = new THREE.Group();
     const human = isHumanKind(kind);
     const spec = human ? null : ANIMALS[kind] ?? ANIMALS.cat;
@@ -250,10 +257,12 @@ export function buildTestFigure(kind: CompanionKind, options: TestFigureOptions)
         parts.hair = hairObjects;
     }
     if (hijab) {
-        extra.push(...testHijab(rig, info, hijab, root));
+        const hk = new Kit({ rig, root });
+        buildHijab(hk, info, hijab);
+        extra.push(...hk.objects);
         face.ears.forEach((e) => (e.visible = false));
     }
-    const inflate = hijab ? 0.026 : 0;
+    const inflate = hijab ? HIJAB_THICKNESS : 0;
     const head = headSurface(info, inflate);
     let earTips: [THREE.Vector3, THREE.Vector3] | undefined;
     let earBases: [THREE.Vector3, THREE.Vector3] | undefined;
@@ -372,30 +381,16 @@ export interface Worn {
 }
 
 /** Oblači jedan predmet (kao motor): kroj, kruti delovi, sakrivanje delova tela */
-export function wearItem(figure: TestFigure, id: string, wear: Wear): Worn | null {
+export function wearItem(figure: TestFigure, id: string, wear: Wear, quality: "high" | "low" = "high"): Worn | null {
     const entry = itemBuilder(id);
     if (!entry) return null;
     const { builder } = entry;
     const { body } = figure;
     if (figure.hijab && builder.withHijab === "hide") return { objects: [], hidden: [] };
-    const kit = new Kit({ rig: body.rig, root: body.root });
-    const attached: THREE.Object3D[] = [];
-    const ctx: ItemContext = {
-        body,
-        wear,
-        hijab: figure.hijab,
-        hairCrown: figure.hairCrown,
-        kit,
-        attach: (bone: BoneName, object: THREE.Object3D) => {
-            body.rig.bone(bone).add(object);
-            attached.push(object);
-            return object;
-        },
-        toBone: (bone: BoneName, p: THREE.Vector3) => body.rig.bone(bone).worldToLocal(p.clone()),
-    };
+    const { ctx, objects: made } = makeItemContext(body, wear, { hairCrown: figure.hairCrown, quality, hijab: figure.hijab });
     body.root.updateMatrixWorld(true);
     const result: ItemBuild = builder.build(ctx);
-    const objects = [...kit.objects, ...attached];
+    const objects = [...made];
     let animate: Worn["animate"];
     if (result) {
         if (result instanceof THREE.Object3D) {

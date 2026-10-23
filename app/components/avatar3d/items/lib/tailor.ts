@@ -20,10 +20,11 @@ export class Tailor {
     /** Umnožak podela (1 ili 0,5) */
     readonly r: number;
 
-    constructor(readonly ctx: ItemContext) {
+    /** `budget` < 1 smanjuje gustinu (kostimi od više slojeva, da ostanu u budžetu) */
+    constructor(readonly ctx: ItemContext, budget = 1) {
         this.s = ctx.body.shape;
         this.rig = ctx.body.rig;
-        this.r = res(ctx);
+        this.r = res(ctx) * budget;
     }
 
     get kit() {
@@ -38,7 +39,7 @@ export class Tailor {
     }
 
     /** Ljuska trupa od y0 do y1 (granice mogu zavisiti od ugla: izrez, porub) */
-    torso(y0: number | ((a: number) => number), y1: number | ((a: number) => number), offset: number, material: THREE.Material, extra?: TorsoExtra, nv = 40, nu = 60): THREE.SkinnedMesh {
+    torso(y0: number | ((a: number) => number), y1: number | ((a: number) => number), offset: number, material: THREE.Material, extra?: TorsoExtra, nv = 40, nu = 52): THREE.SkinnedMesh {
         const fn = torsoSurface(this.s, y0, y1, offset, extra);
         const geometry = buildSurface(fn, {
             nu: seg(nu, this.r, 16),
@@ -59,7 +60,7 @@ export class Tailor {
     }
 
     /** Porub/okovratnik po ivici trupa na visini y(a); r1 = debljina napolje, r2 = visina */
-    ring(y: number | ((a: number) => number), offset: number, r1: number, r2: number, material: THREE.Material, extra?: TorsoExtra, segments = 64, sides = 8): THREE.SkinnedMesh {
+    ring(y: number | ((a: number) => number), offset: number, r1: number, r2: number, material: THREE.Material, extra?: TorsoExtra, segments = 56, sides = 6): THREE.SkinnedMesh {
         const p = new THREE.Vector3();
         const loop = (q: number, out: THREE.Vector3) => {
             const a = q * Math.PI * 2;
@@ -75,7 +76,7 @@ export class Tailor {
     }
 
     /** Rukav od t0 do t1 (0 = rame, 1 = zglob šake) */
-    sleeve(side: Side, t0: number, t1: number, offset: number, material: THREE.Material, extra?: LimbExtra, nu = 28): THREE.SkinnedMesh {
+    sleeve(side: Side, t0: number, t1: number, offset: number, material: THREE.Material, extra?: LimbExtra, nu = 24): THREE.SkinnedMesh {
         const rig = this.rig;
         const arm = armPath(rig, side, offset, extra);
         const fn = limbSurface(arm, t0, t1);
@@ -100,14 +101,14 @@ export class Tailor {
     }
 
     /** Nogavica od t0 do t1 (0 = kuk, 1 = članak); `uRange` = samo traka (šav, lampas) */
-    leg(side: Side, t0: number, t1: number, offset: number, material: THREE.Material, extra?: LimbExtra, uRange?: [number, number], nu = 30): THREE.SkinnedMesh {
+    leg(side: Side, t0: number, t1: number, offset: number, material: THREE.Material, extra?: LimbExtra, uRange?: [number, number], nu = 26): THREE.SkinnedMesh {
         const rig = this.rig;
         const leg = legPath(rig, side, offset, extra);
         const base = limbSurface(leg, t0, t1);
         const fn: SurfaceFn = uRange ? (u, v, out) => base(uRange[0] + (uRange[1] - uRange[0]) * u, v, out) : base;
         const geometry = buildSurface(fn, {
             nu: uRange ? 3 : seg(nu, this.r, 10),
-            nv: seg(Math.max(8, 40 * (t1 - Math.max(0, t0) + 0.1)), this.r, 5),
+            nv: seg(Math.max(8, 36 * (t1 - Math.max(0, t0) + 0.1)), this.r, 5),
             closedU: !uRange,
             inside: (_u, v, out) => leg.spec.path(t0 <= 0 ? v * leg.sAt(t1) : leg.sAt(t0 + (t1 - t0) * v), out),
             weights: (_u, _v, p) => legWeights(rig, side, p),
@@ -142,7 +143,12 @@ export class Tailor {
 
     /** Suknja/zvono (kit.skirt) sa podelama po budžetu */
     skirt(yTop: number, yBot: number | ((a: number) => number), offset: number, hem: { rx: number; rz: number }, material: THREE.Material, folds?: (a: number, v: number) => number, nv = 30, flare = 1.6) {
-        return this.kit.skirt(yTop, yBot, offset, hem, material, folds, seg(nv, this.r, 8), flare);
+        return this.kit.skirt(yTop, yBot, offset, hem, material, folds, Math.max(8, nv), flare, Math.max(0.35, this.r));
+    }
+
+    /** Porub po zatvorenoj ivici (suknja, kaput) — gustina po budžetu */
+    edgeRing(edge: (q: number, out: THREE.Vector3) => THREE.Vector3, r1: number, r2: number, material: THREE.Material): THREE.SkinnedMesh {
+        return this.kit.skinned(ringTube(edge, () => [r1, r2], seg(80, this.r, 24), seg(6, this.r, 4), this.torsoW), material, "porub-suknje");
     }
 
     /** Šav ili štep po trupu (tačke (a, y)) — tanka cev koja prati telo */
@@ -150,6 +156,20 @@ export class Tailor {
         const world = points.map(([a, y]) => torsoPoint(this.s, a, y, offset, new THREE.Vector3(), extra));
         const geometry = taperedTube(polyPath(world), () => r, seg(Math.max(12, points.length * 6), this.r, 6), seg(5, this.r, 3));
         return this.kit.skinned(weighTorso(this.rig, geometry), material, "step");
+    }
+
+    /** Pljosnata traka po trupu (tregeri, kaiš preko grudi): širina `width`, debljina `thick` */
+    strap(points: [number, number][], offset: number, material: THREE.Material, width = 0.012, thick = 0.003, extra?: TorsoExtra): THREE.SkinnedMesh {
+        const world = points.map(([a, y]) => torsoPoint(this.s, a, y, offset, new THREE.Vector3(), extra));
+        const path = polyPath(world);
+        const tmp = new THREE.Vector3();
+        // „Napred” preseka je napolje od ose tela, pa je traka položena po telu
+        const outward = (s: number, out: THREE.Vector3) => {
+            path(s, tmp);
+            return out.set(tmp.x, 0, tmp.z).normalize();
+        };
+        const geometry = taperedTube(path, () => width / 2, seg(Math.max(16, points.length * 8), this.r, 8), seg(8, this.r, 4), outward, thick / width);
+        return this.kit.skinned(weighTorso(this.rig, geometry), material, "traka");
     }
 
     /** Vodoravni štep po celom obimu na visini y(a) */
