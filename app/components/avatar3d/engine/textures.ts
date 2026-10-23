@@ -227,12 +227,12 @@ export function irisTexture(color: string): THREE.Texture {
         const [el, ctx] = canvas(w, h);
         const image = ctx.createImageData(w, h);
         const base = new THREE.Color(color);
-        const dark = base.clone().multiplyScalar(0.45);
-        const light = base.clone().lerp(new THREE.Color("#FFFFFF"), 0.25);
+        const dark = base.clone().multiplyScalar(0.5);
+        const light = base.clone().lerp(new THREE.Color("#FFFFFF"), 0.45);
         const sclera = new THREE.Color("#FBF8F4");
         const tmp = new THREE.Color();
-        const IRIS = 0.62;
-        const PUPIL = 0.27;
+        const IRIS = 0.6;
+        const PUPIL = 0.2;
         for (let y = 0; y < h; y++) {
             const theta = ((y + 0.5) / h) * Math.PI;
             for (let x = 0; x < w; x++) {
@@ -247,10 +247,10 @@ export function irisTexture(color: string): THREE.Texture {
                 } else if (angle < IRIS) {
                     const t = (angle - PUPIL) / (IRIS - PUPIL);
                     const fibers = 0.5 + 0.5 * Math.sin(around * 38 + Math.sin(around * 7) * 2);
-                    tmp.copy(light).lerp(base, Math.min(1, t * 1.4)).lerp(dark, Math.pow(t, 3) * 0.9);
+                    tmp.copy(light).lerp(base, Math.min(1, t * 1.5)).lerp(dark, Math.pow(t, 4) * 0.9);
                     tmp.multiplyScalar(0.88 + fibers * 0.2 * (1 - t));
                     // Tamniji gornji deo dužice (senka kapka) — oko deluje dublje
-                    if (dy > 0) tmp.multiplyScalar(1 - dy * 0.5);
+                    if (dy > 0) tmp.multiplyScalar(1 - dy * 0.3);
                     // Mekan prelaz ka zenici
                     if (angle < PUPIL + 0.03) tmp.lerp(new THREE.Color("#0E0A0C"), 1 - (angle - PUPIL) / 0.03);
                 } else {

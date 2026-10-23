@@ -58,6 +58,11 @@ export default function EngineLab() {
             const figure = new Figure({ kind, skin: looks[i] ?? "", human }, wear);
             const emotion = params.get("emotion") as VoiceEmotion | null;
             if (emotion) figure.setExpressionNow(emotion === "hello" ? "happy" : (emotion as never));
+            const pose = params.get("pose")?.split(",")[i] ?? params.get("pose");
+            if (pose) {
+                figure.autoPose = false;
+                figure.setPose(pose as never, true);
+            }
             return figure;
         });
         const lineup = new Lineup(figures, Number(params.get("gap") ?? 0.62));

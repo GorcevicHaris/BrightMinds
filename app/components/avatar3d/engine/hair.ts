@@ -7,8 +7,9 @@ import * as THREE from "three";
 import type { HairStyle } from "../catalog";
 import type { HeadInfo } from "./head";
 import { hairMaterial } from "./materials";
-import type { Rig } from "./rig";
-import { buildSurface, polyPath, profile, smoothstep, taperedTube, type SurfaceFn } from "./surface";
+import { torsoPoint } from "./body";
+import { B, type Rig } from "./rig";
+import { buildSurface, polyPath, profile, smoothstep, sweepFn, taperedTube, type SurfaceFn } from "./surface";
 
 const gauss = (x: number, mu: number, s: number) => Math.exp(-((x - mu) ** 2) / (2 * s * s));
 
@@ -121,6 +122,60 @@ function longBack(head: HeadInfo, rig: Rig, material: THREE.Material): THREE.Mes
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = "duga-kosa";
     return mesh;
+}
+
+/**
+ * Prednji pramenovi duge kose (Bitmoji): od slepoočnica pored lica, preko ramena, niz grudi.
+ * Prate i glavu (gore) i grudi (dole) — SkinnedMesh na kosturu, u korenu lika.
+ */
+function frontLocks(head: HeadInfo, rig: Rig, material: THREE.Material, toY: number): THREE.SkinnedMesh[] {
+    const shape = rig.shape;
+    const headAt = new THREE.Vector3(0, shape.headBoneY, 0);
+    const locks: THREE.SkinnedMesh[] = [];
+    const n = new THREE.Vector3();
+    for (const side of [1, -1] as const) {
+        // Tri pramena po strani: spolja duži, bliže licu kraći
+        for (let i = 0; i < 3; i++) {
+            const u = 0.5 + side * (0.2 + i * 0.035);
+            const start = head.point(u, 0.5).addScaledVector(head.normal(u, 0.5, n), 0.012).add(headAt);
+            const jaw = head.point(0.5 + side * (0.21 + i * 0.03), 0.8).addScaledVector(head.normal(0.5 + side * (0.21 + i * 0.03), 0.8, n), 0.016).add(headAt);
+            const a = side * (0.62 + i * 0.22);
+            const shoulder = torsoPoint(shape, a, shape.shoulderY + 0.012, 0.03, new THREE.Vector3());
+            const end = torsoPoint(shape, a * 0.92, toY - i * 0.012, 0.028, new THREE.Vector3());
+            const mid = torsoPoint(shape, a, (shape.shoulderY + toY) / 2, 0.032, new THREE.Vector3());
+            const path = polyPath([start, jaw, shoulder, mid, end]);
+            const width = 0.03 - i * 0.004;
+            const spec = {
+                path,
+                section: (t: number, ang: number): [number, number] => {
+                    // Pljosnat pramen: širok bočno, tanak napred; šiljat pri dnu
+                    const taper = (0.55 + 0.45 * Math.sin(Math.min(1, 0.15 + t) * Math.PI * 0.95)) * (1 - 0.75 * smoothstep(0.7, 1, t));
+                    return [Math.sin(ang) * width * taper, Math.cos(ang) * 0.0075 * taper];
+                },
+                forwardAt: (t: number, out: THREE.Vector3) => {
+                    const p = path(t, new THREE.Vector3());
+                    return out.set(p.x, 0, p.z).normalize();
+                },
+            };
+            const geometry = buildSurface(sweepFn(spec), {
+                nu: 14,
+                nv: 48,
+                closedU: true,
+                inside: (_u, t, out) => path(t, out),
+                weights: (_u, t) => {
+                    const k = smoothstep(0.3, 0.55, t);
+                    return [[B.head, 1 - k], [B.chest, k]];
+                },
+                uv: (u, t) => [u * 0.5, t * 4],
+            });
+            const mesh = new THREE.SkinnedMesh(geometry, material);
+            mesh.name = "pramen";
+            mesh.bind(rig.skeleton, new THREE.Matrix4());
+            mesh.frustumCulled = false;
+            locks.push(mesh);
+        }
+    }
+    return locks;
 }
 
 /** Rep: gumica na potiljku i pramen koji pada niz leđa (njiše se) */
@@ -261,7 +316,7 @@ export function hairCrown(style: HairStyle, underHat: boolean): number {
     }
 }
 
-export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: string, underHat: boolean): THREE.Object3D[] {
+export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: string, underHat: boolean, root?: THREE.Object3D, front = false): THREE.Object3D[] {
     const material = hairMaterial(hex);
     const headBone = rig.bone("head");
     const parts: THREE.Object3D[] = [];
@@ -312,6 +367,13 @@ export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: strin
             };
             add(capMesh(head, spec, material, underHat));
             add(longBack(head, rig, material));
+            // Prednji pramenovi preko ramena (kao kod Bitmoji duge kose)
+            if (root && front) {
+                for (const lock of frontLocks(head, rig, material, rig.shape.chestY - 0.02)) {
+                    root.add(lock);
+                    parts.push(lock);
+                }
+            }
             break;
         }
         case "ponytail": {
