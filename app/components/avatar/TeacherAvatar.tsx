@@ -58,7 +58,7 @@ interface TeacherAvatarProps {
     /** Pol deteta: dečak dobija učitelja, devojčica učiteljicu (isti izbor kao za glas) */
     gender?: string;
     /** `bust` = glava i ramena (može da maše); `face` = samo lice, za mala mesta; `full` = ceo lik */
-    variant?: "bust" | "face" | "full";
+    variant?: "bust" | "face" | "full" | "portrait";
     /** Stalna emocija, umesto one iz govora (pregled i primeri) */
     emotion?: VoiceEmotion;
     /** Predmeti iz prodavnice (na poprsju i licu: kapa, naočare, oko vrata, odeća; na celom liku sve) */
@@ -73,7 +73,9 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
     const look = LOOKS[female ? "female" : "male"];
     const kind = female ? "woman" : "man";
     const human = humanLook(kind, skin);
-    const full = variant === "full";
+    // Portret je isti crtež kao ceo lik, samo isečen na gornji deo
+    const full = variant === "full" || variant === "portrait";
+    const art = full ? "full" : variant;
     const voice = useVoiceState();
     const settings = useChildSettings();
     const uid = useId();
@@ -201,7 +203,7 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                     <ellipse cx="120" cy="214" rx="62" ry="20" fill={fill("shade")} opacity="0.75" />
                 </>
             )}
-            {renderWorn(wear, "outfit", { variant, kind })}
+            {renderWorn(wear, "outfit", { variant: art, kind })}
             {full &&
                 fullFeet(
                     wear,
@@ -218,7 +220,7 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
             <path d="M95 204q25 36 50 0-25 14-50 0z" fill="#fff" />
             <path d="M95 204q25 14 50 0-25 9-50 0z" fill="#C9D2E0" opacity="0.7" />
             {full && fullBackFront(wear, kind)}
-            {renderWorn(wear, "neck", { variant, kind })}
+            {renderWorn(wear, "neck", { variant: art, kind })}
 
             {/* Ceo lik: ruke vise pored tela, desna drži predmet iz prodavnice */}
             {full && fullArms(sleeve, skinMid, fist)}
@@ -299,13 +301,13 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                 </g>
 
                 {/* Naočare: preko očiju, ispod kose (drške nestaju pod kosom) */}
-                {renderWorn(wear, "glasses", { variant, kind })}
+                {renderWorn(wear, "glasses", { variant: art, kind })}
 
                 {/* Kosa sa odsjajem */}
                 {hair.front}
 
                 {/* Kapa: poslednja, preko kose */}
-                {renderWorn(wear, "hat", { variant, kind })}
+                {renderWorn(wear, "hat", { variant: art, kind })}
             </g>
 
             {full && fullPet(wear, kind)}

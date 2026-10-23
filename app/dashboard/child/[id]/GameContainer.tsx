@@ -1037,7 +1037,7 @@ function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
         >
             {teacher !== null && (
                 <span className="grid h-20 w-20 place-items-end overflow-hidden rounded-3xl bg-white/70 ring-2 ring-white">
-                    <Teacher gender={teacher ?? undefined} variant="face" emotion="gentle" className="h-full w-full" />
+                    <Teacher gender={teacher ?? undefined} variant="portrait" emotion="gentle" className="h-full w-full" />
                 </span>
             )}
             <h2 className="font-display text-3xl font-extrabold text-ink sm:text-4xl">Pauza</h2>
@@ -1098,7 +1098,7 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
                         <div className="flex items-center gap-3">
                             {teacher !== null && (
                                 <span className={cn("grid h-16 w-16 shrink-0 place-items-end overflow-hidden rounded-2xl ring-1 sm:h-20 sm:w-20", game.accent.soft, game.accent.ring)}>
-                                    <Teacher gender={teacher} variant="face" className="h-full w-full" />
+                                    <Teacher gender={teacher} variant="portrait" className="h-full w-full" />
                                 </span>
                             )}
                             <div className="min-w-0">
@@ -1243,7 +1243,7 @@ function MoodPicker({ title, teacher = null, onSelect }: MoodPickerProps) {
         <div className="mx-auto flex w-full max-w-2xl flex-1 animate-fade-up flex-col items-center justify-center text-center xl:max-w-4xl">
             {teacher !== null && (
                 <span className="mb-3 grid h-20 w-20 place-items-end overflow-hidden rounded-3xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-24 sm:w-24">
-                    <Teacher gender={teacher ?? undefined} variant="face" emotion="curious" className="h-full w-full" />
+                    <Teacher gender={teacher ?? undefined} variant="portrait" emotion="curious" className="h-full w-full" />
                 </span>
             )}
             <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">{title}</h2>
@@ -1331,7 +1331,12 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                 tabIndex={-1}
                 className="max-h-full w-full max-w-md animate-fade-up overflow-y-auto rounded-t-[2rem] bg-surface p-6 text-center shadow-pop outline-none sm:rounded-[2rem] sm:p-9"
             >
-                {teacher !== null && <Teacher gender={teacher} className="mx-auto -mt-1 mb-1 h-24 w-20 sm:h-28 sm:w-24" />}
+                {/* Ceo drugar sa svim što je dete kupilo: kraj nivoa je trenutak nagrade */}
+                {teacher !== null && (
+                    <span className="mx-auto -mt-1 mb-2 block h-36 w-28 overflow-hidden rounded-2xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-44 sm:w-36">
+                        <Teacher gender={teacher} variant="full" className="h-full w-full" />
+                    </span>
+                )}
                 {outcome.practice ? (
                     // Pročitana priča nije „rezultat”: bez zvezdica koje bi izgledale kao slaba ocena
                     <p className="mb-4 text-6xl animate-pop" aria-hidden="true">
@@ -1413,7 +1418,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
 // ── Pratilac ──────────────────────────────────────────────────────────────────
 
 /** Lik koji govori: pratilac koga je dete izabralo (sa odećom i izgledom), a bez njega dosadašnji učitelj */
-function Teacher({ gender, variant, emotion, className }: { gender?: string; variant?: "bust" | "face"; emotion?: TeacherEmotion; className?: string }) {
+function Teacher({ gender, variant, emotion, className }: { gender?: string; variant?: "bust" | "face" | "full" | "portrait"; emotion?: TeacherEmotion; className?: string }) {
     const companion = useCompanion();
     if (companion) return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} skin={chosenSkin(companion)} variant={variant} emotion={emotion} className={className} />;
     return <TeacherAvatar gender={gender} variant={variant} emotion={emotion} className={className} />;

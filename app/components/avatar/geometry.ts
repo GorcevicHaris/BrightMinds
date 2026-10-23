@@ -69,4 +69,6 @@ export const VIEWBOX = {
     bust: "0 0 240 280",
     face: "36 14 168 178",
     full: `${FULL_BOX.x} ${FULL_BOX.y} ${FULL_BOX.w} ${FULL_BOX.h}`,
+    /** Gornji deo celog lika (glava, ramena, krila, pozadina): mali portret u igri */
+    portrait: "-20 -24 280 280",
 } as const;
