@@ -12,6 +12,7 @@ import { Check, Lock } from "lucide-react";
 import Companion, { COMPANIONS } from "@/app/components/avatar/Companion";
 import { WEAR_ITEMS, type WearItem, type WearSlot } from "@/app/components/avatar/wearables";
 import { playSfx, celebrateBig } from "@/app/components/games/kit";
+import { CoinIcon } from "@/app/components/ui/CoinIcon";
 import { Button } from "@/app/components/ui/Button";
 import { cn } from "@/lib/cn";
 import type { CompanionKindId } from "@/lib/companion";
@@ -33,18 +34,15 @@ const SLOT_VIEW: Record<WearSlot, string> = {
     outfit: "16 176 208 108",
 };
 
+/** 1 novčić, 21 novčić; sve ostalo „novčića” (2–4 i 5+ imaju isti oblik) */
 function coinWord(count: number): string {
-    const last = count % 10;
-    const lastTwo = count % 100;
-    if (last === 1 && lastTwo !== 11) return "novčić";
-    if (last >= 2 && last <= 4 && (lastTwo < 12 || lastTwo > 14)) return "novčića";
-    return "novčića";
+    return count % 10 === 1 && count % 100 !== 11 ? "novčić" : "novčića";
 }
 
 function Coins({ count, className }: { count: number; className?: string }) {
     return (
         <span className={cn("inline-flex items-center gap-1.5 rounded-full bg-sun-100 px-3 py-1 font-extrabold text-sun-700 ring-1 ring-sun-300", className)}>
-            <span aria-hidden="true">🪙</span>
+            <CoinIcon />
             {count}
             <span className="sr-only"> {coinWord(count)}</span>
         </span>
@@ -129,11 +127,11 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                             </Button>
                         ) : missing === 0 ? (
                             <Button chunky block variant="success" onClick={() => buy(selected)} disabled={busy}>
-                                Kupi za <span aria-hidden="true">🪙</span> {selected.price}
+                                Kupi za <CoinIcon /> {selected.price}
                             </Button>
                         ) : (
                             <p className="text-base font-bold text-ink-soft">
-                                Još <span aria-hidden="true">🪙</span> {missing} — igraj i skupljaj zvezdice!
+                                Još <CoinIcon /> {missing} — igraj i skupljaj zvezdice!
                             </p>
                         )}
                         <button type="button" onClick={() => setSelected(null)} className="min-h-10 text-sm font-bold text-ink-soft hover:text-ink">
@@ -224,7 +222,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                                                 ) : (
                                                     <span className="inline-flex items-center gap-1 text-xs font-extrabold text-sun-700">
                                                         {!affordable && <Lock className="h-3 w-3" aria-hidden="true" />}
-                                                        <span aria-hidden="true">🪙</span> {item.price}
+                                                        <CoinIcon /> {item.price}
                                                     </span>
                                                 )}
                                                 {worn && (

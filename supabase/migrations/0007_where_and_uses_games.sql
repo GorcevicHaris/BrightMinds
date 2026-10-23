@@ -12,6 +12,6 @@
 
 insert into public.activities (id, title, description, category, difficulty_level, instructions)
 values
-    (11, 'Gde je?', 'U, na, ispod ili pored?', 'language', 'beginner', 'Slušaj i pronađi pravu sliku'),
-    (12, 'Čemu služi?', 'Čuj pitanje i pronađi predmet', 'language', 'beginner', 'Slušaj pitanje i pronađi pravu sliku')
+    (11, 'Gde je?', 'U, na, ispod ili pored?', 'cognitive', 'beginner', 'Slušaj i pronađi pravu sliku'),
+    (12, 'Čemu služi?', 'Čuj pitanje i pronađi predmet', 'cognitive', 'beginner', 'Slušaj pitanje i pronađi pravu sliku')
 on conflict (id) do update set title = excluded.title, description = excluded.description;

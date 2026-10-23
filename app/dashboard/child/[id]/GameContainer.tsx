@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, Check, Eye, Lock, Pause, Play, RotateCcw, SkipForward, Star, X } from "lucide-react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
+import { CoinIcon } from "@/app/components/ui/CoinIcon";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import { CelebrationLayer, celebrateBig, GamePauseContext, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
@@ -1346,7 +1347,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                 </h2>
                 {/* Svaka zvezdica je novčić za drugara */}
                 <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sun-100 px-4 py-1.5 text-lg font-extrabold text-sun-700 ring-1 ring-sun-300">
-                    + {outcome.stars} <span aria-hidden="true">🪙</span>
+                    + {outcome.stars} <CoinIcon className="h-6 w-6" />
                     <span className="sr-only">{outcome.stars === 1 ? "novčić" : "novčića"}</span>
                 </p>
                 {showNumbers && !limitReached && game.graded && !outcome.practice && (

@@ -285,7 +285,7 @@ export const GAMES: GameDefinition[] = [
         title: "Čemu služi?",
         description: "Čuj pitanje i pronađi predmet",
         skill: "Razumevanje govora",
-        icon: "🔑",
+        icon: "✂️",
         image: "/images/cemusluzi.svg",
         accent: {
             solid: "bg-fuchsia-500",
