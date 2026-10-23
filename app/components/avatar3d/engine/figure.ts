@@ -309,6 +309,8 @@ export class Figure {
         for (const worn of this.worn.values()) for (const part of worn.builder.covers ?? []) covered.add(part);
         // Osnovne patike skrivaju stopala
         if (this.base.has("feet")) covered.add("feet");
+        // Životinja sa kapom: kosa/griva na temenu se ne crta (kapa sedi na glavi, kao kod ostalih)
+        if (!isHumanBody(this.body) && this.worn.has("hat")) covered.add("hair");
         for (const [part, objects] of Object.entries(this.body.parts) as [BodyPart, THREE.Object3D[]][]) {
             // Uši ispod hidžaba su već skrivene
             if (part === "ears" && isHumanBody(this.body) && this.body.hijab) continue;
@@ -408,8 +410,10 @@ export class Figure {
         // Prekrštene ruke se preskaču uz predmete koji bi se sudarili sa rukama (krut deo na grudima)
         const noCross = [...this.worn.values()].some((w) => NO_CROSSED_ARMS.has(w.id));
         const order: PoseName[] = this.worn.has("hand") ? ["relaxed", "hips"] : noCross ? ["relaxed", "hips", "relaxed", "behind"] : ["relaxed", "hips", "relaxed", "crossed", "relaxed", "behind"];
-        const i = order.indexOf(this.poseName);
-        return order[(i + 1) % order.length];
+        // Peraja (pingvin) ne idu na kukove
+        const usable: PoseName[] = this.body.anchors.hands.kind === "flipper" ? order.filter((p) => p !== "hips") : order;
+        const i = usable.indexOf(this.poseName);
+        return usable[(i + 1) % usable.length];
     }
 
     private applyPose(time: number, dt: number, live: boolean, armsBusy: number): boolean {
