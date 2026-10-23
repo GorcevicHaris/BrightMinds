@@ -14,6 +14,7 @@ export type GameId =
     | "sequence"
     | "where"
     | "uses"
+    | "counting"
     | "gaze";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
@@ -29,6 +30,7 @@ export type GameType =
     | "sequence"
     | "where"
     | "uses"
+    | "counting"
     | "gaze";
 
 export interface GameAccent {
@@ -299,6 +301,27 @@ export const GAMES: GameDefinition[] = [
             gradient: "from-fuchsia-400 to-purple-500",
         },
         offscreenTip: "Dok spremate doručak ili se kupate, pitajte: „Čime jedemo supu?”, „Čime peremo kosu?” — neka dete pokaže ili donese predmet.",
+        graded: true,
+    },
+    {
+        id: "counting",
+        gameType: "counting",
+        activityId: 13,
+        title: "Brojimo",
+        description: "Koliko ima? Gde ima više?",
+        skill: "Brojanje i količine",
+        icon: "🧮",
+        image: "/images/brojimo.svg",
+        accent: {
+            solid: "bg-yellow-500",
+            edge: "border-yellow-700",
+            soft: "bg-yellow-50",
+            text: "text-yellow-800",
+            border: "border-yellow-200",
+            ring: "ring-yellow-200",
+            gradient: "from-yellow-400 to-orange-400",
+        },
+        offscreenTip: "Brojite zajedno ono što je oko vas: stepenice, kašike na stolu, autiće u kutiji. Neka dete dodirne svaku stvar dok broji, pa pitajte: „Koliko ima?” ili „Gde ima više?”",
         graded: true,
     },
     {
