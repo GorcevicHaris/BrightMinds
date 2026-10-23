@@ -168,7 +168,8 @@ export function buildHuman(kind: HumanKind, look: HumanLook, ctx: FigureContext)
                 object.removeFromParent();
                 disposeObject(object);
             }
-            hair = buildHair(rig, info, style, hairHex, hat);
+            // Duga kosa (ne „do ramena”) ima i prednje pramenove preko ramena
+            hair = buildHair(rig, info, style, hairHex, hat, root, hairShape(kind, look.style) === "long");
             parts.hair = hair;
             underHat = hat;
         }

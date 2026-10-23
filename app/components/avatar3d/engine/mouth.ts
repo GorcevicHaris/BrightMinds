@@ -148,10 +148,13 @@ export class Mouth {
                 const x = -w + (2 * w * i) / (N - 1);
                 const c = curves(shape, x);
                 // Usne su malo iznad ivice otvora (gornja iznad, donja ispod)
-                const y = lip === 0 ? c.top - 1.1 - gap * 0.6 : c.bottom + 1.5 + gap * 0.8;
+                // Gornja usna ima „Kupidov luk”: dva blaga vrha i udubljenje u sredini
+                const ax = Math.abs(x) / w;
+                const bow = lip === 0 ? Math.exp(-(((ax - 0.3) / 0.17) ** 2)) - 0.6 * Math.exp(-((ax / 0.08) ** 2)) : 0;
+                const y = lip === 0 ? c.top - 1.1 - gap * 0.6 - bow * 1.1 : c.bottom + 1.6 + gap * 0.8;
                 // Debljina: najdeblje u sredini, tanko u uglovima; donja usna punija
-                const mid = 1 - Math.pow(Math.abs(x) / w, 2.2);
-                const r = s.lip * (lip === 0 ? 0.62 : 0.92) * (0.22 + 0.78 * mid);
+                const mid = 1 - Math.pow(ax, 2.2);
+                const r = s.lip * (lip === 0 ? 0.62 + 0.12 * bow : 1.12) * (0.2 + 0.8 * mid);
                 this.at(x, y, r * 0.55, center);
                 this.at(Math.max(-w, x - 0.6), y, r * 0.55, prev);
                 this.at(Math.min(w, x + 0.6), y, r * 0.55, next);

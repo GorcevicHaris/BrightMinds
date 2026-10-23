@@ -39,7 +39,7 @@ export function headInfo(shape: BodyShape): HeadInfo {
     const { w, h, d, up, fwd, chin, cheeks } = shape.head;
     const center = new THREE.Vector3(0, up, fwd);
     const child = shape.kind === "girl" || shape.kind === "boy";
-    const nose = child ? 0.8 : shape.kind === "man" ? 1.25 : 1;
+    const nose = child ? 1.25 : shape.kind === "man" ? 1.6 : 1.4;
     const fn: SurfaceFn = (u, v, out) => {
         const th = (u - 0.5) * Math.PI * 2;
         const ph = Math.min(Math.PI, Math.max(0, v * Math.PI));
@@ -49,12 +49,14 @@ export function headInfo(shape: BodyShape): HeadInfo {
         let r = 1;
         // Puni obrazi (deca više) i jagodice, blago udubljenje za oči
         r += 0.07 * cheeks * (gauss3(x, y, z, 0.6, -0.36, 0.68, 0.24) + gauss3(x, y, z, -0.6, -0.36, 0.68, 0.24));
-        r += 0.022 * (gauss3(x, y, z, 0.66, -0.2, 0.7, 0.16) + gauss3(x, y, z, -0.66, -0.2, 0.7, 0.16));
-        r -= 0.026 * (gauss3(x, y, z, 0.34, -0.12, 0.93, 0.13) + gauss3(x, y, z, -0.34, -0.12, 0.93, 0.13));
+        // Jagodice, blago udubljenje za oči, sitna brada
+        r += 0.02 * (gauss3(x, y, z, 0.64, -0.22, 0.7, 0.16) + gauss3(x, y, z, -0.64, -0.22, 0.7, 0.16));
+        r -= 0.024 * (gauss3(x, y, z, 0.35, -0.08, 0.93, 0.13) + gauss3(x, y, z, -0.35, -0.08, 0.93, 0.13));
         // Nos: mekani most između očiju, zaobljen vrh, krilca i nagoveštaj nozdrva
         if (z > 0.5) {
-            const ridge = Math.exp(-(x * x) / (2 * 0.05 * 0.05)) * smooth01((y + 0.4) / 0.16) * (1 - smooth01((y + 0.12) / 0.1));
-            r += nose * (0.035 * ridge + 0.085 * gauss3(x, y, z, 0, -0.36, 0.93, 0.062));
+            // Prav, jasan most nosa od očiju do mekog vrha
+            const ridge = Math.exp(-(x * x) / (2 * 0.042 * 0.042)) * smooth01((y + 0.4) / 0.2) * (1 - smooth01((y + 0.06) / 0.12));
+            r += nose * (0.045 * ridge + 0.075 * gauss3(x, y, z, 0, -0.36, 0.94, 0.055));
             r += nose * 0.034 * (gauss3(x, y, z, 0.075, -0.39, 0.91, 0.04) + gauss3(x, y, z, -0.075, -0.39, 0.91, 0.04));
             r -= nose * 0.018 * (gauss3(x, y, z, 0.042, -0.425, 0.9, 0.022) + gauss3(x, y, z, -0.042, -0.425, 0.9, 0.022));
             // Žleb iznad usne (filtrum) i jamica ispod donje usne
@@ -98,8 +100,8 @@ export function headInfo(shape: BodyShape): HeadInfo {
         normal(u, v, n);
         return out.addScaledVector(n, offset(u, v));
     };
-    const eyeR = w * (child ? 0.148 : 0.122);
-    return { shape, center, fn, point, normal, offsetFn, eyeU: child ? 0.068 : 0.064, eyeV: child ? 0.55 : 0.535, eyeR };
+    const eyeR = w * (child ? 0.142 : 0.128);
+    return { shape, center, fn, point, normal, offsetFn, eyeU: child ? 0.073 : 0.07, eyeV: child ? 0.545 : 0.53, eyeR };
 }
 
 /** Rumenilo na obrazima i senka u uglovima (boje temena: množe boju kože) */
@@ -115,12 +117,18 @@ function headColors(geometry: THREE.BufferGeometry, info: HeadInfo) {
         const y = (position.getY(i) - center.y) / (h / 2);
         const z = (position.getZ(i) - center.z) / (d / 2);
         const cheek = Math.max(gauss3(x, y, z, 0.56, -0.3, 0.75, 0.17), gauss3(x, y, z, -0.56, -0.3, 0.75, 0.17));
-        c.setRGB(1, 1, 1).lerp(blush, cheek * 0.32);
-        // Nozdrve i ugao nosa: blago tamnije (senka udubljenja)
-        const nostril = Math.max(gauss3(x, y, z, 0.042, -0.425, 0.9, 0.024), gauss3(x, y, z, -0.042, -0.425, 0.9, 0.024));
-        c.multiplyScalar(1 - nostril * 0.35);
-        // Usne malo rumenije oko usta, vrh nosa topliji
-        c.lerp(blush, gauss3(x, y, z, 0, -0.36, 0.93, 0.07) * 0.12);
+        c.setRGB(1, 1, 1).lerp(blush, cheek * 0.42);
+        // Nozdrve i ugao nosa: tamnije (senka udubljenja)
+        const nostril = Math.max(gauss3(x, y, z, 0.042, -0.425, 0.9, 0.026), gauss3(x, y, z, -0.042, -0.425, 0.9, 0.026));
+        c.multiplyScalar(1 - nostril * 0.5);
+        // Senke u udubljenjima (kao AO): oko očiju, ispod nosa, ispod donje usne, uz vilicu
+        const socket = Math.max(gauss3(x, y, z, 0.34, -0.1, 0.9, 0.12), gauss3(x, y, z, -0.34, -0.1, 0.9, 0.12));
+        const underNose = gauss3(x, y, z, 0, -0.46, 0.88, 0.05);
+        const underLip = gauss3(x, y, z, 0, -0.76, 0.66, 0.06);
+        const jaw = Math.max(0, -y - 0.55) * (1 - Math.abs(z) * 0.6);
+        c.multiplyScalar(1 - socket * 0.12 - underNose * 0.14 - underLip * 0.12 - jaw * 0.3);
+        // Rumen vrh nosa i obrazi
+        c.lerp(blush, gauss3(x, y, z, 0, -0.37, 0.94, 0.06) * 0.22);
         // Blago tamnije ispod brade i na vratu (meka senka)
         const under = Math.max(0, -y - 0.75) * 1.2;
         c.multiplyScalar(1 - under * 0.25);
@@ -208,18 +216,18 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
         eye.name = "oko";
         eye.position.copy(surface).addScaledVector(n, -re * 0.72);
         // Oči gledaju napred i malo jedna ka drugoj (pogled u gledaoca)
-        eye.rotation.set(0, side * 0.12, side * 0.07, "YXZ");
-        // Bademast oblik: oko malo šire nego više
-        eye.scale.set(1.12, 0.94, 1);
+        eye.rotation.set(0, side * 0.12, side * 0.09, "YXZ");
+        // Bademast oblik (Bitmoji): oko šire nego više, spoljni ugao blago podignut
+        eye.scale.set(1.22, 0.9, 1);
         const ball = new THREE.Mesh(new THREE.SphereGeometry(re, 40, 24), eyeMat);
         eye.add(ball);
         // Odsjaj: mali beli oval gore-levo (gledano spreda), uvek isti — „živ” pogled
-        const shine = new THREE.Mesh(new THREE.SphereGeometry(re * 0.075, 12, 8), shineMat);
+        const shine = new THREE.Mesh(new THREE.SphereGeometry(re * 0.15, 14, 10), shineMat);
         shine.scale.set(1, 1.2, 0.35);
         const dir = new THREE.Vector3(-0.2, 0.24, 0.95).normalize();
         shine.position.copy(dir).multiplyScalar(re * 1.0);
         eye.add(shine);
-        const shine2 = new THREE.Mesh(new THREE.SphereGeometry(re * 0.045, 10, 6), shineMat);
+        const shine2 = new THREE.Mesh(new THREE.SphereGeometry(re * 0.08, 10, 6), shineMat);
         shine2.position.copy(new THREE.Vector3(0.16, -0.16, 0.97).normalize()).multiplyScalar(re * 1.0);
         eye.add(shine2);
 
@@ -236,7 +244,8 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
                 },
                 (s) => {
                     const outer = side === 1 ? s : 1 - s;
-                    return re * (0.04 + 0.05 * Math.pow(outer, 2.5));
+                    // Jasna linija gornjeg kapka (Bitmoji), deblja ka spoljnom uglu
+                    return re * (0.075 + 0.07 * Math.pow(outer, 2));
                 },
                 28,
                 8,
@@ -249,7 +258,7 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
             for (let i = 0; i < 3; i++) {
                 const t = Math.PI * (side === 1 ? 0.12 + i * 0.09 : 0.88 - i * 0.09);
                 const base = new THREE.Vector3(Math.cos(t) * lidR, 0, Math.sin(t) * lidR);
-                const tip = base.clone().multiplyScalar(1.18).add(new THREE.Vector3(0, re * 0.22, 0));
+                const tip = base.clone().multiplyScalar(1.2).add(new THREE.Vector3(0, re * 0.24, 0));
                 const flick = new THREE.Mesh(taperedTube(polyPath([base, base.clone().lerp(tip, 0.5).add(new THREE.Vector3(0, re * 0.02, 0)), tip]), (s) => re * 0.05 * (1 - s * 0.85), 8, 6), lashMat);
                 upper.add(flick);
             }
@@ -271,15 +280,16 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
     const nv = child ? 0.625 : 0.615;
 
     // ── Obrve (svaka u svojoj grupi sa središtem u sredini obrve, da se diže i naginje) ──
-    const browMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(browColor).multiplyScalar(0.85), roughness: 0.85 });
+    const browMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(browColor).multiplyScalar(0.62), roughness: 0.85 });
     const brows: THREE.Object3D[] = [];
     for (const side of [1, -1]) {
         const brow = new THREE.Group();
         // Obrva je mekani „jastučić” na koži: ivice tonu u kožu, sredina je malo ispupčena
         const n0 = new THREE.Vector3();
         const browU = (t: number) => 0.5 + side * (info.eyeU - 0.036 + t * 0.074);
-        const browV = (t: number) => info.eyeV - 0.1 - Math.sin(t * Math.PI) * 0.02 + t * 0.008;
-        const thick = (t: number) => (girlish ? 0.0115 : 0.0145) * (0.35 + 0.65 * Math.pow(Math.sin(Math.min(1, t * 1.05 + 0.06) * Math.PI), 0.7));
+        // Jasan luk obrve: najviša tačka na dve trećine, spoljni kraj spušten
+        const browV = (t: number) => info.eyeV - 0.1 - Math.sin(Math.pow(t, 0.8) * Math.PI) * 0.026 + t * 0.012;
+        const thick = (t: number) => (girlish ? 0.0165 : 0.019) * (0.35 + 0.65 * Math.pow(Math.sin(Math.min(1, t * 1.05 + 0.06) * Math.PI), 0.7));
         const fn: SurfaceFn = (t, q, out) => {
             const u = browU(t);
             const v = browV(t) + (q - 0.5) * thick(t);
@@ -298,8 +308,8 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
     }
 
     // ── Usta (prava 3D površina: usne, unutrašnjost, zubi, jezik) ──
-    const lip = "#" + new THREE.Color(skinHex).lerp(new THREE.Color(girlish ? "#B03048" : "#8E3E48"), girlish ? 0.78 : 0.58).getHexString();
-    const mouth = new Mouth(mouthSurfaceFrom(info.fn, info.normal, 0.5, child ? 0.715 : 0.705, 0.00155, 0.003, child ? 0.0034 : 0.0036), lip);
+    const lip = "#" + new THREE.Color(skinHex).lerp(new THREE.Color(girlish ? "#B65562" : "#9E5A58"), girlish ? 0.58 : 0.42).getHexString();
+    const mouth = new Mouth(mouthSurfaceFrom(info.fn, info.normal, 0.5, child ? 0.712 : 0.705, 0.0022, 0.0032, child ? 0.0058 : 0.0064), lip);
     group.add(mouth.group);
 
     // ── Izraz: brojevi iz FACE_POSES, meko mešanje; usta dodatno otvara glas ──
@@ -318,9 +328,9 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
             brow.rotation.z = side * pose.browTilt;
         });
         // Ivica gornjeg kapka: otvoreno ≈ 37° iznad središta, zatvoreno ≈ 12° ispod
-        const openEdge = 0.74 * pose.eye + (pose.eye - 1) * 0.3;
+        const openEdge = 0.7 * pose.eye + (pose.eye - 1) * 0.3;
         const upperEdge = THREE.MathUtils.lerp(openEdge, -0.22, blink);
-        const lowerRest = THREE.MathUtils.lerp(-0.62, -0.3, pose.lid);
+        const lowerRest = THREE.MathUtils.lerp(-0.66, -0.4, pose.lid);
         const lowerEdge = THREE.MathUtils.lerp(lowerRest, -0.22, blink);
         upperLids.forEach((lid) => (lid.rotation.x = -upperEdge));
         lowerLids.forEach((lid) => (lid.rotation.x = -lowerEdge));
