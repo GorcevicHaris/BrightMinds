@@ -332,7 +332,7 @@ export const MOODS: { value: Mood; emoji: string; label: string }[] = [
 
 /** Kraća skala za decu: tri lica umesto pet (mlađa deca ne razlikuju pouzdano više stupnjeva). */
 export const MOODS_THREE: { value: Mood; emoji: string; label: string }[] = [
-    { value: "upset", emoji: "🙁", label: "Loše" },
+    { value: "upset", emoji: "😢", label: "Tužno" },
     { value: "neutral", emoji: "😐", label: "Onako" },
     { value: "happy", emoji: "🙂", label: "Dobro" },
 ];

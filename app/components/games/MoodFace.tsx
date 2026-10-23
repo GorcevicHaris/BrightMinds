@@ -13,6 +13,8 @@ const MOOD_FEATURES: Record<MoodFaceKind, ReactNode> = {
             <ellipse cx={35} cy={49} rx={4.5} ry={5.5} fill={INK} />
             <ellipse cx={65} cy={49} rx={4.5} ry={5.5} fill={INK} />
             <path d="M36 74 Q50 64 64 74" {...LINE} />
+            {/* Suzica: lice je „Tužno”, ne ljuto */}
+            <path d="M30 57 Q26 64 26 67 A4 4 0 0 0 34 67 Q34 64 30 57 Z" fill="#7cc4f2" stroke="#4a9fd8" strokeWidth={1.2} />
         </>
     ),
     neutral: (
