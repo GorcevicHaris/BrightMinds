@@ -435,7 +435,8 @@ export function triangles(objects: THREE.Object3D[]): number {
             const m = x as THREE.Mesh;
             if (!m.isMesh) return;
             const g = m.geometry;
-            n += (g.index ? g.index.count : g.getAttribute("position").count) / 3;
+            const inst = (m as THREE.InstancedMesh).isInstancedMesh ? (m as THREE.InstancedMesh).count : 1;
+            n += ((g.index ? g.index.count : g.getAttribute("position").count) / 3) * inst;
         });
     }
     return Math.round(n);
