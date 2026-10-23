@@ -12,6 +12,7 @@
 //   db.dropTable("play_sessions");                // „tabela ne postoji” → PGRST205
 //   db.failNext("children", "insert", { code: "23505" });   // jednokratna greška baze
 //   db.rows("progress_logs");                     // šta je ruta upisala
+// Filter po putanji u JSON koloni (`.eq("settings->companion->>v", "3")`) je podržan.
 
 export type Row = Record<string, unknown>;
 type Operation = "select" | "insert" | "update" | "delete";
@@ -56,6 +57,27 @@ function likePattern(pattern: string, flags: string): RegExp {
         return (token.startsWith("\\") ? token.slice(1) : token).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     });
     return new RegExp(`^${source}$`, `s${flags}`);
+}
+
+// ── Putanja u JSON koloni: "settings->companion->>v" ──────────────────────────
+// `->` vodi u objekat, `->>` vraća vrednost kao tekst (kao u Postgresu); nepostojeće je NULL.
+
+function columnName(column: string): string {
+    return column.split("->")[0];
+}
+
+function readColumn(row: Row, column: string): unknown {
+    if (!column.includes("->")) return row[column];
+    const steps = column.split(/(->>?)/);
+    let value: unknown = row[steps[0]];
+    let asText = false;
+    for (let i = 1; i < steps.length; i += 2) {
+        if (typeof value !== "object" || value === null) return null;
+        value = (value as Row)[steps[i + 1]];
+        asText = steps[i] === "->>";
+    }
+    if (isNullish(value)) return null;
+    return asText ? (typeof value === "object" ? JSON.stringify(value) : String(value)) : value;
 }
 
 // ── Izraz za `.or(...)`: "level.lt.5,and(level.eq.5,id.lt.10)" ────────────────
@@ -138,8 +160,8 @@ class Query implements PromiseLike<Result> {
 
     // Filteri
     private where(column: string, test: (value: unknown) => boolean): this {
-        this.mentioned.add(column);
-        this.filters.push((row) => test(row[column]));
+        this.mentioned.add(columnName(column));
+        this.filters.push((row) => test(readColumn(row, column)));
         return this;
     }
     eq(column: string, operand: unknown): this {

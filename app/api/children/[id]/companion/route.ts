@@ -1,7 +1,8 @@
 // app/api/children/[id]/companion/route.ts
 // Pratilac deteta i novčići (model: lib/companion.ts).
 // GET — roditelj ili dečja sesija tog deteta: izabrani pratilac, odeća i novčići.
-// PUT — isto: dete samo bira pratioca, kupuje i oblači odeću. Cenu i stanje novčića
+// PUT — isto: dete samo bira pratioca, kupuje, oblači i skida odeću i bira cilj
+//       (predmet za koji skuplja novčiće). Radnje: lib/companion.ts. Cenu i stanje novčića
 //       uvek proverava server; upis uspeva samo ako se stanje u međuvremenu nije
 //       promenilo (dva brza dodira ne mogu dvaput da potroše iste novčiće).
 import { NextResponse } from "next/server";
@@ -55,7 +56,10 @@ function stateOf(row: ChildCompanionRow) {
 
 function response(row: ChildCompanionRow, state = stateOf(row)) {
     return NextResponse.json(
-        { companion: { kind: state.kind, owned: state.owned, wear: state.wear }, coins: coinsAvailable(row.experience_points, state.spent) },
+        {
+            companion: { kind: state.kind, owned: state.owned, wear: state.wear, goal: state.goal ?? null },
+            coins: coinsAvailable(row.experience_points, state.spent),
+        },
         { headers: { "Cache-Control": "no-store" } }
     );
 }
