@@ -5,7 +5,7 @@ import { beforeEach, describe, it } from "node:test";
 import { GET, PUT } from "@/app/api/children/[id]/companion/route";
 import { ANIMAL_SKINS, HUMAN_DEFAULT, humanSkinId } from "@/app/components/avatar/skins";
 import { WEAR_ITEMS, WEAR_SETS, type WearItem, type WearSet } from "@/app/components/avatar/wearables";
-import { POINTS_PER_STAR, setGoalId, skinGoalId } from "@/lib/companion";
+import { COINS_PER_STAR, POINTS_PER_STAR, coinsAvailable, setGoalId, skinGoalId } from "@/lib/companion";
 import { CHILD_ID, OTHER_CHILD_ID, db, idParams, jsonRequest, readJson, resetWorld, seedFamily, signInAsChild, signInAsParent } from "../setup/api";
 
 const put = (body: unknown, childId = CHILD_ID) => PUT(jsonRequest("PUT", body), idParams(childId));
@@ -19,7 +19,12 @@ const cheapest = (slot?: WearItem["slot"]) => byPrice.find((item) => !slot || it
 const priciest = byPrice[byPrice.length - 1];
 const hat = cheapest("hat");
 const glasses = cheapest("glasses");
-const stars = (count: number) => count * POINTS_PER_STAR;
+/** Poeni iskustva koji donose najmanje `coins` novčića (zvezdica = COINS_PER_STAR novčića) */
+const stars = (coins: number) => Math.ceil(coins / COINS_PER_STAR) * POINTS_PER_STAR;
+/** Poeni iskustva koji donose najviše `coins` novčića */
+const starsAtMost = (coins: number) => Math.floor(coins / COINS_PER_STAR) * POINTS_PER_STAR;
+/** Novčići na početku svakog testa */
+const START = coinsAvailable(stars(priciest.price + hat.price + glasses.price), 0);
 
 // Komplet iz kataloga; dok katalog nema komplete, probni od najjeftinijeg šešira i naočara
 if (WEAR_SETS.length === 0) (WEAR_SETS as WearSet[]).push({ id: "probni-komplet", label: "Probni komplet", items: { hat: hat.id, glasses: glasses.id } });
@@ -45,7 +50,7 @@ describe("GET /api/children/[id]/companion", () => {
         assert.equal(response.headers.get("cache-control"), "no-store");
         assert.deepEqual(await readJson(response), {
             companion: { kind: "woman", owned: [], wear: {}, goal: null, skin: {}, skins: [] },
-            coins: priciest.price + hat.price + glasses.price,
+            coins: START,
         });
     });
 
@@ -53,7 +58,7 @@ describe("GET /api/children/[id]/companion", () => {
         const old = { kind: "cat", owned: [hat.id, glasses.id], wear: { hat: hat.id, glasses: glasses.id }, spent: hat.price + glasses.price, v: 3 };
         childRow().settings = { volume: 0.5, companion: old };
         const body = await readJson(await get());
-        assert.deepEqual(body, { companion: { kind: "cat", owned: old.owned, wear: old.wear, goal: null, skin: {}, skins: [] }, coins: priciest.price });
+        assert.deepEqual(body, { companion: { kind: "cat", owned: old.owned, wear: old.wear, goal: null, skin: {}, skins: [] }, coins: START - hat.price - glasses.price });
     });
 
     it("drops a stored goal that is unknown or already bought", async () => {
@@ -76,7 +81,7 @@ describe("PUT /api/children/[id]/companion", () => {
         assert.equal(response.status, 200);
         const body = await readJson(response);
         assert.equal((body.companion as Record<string, unknown>).goal, priciest.id);
-        assert.equal(body.coins, priciest.price + hat.price + glasses.price);
+        assert.equal(body.coins, START);
         assert.equal((childRow().settings as Record<string, unknown>).script, "cyrillic");
         assert.equal(stored().goal, priciest.id);
         assert.equal(stored().spent, 0);
@@ -87,7 +92,7 @@ describe("PUT /api/children/[id]/companion", () => {
         await put({ action: "goal", item: priciest.id });
         const body = await readJson(await put({ action: "buy", item: priciest.id }));
         assert.deepEqual(body.companion, { kind: "woman", owned: [priciest.id], wear: { [priciest.slot]: priciest.id }, goal: null, skin: {}, skins: [] });
-        assert.equal(body.coins, hat.price + glasses.price);
+        assert.equal(body.coins, START - priciest.price);
         assert.equal("goal" in stored(), false);
         assert.equal(stored().v, 2);
     });
@@ -107,7 +112,7 @@ describe("PUT /api/children/[id]/companion", () => {
         await put({ action: "buy", item: glasses.id });
         const body = await readJson(await put({ action: "undress" }));
         assert.deepEqual(body.companion, { kind: "woman", owned: [hat.id, glasses.id], wear: {}, goal: null, skin: {}, skins: [] });
-        assert.equal(body.coins, priciest.price);
+        assert.equal(body.coins, START - hat.price - glasses.price);
     });
 
     it("puts on a whole look of owned items in one request", async () => {
@@ -129,7 +134,7 @@ describe("PUT /api/children/[id]/companion", () => {
     });
 
     it("answers 402 when the coins are not enough, and spends nothing", async () => {
-        childRow().experience_points = stars(priciest.price - 1);
+        childRow().experience_points = starsAtMost(priciest.price - 1);
         const response = await put({ action: "buy", item: priciest.id });
         assert.equal(response.status, 402);
         assert.equal(db.count("children", "update"), 0);
@@ -158,7 +163,7 @@ describe("PUT /api/children/[id]/companion", () => {
     });
 
     it("buys nothing of a set without coins for all of it", async () => {
-        childRow().experience_points = stars(setPrice - 1);
+        childRow().experience_points = starsAtMost(setPrice - 1);
         assert.equal((await put({ action: "buySet", set: set.id })).status, 402);
         assert.equal((await put({ action: "buySet", set: "nema-takvog" })).status, 400);
         assert.equal(db.count("children", "update"), 0);
@@ -221,7 +226,7 @@ describe("PUT /api/children/[id]/companion — izgled drugara", () => {
         let body = await readJson(await put({ action: "skin", kind: "cat", skin: freeCat.id }));
         body = await readJson(await put({ action: "skin", kind: "woman", skin: womanLook }));
         assert.deepEqual((body.companion as Record<string, unknown>).skin, { cat: freeCat.id, woman: womanLook });
-        assert.equal(body.coins, priciest.price + hat.price + glasses.price);
+        assert.equal(body.coins, START);
         assert.equal(stored().spent, 0);
         assert.equal(((await readJson(await get())).companion as Record<string, unknown>).kind, "woman");
     });
@@ -255,7 +260,7 @@ describe("PUT /api/children/[id]/companion — izgled drugara", () => {
     });
 
     it("answers 402 for a paid look without enough coins, and never sells a free look", async () => {
-        childRow().experience_points = stars(paidCat.price - 1);
+        childRow().experience_points = starsAtMost(paidCat.price - 1);
         assert.equal((await put({ action: "buySkin", kind: "cat", skin: paidCat.id })).status, 402);
         assert.equal((await put({ action: "buySkin", kind: "cat", skin: freeCat.id })).status, 400);
         assert.equal((await put({ action: "buySkin", kind: "woman", skin: womanLook })).status, 400);

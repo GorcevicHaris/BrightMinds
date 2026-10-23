@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 /**
- * Zlatni novčić sa zvezdicom (svaka zvezdica iz igre je jedan novčić). Crtež umesto
+ * Zlatni novčić sa zvezdicom (svaka zvezdica iz igre donosi dva novčića). Crtež umesto
  * emotikona 🪙, koji na svakom uređaju izgleda drugačije, a negde i sivo.
  */
 export function CoinIcon({ className }: { className?: string }) {

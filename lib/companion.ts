@@ -2,7 +2,7 @@
 // Pratilac deteta (lik koji mu čita i raduje se sa njim) i novčići za odeću pratioca.
 //
 //  • Dete bira pratioca: učiteljicu, učitelja ili životinju (mačka, pas, zeka, meda).
-//  • Novčići su zarađene zvezdice: svaka zvezdica u igri je jedan novčić. Dete novčiće ne
+//  • Novčići su zarađene zvezdice: svaka zvezdica u igri donosi dva novčića. Dete novčiće ne
 //    može da izgubi — samo da ih potroši na odeću (šešir, naočare, odelo…). Nema nasumičnih
 //    nagrada ni „kutija iznenađenja”: svaki predmet ima stalnu cenu i dete zna šta dobija.
 //    (Sistem žetona — token economy — u ABA terapiji je pozitivno potkrepljenje bez kazni.)
@@ -20,6 +20,9 @@
 // Modul nema zavisnosti od servera ni od React-a: koriste ga i API rute i ekran deteta.
 
 export const POINTS_PER_STAR = 5;
+
+/** Novčića po zvezdici. Novčići se računaju iz svih zarađenih zvezdica, pa promena važi i unazad. */
+export const COINS_PER_STAR = 2;
 
 /** Pratioci koje dete može da izabere (crteži: app/components/avatar/Companion) */
 export const COMPANION_KINDS = ["woman", "man", "cat", "dog", "bunny", "bear"] as const;
@@ -201,7 +204,7 @@ export function sanitizeCompanion(raw: unknown, gender: string | null | undefine
 
 /** Novčići na raspolaganju: zarađene zvezdice minus potrošeno (nikad ispod nule) */
 export function coinsAvailable(experiencePoints: number | null | undefined, spent: number): number {
-    const earned = Math.floor(Math.max(0, experiencePoints ?? 0) / POINTS_PER_STAR);
+    const earned = Math.floor(Math.max(0, experiencePoints ?? 0) / POINTS_PER_STAR) * COINS_PER_STAR;
     return Math.max(0, earned - Math.max(0, spent));
 }
 

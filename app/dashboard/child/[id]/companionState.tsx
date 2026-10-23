@@ -13,6 +13,7 @@ import {
     coinsAvailable,
     defaultCompanion,
     isCompanionKindId,
+    COINS_PER_STAR,
     POINTS_PER_STAR,
     type CompanionAction,
     type CompanionCatalog,
@@ -106,7 +107,7 @@ export function CompanionProvider({ childId, gender, preview = false, previewPoi
     const act = useCallback(
         async (action: CompanionAction): Promise<string | null> => {
             if (preview) {
-                const result = applyCompanionAction(state, action, (coins + state.spent) * POINTS_PER_STAR, LOCAL_CATALOG);
+                const result = applyCompanionAction(state, action, ((coins + state.spent) / COINS_PER_STAR) * POINTS_PER_STAR, LOCAL_CATALOG);
                 if (!result.ok) return result.reason === "coins" ? "Nema dovoljno novčića" : "Ne može";
                 setCoins(coins - (result.state.spent - state.spent));
                 setState(result.state);
