@@ -63,9 +63,9 @@ export class Mouth {
         this.group.name = "usta";
         const lipMat = new THREE.MeshPhysicalMaterial({
             color: new THREE.Color(lipColor),
-            roughness: 0.48,
-            clearcoat: 0.3,
-            clearcoatRoughness: 0.35,
+            roughness: 0.4,
+            clearcoat: 0.45,
+            clearcoatRoughness: 0.3,
         });
         const innerMat = new THREE.MeshStandardMaterial({ color: "#4A1820", roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         const teethMat = new THREE.MeshPhysicalMaterial({ color: "#FBF8F2", roughness: 0.3, clearcoat: 0.5, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
@@ -222,7 +222,8 @@ export class Mouth {
         this.teeth.visible = shape.open > 0.18;
         this.tongue.visible = shape.open > 0.28;
         this.strip(this.inner, w * 0.96, (c) => c.top - 0.5, (c) => Math.max(c.bottom, c.top + 1.1), 0.0006);
-        if (this.teeth.visible) this.strip(this.teeth, w * 0.78, (c) => c.top, (c) => c.top + Math.min(5, (c.bottom - c.top) * 0.32), 0.0011);
+        // Gornji zubi: jasan beli niz u osmehu
+        if (this.teeth.visible) this.strip(this.teeth, w * 0.8, (c) => c.top - 0.3, (c) => c.top + Math.min(7, (c.bottom - c.top) * 0.48), 0.0011);
         if (this.tongue.visible) this.strip(this.tongue, w * 0.7, (c) => c.bottom - (c.bottom - c.top) * 0.38, (c) => c.bottom - 0.3, 0.001);
     }
 

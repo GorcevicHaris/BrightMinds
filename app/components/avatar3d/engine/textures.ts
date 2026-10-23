@@ -236,7 +236,7 @@ export function irisTexture(color: string): THREE.Texture {
         const light = base.clone().lerp(new THREE.Color("#FFFFFF"), 0.5);
         const ring = base.clone().multiplyScalar(0.18);
         const pupil = new THREE.Color("#0C080A");
-        const sclera = new THREE.Color("#F7F3EE");
+        const sclera = new THREE.Color("#FBF9F6");
         const tmp = new THREE.Color();
         const IRIS = 0.66;
         const PUPIL = 0.17;
@@ -316,8 +316,8 @@ export function faceTexture(skin: string, level: number): THREE.Texture {
             // Gušće bliže nosu, ređe ka spolja
             if (hash(i, 13, 99) > 1 - Math.abs(u - 0.5) * 3.2 && zone !== 0) continue;
             placed++;
-            const r = 1.5 + hash(i, 17, 101) * 1.6;
-            const alpha = 0.55 + hash(i, 19, 103) * 0.4;
+            const r = 1.2 + hash(i, 17, 101) * 1.2;
+            const alpha = 0.45 + hash(i, 19, 103) * 0.35;
             const cx = u * w;
             const cy = v * h;
             for (let py = Math.floor(cy - r - 1); py <= Math.ceil(cy + r + 1); py++) {

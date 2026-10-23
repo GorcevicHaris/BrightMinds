@@ -56,7 +56,8 @@ function adultShape(kind: "woman" | "man"): BodyShape {
         armR: man
             ? profile([[0, 0.05], [0.1, 0.048], [0.3, 0.041], [0.5, 0.034], [0.6, 0.037], [0.7, 0.036], [0.88, 0.029], [1, 0.026]])
             : profile([[0, 0.041], [0.1, 0.039], [0.3, 0.033], [0.5, 0.028], [0.6, 0.03], [0.7, 0.029], [0.88, 0.024], [1, 0.022]]),
-        hand: man ? 1.5 : 1.38,
+        // Šake malo veće (puna šaka sa prstima, ne „grudvica”)
+        hand: man ? 1.9 : 1.74,
         hipX: man ? 0.074 : 0.077,
         thigh: y(0.395),
         shin: y(0.39),

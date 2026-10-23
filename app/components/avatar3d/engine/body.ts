@@ -162,13 +162,13 @@ export function handGeometry(rig: Rig, side: 1 | -1): THREE.BufferGeometry {
     const parts: THREE.BufferGeometry[] = [];
     // Dlan: mekan, spljošten
     const palm = new THREE.SphereGeometry(1, 22, 16);
-    palm.scale(0.0118 * k, 0.025 * k, 0.0205 * k);
+    palm.scale(0.0115 * k, 0.025 * k, 0.021 * k);
     palm.translate(-0.001 * side * k, -0.023 * k, 0.001 * k);
     parts.push(palm);
     // Prsti: vitki, jedan uz drugi, blago razmaknuti i savijeni ka dlanu (dva članka)
     const fingers: [number, number, number, number][] = [
         // z (od palca), dužina, poluprečnik, raširenost
-        [0.0108, 0.017, 0.0058, 0.08], [0.0037, 0.02, 0.0061, 0.02], [-0.0037, 0.019, 0.006, -0.03], [-0.0106, 0.015, 0.0054, -0.09],
+        [0.0112, 0.018, 0.0052, 0.1], [0.0038, 0.021, 0.0055, 0.03], [-0.0038, 0.02, 0.0054, -0.04], [-0.011, 0.016, 0.0049, -0.11],
     ];
     for (const [z, len, r, spread] of fingers) {
         // Prvi članak pravo, drugi savijen ka dlanu
@@ -178,16 +178,16 @@ export function handGeometry(rig: Rig, side: 1 | -1): THREE.BufferGeometry {
         first.translate(0, -a1 * k * 0.5, 0);
         const second = new THREE.CapsuleGeometry(r * 0.92 * k, a2 * k, 4, 10);
         second.translate(0, -a2 * k * 0.5, 0);
-        second.rotateZ(0.32 * side);
+        second.rotateZ(0.2 * side);
         second.translate(0, -a1 * k, 0);
         for (const g of [first, second]) {
             g.rotateX(spread);
-            g.rotateZ(0.12 * side);
+            g.rotateZ(0.08 * side);
             g.translate(-0.0012 * side * k, -0.042 * k, z * k);
             parts.push(g);
         }
     }
-    const thumb = new THREE.CapsuleGeometry(0.0068 * k, 0.015 * k, 4, 10);
+    const thumb = new THREE.CapsuleGeometry(0.0062 * k, 0.017 * k, 4, 10);
     thumb.translate(0, -0.009 * k, 0);
     thumb.rotateX(-0.55);
     thumb.rotateZ(0.38 * side);

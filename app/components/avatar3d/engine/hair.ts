@@ -140,8 +140,8 @@ function frontLocks(head: HeadInfo, rig: Rig, material: THREE.Material, toY: num
     const n = new THREE.Vector3();
     for (const side of [1, -1] as const) {
         // Tri pramena po strani: spolja duži, bliže licu kraći
-        for (let i = 0; i < 3; i++) {
-            const u = 0.5 + side * (0.2 + i * 0.035);
+        for (let i = 0; i < 4; i++) {
+            const u = 0.5 + side * (0.2 + i * 0.03);
             const start = head.point(u, 0.5).addScaledVector(head.normal(u, 0.5, n), 0.012).add(headAt);
             const jaw = head.point(0.5 + side * (0.21 + i * 0.03), 0.8).addScaledVector(head.normal(0.5 + side * (0.21 + i * 0.03), 0.8, n), 0.016).add(headAt);
             const a = side * (0.62 + i * 0.22);
@@ -149,13 +149,13 @@ function frontLocks(head: HeadInfo, rig: Rig, material: THREE.Material, toY: num
             const end = torsoPoint(shape, a * 0.92, toY - i * 0.012, 0.028, new THREE.Vector3());
             const mid = torsoPoint(shape, a, (shape.shoulderY + toY) / 2, 0.032, new THREE.Vector3());
             const path = polyPath([start, jaw, shoulder, mid, end]);
-            const width = 0.03 - i * 0.004;
+            const width = 0.036 - i * 0.004;
             const spec = {
                 path,
                 section: (t: number, ang: number): [number, number] => {
                     // Pljosnat pramen: širok bočno, tanak napred; šiljat pri dnu
                     const taper = (0.55 + 0.45 * Math.sin(Math.min(1, 0.15 + t) * Math.PI * 0.95)) * (1 - 0.75 * smoothstep(0.7, 1, t));
-                    return [Math.sin(ang) * width * taper, Math.cos(ang) * 0.0075 * taper];
+                    return [Math.sin(ang) * width * taper, Math.cos(ang) * 0.009 * taper];
                 },
                 forwardAt: (t: number, out: THREE.Vector3) => {
                     const p = path(t, new THREE.Vector3());
@@ -307,16 +307,18 @@ function curls(head: HeadInfo, spec: CapSpec, material: THREE.Material, underHat
 // ── Kratke frizure sa pramenovima ───────────────────────────────────────────────
 
 /** Kapa kose i njena visina iznad kože (na njoj leže pramenovi) */
-function capWithLocks(head: HeadInfo, spec: CapSpec, material: THREE.Material, underHat: boolean): { mesh: THREE.Mesh; offset: (u: number, v: number) => number } {
+function capWithLocks(head: HeadInfo, spec: CapSpec, material: THREE.MeshPhysicalMaterial, underHat: boolean): { mesh: THREE.Mesh; offset: (u: number, v: number) => number } {
     const { offset } = capSurface(head, spec, underHat);
-    // Kapa je samo podloga ispod pramenova — ređa mreža (manje trouglova)
-    return { mesh: capMesh(head, spec, material, underHat, 0.8), offset };
+    // Kapa je samo podloga ispod pramenova — ređa mreža, a malo tamnija (dubina među pramenovima)
+    const under = hairMaterial("#" + material.color.clone().multiplyScalar(0.82).getHexString());
+    return { mesh: capMesh(head, spec, under, underHat, 0.8), offset };
 }
 
-function locksMesh(head: HeadInfo, base: (u: number, v: number) => number, locks: Lock[], material: THREE.Material): THREE.Mesh | null {
+function locksMesh(head: HeadInfo, base: (u: number, v: number) => number, locks: Lock[], material: THREE.MeshPhysicalMaterial): THREE.Mesh | null {
     const geometry = lockGeometry(head, base, locks, detail(100) / 100);
     if (!geometry) return null;
-    const mesh = new THREE.Mesh(geometry, material);
+    // Isti ton kao kosa, sa senkom među pramenovima (boje temena)
+    const mesh = new THREE.Mesh(geometry, hairMaterial("#" + material.color.getHexString(), true));
     mesh.name = "pramenovi";
     // Pramenovi ne bacaju senku na kapu (inače tamne pruge između njih)
     mesh.userData.noShadow = true;
@@ -325,7 +327,7 @@ function locksMesh(head: HeadInfo, base: (u: number, v: number) => number, locks
 
 /** Kapa kratke kose: kratko i tanko sa strane i pozadi (uho se vidi), volumen na temenu */
 function shortSpec(style: HairStyle): CapSpec {
-    const top = style === "wavy" ? 0.022 : style === "messy" ? 0.02 : style === "swept" ? 0.018 : 0.015;
+    const top = style === "wavy" ? 0.026 : style === "messy" ? 0.026 : style === "swept" ? 0.023 : 0.021;
     return {
         hairline: style === "wavy" ? [[0, 0.29], [0.55, 0.31], [0.95, 0.39], [1.3, 0.46], [1.5, 0.43], [1.75, 0.5], [2.2, 0.66], [Math.PI, 0.74]] : LINE_SHORT,
         wave: (th) => 0.008 * Math.abs(Math.sin(th * 7)) * gauss(th, 0, 0.7),
@@ -342,22 +344,22 @@ function shortLocks(style: HairStyle): Lock[] {
     const locks: Lock[] = [];
     const crown = { u: 0.5, v: 0.03 };
     const sides = (seed: number) => [
-        ...flow({ count: 3, uFrom: 0.6, uTo: 0.68, from: 0.1, to: 0.41, width: 0.026, root: crown, seed, lift: 0.002 }),
-        ...flow({ count: 3, uFrom: 0.4, uTo: 0.32, from: 0.1, to: 0.41, width: 0.026, root: crown, seed: seed + 2, lift: 0.002 }),
-        ...flow({ count: 3, uFrom: 0.75, uTo: 0.86, from: 0.1, to: 0.6, width: 0.03, root: crown, seed: seed + 4 }),
-        ...flow({ count: 3, uFrom: 0.25, uTo: 0.14, from: 0.1, to: 0.6, width: 0.03, root: crown, seed: seed + 6 }),
-        ...flow({ count: 3, uFrom: 0.93, uTo: 1.07, from: 0.1, to: 0.68, width: 0.032, root: crown, seed: seed + 8 }),
+        ...flow({ count: 3, uFrom: 0.6, uTo: 0.68, from: 0.1, to: 0.41, width: 0.026, root: crown, seed, lift: 0.005 }),
+        ...flow({ count: 3, uFrom: 0.4, uTo: 0.32, from: 0.1, to: 0.41, width: 0.026, root: crown, seed: seed + 2, lift: 0.005 }),
+        ...flow({ count: 3, uFrom: 0.75, uTo: 0.86, from: 0.1, to: 0.6, width: 0.03, root: crown, seed: seed + 4, lift: 0.005 }),
+        ...flow({ count: 3, uFrom: 0.25, uTo: 0.14, from: 0.1, to: 0.6, width: 0.03, root: crown, seed: seed + 6, lift: 0.005 }),
+        ...flow({ count: 3, uFrom: 0.93, uTo: 1.07, from: 0.1, to: 0.68, width: 0.032, root: crown, seed: seed + 8, lift: 0.005 }),
     ];
     switch (style) {
         case "messy":
             // Razbarušene šiške: duži, neuredni pramenovi preko čela, vlasi na temenu
-            locks.push(...fringe({ count: 8, span: 0.08, from: 0.08, to: 0.395, width: 0.025, lift: 0.007, messy: 1, sweep: 0.008, seed: 21 }));
+            locks.push(...fringe({ count: 8, span: 0.08, from: 0.08, to: 0.395, width: 0.026, lift: 0.011, messy: 1, sweep: 0.008, seed: 21 }));
             locks.push(...sides(31), ...flyaways(4, 41));
             break;
         case "swept": {
             // Začešljana u stranu: razdeljak levo (gledaocu desno), pramenovi preko čela nadesno
             const part = 0.585;
-            locks.push(...fringe({ count: 7, span: 0.05, from: 0.13, to: 0.345, width: 0.028, lift: 0.008, sweep: -0.085, center: part - 0.02, seed: 51 }));
+            locks.push(...fringe({ count: 7, span: 0.05, from: 0.13, to: 0.345, width: 0.029, lift: 0.012, sweep: -0.085, center: part - 0.02, seed: 51 }));
             locks.push(...flow({ count: 2, uFrom: part + 0.025, uTo: 0.68, from: 0.16, to: 0.41, width: 0.026, root: { u: part, v: 0.14 }, seed: 53 }));
             locks.push(...sides(61).slice(3), ...flyaways(2, 71, 0.45));
             break;
@@ -374,7 +376,7 @@ function shortLocks(style: HairStyle): Lock[] {
         }
         default:
             // Kratka: uredne kraće šiške blago u stranu
-            locks.push(...fringe({ count: 7, span: 0.072, from: 0.1, to: 0.34, width: 0.025, lift: 0.004, messy: 0.4, sweep: -0.012, seed: 11 }));
+            locks.push(...fringe({ count: 7, span: 0.072, from: 0.1, to: 0.34, width: 0.026, lift: 0.009, messy: 0.4, sweep: -0.012, seed: 11 }));
             locks.push(...sides(15));
     }
     return locks;
@@ -392,6 +394,41 @@ function fringeUnderHat(style: HairStyle): Lock[] {
         default:
             return [];
     }
+}
+
+// ── Brada ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Kratka brada (učitelj): tanak sloj kose uz vilicu od zulufa do brade, brkovi iznad usne
+ * spojeni u uglovima usana; usne i obrazi ostaju čisti. Ivice tonu u kožu (bez oštrog ruba).
+ */
+export function buildBeard(head: HeadInfo, hex: string, skin: string): THREE.Mesh {
+    const jaw = profile([[0, 0.775], [0.3, 0.765], [0.5, 0.75], [0.9, 0.69], [1.2, 0.62], [1.45, 0.55], [1.65, 0.52]]);
+    const offset = (u: number, v: number) => {
+        const th = thetaOf(u);
+        const a = Math.abs(th);
+        const line = jaw(a) + 0.006 * Math.sin(th * 23);
+        const below = smoothstep(line - 0.018, line + 0.014, v) * (1 - smoothstep(1.5, 1.68, a));
+        const must = smoothstep(0.652, 0.666, v) * (1 - smoothstep(0.684, 0.694, v)) * (1 - smoothstep(0.36, 0.46, a));
+        const corner = smoothstep(0.29, 0.35, a) * (1 - smoothstep(0.5, 0.58, a)) * smoothstep(0.66, 0.675, v);
+        const lips = (1 - smoothstep(0.29, 0.34, a)) * smoothstep(0.686, 0.694, v) * (1 - smoothstep(0.748, 0.762, v));
+        const cover = Math.max(below, must, corner) * (1 - lips);
+        // Kratke dlake: sitna neravnina, deblje na bradi
+        const t = 0.0015 + 0.0008 * smoothstep(0.8, 0.92, v) * (1 - smoothstep(0.2, 0.9, a)) + 0.0003 * Math.sin(th * 41 + v * 60);
+        return cover * t - (1 - cover) * 0.0025;
+    };
+    const fn = head.offsetFn(offset);
+    const geometry = buildSurface((s, t, out) => fn(0.24 + 0.52 * s, 0.48 + 0.5 * t, out), {
+        nu: detail(64),
+        nv: detail(52),
+        inside: () => head.center.clone(),
+        uv: (s, t) => [s * 4, t * 2],
+    });
+    // Kratka brada je malo „providnija” od kose (koža se nazire): boja kose blago ka koži
+    const material = hairMaterial("#" + new THREE.Color(hex).lerp(new THREE.Color(skin), 0.1).getHexString());
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = "brada";
+    return mesh;
 }
 
 // ── Frizure ───────────────────────────────────────────────────────────────────

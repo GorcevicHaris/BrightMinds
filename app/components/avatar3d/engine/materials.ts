@@ -42,7 +42,7 @@ const SKIN_DIFFUSE = /* glsl */ `
     float skinNL = dot( geometryNormal, directLight.direction );
     float skinWrap = saturate( ( skinNL + 0.32 ) / 1.32 );
     float skinEdge = smoothstep( -0.32, 0.05, skinNL ) * ( 1.0 - smoothstep( 0.05, 0.55, skinNL ) );
-    vec3 skinLight = directLight.color * ( skinWrap * 0.84 + skinEdge * vec3( 0.2, 0.07, 0.035 ) );
+    vec3 skinLight = directLight.color * ( skinWrap * 0.93 + skinEdge * vec3( 0.26, 0.1, 0.04 ) );
     reflectedLight.directDiffuse += skinLight * BRDF_Lambert( material.diffuseContribution ) * ( 1.0 - F );`;
 
 function skinShading(material: THREE.MeshPhysicalMaterial) {
@@ -56,7 +56,11 @@ function skinShading(material: THREE.MeshPhysicalMaterial) {
 
 /** Nova (nedeljena) koža, po želji sa crtežom (pegice) — za lice sa pegicama */
 export function createSkinMaterial(hex: string, vertexColors = false, map: THREE.Texture | null = null): THREE.MeshPhysicalMaterial {
+    // Malo zasićenija, toplija boja (zdrav ten, ne siv)
     const color = new THREE.Color(hex);
+    const hsl = { h: 0, s: 0, l: 0 };
+    color.getHSL(hsl);
+    color.setHSL(hsl.h, Math.min(1, hsl.s * 1.12), hsl.l);
     const warm = color.clone().lerp(new THREE.Color("#FF6A55"), 0.5);
     const material = new THREE.MeshPhysicalMaterial({
         color,
@@ -66,7 +70,8 @@ export function createSkinMaterial(hex: string, vertexColors = false, map: THREE
         sheenRoughness: 0.55,
         sheenColor: warm,
         // Topao „prosev”: koža nije siva ni u senci
-        emissive: warm.clone().multiplyScalar(0.06),
+        // Topla senka: koža nikad ne sivi
+        emissive: warm.clone().multiplyScalar(0.1),
         specularIntensity: 0.22,
         normalMap: fabricNormal("skin"),
         normalScale: new THREE.Vector2(0.12, 0.12),
@@ -124,15 +129,17 @@ export function patternedFabric(map: THREE.Texture, kind: FabricKind, tint = "#F
 }
 
 /** Kosa: anizotropni odsjaj duž vlasi (kao „prsten” svetla na kosi) i fini pramenovi */
-export function hairMaterial(hex: string): THREE.MeshPhysicalMaterial {
-    return cached(`hair-${hex}`, () => {
+export function hairMaterial(hex: string, vertexColors = false): THREE.MeshPhysicalMaterial {
+    return cached(`hair-${hex}-${vertexColors}`, () => {
         const color = new THREE.Color(hex);
         return new THREE.MeshPhysicalMaterial({
+            vertexColors,
             color,
             // Mat kosa sa mekim odsjajem duž vlasi (ne plastična kaciga)
             roughness: 0.72,
             metalness: 0,
-            specularIntensity: 0.13,
+            // Pramenovi (boje temena) imaju tanke ivice — tu još blaži odsjaj, bez belih crta
+            specularIntensity: vertexColors ? 0.06 : 0.13,
             specularColor: color.clone().lerp(new THREE.Color("#FFFFFF"), 0.35),
             anisotropy: 0.35,
             anisotropyRotation: Math.PI / 2,

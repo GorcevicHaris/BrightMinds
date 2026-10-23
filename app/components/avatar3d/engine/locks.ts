@@ -41,7 +41,7 @@ export function lockGeometry(head: HeadInfo, base: (u: number, v: number) => num
     const n = new THREE.Vector3();
     for (const lock of locks) {
         const bend = lock.bend ?? 0;
-        const thick = lock.thick ?? 0.0042;
+        const thick = lock.thick ?? 0.006;
         const lift = lock.lift ?? 0;
         const flick = lock.flick ?? 0;
         // Putanja u (u, v): kvadratna kriva preko pomerene sredine
@@ -87,6 +87,17 @@ export function lockGeometry(head: HeadInfo, base: (u: number, v: number) => num
             // u oko pramena, v duž njega (anizotropni odsjaj ide duž vlasi)
             uv: (q, t) => [q * 0.5, t * 2],
         });
+        // Senka među pramenovima: donja strana i ivice tamnije, koren malo tamniji od vrha
+        const uvs = geometry.getAttribute("uv");
+        const colors = new Float32Array(uvs.count * 3);
+        for (let i = 0; i < uvs.count; i++) {
+            const a = (uvs.getX(i) / 0.5) * Math.PI * 2;
+            const t = uvs.getY(i) / 2;
+            const top = Math.max(0, Math.cos(a));
+            const k = (0.55 + 0.45 * Math.pow(top, 0.7)) * (0.85 + 0.15 * smoothstep(0, 0.5, t));
+            colors.set([k, k, k], i * 3);
+        }
+        geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
         parts.push(geometry);
     }
     if (parts.length === 0) return null;

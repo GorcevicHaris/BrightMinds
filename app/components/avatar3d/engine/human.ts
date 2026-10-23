@@ -8,7 +8,7 @@ import { registerCompanion, type Anchors, type CompanionBuilder, type FigureBody
 import { HUMAN_KINDS, type HumanKind } from "../data";
 import { EYE_COLORS, HAIR_COLORS, HIJAB_COLORS, SKIN_TONES, hairShape, hijabParts, humanLook, partHex, type HumanLook } from "../looks";
 import { buildBody } from "./body";
-import { buildHair, hairCrown } from "./hair";
+import { buildBeard, buildHair, hairCrown } from "./hair";
 import { buildHead, EAR_U, EAR_V, headInfo, type HeadInfo } from "./head";
 import { buildHijab, HIJAB_THICKNESS } from "./hijab";
 import { Kit } from "./kit";
@@ -149,6 +149,8 @@ function buildHumanAt(kind: HumanKind, look: HumanLook, ctx: FigureContext): Hum
     const freckles = look.freckles === "vise" ? 2 : look.freckles === "malo" ? 1 : 0;
     const face = buildHead(info, tone, partHex(EYE_COLORS, look.eye), hairHex, "neutral", { freckles });
     rig.bone("head").add(face.group);
+    // Brada (učitelj) je deo lica: ide uz glavu i ispod kape
+    if (kind === "man" && look.beard === "brada") face.group.add(buildBeard(info, hairHex, tone));
 
     // Hidžab: deo tela (izgled), ne predmet; uši i kosa se ispod njega ne crtaju
     const hijabObjects: THREE.Object3D[] = [];
