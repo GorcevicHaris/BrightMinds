@@ -36,8 +36,16 @@ export type CompanionKind = CompanionKindId;
 export const HUMAN_KINDS = ["girl", "boy", "woman", "man"] as const;
 export type HumanKind = (typeof HUMAN_KINDS)[number];
 
+/** Osnovne životinje (animals/<vrsta>.ts, izgledi u animals/skins.data.ts) */
 export const ANIMAL_KINDS = ["cat", "dog", "bunny", "bear", "fox", "lion", "penguin", "unicorn"] as const;
 export type AnimalKind = (typeof ANIMAL_KINDS)[number];
+
+/** Dodatne životinje (animals/extra/, izgledi u animals/extra/skins.data.ts) */
+export const EXTRA_ANIMAL_KINDS = [
+    "panda", "koala", "elephant", "monkey", "owl", "tiger", "dinosaur", "giraffe",
+    "pony", "frog", "hedgehog", "raccoon", "deer", "sheep", "hamster", "squirrel",
+] as const;
+export type ExtraAnimalKind = (typeof EXTRA_ANIMAL_KINDS)[number];
 
 export function isHumanKind(kind: string): kind is HumanKind {
     return (HUMAN_KINDS as readonly string[]).includes(kind);
@@ -45,6 +53,10 @@ export function isHumanKind(kind: string): kind is HumanKind {
 
 export function isAnimalKind(kind: string): kind is AnimalKind {
     return (ANIMAL_KINDS as readonly string[]).includes(kind);
+}
+
+export function isExtraAnimalKind(kind: string): kind is ExtraAnimalKind {
+    return (EXTRA_ANIMAL_KINDS as readonly string[]).includes(kind);
 }
 
 /** Nazivi drugara za dete, redom kojim ih prodavnica nudi */
@@ -61,6 +73,22 @@ export const COMPANION_LABELS: Record<CompanionKind, string> = {
     lion: "Lav",
     penguin: "Pingvin",
     unicorn: "Jednorog",
+    panda: "Panda",
+    koala: "Koala",
+    elephant: "Slon",
+    monkey: "Majmun",
+    owl: "Sova",
+    tiger: "Tigar",
+    dinosaur: "Dinosaurus",
+    giraffe: "Žirafa",
+    pony: "Poni",
+    frog: "Žaba",
+    hedgehog: "Ježić",
+    raccoon: "Rakun",
+    deer: "Srna",
+    sheep: "Ovčica",
+    hamster: "Hrčak",
+    squirrel: "Veverica",
 };
 
 /** Proporcije tela: kroj odeće i kadar kamere zavise od njih */
@@ -107,14 +135,17 @@ export const SUBGROUPS: Partial<Record<Slot, readonly { id: string; label: strin
         { id: "ogrlice", label: "Ogrlice" },
         { id: "marame", label: "Marame i šalovi" },
         { id: "masne", label: "Masne i kravate" },
+        { id: "mindjuse", label: "Minđuše" },
     ],
     outfit: [
         { id: "majice", label: "Majice" },
         { id: "duksevi", label: "Duksevi i džemperi" },
         { id: "haljine", label: "Haljine" },
+        { id: "kombinezoni", label: "Kombinezoni" },
         { id: "jakne", label: "Jakne" },
         { id: "sport", label: "Sport" },
         { id: "pidzame", label: "Pidžame" },
+        { id: "svecano", label: "Svečano" },
         { id: "kostimi", label: "Kostimi" },
     ],
     bottom: [

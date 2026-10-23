@@ -13,52 +13,10 @@ export const B = Object.fromEntries(BONES.map((name, i) => [name, i])) as Record
 /** Ljudska tela (motor); životinje prave svoj BodyShape u animals/ */
 export type HumanBodyKind = HumanKind;
 
-/** Dete 6–9 godina: velika glava (≈ ¼ visine), kratki udovi, mekan trup */
-function childShape(kind: "girl" | "boy"): BodyShape {
-    const girl = kind === "girl";
-    const k = girl ? 1 : 1.02;
-    return {
-        kind,
-        proportion: "child",
-        crotchY: 0.455,
-        hipY: 0.5,
-        waistY: 0.615,
-        chestY: 0.715,
-        shoulderY: 0.79,
-        neckBaseY: 0.83,
-        headBoneY: 0.875,
-        head: { w: 0.268, h: 0.28, d: 0.266, up: 0.118, fwd: 0.01, chin: girl ? 0.84 : 0.86, cheeks: 1 },
-        torsoW: profile([
-            [0.44, 0.06], [0.47, 0.095], [0.52, 0.106 * k], [0.58, 0.1 * k], [0.63, 0.094 * k], [0.7, 0.098 * k],
-            [0.76, 0.108 * k], [0.79, 0.112 * k], [0.81, 0.1], [0.828, 0.066], [0.845, 0.042], [0.9, 0.039],
-        ]),
-        torsoFront: profile([
-            [0.44, 0.04], [0.47, 0.062], [0.53, 0.072], [0.6, 0.076], [0.66, 0.074], [0.72, 0.07], [0.78, 0.062],
-            [0.815, 0.054], [0.835, 0.041], [0.9, 0.038],
-        ]),
-        torsoBack: profile([
-            [0.44, 0.045], [0.48, 0.072], [0.52, 0.076], [0.58, 0.064], [0.64, 0.06], [0.72, 0.064], [0.78, 0.062],
-            [0.815, 0.056], [0.835, 0.041], [0.9, 0.038],
-        ]),
-        bust: 0,
-        neckR: 0.039,
-        shoulderX: 0.098 * k,
-        armAngle: 0.13,
-        upperArm: 0.165,
-        forearm: 0.145,
-        armR: profile([[0, 0.04], [0.15, 0.038], [0.45, 0.033], [0.55, 0.032], [0.75, 0.03], [1, 0.025]]),
-        hand: 1.45,
-        hipX: 0.058,
-        thigh: 0.215,
-        shin: 0.215,
-        legR: profile([[0, 0.058], [0.2, 0.053], [0.45, 0.043], [0.5, 0.041], [0.65, 0.042], [0.85, 0.034], [1, 0.029]]),
-        ankleY: 0.062,
-        foot: { len: 0.15, w: 0.066, h: 0.064, back: 0.036 },
-        height: 1.19,
-    };
-}
-
-/** Odrasli: duži udovi i trup, glava i dalje krupna (stilizovano) */
+/**
+ * Odrasli u stilu „Bitmoji 3D”: stilizovano, ali bliže stvarnim proporcijama — glava ≈ 1/5,7
+ * visine, duge noge, prirodna ramena, vitki udovi sa blagim mišićima.
+ */
 function adultShape(kind: "woman" | "man"): BodyShape {
     const man = kind === "man";
     const s = man ? 1.06 : 1;
@@ -67,45 +25,93 @@ function adultShape(kind: "woman" | "man"): BodyShape {
     return {
         kind,
         proportion: "adult",
-        crotchY: y(0.74),
-        hipY: y(0.8),
-        waistY: y(0.98),
-        chestY: y(1.13),
-        shoulderY: y(1.245),
+        crotchY: y(0.8),
+        hipY: y(0.86),
+        waistY: y(1.02),
+        chestY: y(1.15),
+        shoulderY: y(1.255),
         neckBaseY: y(1.3),
-        headBoneY: y(1.36),
-        head: { w: 0.27, h: 0.315, d: 0.285, up: 0.14, fwd: 0.015, chin: man ? 0.9 : 0.84, cheeks: 0.6 },
+        headBoneY: y(1.338),
+        head: { w: 0.255, h: 0.3, d: 0.27, up: 0.136, fwd: 0.014, chin: man ? 0.86 : 0.8, cheeks: 0.55 },
         torsoW: profile([
-            [y(0.72), 0.07], [y(0.76), 0.12], [y(0.83), man ? 0.15 : 0.165], [y(0.92), man ? 0.142 : 0.14], [y(0.99), man ? 0.14 : 0.118],
-            [y(1.08), 0.135 * w], [y(1.18), 0.152 * w], [y(1.24), 0.16 * w], [y(1.27), 0.14 * w], [y(1.295), 0.08], [y(1.315), 0.05], [y(1.4), 0.046],
+            [y(0.78), 0.07], [y(0.82), 0.118], [y(0.88), man ? 0.142 : 0.156], [y(0.95), man ? 0.136 : 0.132], [y(1.02), man ? 0.132 : 0.108],
+            [y(1.1), 0.128 * w], [y(1.19), 0.146 * w], [y(1.245), 0.154 * w], [y(1.27), 0.136 * w], [y(1.295), man ? 0.088 : 0.078], [y(1.315), man ? 0.056 : 0.05], [y(1.4), man ? 0.052 : 0.046],
         ]),
         torsoFront: profile([
-            [y(0.72), 0.05], [y(0.76), 0.08], [y(0.85), 0.088], [y(0.95), man ? 0.088 : 0.082], [y(1.05), 0.088], [y(1.15), man ? 0.098 : 0.09],
-            [y(1.24), 0.078], [y(1.29), 0.06], [y(1.31), 0.048], [y(1.4), 0.046],
+            [y(0.78), 0.05], [y(0.82), 0.078], [y(0.9), 0.084], [y(0.98), man ? 0.084 : 0.076], [y(1.07), 0.082], [y(1.16), man ? 0.094 : 0.086],
+            [y(1.245), 0.074], [y(1.29), 0.058], [y(1.31), 0.046], [y(1.4), 0.044],
         ]),
         torsoBack: profile([
-            [y(0.72), 0.055], [y(0.78), man ? 0.088 : 0.1], [y(0.84), man ? 0.09 : 0.1], [y(0.95), 0.074], [y(1.05), 0.078], [y(1.17), 0.088],
-            [y(1.24), 0.08], [y(1.29), 0.062], [y(1.31), 0.048], [y(1.4), 0.046],
+            [y(0.78), 0.055], [y(0.84), man ? 0.086 : 0.098], [y(0.9), man ? 0.086 : 0.094], [y(0.99), 0.07], [y(1.08), 0.074], [y(1.18), 0.084],
+            [y(1.245), 0.077], [y(1.29), 0.06], [y(1.31), 0.046], [y(1.4), 0.044],
         ]),
         bust: man ? 0 : 1,
-        neckR: man ? 0.05 : 0.044,
-        shoulderX: 0.148 * w,
+        neckR: man ? 0.053 : 0.044,
+        shoulderX: 0.146 * w,
         armAngle: 0.1,
-        upperArm: y(0.27),
-        forearm: y(0.235),
+        upperArm: y(0.275),
+        forearm: y(0.24),
+        // Rame (deltoid), biceps, lakat, mišić podlaktice, tanak zglob — vitko
         armR: man
-            ? profile([[0, 0.052], [0.15, 0.048], [0.45, 0.04], [0.55, 0.038], [0.75, 0.036], [1, 0.029]])
-            : profile([[0, 0.044], [0.15, 0.041], [0.45, 0.034], [0.55, 0.032], [0.75, 0.03], [1, 0.024]]),
-        hand: man ? 1.45 : 1.3,
-        hipX: man ? 0.078 : 0.082,
-        thigh: y(0.36),
-        shin: y(0.355),
+            ? profile([[0, 0.05], [0.1, 0.048], [0.3, 0.041], [0.5, 0.034], [0.6, 0.037], [0.7, 0.036], [0.88, 0.029], [1, 0.026]])
+            : profile([[0, 0.041], [0.1, 0.039], [0.3, 0.033], [0.5, 0.028], [0.6, 0.03], [0.7, 0.029], [0.88, 0.024], [1, 0.022]]),
+        hand: man ? 1.5 : 1.38,
+        hipX: man ? 0.074 : 0.077,
+        thigh: y(0.395),
+        shin: y(0.39),
         legR: man
-            ? profile([[0, 0.078], [0.2, 0.07], [0.45, 0.054], [0.5, 0.05], [0.65, 0.054], [0.85, 0.042], [1, 0.034]])
-            : profile([[0, 0.08], [0.2, 0.07], [0.45, 0.05], [0.5, 0.046], [0.65, 0.05], [0.85, 0.038], [1, 0.03]]),
-        ankleY: 0.075,
-        foot: { len: man ? 0.21 : 0.19, w: man ? 0.082 : 0.07, h: 0.075, back: 0.05 },
-        height: y(1.73),
+            ? profile([[0, 0.075], [0.2, 0.066], [0.43, 0.051], [0.5, 0.046], [0.6, 0.05], [0.68, 0.051], [0.86, 0.037], [1, 0.031]])
+            : profile([[0, 0.075], [0.2, 0.064], [0.43, 0.047], [0.5, 0.042], [0.6, 0.046], [0.68, 0.046], [0.86, 0.033], [1, 0.027]]),
+        ankleY: 0.072,
+        foot: { len: man ? 0.21 : 0.19, w: man ? 0.08 : 0.07, h: 0.072, back: 0.05 },
+        height: y(1.74),
+    };
+}
+
+/**
+ * Deca: ista građa kao odrasli, umanjena (≈ 1,3 m), sa većom glavom (≈ 1/4,7 visine),
+ * punijim vratom i bez grudi — kao Bitmoji tinejdžer, prilagođeno uzrastu.
+ */
+function childShape(kind: "girl" | "boy"): BodyShape {
+    const base = adultShape(kind === "girl" ? "woman" : "man");
+    const k = kind === "girl" ? 0.76 : 0.72;
+    const headK = 1.24;
+    const limb = 0.98;
+    const sy = (f: (y: number) => number, r = k) => (y: number) => f(y / k) * r;
+    const h = base.head;
+    return {
+        ...base,
+        kind,
+        proportion: "child",
+        crotchY: base.crotchY * k,
+        hipY: base.hipY * k,
+        waistY: base.waistY * k,
+        chestY: base.chestY * k,
+        shoulderY: base.shoulderY * k,
+        neckBaseY: base.neckBaseY * k,
+        headBoneY: base.headBoneY * k,
+        head: { w: h.w * k * headK, h: h.h * k * headK, d: h.d * k * headK, up: h.up * k * headK, fwd: h.fwd * k, chin: kind === "girl" ? 0.82 : 0.85, cheeks: 0.85 },
+        torsoW: (y: number) => {
+            const v = base.torsoW(y / k) * k;
+            // Vrat malo puniji nego kod umanjenog odraslog
+            return y > base.neckBaseY * k - 0.01 ? Math.max(v, base.neckR * k * 1.12) : v;
+        },
+        torsoFront: sy(base.torsoFront),
+        torsoBack: sy(base.torsoBack),
+        bust: 0,
+        neckR: base.neckR * k * 1.12,
+        shoulderX: base.shoulderX * k,
+        upperArm: base.upperArm * k,
+        forearm: base.forearm * k,
+        armR: (t: number) => base.armR(t) * k * limb,
+        hand: base.hand * k * 1.12,
+        hipX: base.hipX * k,
+        thigh: base.thigh * k,
+        shin: base.shin * k,
+        legR: (t: number) => base.legR(t) * k * limb,
+        ankleY: base.ankleY * k,
+        foot: { len: base.foot.len * k * 1.05, w: base.foot.w * k * 1.05, h: base.foot.h * k, back: base.foot.back * k },
+        height: base.height * k,
     };
 }
 
@@ -201,7 +207,8 @@ export function createRig(shape: BodyShape, extras: readonly ExtraBone[] = []): 
     }
     bones[0].updateMatrixWorld(true);
     const skeleton = new THREE.Skeleton(bones);
-    return { shape, bones, skeleton, root: bones[0], bone: (name) => bones[B[name]], left, right };
+    const rest = Object.fromEntries([...at.entries()].map(([name, p]) => [name, p.clone()]));
+    return { shape, bones, skeleton, root: bones[0], bone: (name) => bones[B[name]], left, right, rest };
 }
 
 // ── Težine kostiju po položaju (telo i odeća koriste iste, pa se pomeraju zajedno) ─

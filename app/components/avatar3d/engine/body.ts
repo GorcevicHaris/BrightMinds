@@ -161,12 +161,13 @@ export function handGeometry(rig: Rig, side: 1 | -1): THREE.BufferGeometry {
     const parts: THREE.BufferGeometry[] = [];
     // Dlan: mekan, malo spljošten (dečja šaka)
     const palm = new THREE.SphereGeometry(1, 22, 16);
-    palm.scale(0.0118 * k, 0.0255 * k, 0.0205 * k);
+    palm.scale(0.0135 * k, 0.026 * k, 0.0215 * k);
     palm.translate(-0.001 * side * k, -0.023 * k, 0.001 * k);
     parts.push(palm);
     // Prsti: kratki, punački, jedan uz drugi, blago savijeni ka dlanu
+    // Crtana šaka: kraći, puniji, zaobljeni prsti
     const fingers: [number, number, number][] = [
-        [0.0118, 0.016, 0.0058], [0.004, 0.0185, 0.006], [-0.004, 0.018, 0.0059], [-0.0115, 0.0145, 0.0054],
+        [0.0112, 0.0125, 0.0072], [0.0038, 0.0145, 0.0076], [-0.0038, 0.014, 0.0075], [-0.011, 0.0112, 0.0068],
     ];
     for (const [z, len, r] of fingers) {
         const finger = new THREE.CapsuleGeometry(r * k, len * k, 4, 10);
@@ -175,7 +176,7 @@ export function handGeometry(rig: Rig, side: 1 | -1): THREE.BufferGeometry {
         finger.translate(-0.0015 * side * k, -0.04 * k, z * k);
         parts.push(finger);
     }
-    const thumb = new THREE.CapsuleGeometry(0.0064 * k, 0.014 * k, 4, 10);
+    const thumb = new THREE.CapsuleGeometry(0.0078 * k, 0.011 * k, 4, 10);
     thumb.translate(0, -0.007 * k, 0);
     thumb.rotateX(-0.6);
     thumb.rotateZ(0.42 * side);
@@ -275,7 +276,8 @@ export function buildBody(rig: Rig, skin: THREE.Material, options: { feet: boole
     }
 
     for (const mesh of skinned) {
-        mesh.bind(rig.skeleton);
+        // Jedinična matrica: bind() bez nje bi preračunao kosti iz TRENUTNE poze
+        mesh.bind(rig.skeleton, new THREE.Matrix4());
         mesh.frustumCulled = false;
     }
     return { skinned, rigid };
