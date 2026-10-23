@@ -32,8 +32,8 @@ function adultShape(kind: "woman" | "man"): BodyShape {
         shoulderY: y(1.255),
         neckBaseY: y(1.3),
         headBoneY: y(1.338),
-        // Uže lice (Bitmoji): manji obrazi i vilica, sitna brada
-        head: { w: 0.245, h: 0.296, d: 0.266, up: 0.134, fwd: 0.014, chin: man ? 0.84 : 0.77, cheeks: 0.38 },
+        // Vitko ovalno lice (Bitmoji): glava ≈ 1/6 visine, uža, vilica se sužava ka bradi
+        head: { w: 0.224, h: 0.284, d: 0.254, up: 0.124, fwd: 0.014, chin: man ? 0.8 : 0.75, cheeks: 0.32 },
         torsoW: profile([
             [y(0.78), 0.07], [y(0.82), 0.118], [y(0.88), man ? 0.142 : 0.156], [y(0.95), man ? 0.136 : 0.132], [y(1.02), man ? 0.132 : 0.108],
             [y(1.1), 0.128 * w], [y(1.19), 0.146 * w], [y(1.245), 0.154 * w], [y(1.27), 0.136 * w], [y(1.295), man ? 0.088 : 0.078], [y(1.315), man ? 0.056 : 0.05], [y(1.4), man ? 0.052 : 0.046],
@@ -76,7 +76,8 @@ function adultShape(kind: "woman" | "man"): BodyShape {
 function childShape(kind: "girl" | "boy"): BodyShape {
     const base = adultShape(kind === "girl" ? "woman" : "man");
     const k = kind === "girl" ? 0.76 : 0.72;
-    const headK = 1.24;
+    // Glava ≈ 1/5 visine (veća nego kod odraslih, ali ne „balon”)
+    const headK = 1.17;
     const limb = 0.98;
     const sy = (f: (y: number) => number, r = k) => (y: number) => f(y / k) * r;
     const h = base.head;
@@ -91,7 +92,7 @@ function childShape(kind: "girl" | "boy"): BodyShape {
         shoulderY: base.shoulderY * k,
         neckBaseY: base.neckBaseY * k,
         headBoneY: base.headBoneY * k,
-        head: { w: h.w * k * headK, h: h.h * k * headK, d: h.d * k * headK, up: h.up * k * headK, fwd: h.fwd * k, chin: kind === "girl" ? 0.82 : 0.85, cheeks: 0.85 },
+        head: { w: h.w * k * headK, h: h.h * k * headK, d: h.d * k * headK, up: h.up * k * headK, fwd: h.fwd * k, chin: kind === "girl" ? 0.78 : 0.8, cheeks: 0.6 },
         torsoW: (y: number) => {
             const v = base.torsoW(y / k) * k;
             // Vrat malo puniji nego kod umanjenog odraslog

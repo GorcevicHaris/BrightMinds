@@ -21,6 +21,7 @@ import {
     type Slot,
     type Wear,
 } from "../contract";
+import { humanLookId } from "../looks";
 import { getItem } from "../manifest";
 import { FACE_POSES } from "./expressions";
 import { solvePose, type PoseName, type PoseSolution } from "./pose";
@@ -91,8 +92,7 @@ export function makeItemContext(body: FigureBody, wear: Wear, extras: { hairCrow
 }
 
 function lookKey(look: CompanionLook): string {
-    const h = look.human;
-    return h ? `${look.kind}|${h.tone}.${h.eye}.${h.hair}.${h.style}.${h.hijab}` : `${look.kind}|${look.skin}`;
+    return look.human ? `${look.kind}|${humanLookId(look.human)}` : `${look.kind}|${look.skin}`;
 }
 
 export interface FigureOptions {
@@ -324,8 +324,10 @@ export class Figure {
             if (!mesh.isMesh) return;
             const material = mesh.material as THREE.Material;
             const transparent = Array.isArray(material) ? false : material.transparent;
-            mesh.castShadow = !transparent;
-            mesh.receiveShadow = !transparent;
+            // Sitni delovi lica (oči, kapci, trepavice, obrve) bez senke: mapa senke je za njih gruba
+            const shadow = !transparent && !mesh.userData.noShadow;
+            mesh.castShadow = shadow;
+            mesh.receiveShadow = shadow;
         });
     }
 

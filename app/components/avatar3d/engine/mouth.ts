@@ -193,11 +193,12 @@ export class Mouth {
                 const bow = lip === 0 ? Math.exp(-(((ax - 0.3) / 0.17) ** 2)) - 0.6 * Math.exp(-((ax / 0.08) ** 2)) : 0;
                 const y = lip === 0 ? c.top - 1.1 - gap * 0.6 - bow * 1.1 : c.bottom + 1.6 + gap * 0.8;
                 // Debljina: najdeblje u sredini, tanko u uglovima; donja usna punija
-                const mid = 1 - Math.pow(ax, 2.2);
-                const r = s.lip * (lip === 0 ? 0.62 + 0.12 * bow : 1.12) * (0.2 + 0.8 * mid);
-                this.at(x, y, r * 0.55, center);
-                this.at(Math.max(-w, x - 0.6), y, r * 0.55, prev);
-                this.at(Math.min(w, x + 0.6), y, r * 0.55, next);
+                const mid = 1 - Math.pow(ax, 2.4);
+                // Gornja usna tanja (sa lukom), donja punija; obe blizu kože (ne „pućenje”)
+                const r = s.lip * (lip === 0 ? 0.58 + 0.14 * bow : 1.05) * (0.3 + 0.7 * mid);
+                this.at(x, y, r * 0.16, center);
+                this.at(Math.max(-w, x - 0.6), y, r * 0.16, prev);
+                this.at(Math.min(w, x + 0.6), y, r * 0.16, next);
                 tangent.subVectors(next, prev).normalize();
                 up.copy(this.n).normalize();
                 const side = new THREE.Vector3().crossVectors(tangent, up).normalize();
@@ -205,7 +206,7 @@ export class Mouth {
                     const a = (j / RING) * Math.PI * 2;
                     // Spljoštena cev: šira po visini lica, plića ka napred
                     const k = lip * N * RING + i * RING + j;
-                    this.p.copy(center).addScaledVector(side, Math.cos(a) * r * 1.25).addScaledVector(up, Math.sin(a) * r * 0.75);
+                    this.p.copy(center).addScaledVector(side, Math.cos(a) * r * 1.35).addScaledVector(up, Math.sin(a) * r * 0.5);
                     lipPos.setXYZ(k, this.p.x, this.p.y, this.p.z);
                 }
             }

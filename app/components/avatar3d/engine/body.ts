@@ -160,28 +160,38 @@ export function limbSurface(limb: LimbPath, t0: number, t1: number): SurfaceFn {
 export function handGeometry(rig: Rig, side: 1 | -1): THREE.BufferGeometry {
     const k = 0.95 * rig.shape.hand;
     const parts: THREE.BufferGeometry[] = [];
-    // Dlan: mekan, malo spljošten (dečja šaka)
+    // Dlan: mekan, spljošten
     const palm = new THREE.SphereGeometry(1, 22, 16);
-    palm.scale(0.0135 * k, 0.026 * k, 0.0215 * k);
+    palm.scale(0.0118 * k, 0.025 * k, 0.0205 * k);
     palm.translate(-0.001 * side * k, -0.023 * k, 0.001 * k);
     parts.push(palm);
-    // Prsti: kratki, punački, jedan uz drugi, blago savijeni ka dlanu
-    // Crtana šaka: kraći, puniji, zaobljeni prsti
-    const fingers: [number, number, number][] = [
-        [0.0112, 0.0125, 0.0072], [0.0038, 0.0145, 0.0076], [-0.0038, 0.014, 0.0075], [-0.011, 0.0112, 0.0068],
+    // Prsti: vitki, jedan uz drugi, blago razmaknuti i savijeni ka dlanu (dva članka)
+    const fingers: [number, number, number, number][] = [
+        // z (od palca), dužina, poluprečnik, raširenost
+        [0.0108, 0.017, 0.0058, 0.08], [0.0037, 0.02, 0.0061, 0.02], [-0.0037, 0.019, 0.006, -0.03], [-0.0106, 0.015, 0.0054, -0.09],
     ];
-    for (const [z, len, r] of fingers) {
-        const finger = new THREE.CapsuleGeometry(r * k, len * k, 4, 10);
-        finger.translate(0, -len * k * 0.5, 0);
-        finger.rotateZ(0.22 * side);
-        finger.translate(-0.0015 * side * k, -0.04 * k, z * k);
-        parts.push(finger);
+    for (const [z, len, r, spread] of fingers) {
+        // Prvi članak pravo, drugi savijen ka dlanu
+        const a1 = len * 0.55;
+        const a2 = len * 0.45;
+        const first = new THREE.CapsuleGeometry(r * k, a1 * k, 4, 10);
+        first.translate(0, -a1 * k * 0.5, 0);
+        const second = new THREE.CapsuleGeometry(r * 0.92 * k, a2 * k, 4, 10);
+        second.translate(0, -a2 * k * 0.5, 0);
+        second.rotateZ(0.32 * side);
+        second.translate(0, -a1 * k, 0);
+        for (const g of [first, second]) {
+            g.rotateX(spread);
+            g.rotateZ(0.12 * side);
+            g.translate(-0.0012 * side * k, -0.042 * k, z * k);
+            parts.push(g);
+        }
     }
-    const thumb = new THREE.CapsuleGeometry(0.0078 * k, 0.011 * k, 4, 10);
-    thumb.translate(0, -0.007 * k, 0);
-    thumb.rotateX(-0.6);
-    thumb.rotateZ(0.42 * side);
-    thumb.translate(-0.005 * side * k, -0.016 * k, 0.0155 * k);
+    const thumb = new THREE.CapsuleGeometry(0.0068 * k, 0.015 * k, 4, 10);
+    thumb.translate(0, -0.009 * k, 0);
+    thumb.rotateX(-0.55);
+    thumb.rotateZ(0.38 * side);
+    thumb.translate(-0.005 * side * k, -0.017 * k, 0.0155 * k);
     parts.push(thumb);
     // Zglob: kratak valjak koji ulazi u podlakticu
     // Zglob je malo uži od podlaktice (bez vidljivog šava na spoju)
@@ -229,23 +239,42 @@ export interface BodyMeshes {
 }
 
 /** Pravi telo: trup, ruke, noge (SkinnedMesh) i šake/stopala (deca kostiju) */
-export function buildBody(rig: Rig, skin: THREE.Material, options: { feet: boolean }): BodyMeshes {
+/** Meka senka na vratu ispod brade (boje temena trupa, množe boju kože) */
+function neckShade(geometry: THREE.BufferGeometry, shape: BodyShape) {
+    const position = geometry.getAttribute("position");
+    const colors = new Float32Array(position.count * 3);
+    for (let i = 0; i < position.count; i++) {
+        const y = position.getY(i);
+        const z = position.getZ(i);
+        const r = Math.max(1e-4, Math.hypot(position.getX(i), z));
+        const under = smoothstep(shape.neckBaseY - 0.02, shape.headBoneY - 0.005, y) * (0.45 + 0.55 * Math.max(0, z / r));
+        const k = 1 - 0.3 * under;
+        colors.set([k, k * 0.97, k * 0.96], i * 3);
+    }
+    geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+}
+
+export function buildBody(rig: Rig, skin: THREE.Material, options: { feet: boolean; torsoSkin?: THREE.Material }): BodyMeshes {
     const shape = rig.shape;
     const skinned: THREE.SkinnedMesh[] = [];
     const rigid: THREE.Mesh[] = [];
-    const add = (geometry: THREE.BufferGeometry, name: string) => {
-        const mesh = new THREE.SkinnedMesh(geometry, skin);
+    const add = (geometry: THREE.BufferGeometry, name: string, material = skin) => {
+        const mesh = new THREE.SkinnedMesh(geometry, material);
         mesh.name = name;
         skinned.push(mesh);
     };
 
-    add(buildSurface(torsoSurface(shape, torsoBottom(shape), torsoTop(shape), 0), {
+    // Vrat čoveka se završava odmah iznad kosti glave (ne probija kroz donju stranu brade)
+    const top = shape.headBoneY + 0.014;
+    const torso = buildSurface(torsoSurface(shape, torsoBottom(shape), top, 0), {
         nu: detail(56),
         nv: detail(72),
         closedU: true,
-        inside: (_u, v, out) => out.set(0, torsoBottom(shape) + (torsoTop(shape) - torsoBottom(shape)) * v, 0),
+        inside: (_u, v, out) => out.set(0, torsoBottom(shape) + (top - torsoBottom(shape)) * v, 0),
         weights: (_u, _v, p) => torsoWeights(shape, p),
-    }), "trup");
+    });
+    if (options.torsoSkin) neckShade(torso, shape);
+    add(torso, "trup", options.torsoSkin ?? skin);
 
     for (const side of [1, -1] as const) {
         const arm = armPath(rig, side, 0);

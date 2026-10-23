@@ -9,7 +9,7 @@ import { HUMAN_KINDS, type HumanKind } from "../data";
 import { EYE_COLORS, HAIR_COLORS, HIJAB_COLORS, SKIN_TONES, hairShape, hijabParts, humanLook, partHex, type HumanLook } from "../looks";
 import { buildBody } from "./body";
 import { buildHair, hairCrown } from "./hair";
-import { buildHead, headInfo, type HeadInfo } from "./head";
+import { buildHead, EAR_U, EAR_V, headInfo, type HeadInfo } from "./head";
 import { buildHijab, HIJAB_THICKNESS } from "./hijab";
 import { Kit } from "./kit";
 import { withDetail } from "./detail";
@@ -36,6 +36,10 @@ const HAIR_STYLE: Record<string, HairStyle | null> = {
     braids: "braids",
     buzz: "buzz",
     bun: "bun",
+    messy: "messy",
+    swept: "swept",
+    wavy: "wavy",
+    straight: "straight",
     none: null,
 };
 
@@ -59,7 +63,7 @@ function humanAnchors(rig: Rig, info: HeadInfo, hijab: boolean): Anchors {
     const { w, h, d } = shape.head;
     const center = body(info.center);
     const at = (u: number, v: number) => body(info.point(u, v));
-    const ear = (side: 1 | -1) => at(0.5 + side * 0.25, 0.55);
+    const ear = (side: 1 | -1) => at(0.5 + side * EAR_U, EAR_V);
     const eye = (side: 1 | -1) => at(0.5 + side * info.eyeU, info.eyeV);
     const tipOf = (p: THREE.Vector3) => p.clone().add(new THREE.Vector3(0, 0.03, 0));
     const earL = ear(1);
@@ -88,7 +92,7 @@ function humanAnchors(rig: Rig, info: HeadInfo, hijab: boolean): Anchors {
         ears: { kind: hijab ? "none" : "human", left: earL, right: earR, tipL: tipOf(earL), tipR: tipOf(earR), radius: 0.02 },
         eyes: { left: eye(1), right: eye(-1), radius: info.eyeR, front: eye(1).z + info.eyeR * 0.3 },
         nose: { bridge: at(0.5, info.eyeV + 0.015), tip: at(0.5, 0.63), snout: 0 },
-        mouth: at(0.5, 0.715),
+        mouth: at(0.5, info.mouthV + 0.01),
         neck: {
             center: new THREE.Vector3(0, (shape.neckBaseY + shape.headBoneY) / 2, 0),
             radius: shape.neckR + (hijab ? 0.028 : 0),
@@ -139,10 +143,11 @@ function buildHumanAt(kind: HumanKind, look: HumanLook, ctx: FigureContext): Hum
     const hijab = hijabParts(look.hijab);
     const hijabHex = hijab ? partHex(HIJAB_COLORS, hijab.color) : null;
 
-    const meshes = buildBody(rig, skinMaterial(tone), { feet: true });
+    const meshes = buildBody(rig, skinMaterial(tone), { feet: true, torsoSkin: skinMaterial(tone, true) });
     for (const mesh of meshes.skinned) root.add(mesh);
     const info = headInfo(shape);
-    const face = buildHead(info, tone, partHex(EYE_COLORS, look.eye), hairHex, "neutral");
+    const freckles = look.freckles === "vise" ? 2 : look.freckles === "malo" ? 1 : 0;
+    const face = buildHead(info, tone, partHex(EYE_COLORS, look.eye), hairHex, "neutral", { freckles });
     rig.bone("head").add(face.group);
 
     // Hidžab: deo tela (izgled), ne predmet; uši i kosa se ispod njega ne crtaju

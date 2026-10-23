@@ -50,7 +50,7 @@ export const HAIR_COLORS_3D: readonly Swatch[] = [
     { id: "seda", label: "Seda", hex: "#C9C9CF" },
 ];
 
-export type HairStyle = "short" | "curly" | "long" | "ponytail" | "braids" | "buzz" | "bun";
+export type HairStyle = "short" | "curly" | "long" | "ponytail" | "braids" | "buzz" | "bun" | "messy" | "swept" | "wavy" | "straight";
 
 export const HAIR_STYLES_3D: readonly { id: HairStyle; label: string }[] = [
     { id: "short", label: "Kratka" },
@@ -60,6 +60,10 @@ export const HAIR_STYLES_3D: readonly { id: HairStyle; label: string }[] = [
     { id: "ponytail", label: "Rep" },
     { id: "braids", label: "Pletenice" },
     { id: "bun", label: "Punđa" },
+    { id: "messy", label: "Razbarušene šiške" },
+    { id: "swept", label: "Začešljana u stranu" },
+    { id: "wavy", label: "Talasasta" },
+    { id: "straight", label: "Duga ravna" },
 ];
 
 export type Expression = "happy" | "neutral";

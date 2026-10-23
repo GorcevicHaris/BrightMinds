@@ -1,9 +1,12 @@
 // Izgled čoveka (devojčica, dečak, učiteljica, učitelj): boja kože, boja očiju, boja kose,
-// frizura i hidžab. Sve je UVEK besplatno — identitet se ne plaća. Čisti podaci, bez three.js:
-// uvozi ga i server (provera izbora).
+// frizura, hidžab, pegice i brada (učitelj). Sve je UVEK besplatno — identitet se ne plaća.
+// Čisti podaci, bez three.js: uvozi ga i server (provera izbora).
 //
 // Zapis u bazi (children.settings.companion.skin[<drugar>]) je jedan id od pet delova:
 //   `<koža>.<oči>.<kosa>.<frizura>.<hidžab>`   npr. „svetla.smedje.smedja.duga.nema”
+// Pegice i brada se dopisuju samo kad nisu podrazumevane (pa stari id-jevi ostaju isti):
+//   `….<hidžab>.<pegice>`            npr. „svetla.plave.smedja.kratka.nema.malo”
+//   `….<hidžab>.<pegice>.<brada>`    npr. „svetla.smedje.crna.talasasta.nema.bez.brada”
 // Stari 2D zapis od tri dela `<koža>.<kosa>.<frizura>` i dalje važi (oči smeđe, bez hidžaba),
 // pa izgled koji je dete ranije izabralo ostaje isti.
 
@@ -68,7 +71,7 @@ export const HAIR_COLORS: readonly ColorLookPart[] = [
 ];
 
 /** Oblik kose u 3D (engine/hair.ts) za svaku frizuru */
-export type HairShape = "short" | "curly" | "long" | "shoulder" | "ponytail" | "braids" | "buzz" | "bun" | "none";
+export type HairShape = "short" | "curly" | "long" | "shoulder" | "ponytail" | "braids" | "buzz" | "bun" | "messy" | "swept" | "wavy" | "straight" | "none";
 
 export interface HairStylePart extends LookPart {
     shape: HairShape;
@@ -86,14 +89,20 @@ const STYLE: Record<string, HairStylePart> = {
     duza: { id: "duza", label: "Duža kosa", shape: "shoulder" },
     osisana: { id: "osisana", label: "Ošišana na kratko", shape: "buzz" },
     "bez-kose": { id: "bez-kose", label: "Bez kose", shape: "none" },
+    // Nove frizure (kao na Bitmoji slikama): razbarušene šiške, začešljana u stranu, talasasta
+    // podignuta, duga ravna sa razdeljkom po sredini
+    razbarusena: { id: "razbarusena", label: "Razbarušene šiške", shape: "messy" },
+    zacesljana: { id: "zacesljana", label: "Začešljana u stranu", shape: "swept" },
+    talasasta: { id: "talasasta", label: "Talasasta", shape: "wavy" },
+    "ravna-razdeljak": { id: "ravna-razdeljak", label: "Duga ravna, razdeljak", shape: "straight" },
 };
 
 /** Frizure po drugaru; prva je podrazumevana (kod učiteljice i učitelja — dosadašnji 2D crtež) */
 export const HAIRSTYLES: Record<HumanKind, readonly HairStylePart[]> = {
-    girl: [STYLE.duga, STYLE["do-ramena"], STYLE.rep, STYLE.pletenice, STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.kratka],
-    boy: [STYLE.kratka, STYLE.kovrdzava, STYLE.duza, STYLE.osisana],
-    woman: [STYLE["do-ramena"], STYLE.duga, STYLE.rep, STYLE.pletenice, STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.kratka],
-    man: [STYLE.kratka, STYLE.kovrdzava, STYLE.duza, STYLE.osisana, STYLE["bez-kose"]],
+    girl: [STYLE.duga, STYLE["ravna-razdeljak"], STYLE["do-ramena"], STYLE.rep, STYLE.pletenice, STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.kratka],
+    boy: [STYLE.kratka, STYLE.razbarusena, STYLE.zacesljana, STYLE.talasasta, STYLE.kovrdzava, STYLE.duza, STYLE.osisana],
+    woman: [STYLE["do-ramena"], STYLE.duga, STYLE["ravna-razdeljak"], STYLE.rep, STYLE.pletenice, STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.kratka],
+    man: [STYLE.kratka, STYLE.talasasta, STYLE.zacesljana, STYLE.razbarusena, STYLE.kovrdzava, STYLE.duza, STYLE.osisana, STYLE["bez-kose"]],
 };
 
 /** Bez hidžaba */
@@ -135,6 +144,25 @@ export function hasHijabOption(kind: HumanKind): boolean {
     return kind === "girl" || kind === "woman";
 }
 
+/** Pegice (besplatno): bez, malo, više; „bez” je podrazumevano i ne piše se u id */
+export const NO_FRECKLES = "bez";
+export const FRECKLES: readonly LookPart[] = [
+    { id: NO_FRECKLES, label: "Bez pegica" },
+    { id: "malo", label: "Malo pegica" },
+    { id: "vise", label: "Više pegica" },
+];
+
+/** Kratka brada (besplatno, samo učitelj); „bez” je podrazumevano */
+export const NO_BEARD = "bez";
+export const BEARDS: readonly LookPart[] = [
+    { id: NO_BEARD, label: "Bez brade" },
+    { id: "brada", label: "Kratka brada" },
+];
+
+export function hasBeardOption(kind: HumanKind): boolean {
+    return kind === "man";
+}
+
 export interface HumanLook {
     tone: string;
     eye: string;
@@ -142,6 +170,10 @@ export interface HumanLook {
     style: string;
     /** Boja hidžaba ili NO_HIJAB */
     hijab: string;
+    /** Pegice (FRECKLES); bez vrednosti = bez pegica */
+    freckles?: string;
+    /** Brada (BEARDS, samo učitelj); bez vrednosti = bez brade */
+    beard?: string;
 }
 
 export const HUMAN_DEFAULT: Record<HumanKind, HumanLook> = {
@@ -153,7 +185,12 @@ export const HUMAN_DEFAULT: Record<HumanKind, HumanLook> = {
 };
 
 export function humanLookId(look: HumanLook): string {
-    return `${look.tone}.${look.eye}.${look.hair}.${look.style}.${look.hijab}`;
+    const base = `${look.tone}.${look.eye}.${look.hair}.${look.style}.${look.hijab}`;
+    const freckles = look.freckles ?? NO_FRECKLES;
+    const beard = look.beard ?? NO_BEARD;
+    // Podrazumevane pegice i brada se ne pišu: stari id-jevi ostaju isti
+    if (beard !== NO_BEARD) return `${base}.${freckles}.${beard}`;
+    return freckles !== NO_FRECKLES ? `${base}.${freckles}` : base;
 }
 
 const known = (list: readonly LookPart[], id: string | undefined) => id !== undefined && list.some((part) => part.id === id);
@@ -163,8 +200,17 @@ export function parseHumanLook(kind: HumanKind, id: string): HumanLook | undefin
     const parts = id.split(".");
     let look: HumanLook;
     if (parts.length === 3) look = { tone: parts[0], eye: HUMAN_DEFAULT[kind].eye, hair: parts[1], style: parts[2], hijab: NO_HIJAB };
-    else if (parts.length === 5) look = { tone: parts[0], eye: parts[1], hair: parts[2], style: parts[3], hijab: parts[4] };
+    else if (parts.length >= 5 && parts.length <= 7) look = { tone: parts[0], eye: parts[1], hair: parts[2], style: parts[3], hijab: parts[4] };
     else return undefined;
+    // Pegice i brada (dopisani delovi); podrazumevane vrednosti se ne čuvaju u izgledu
+    if (parts.length >= 6) {
+        if (!known(FRECKLES, parts[5])) return undefined;
+        if (parts[5] !== NO_FRECKLES) look.freckles = parts[5];
+    }
+    if (parts.length === 7) {
+        if (!known(BEARDS, parts[6]) || (parts[6] !== NO_BEARD && !hasBeardOption(kind))) return undefined;
+        if (parts[6] !== NO_BEARD) look.beard = parts[6];
+    }
     if (!known(SKIN_TONES, look.tone) || !known(EYE_COLORS, look.eye) || !known(HAIR_COLORS, look.hair)) return undefined;
     if (!known(HAIRSTYLES[kind], look.style)) return undefined;
     if (look.hijab !== NO_HIJAB && (!hasHijabOption(kind) || !hijabParts(look.hijab))) return undefined;
