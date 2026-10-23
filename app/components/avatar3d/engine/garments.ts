@@ -18,7 +18,7 @@ export type { GarmentContext } from "./kit";
 const gauss = (x: number, mu: number, s: number) => Math.exp(-((x - mu) ** 2) / (2 * s * s));
 
 /** Debljina odeće po sloju (koliko je ljuska iznad kože) */
-export const LAYER = { bottom: 0.0065, top: 0.0135, outer: 0.024 };
+export const LAYER = { bottom: 0.0065, top: 0.0175, outer: 0.026 };
 
 export function buildGarment(ctx: GarmentContext, item: Item3D, color: number): THREE.Object3D[] {
     const swatch = item.colors[color] ?? item.colors[0];
@@ -270,7 +270,7 @@ function sweater(kit: Kit<GarmentContext>, sw: Swatch) {
     const s = kit.shape;
     const cloth = fabricSide(sw.hex, "knit", { sheen: 0.9, sheenLift: 0.3, normalScale: 1 });
     const rib = fabricMaterial(sw.hex, "rib", { normalScale: 0.8 });
-    const off = 0.0125;
+    const off = 0.0175;
     const neck = crewNeck(kit, 0.01);
     const cable = (a: number, y: number) => {
         if (Math.abs(a) > 1.25) return 0.001;

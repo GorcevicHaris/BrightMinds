@@ -10,7 +10,7 @@ import { ANIMAL_SKINS } from "./skins.data";
 export const CAT: AnimalSpec = {
     kind: "cat",
     skins: ANIMAL_SKINS.cat,
-    shape: { kind: "cat", girth: 0.98, belly: 1.04, head: { w: 0.375, h: 0.354, d: 0.341 } },
+    shape: { kind: "cat", girth: 0.98, belly: 1.04, head: { w: 0.338, h: 0.319, d: 0.307 } },
     ref: 0.44,
     head: {
         flat: 0.16,
@@ -43,7 +43,7 @@ export const CAT: AnimalSpec = {
         inner: "pad",
     },
     tail: {
-        points: [[0, 0, 0], [0.05, -0.035, -0.07], [0.13, 0, -0.11], [0.19, 0.11, -0.1], [0.2, 0.24, -0.06], [0.16, 0.32, -0.02]],
+        points: [[0, 0, 0], [0.06, -0.04, -0.07], [0.16, -0.01, -0.1], [0.24, 0.1, -0.08], [0.27, 0.23, -0.04], [0.24, 0.32, 0]],
         radius: profile([[0, 0.03], [0.4, 0.027], [0.85, 0.024], [0.97, 0.016], [1, 0.004]]),
         motion: "sway",
     },

@@ -135,14 +135,17 @@ export const SUBGROUPS: Partial<Record<Slot, readonly { id: string; label: strin
         { id: "ogrlice", label: "Ogrlice" },
         { id: "marame", label: "Marame i šalovi" },
         { id: "masne", label: "Masne i kravate" },
+        { id: "mindjuse", label: "Minđuše" },
     ],
     outfit: [
         { id: "majice", label: "Majice" },
         { id: "duksevi", label: "Duksevi i džemperi" },
         { id: "haljine", label: "Haljine" },
+        { id: "kombinezoni", label: "Kombinezoni" },
         { id: "jakne", label: "Jakne" },
         { id: "sport", label: "Sport" },
         { id: "pidzame", label: "Pidžame" },
+        { id: "svecano", label: "Svečano" },
         { id: "kostimi", label: "Kostimi" },
     ],
     bottom: [

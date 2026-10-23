@@ -189,5 +189,5 @@ export function animalHead(shape: BodyShape, spec: HeadSpec): AnimalHead {
 /** Geometrija glave; uv = (u, v) površine (boja se računa po njima, posle se menjaju u metre) */
 export function headGeometry(head: AnimalHead, quality: "high" | "low"): THREE.BufferGeometry {
     const hi = quality === "high";
-    return buildSurface(head.fn, { nu: hi ? 112 : 64, nv: hi ? 84 : 48, closedU: true, inside: () => head.center.clone() });
+    return buildSurface(head.fn, { nu: hi ? 96 : 56, nv: hi ? 72 : 42, closedU: true, inside: () => head.center.clone() });
 }

@@ -9,7 +9,7 @@ import { ANIMAL_SKINS } from "./skins.data";
 export const BEAR: AnimalSpec = {
     kind: "bear",
     skins: ANIMAL_SKINS.bear,
-    shape: { kind: "bear", girth: 1.14, belly: 1.14, limb: 1.1, legK: 0.95, head: { w: 0.39, h: 0.364, d: 0.355 } },
+    shape: { kind: "bear", girth: 1.14, belly: 1.14, limb: 1.1, legK: 0.95, head: { w: 0.351, h: 0.328, d: 0.32 } },
     ref: 0.45,
     head: {
         flat: 0.12,
@@ -25,7 +25,7 @@ export const BEAR: AnimalSpec = {
         mouthV: 0.665,
     },
     face: (coat) => ({
-        eye: { upper: 0.88, lower: -0.86, lashes: 0, iris: 1.02, pupil: 0.52 },
+        eye: { upper: 0.88, lower: -0.86, lashes: 0, iris: 1.0, pupil: 0.42 },
         brow: { dv: 0.11, len: 0.046, thick: 0.0085 },
         nose: coat.bigNose
             ? { kind: "oval", w: 0.036, h: 0.04, d: 0.026, lift: 0.2, v: 0.56 }

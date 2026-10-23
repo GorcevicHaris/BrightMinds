@@ -21,7 +21,7 @@ export const HIJAB_THICKNESS = 0.017;
 
 export type HijabStyle = "classic" | "sport";
 
-export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabStyle = "classic", outer = 0.03) {
+export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabStyle = "classic", outer = 0.031) {
     const rig = kit.ctx.rig;
     const shape = rig.shape;
     // Meka tkanina (pamuk/žerse): mat, blag sheen na ivicama, sitna mapa normala
@@ -44,55 +44,49 @@ export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabSt
         const th = thetaOf(u);
         // Pozadi tkanina ide preko skupljene kose (blaga punđa), sa strane meki nabori
         return 0.011 + 0.02 * gauss(Math.abs(th), Math.PI, 0.75) * gauss(v, 0.38, 0.13) + 0.004 * (1 - smoothstep(0.1, 0.4, v)) + 0.006 * smoothstep(0.7, 0.92, v)
-            + 0.0025 * Math.sin(th * 6 + v * 4) * smoothstep(0.45, 0.8, v) * smoothstep(0.6, 1.4, Math.abs(th));
+            + 0.0025 * Math.sin(th * 6 + v * 4) * smoothstep(0.45, 0.8, v) * smoothstep(0.6, 1.4, Math.abs(th))
+            // Uspravni nabori tkanine pored lica (od slepoočnica ka bradi)
+            + 0.0035 * Math.pow(Math.abs(Math.sin(th * 9)), 0.7) * smoothstep(0.5, 0.75, v) * gauss(Math.abs(th), 1.25, 0.35);
     };
     const offset = (u: number, v: number) => {
         const f = open(u, v);
-        const k = smoothstep(1.0, 1.12, f);
-        // Uvijen rub oko lica: zadebljanje odmah iza ivice otvora
-        const roll = 0.0055 * Math.exp(-(((f - 1.13) / 0.055) ** 2));
-        return -0.006 + (thick(u, v) + 0.006) * k + roll;
+        // Ivica tone pod kožu ispod uvijenog ruba (rub je posebna glatka cev, ispod)
+        const k = smoothstep(1.03, 1.22, f);
+        return -0.006 + (thick(u, v) + 0.006) * k;
     };
     const maxV = 0.93;
-    const shell = head.offsetFn(offset);
-    // Mreža prati otvor za lice (prstenovi oko elipse), pa je ivica glatka, bez „zubaca”
-    const toHead = (q: number, r: number): [number, number] => {
+    /** Tačka na ivici otvora za lice (psi = ugao oko lica, grow > 1 = malo van otvora) */
+    const edgeAt = (q: number, grow: number): [number, number] => {
         const psi = q * Math.PI * 2;
-        const grow = 0.9 + r * 3.4;
-        let v = vc - Math.sin(psi) * vh * grow;
-        v = Math.min(maxV, Math.max(0.0005, v));
+        const v = Math.min(maxV, Math.max(0.0005, vc - Math.sin(psi) * vh * grow));
         const dv = v - vc;
         const k = dv > 0 ? 1 + dv * 1.4 : 1;
         const th = Math.max(-Math.PI + 1e-4, Math.min(Math.PI - 1e-4, (Math.cos(psi) * tw * grow) / k));
         return [th / (Math.PI * 2) + 0.5, v];
     };
-    const NU = 170;
-    const NV = 64;
-    const shellGeo = buildSurface((q, r, out) => {
-        const [u, v] = toHead(q, r);
-        return shell(u, v, out);
-    }, { nu: NU, nv: NV, closedU: true, vMap: (t) => t * t, inside: () => head.center.clone(), uv: (q, r) => [q * 1.6, r * 0.5] });
-    // Normale iz površine glave (u, v), jer se ovde redovi mreže pozadi skupljaju
-    const normals = shellGeo.getAttribute("normal");
-    const pa = new THREE.Vector3();
-    const pb = new THREE.Vector3();
-    const pc = new THREE.Vector3();
-    const pd = new THREE.Vector3();
-    const nn = new THREE.Vector3();
-    const e = 1.5e-3;
-    let index = 0;
-    for (let j = 0; j <= NV; j++) {
-        const r = (j / NV) ** 2;
-        for (let i = 0; i <= NU; i++, index++) {
-            const [u, v] = toHead(i === NU ? 0 : i / NU, r);
-            const vv = Math.min(maxV, Math.max(e, v));
-            shell(u + e, vv, pa).sub(shell(u - e, vv, pb));
-            shell(u, vv + e, pc).sub(shell(u, vv - e, pd));
-            nn.crossVectors(pc, pa).normalize();
-            normals.setXYZ(index, nn.x, nn.y, nn.z);
-        }
-    }
+    const shell = head.offsetFn(offset);
+    // Obična mreža po glavi (u, v): teme ostaje okruglo; gušće napred, oko otvora za lice
+    const shellGeo = buildSurface((u, v, out) => shell(u, v * maxV, out), {
+        nu: 200,
+        nv: 120,
+        closedU: true,
+        inside: () => head.center.clone(),
+        uMap: (t) => t + (0.55 * Math.sin(2 * Math.PI * t)) / (2 * Math.PI),
+        uv: (u, v) => [u * 2.2, v * 1.4],
+    });
     kit.rigid("head", new THREE.Mesh(shellGeo, cloth));
+    // Uvijen rub oko lica: glatka cev tačno po obodu otvora (pokriva spoj tkanine i kože)
+    {
+        const n = new THREE.Vector3();
+        const F = Math.sqrt(1.1);
+        const rimGeo = ringTube((q, out) => {
+            const [u, v] = edgeAt(q, F);
+            head.point(u, v, out);
+            head.normal(u, v, n);
+            return out.addScaledVector(n, 0.0035);
+        }, () => [0.0058, 0.0062], 220, 10);
+        kit.rigid("head", new THREE.Mesh(rimGeo, cloth));
+    }
 
     // Omotan kroj: drugi sloj marame ide koso ispod brade preko jedne strane glave ka potiljku,
     // sa jasnim naborom na gornjoj ivici — po tome se vidi da je marama omotana, a ne kapuljača
@@ -127,9 +121,8 @@ export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabSt
         const n = new THREE.Vector3();
         const bandGeo = ringTube((q, out) => {
             const psi = 0.12 + q * 0.76;
-            const [u, v] = toHead(psi, 0);
-            const [u2, v2] = toHead(psi, 0.004);
-            head.point(u, v, out).lerp(head.point(u2, v2), 0.5);
+            const [u, v] = edgeAt(psi, 1.06);
+            head.point(u, v, out);
             head.normal(u, v, n);
             return out.addScaledVector(n, 0.0035);
         }, () => [0.0035, 0.0055], 90, 8);
@@ -142,9 +135,9 @@ export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabSt
     const yTop = hb + c.y - shape.head.h * 0.47;
     const yShoulder = shape.shoulderY + 0.004;
     const classic = style === "classic";
-    const frontHem = classic ? shape.chestY - (child ? 0.03 : 0.055) : shape.shoulderY - (child ? 0.035 : 0.05);
-    const backHem = classic ? shape.chestY + 0.02 : shape.shoulderY - 0.02;
-    const sideHem = classic ? shape.shoulderY - 0.02 : shape.shoulderY - 0.008;
+    const frontHem = classic ? shape.chestY + (child ? 0.0 : -0.02) : shape.shoulderY - (child ? 0.03 : 0.045);
+    const backHem = classic ? shape.chestY + 0.03 : shape.shoulderY - 0.02;
+    const sideHem = classic ? shape.shoulderY - 0.004 : shape.shoulderY + 0.002;
     const hemY = (a: number) => {
         const f = Math.pow(Math.abs(Math.cos(a)), classic ? 0.7 : 1.2);
         // Klasičan: blago šiljat napred (krajevi marame), sa strane kraći
@@ -166,13 +159,19 @@ export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabSt
         top.set(sa * topHalf, yTop, ca > 0 ? ca * chinFront : ca * headBack);
         torsoPoint(shape, a, yShoulder, outer, sh);
         const k = smoothstep(yTop, yShoulder, y);
-        const cone = top.clone().lerp(sh, Math.pow(k, 0.85));
+        // Iznad ramena: kupa od brade ka ramenima; ispod ramena tkanina leži na grudima i leđima
+        const cone = y > yShoulder ? top.clone().lerp(sh, Math.pow(k, 0.85)) : new THREE.Vector3(0, y, 0);
         if (y < shape.neckBaseY + 0.04) torsoPoint(shape, a, Math.min(y, shape.neckBaseY + 0.04), outer, env);
         else env.set(0, y, 0);
+        if (y < yShoulder) {
+            // Meki prelaz preko ramena: blago odvojeno od tela pri vrhu, priljubljeno niže
+            const lift = 0.006 * smoothstep(yShoulder - 0.08, yShoulder, y);
+            torsoPoint(shape, a, y, outer + lift, env);
+        }
         // Nabori: od brade se šire ka ramenima (krupni), sitniji pri porubu
-        const folds = 0.011 * Math.pow(t, 1.2) * Math.pow(Math.abs(Math.sin(a * 4.5 + 0.6)), 0.6) + 0.004 * t * Math.sin(a * 11 + 1.1) + 0.004 * Math.pow(t, 2) * Math.sin(a * 3);
+        const folds = 0.006 * Math.pow(t, 1.2) * Math.pow(Math.abs(Math.sin(a * 5.5 + 0.6)), 0.6) + 0.003 * t * Math.sin(a * 12 + 1.1);
         const r = Math.max(Math.hypot(cone.x, cone.z), Math.hypot(env.x, env.z)) + folds;
-        const ang = Math.atan2(cone.x, cone.z);
+        const ang = y > yShoulder ? Math.atan2(cone.x, cone.z) : Math.atan2(env.x, env.z);
         return out.set(Math.sin(ang) * r, y, Math.cos(ang) * r);
     };
     const drapeGeo = buildSurface(drape, {

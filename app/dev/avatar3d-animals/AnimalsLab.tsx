@@ -15,6 +15,7 @@ import { companionBuilder, registeredIds, type FaceExpression, type Wear } from 
 import { ANIMAL_KINDS, COMPANION_LABELS, type CompanionKind } from "@/app/components/avatar3d/data";
 import { ANIMAL_SKINS } from "@/app/components/avatar3d/animals/skins.data";
 import { Figure, type FigureAction } from "@/app/components/avatar3d/engine/figure";
+import { POSES, type PoseName } from "@/app/components/avatar3d/engine/pose";
 import { buildGarment } from "@/app/components/avatar3d/engine/garments";
 import { headInfo } from "@/app/components/avatar3d/engine/head";
 import { Stage, type Animated } from "@/app/components/avatar3d/engine/stage";
@@ -41,6 +42,7 @@ interface LabState {
     wear: Wear;
     talk: boolean;
     quality: "high" | "low";
+    pose: PoseName;
 }
 
 function triangles(object: THREE.Object3D): number {
@@ -90,7 +92,7 @@ export default function AnimalsLab() {
     const hostRef = useRef<HTMLDivElement>(null);
     const stageRef = useRef<Stage | null>(null);
     const figuresRef = useRef<Figure[]>([]);
-    const [state, setState] = useState<LabState>({ kinds: ["cat"], skin: "", expression: "neutral", outfit: "nista", wear: {}, talk: false, quality: "high" });
+    const [state, setState] = useState<LabState>({ kinds: ["cat"], skin: "", expression: "neutral", outfit: "nista", wear: {}, talk: false, quality: "high", pose: "relaxed" });
     const [info, setInfo] = useState("");
 
     useEffect(() => {
@@ -140,6 +142,8 @@ export default function AnimalsLab() {
             const figure = new Figure(human ? { kind, skin: "", human: humanLook(kind, undefined) } : { kind, skin }, state.wear, { quality: state.quality });
             dressPrototype(figure, state.outfit);
             figure.setExpressionNow(state.expression);
+            figure.autoPose = false;
+            figure.setPose(state.pose, true);
             figure.setSpeaking(state.talk);
             figure.mouthLevel = () => Math.max(0, Math.sin(performance.now() / 90) * 0.5 + Math.sin(performance.now() / 137) * 0.5);
             figures.push(figure);
@@ -182,6 +186,13 @@ export default function AnimalsLab() {
                         <button type="button" onClick={() => setState((s) => ({ ...s, talk: !s.talk }))} className="rounded-full bg-white px-3 py-1">
                             {state.talk ? "ćuti" : "govori"}
                         </button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                        {POSES.map((p) => (
+                            <button key={p} type="button" onClick={() => setState((s) => ({ ...s, pose: p }))} className={`rounded-full px-3 py-1 ${state.pose === p ? "bg-[#8338EC] text-white" : "bg-white"}`}>
+                                {p}
+                            </button>
+                        ))}
                     </div>
                     <div className="flex flex-wrap gap-1">
                         {Object.keys(OUTFITS).map((o) => (

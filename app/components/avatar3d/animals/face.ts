@@ -114,7 +114,7 @@ interface EyeRig {
 
 /** Očna jabučica sa ispupčenom rožnjačom iznad dužice (odsjaj „klizi” kao na pravom oku) */
 function eyeballGeometry(r: number, iris: number, quality: "high" | "low"): THREE.BufferGeometry {
-    const g = new THREE.SphereGeometry(r, quality === "high" ? 48 : 28, quality === "high" ? 32 : 18);
+    const g = new THREE.SphereGeometry(r, quality === "high" ? 40 : 24, quality === "high" ? 26 : 16);
     const p = g.getAttribute("position");
     const v = new THREE.Vector3();
     for (let i = 0; i < p.count; i++) {
@@ -228,7 +228,7 @@ function buildBrow(head: AnimalHead, spec: FaceSpec, colors: FaceColors, side: 1
         const inner = side === 1 ? 1 - t : t;
         const k = Math.pow(Math.sin(Math.PI * t), 0.55);
         const w = b.thick * (0.75 + 0.35 * inner) * k;
-        const h = b.thick * 0.62 * k;
+        const h = b.thick * 0.42 * k;
         const a = a01 * Math.PI * 2;
         return out.copy(c).addScaledVector(perp, Math.cos(a) * w).addScaledVector(n, Math.sin(a) * h - h * 0.15).sub(center);
     }, { nu: 14, nv: 16, closedU: true, inside: (_a, t, out) => {

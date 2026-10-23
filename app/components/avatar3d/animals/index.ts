@@ -6,4 +6,8 @@ import "./cat";
 import "./dog";
 import "./bunny";
 import "./bear";
+import "./fox";
+import "./lion";
+import "./penguin";
+import "./unicorn";
 import "./extra";

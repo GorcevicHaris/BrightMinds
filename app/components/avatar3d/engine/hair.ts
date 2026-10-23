@@ -7,8 +7,9 @@ import * as THREE from "three";
 import type { HairStyle } from "../catalog";
 import type { HeadInfo } from "./head";
 import { hairMaterial } from "./materials";
-import type { Rig } from "./rig";
-import { buildSurface, polyPath, profile, smoothstep, taperedTube, type SurfaceFn } from "./surface";
+import { torsoPoint } from "./body";
+import { B, type Rig } from "./rig";
+import { buildSurface, polyPath, profile, smoothstep, sweepFn, taperedTube, type SurfaceFn } from "./surface";
 
 const gauss = (x: number, mu: number, s: number) => Math.exp(-((x - mu) ** 2) / (2 * s * s));
 
@@ -91,25 +92,29 @@ function longBack(head: HeadInfo, rig: Rig, material: THREE.Material): THREE.Mes
         const ang = q * Math.PI * 2;
         const a = Math.cos(ang); // −1 … 1 preko leđa
         const side = Math.sin(ang); // spolja / iznutra
-        const y = yTop + (yBot - yTop) * t - 0.018 * Math.abs(Math.sin(a * 6.5)) * smoothstep(0.75, 1, t);
+        // Krajevi se razdvajaju u pramenove (različite dužine), ne završavaju se ravnom pločom
+        const lock = Math.abs(Math.sin(a * 5.5 + 0.4));
+        const y = yTop + (yBot - yTop) * t - (0.012 + 0.05 * Math.pow(1 - lock, 1.5)) * smoothstep(0.62, 1, t);
         // Luk se sužava: gore obuhvata glavu, niže je iza ramena
         const k = smoothstep(yTop, shoulderLocal + 0.02, y);
         const alpha = 1.45 - 0.5 * k;
-        const half = (w / 2 + 0.014) * (1 - k) + (shape.torsoW(shape.shoulderY) * 0.95) * k;
-        const back = (d / 2 + 0.016) * (1 - k) + (backAt(Math.max(y, shoulderLocal - 0.08)) + 0.03 + c.z) * k;
+        const half = ((w / 2 + 0.014) * (1 - k) + (shape.torsoW(shape.shoulderY) * 0.95) * k) * (1 - 0.12 * smoothstep(0.6, 1, t));
+        // Malo odmaknuto od leđa (kosa pada slobodno)
+        const back = (d / 2 + 0.016) * (1 - k) + (backAt(Math.max(y, shoulderLocal - 0.08)) + 0.04 + c.z) * k;
         const zc = c.z;
         const x = (half * Math.sin(a * alpha)) / Math.sin(alpha);
         const z = zc - back * Math.cos(a * alpha) * (1 + 0.15 * k);
         // Debljina: deblje u sredini, tanko na krajevima i na dnu
-        const th = (0.012 + 0.01 * (1 - Math.abs(a))) * (1 - smoothstep(0.85, 1, t) * 0.7) * (0.5 + 0.5 * Math.sqrt(Math.max(0, 1 - a * a)));
+        // Debljina: pramenovi se pri dnu tanje (šiljato), među njima žleb
+        const th = (0.012 + 0.01 * (1 - Math.abs(a))) * (1 - smoothstep(0.55, 1, t) * (0.55 + 0.35 * (1 - lock))) * (0.5 + 0.5 * Math.sqrt(Math.max(0, 1 - a * a)));
         const nx = Math.sin(a * alpha);
         const nz = -Math.cos(a * alpha);
-        const groove = 0.0018 * Math.sin(a * 28);
+        const groove = 0.0016 * Math.sin(a * 28) + 0.004 * (lock - 0.6) * smoothstep(0.25, 0.9, t);
         return out.set(x + nx * (side * th + groove), y, z + nz * (side * th + groove));
     };
     const geometry = buildSurface(fn, {
-        nu: 72,
-        nv: 40,
+        nu: 132,
+        nv: 56,
         closedU: true,
         inside: (_q, t, out) => out.set(0, yTop + (yBot - yTop) * t, c.z - 0.02),
         uv: (q, t) => [q * 6, t * 3],
@@ -117,6 +122,60 @@ function longBack(head: HeadInfo, rig: Rig, material: THREE.Material): THREE.Mes
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = "duga-kosa";
     return mesh;
+}
+
+/**
+ * Prednji pramenovi duge kose (Bitmoji): od slepoočnica pored lica, preko ramena, niz grudi.
+ * Prate i glavu (gore) i grudi (dole) — SkinnedMesh na kosturu, u korenu lika.
+ */
+function frontLocks(head: HeadInfo, rig: Rig, material: THREE.Material, toY: number): THREE.SkinnedMesh[] {
+    const shape = rig.shape;
+    const headAt = new THREE.Vector3(0, shape.headBoneY, 0);
+    const locks: THREE.SkinnedMesh[] = [];
+    const n = new THREE.Vector3();
+    for (const side of [1, -1] as const) {
+        // Tri pramena po strani: spolja duži, bliže licu kraći
+        for (let i = 0; i < 3; i++) {
+            const u = 0.5 + side * (0.2 + i * 0.035);
+            const start = head.point(u, 0.5).addScaledVector(head.normal(u, 0.5, n), 0.012).add(headAt);
+            const jaw = head.point(0.5 + side * (0.21 + i * 0.03), 0.8).addScaledVector(head.normal(0.5 + side * (0.21 + i * 0.03), 0.8, n), 0.016).add(headAt);
+            const a = side * (0.62 + i * 0.22);
+            const shoulder = torsoPoint(shape, a, shape.shoulderY + 0.012, 0.03, new THREE.Vector3());
+            const end = torsoPoint(shape, a * 0.92, toY - i * 0.012, 0.028, new THREE.Vector3());
+            const mid = torsoPoint(shape, a, (shape.shoulderY + toY) / 2, 0.032, new THREE.Vector3());
+            const path = polyPath([start, jaw, shoulder, mid, end]);
+            const width = 0.03 - i * 0.004;
+            const spec = {
+                path,
+                section: (t: number, ang: number): [number, number] => {
+                    // Pljosnat pramen: širok bočno, tanak napred; šiljat pri dnu
+                    const taper = (0.55 + 0.45 * Math.sin(Math.min(1, 0.15 + t) * Math.PI * 0.95)) * (1 - 0.75 * smoothstep(0.7, 1, t));
+                    return [Math.sin(ang) * width * taper, Math.cos(ang) * 0.0075 * taper];
+                },
+                forwardAt: (t: number, out: THREE.Vector3) => {
+                    const p = path(t, new THREE.Vector3());
+                    return out.set(p.x, 0, p.z).normalize();
+                },
+            };
+            const geometry = buildSurface(sweepFn(spec), {
+                nu: 14,
+                nv: 48,
+                closedU: true,
+                inside: (_u, t, out) => path(t, out),
+                weights: (_u, t) => {
+                    const k = smoothstep(0.3, 0.55, t);
+                    return [[B.head, 1 - k], [B.chest, k]];
+                },
+                uv: (u, t) => [u * 0.5, t * 4],
+            });
+            const mesh = new THREE.SkinnedMesh(geometry, material);
+            mesh.name = "pramen";
+            mesh.bind(rig.skeleton, new THREE.Matrix4());
+            mesh.frustumCulled = false;
+            locks.push(mesh);
+        }
+    }
+    return locks;
 }
 
 /** Rep: gumica na potiljku i pramen koji pada niz leđa (njiše se) */
@@ -257,7 +316,7 @@ export function hairCrown(style: HairStyle, underHat: boolean): number {
     }
 }
 
-export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: string, underHat: boolean): THREE.Object3D[] {
+export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: string, underHat: boolean, root?: THREE.Object3D, front = false): THREE.Object3D[] {
     const material = hairMaterial(hex);
     const headBone = rig.bone("head");
     const parts: THREE.Object3D[] = [];
@@ -308,6 +367,13 @@ export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: strin
             };
             add(capMesh(head, spec, material, underHat));
             add(longBack(head, rig, material));
+            // Prednji pramenovi preko ramena (kao kod Bitmoji duge kose)
+            if (root && front) {
+                for (const lock of frontLocks(head, rig, material, rig.shape.chestY - 0.02)) {
+                    root.add(lock);
+                    parts.push(lock);
+                }
+            }
             break;
         }
         case "ponytail": {

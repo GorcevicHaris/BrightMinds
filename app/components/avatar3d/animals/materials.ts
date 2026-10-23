@@ -292,7 +292,7 @@ export function animalIris(light: string, dark: string, iris = 0.72, pupil = 0.3
                     // Svetlije dole, tamnije gore (senka kapka), vlakna dužice
                     const lower = Math.max(0, -dy);
                     const fibers = 0.5 + 0.5 * Math.sin(around * 42 + Math.sin(around * 9) * 2.4);
-                    tmp.copy(cd).lerp(cl, Math.min(1, 0.25 + lower * 1.1) * (1 - Math.pow(t, 2.5) * 0.6));
+                    tmp.copy(cd).lerp(cl, Math.min(1, 0.5 + lower * 0.9) * (1 - Math.pow(t, 2.5) * 0.55));
                     tmp.multiplyScalar(0.9 + fibers * 0.16 * (1 - t));
                     if (t > 0.82) tmp.lerp(rim, (t - 0.82) / 0.18);
                     if (angle < pupil + 0.025) tmp.lerp(pupilC, 1 - (angle - pupil) / 0.025);

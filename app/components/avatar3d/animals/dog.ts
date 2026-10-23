@@ -26,8 +26,8 @@ function dogEars(coat: Coat): EarSpec {
     return {
         kind: "floppy",
         shape: { len: curly ? 0.24 : 0.235, width: curly ? 0.14 : 0.13, depth: curly ? 0.05 : 0.042, profile: EAR_PROFILES.floppy, bend: -0.035, cup: 0.25, curls: curly ? 0.12 : 0 },
-        u: 0.735,
-        v: 0.27,
+        u: 0.74,
+        v: 0.38,
         sink: 0.004,
         tilt: [-0.12, 1.4, 2.28],
     };
@@ -36,7 +36,7 @@ function dogEars(coat: Coat): EarSpec {
 export const DOG: AnimalSpec = {
     kind: "dog",
     skins: ANIMAL_SKINS.dog,
-    shape: { kind: "dog", girth: 1.02, belly: 1.04, head: { w: 0.366, h: 0.349, d: 0.349 } },
+    shape: { kind: "dog", girth: 1.02, belly: 1.04, head: { w: 0.329, h: 0.314, d: 0.314 } },
     ref: 0.43,
     head: {
         flat: 0.1,
@@ -55,7 +55,7 @@ export const DOG: AnimalSpec = {
         mouthV: 0.665,
     },
     face: {
-        eye: { upper: 0.88, lower: -0.86, lashes: 0, iris: 0.98, pupil: 0.5 },
+        eye: { upper: 0.88, lower: -0.86, lashes: 0, iris: 0.98, pupil: 0.4 },
         brow: { dv: 0.118, len: 0.05, thick: 0.0085 },
         nose: { kind: "oval", w: 0.034, h: 0.024, d: 0.022, lift: 0.28, tilt: -0.2 },
         mouth: { w: 0.042, h: 0.072, curve: "smile", teeth: "none", wrap: 0.07, philtrum: 0.02, line: 0.0026 },
@@ -77,10 +77,10 @@ export const DOG: AnimalSpec = {
         const top = b.head.point(0.5, 0.05);
         for (let i = 0; i < 18; i++) {
             const a = i * 2.399963;
-            const r = 0.05 * Math.sqrt((i + 0.5) / 18);
+            const r = 0.05 * b.k * Math.sqrt((i + 0.5) / 18);
             const base = top.clone().add(new THREE.Vector3(Math.cos(a) * r, -0.012, Math.sin(a) * r * 0.8 - 0.01));
             const dir = new THREE.Vector3(Math.cos(a) * 0.6, 1, Math.sin(a) * 0.5).normalize();
-            clumps.push({ base, dir, len: 0.03, r: 0.021, curl: new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)), color: b.coat.fur });
+            clumps.push({ base, dir, len: 0.03 * b.k, r: 0.021 * b.k, curl: new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)), color: b.coat.fur });
         }
         const mesh = new THREE.Mesh(clumpGeometry(clumps, b.quality), furMaterial({ sheen: b.coat.light }));
         b.headGroup.add(mesh);

@@ -38,14 +38,15 @@ export function disposeObject(root: THREE.Object3D) {
 export function skinMaterial(hex: string, vertexColors = false): THREE.MeshPhysicalMaterial {
     return cached(`skin-${hex}-${vertexColors}`, () => {
         const color = new THREE.Color(hex);
-        const warm = color.clone().lerp(new THREE.Color("#FF7A6A"), 0.45);
+        const warm = color.clone().lerp(new THREE.Color("#FF6A55"), 0.5);
         return new THREE.MeshPhysicalMaterial({
             color,
-            roughness: 0.58,
-            sheen: 0.55,
-            sheenRoughness: 0.55,
+            roughness: 0.6,
+            sheen: 0.7,
+            sheenRoughness: 0.5,
             sheenColor: warm,
-            emissive: warm.clone().multiplyScalar(0.07),
+            // Topao „prosev” (lažni SSS): koža nije siva ni u senci
+            emissive: warm.clone().multiplyScalar(0.1),
             specularIntensity: 0.35,
             normalMap: fabricNormal("skin"),
             normalScale: new THREE.Vector2(0.15, 0.15),
@@ -102,11 +103,11 @@ export function hairMaterial(hex: string): THREE.MeshPhysicalMaterial {
         const color = new THREE.Color(hex);
         return new THREE.MeshPhysicalMaterial({
             color,
-            roughness: 0.56,
+            roughness: 0.62,
             metalness: 0,
-            specularIntensity: 0.36,
+            specularIntensity: 0.3,
             specularColor: color.clone().lerp(new THREE.Color("#FFFFFF"), 0.6),
-            anisotropy: 0.3,
+            anisotropy: 0.22,
             anisotropyRotation: Math.PI / 2,
             sheen: 0.35,
             sheenColor: color.clone().lerp(new THREE.Color("#FFFFFF"), 0.3),

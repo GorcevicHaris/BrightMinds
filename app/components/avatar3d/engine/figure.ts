@@ -23,6 +23,7 @@ import {
 } from "../contract";
 import { getItem } from "../manifest";
 import { FACE_POSES } from "./expressions";
+import { solvePose, type PoseName, type PoseSolution } from "./pose";
 import { buildGarment } from "./garments";
 import { isHumanBody, type HumanBody } from "./human";
 import { Kit } from "./kit";
@@ -43,7 +44,20 @@ interface Worn {
     builder: ItemBuilder;
     motion?: ItemMotion;
     animate?: (time: number, dt: number, live: boolean) => void;
+    /** Osnovna odeća (nije kupljena; skida se čim dete obuče svoj predmet na to mesto) */
+    base?: boolean;
 }
+
+/** Predmeti uz koje lik ne prekršta ruke (krut deo na grudima) */
+const NO_CROSSED_ARMS = new Set(["kostim-astronauta"]);
+
+/** Osnovna odeća iz kataloga (#3): obične stvari koje idu uz sve */
+const BASE_ITEMS: Record<string, Partial<Record<"outfit" | "bottom" | "feet", string>>> = {
+    girl: { outfit: "bela-majica", bottom: "farmerke", feet: "bele-patike" },
+    boy: { outfit: "majica-pruge", bottom: "farmerke", feet: "plave-patike" },
+    woman: { outfit: "bordo-majica-dugi-rukav", bottom: "siroke-farmerke", feet: "krem-patike" },
+    man: { outfit: "plava-polo-majica", bottom: "teget-pantalone", feet: "crno-bele-patike" },
+};
 
 /** Osnovna odeća čoveka (prototip motora) kad je mesto prazno — lik nikad nije neobučen */
 const BASE: Record<string, Partial<Record<"outfit" | "bottom" | "feet", [string, number]>>> = {
@@ -110,6 +124,15 @@ export class Figure {
     private pendingAction: FigureAction | null = null;
     private phase = Math.random() * 10;
     private clock = 0;
+    // Poza ruku (opušteno, na kukovima, prekrštene, šake na ustima, iza leđa)
+    private poses = new Map<PoseName, PoseSolution>();
+    private poseName: PoseName = "relaxed";
+    private posePrev: PoseName = "relaxed";
+    private poseT = 1;
+    private poseAt = 0;
+    private poseHold: { name: PoseName; until: number } | null = null;
+    /** Sama menja mirne poze (stalnim redom, bez nasumičnosti) dok je lik „živ” */
+    autoPose = true;
     /** Jačina glasa 0–1 (lib/voice mouthLevel), čita se u svakom kadru dok lik govori */
     mouthLevel: () => number = () => 0;
 
@@ -145,6 +168,7 @@ export class Figure {
         this.root.add(this.body.root);
         this.rest.clear();
         for (const bone of this.body.rig.bones) this.rest.set(bone, bone.position.clone());
+        this.poses.clear();
         this.body.face.setExpression(this.expression, 1);
         const wear = this.wear;
         this.wear = {};
@@ -185,7 +209,8 @@ export class Figure {
             const skip = !id || !entry || entry.slot !== slot || hidden.has(slot) || (human?.hijab && entry.builder.withHijab === "hide");
             const current = this.worn.get(slot);
             if (skip) {
-                if (current) this.takeOff(slot);
+                // Osnovna odeća ostaje dok je mesto prazno i nije skriveno (dodaje se ispod)
+                if (current && !(current.base && !id && !hidden.has(slot))) this.takeOff(slot);
                 continue;
             }
             const key = `${id}|${this.dependency(entry.builder, wear)}|${this.hairCrown}`;
@@ -193,12 +218,25 @@ export class Figure {
             if (current) this.takeOff(slot);
             this.putOn(slot, id, key, entry.builder, wear);
         }
-        // Osnovna odeća čoveka na praznim mestima
+        // Osnovna odeća čoveka na praznim mestima: obični predmeti iz kataloga (ako postoje u 3D),
+        // inače odeća iz prototipa motora. Ne kupuju se i ne vide u ormaru — samo da lik nije neobučen.
+        if (human) {
+            for (const slot of ["bottom", "outfit", "feet"] as const) {
+                const id = BASE_ITEMS[body.kind]?.[slot];
+                const entry = id ? itemBuilder(id) : undefined;
+                const needed = Boolean(entry) && !this.worn.has(slot) && !hidden.has(slot);
+                if (needed && id && entry) {
+                    this.putOn(slot, id, `osnova|${id}|${this.hairCrown}`, entry.builder, wear);
+                    const worn = this.worn.get(slot);
+                    if (worn) worn.base = true;
+                }
+            }
+        }
         if (human) {
             const base = BASE[body.kind] ?? {};
             for (const slot of ["bottom", "outfit", "feet"] as const) {
                 const want = base[slot];
-                const needed = want && !this.worn.has(slot) && !hidden.has(slot);
+                const needed = want && !this.worn.has(slot) && !hidden.has(slot) && !itemBuilder(BASE_ITEMS[body.kind]?.[slot] ?? "");
                 const key = needed ? `${want[0]}:${want[1]}` : "";
                 const current = this.base.get(slot);
                 if (current?.key === key) continue;
@@ -321,6 +359,11 @@ export class Figure {
             this.expression = expression;
             this.exprT = 0;
         }
+        // Iznenađenje i strah: šake na ustima, kratko
+        if (emotion === "surprised" || emotion === "scared") {
+            this.setPose("mouth");
+            this.poseHold = { name: "mouth", until: this.clock + 2.4 };
+        }
         if (gesture !== this.gesture) {
             this.gesture = gesture;
             if (gesture === "wave") this.play("wave");
@@ -341,6 +384,73 @@ export class Figure {
 
     play(action: FigureAction) {
         this.pendingAction = action;
+    }
+
+    /** Poza ruku; sa `now` = true bez prelaza (sličice) */
+    setPose(name: PoseName, now = false) {
+        if (name === this.poseName && this.poseT >= 1) return;
+        this.posePrev = now ? name : this.poseName;
+        this.poseName = name;
+        this.poseT = now ? 1 : 0;
+    }
+
+    private solution(name: PoseName): PoseSolution {
+        let solved = this.poses.get(name);
+        if (!solved) {
+            solved = solvePose(this.body.rig, name);
+            this.poses.set(name, solved);
+        }
+        return solved;
+    }
+
+    /** Redosled mirnih poza (stalan, bez nasumičnosti); sa predmetom u ruci samo slobodnom rukom */
+    private nextAutoPose(): PoseName {
+        // Prekrštene ruke se preskaču uz predmete koji bi se sudarili sa rukama (krut deo na grudima)
+        const noCross = [...this.worn.values()].some((w) => NO_CROSSED_ARMS.has(w.id));
+        const order: PoseName[] = this.worn.has("hand") ? ["relaxed", "hips"] : noCross ? ["relaxed", "hips", "relaxed", "behind"] : ["relaxed", "hips", "relaxed", "crossed", "relaxed", "behind"];
+        const i = order.indexOf(this.poseName);
+        return order[(i + 1) % order.length];
+    }
+
+    private applyPose(time: number, dt: number, live: boolean, armsBusy: number): boolean {
+        const rig = this.body.rig;
+        let busy = false;
+        // Kratka poza zbog emocije (šake na ustima), pa nazad
+        if (this.poseHold && time > this.poseHold.until) {
+            this.poseHold = null;
+            this.setPose("relaxed");
+        }
+        if (live && this.autoPose && !this.poseHold && time - this.poseAt > 9) {
+            this.poseAt = time;
+            this.setPose(this.nextAutoPose());
+        }
+        if (this.poseT < 1) {
+            this.poseT = live ? Math.min(1, this.poseT + dt / 0.7) : 1;
+            busy = true;
+        }
+        const t = this.poseT * this.poseT * (3 - 2 * this.poseT);
+        const from = this.solution(this.posePrev);
+        const to = this.solution(this.poseName);
+        const holding = this.worn.has("hand");
+        const free = 1 - armsBusy;
+        const blend = (bone: THREE.Bone, a: THREE.Quaternion | null, b: THREE.Quaternion | null) => {
+            if (!a && !b) return;
+            const idle = bone.quaternion.clone();
+            const qa = a ?? idle;
+            const qb = b ?? idle;
+            const q = new THREE.Quaternion().slerpQuaternions(qa, qb, t);
+            bone.quaternion.slerpQuaternions(idle, q, free);
+        };
+        for (const side of ["left", "right"] as const) {
+            if (side === "right" && holding) continue;
+            const a = from[side];
+            const b = to[side];
+            const k = side === "left" ? "L" : "R";
+            blend(rig.bone(`upperArm${k}`), a?.upper ?? null, b?.upper ?? null);
+            blend(rig.bone(`forearm${k}`), a?.fore ?? null, b?.fore ?? null);
+            blend(rig.bone(`hand${k}`), a?.hand ?? null, b?.hand ?? null);
+        }
+        return busy;
     }
 
     // ── Kadar po kadar ───────────────────────────────────────────────────────────
@@ -413,6 +523,11 @@ export class Figure {
         } else {
             this.body.face.setBlink(0);
         }
+
+        // Poza ruku; mahanje i navijanje imaju prednost (poza se tada meko povuče)
+        const armsAction = this.action === "wave" || this.action === "cheer" || this.action === "joy" ? this.action : null;
+        const armsBusy = armsAction ? Math.min(1, Math.sin(Math.min(1, (time - this.actionAt) / ACTION_S[armsAction]) * Math.PI) * 3) : 0;
+        if (this.applyPose(time, dt, live, armsBusy)) busy = true;
 
         if (this.action) {
             const p = (time - this.actionAt) / ACTION_S[this.action];
@@ -551,6 +666,15 @@ export class Figure {
         for (const key of [...this.base.keys()]) this.takeOffBase(key);
         this.body.dispose();
         this.root.clear();
+    }
+
+    get hasPet(): boolean {
+        return this.worn.has("pet");
+    }
+
+    /** Samo mirno disanje (bez pokreta, prelaza i govora) — dovoljno je ređe crtanje */
+    get isCalm(): boolean {
+        return !this.action && !this.pendingAction && this.exprT >= 1 && this.poseT >= 1 && !this.speaking;
     }
 
     /** Vreme poslednjeg kadra (za probne stranice) */

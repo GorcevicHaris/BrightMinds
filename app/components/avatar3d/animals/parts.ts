@@ -510,6 +510,10 @@ export interface Clump {
     color: string;
     /** Spljoštenost preseka (pramen) */
     flat?: number;
+    /** Sužavanje ka vrhu (manje = tuplji, zaobljen vrh; podrazumevano 0,55) */
+    taper?: number;
+    /** Tamniji koren (0–1, podrazumevano 0,28) */
+    shade?: number;
 }
 
 /**
@@ -529,11 +533,11 @@ export function clumpGeometry(clumps: readonly Clump[], quality: "high" | "low")
             end.addScaledVector(cl.curl, cl.len * 0.4);
         }
         const path = polyPath([cl.base, mid, end]);
-        const g = weightedTube(path, (s) => cl.r * (0.75 + 0.45 * Math.sin(Math.PI * Math.min(1, s * 0.9 + 0.12))) * Math.pow(1 - s, 0.55) + cl.r * 0.06, hi ? 16 : 9, hi ? 12 : 7, undefined, cl.flat ?? 0.8);
+        const g = weightedTube(path, (s) => cl.r * (0.75 + 0.45 * Math.sin(Math.PI * Math.min(1, s * 0.9 + 0.12))) * Math.pow(1 - s, cl.taper ?? 0.55) + cl.r * 0.06, hi ? 16 : 9, hi ? 12 : 7, undefined, cl.flat ?? 0.8);
         const n = g.getAttribute("position").count;
         const colors = new Float32Array(n * 3);
         const base = col(cl.color);
-        dark.copy(base).multiplyScalar(0.72);
+        dark.copy(base).multiplyScalar(1 - (cl.shade ?? 0.28));
         const light = base.clone().lerp(new THREE.Color("#FFFFFF"), 0.16);
         const len = cl.len;
         for (let i = 0; i < n; i++) {

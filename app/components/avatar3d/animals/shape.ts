@@ -66,12 +66,13 @@ export function animalShape(p: ShapeParams): BodyShape {
     const chestY = y(0.62);
     const shoulderY = y(0.84);
     const neck = p.neck ?? 0;
-    const neckBaseY = y(0.95) + neck;
-    const headBoneY = neckBaseY + 0.03;
+    // Vrat počinje na ramenima (kragne i marame ostaju tu); dug vrat podiže kost glave
+    const neckBaseY = y(0.95);
+    const headBoneY = neckBaseY + 0.03 + neck;
     const neckR = p.neckR ?? 0.052 * Math.max(1, g * 0.95);
     // Vrat iznad ramena: od ≈ 1,2 × poluprečnika kod ramena do poluprečnika kod glave
     const neckPts = (r: number): [number, number][] => neck > 0
-        ? [[y(0.99) + neck * 0.35, r * 1.18], [neckBaseY + 0.02, r], [neckBaseY + 0.25, r]]
+        ? [[y(0.99) + neck * 0.35, r * 1.18], [neckBaseY + neck + 0.02, r], [headBoneY + 0.25, r]]
         : [[y(1.25), r]];
     const lower = 1 + pear * 0.22;
     const upperK = 1 - pear * 0.12;
@@ -117,7 +118,8 @@ export function animalShape(p: ShapeParams): BodyShape {
     const armAngle = armAngleFor(torsoW, shoulderX, shoulderY - 0.012, upperArm, armR(0.5));
     const hipX = 0.062 * g * lower;
     const legR = profile([[0, 0.064 * limb * g], [0.2, 0.058 * limb], [0.44, 0.047 * limb], [0.5, 0.045 * limb], [0.62, 0.047 * limb], [0.7, 0.047 * limb], [0.86, 0.038 * limb], [1, 0.033 * limb]]);
-    const up = head.h / 2 - 0.026;
+    // Glava malo iznad ramena: vidi se kratak krzneni vrat
+    const up = head.h / 2 - 0.012;
     return {
         kind: p.kind as AnimalKind,
         proportion: "animal",
