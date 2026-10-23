@@ -1,12 +1,13 @@
 // Poze ruku (kao kod Bitmoji likova): opušteno, ruke na kukovima, prekrštene ruke, šake na
-// ustima (iznenađenje), ruke iza leđa. Svaka poza zadaje gde su zglobovi šaka i na koju stranu
+// ustima (iznenađenje), ruke iza leđa, slegnuta ramena (dlanovi gore), razmišljanje (šaka na
+// bradi) i šake u džepu duksa. Svaka poza zadaje gde su zglobovi šaka i na koju stranu
 // gledaju laktovi; uglovi kostiju se računaju (IK sa dve kosti), pa poza važi za svako telo
 // (dete, odrasli, životinja) — iz mera tela (BodyShape) i zglobova kostura.
 
 import * as THREE from "three";
 import type { Rig } from "../contract";
 
-export const POSES = ["relaxed", "hips", "crossed", "mouth", "behind"] as const;
+export const POSES = ["relaxed", "hips", "crossed", "mouth", "behind", "shrug", "think", "pockets"] as const;
 export type PoseName = (typeof POSES)[number];
 
 export interface ArmPose {
@@ -111,6 +112,39 @@ export function solvePose(rig: Rig, name: PoseName): PoseSolution {
                 elbow: new THREE.Vector3(side * 0.7, -1, 0.15),
                 bend: 0.1,
                 twist: side * 1.6,
+            });
+            return { left: solveArm(rig, 1, arm(1)), right: solveArm(rig, -1, arm(-1)) };
+        }
+        case "shrug": {
+            // „Ne znam”: laktovi uz telo, podlaktice u stranu, dlanovi gore u visini ramena
+            const y = s.shoulderY - 0.11 * scale;
+            const arm = (side: 1 | -1): ArmTarget => ({
+                wrist: new THREE.Vector3(side * (s.shoulderX + 0.2 * scale), y, front(s.chestY) + 0.07 * scale),
+                elbow: new THREE.Vector3(side * 0.25, -1, -0.3),
+                bend: -0.35,
+                twist: -side * 1.5,
+            });
+            return { left: solveArm(rig, 1, arm(1)), right: solveArm(rig, -1, arm(-1)) };
+        }
+        case "think": {
+            // Desna šaka pod bradom, leva ruka preko stomaka pridržava desni lakat
+            const headY = s.headBoneY + s.head.up;
+            const chinY = headY - s.head.h * 0.53;
+            const chinZ = s.head.fwd + s.head.d * 0.36;
+            const y = s.waistY + 0.05 * scale;
+            return {
+                left: solveArm(rig, 1, { wrist: new THREE.Vector3(-s.shoulderX * 0.45, y, front(y) + armR + 0.03 * scale), elbow: new THREE.Vector3(0.8, -0.7, 0.1), bend: 0.7, twist: 0.3 }),
+                right: solveArm(rig, -1, { wrist: new THREE.Vector3(-0.012 * scale, chinY - 0.022 * scale, chinZ + 0.03 * scale), elbow: new THREE.Vector3(-0.1, -1, 0.5), bend: 0.6, twist: 0.5 }),
+            };
+        }
+        case "pockets": {
+            // Šake u prednjem džepu duksa (na stomaku), laktovi opušteno u stranu
+            const y = s.waistY - 0.035 * scale;
+            const arm = (side: 1 | -1): ArmTarget => ({
+                wrist: new THREE.Vector3(side * 0.045 * scale, y, front(y) - 0.004 * scale),
+                elbow: new THREE.Vector3(side, -0.6, -0.35),
+                bend: 0.25,
+                twist: side * 0.9,
             });
             return { left: solveArm(rig, 1, arm(1)), right: solveArm(rig, -1, arm(-1)) };
         }

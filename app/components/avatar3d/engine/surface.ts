@@ -316,7 +316,7 @@ export function taperedTube(path: (s: number, out: THREE.Vector3) => THREE.Vecto
 
 /** Spaja više geometrija u jednu (isti atributi) */
 export function merge(geometries: THREE.BufferGeometry[]): THREE.BufferGeometry {
-    const attrs = ["position", "normal", "uv", "skinIndex", "skinWeight"].filter((name) => geometries.every((g) => g.getAttribute(name)));
+    const attrs = ["position", "normal", "uv", "color", "skinIndex", "skinWeight"].filter((name) => geometries.every((g) => g.getAttribute(name)));
     const result = new THREE.BufferGeometry();
     let offset = 0;
     const index: number[] = [];
