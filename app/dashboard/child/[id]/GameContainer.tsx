@@ -11,6 +11,7 @@ import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import { CelebrationLayer, celebrateBig, GamePauseContext, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
 import { useSpeakingLock } from "@/lib/voice";
+import BackgroundArt, { SHARP } from "@/app/components/avatar/BackgroundArt";
 import Companion, { type CompanionAction as CompanionMove } from "@/app/components/avatar/Companion";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import type { VoiceEmotion as TeacherEmotion } from "@/lib/emotion";
@@ -1335,10 +1336,12 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
             >
                 {/* Ceo drugar sa svim što je dete kupilo: kraj nivoa je trenutak nagrade */}
                 {teacher !== null && (
-                    <span className="mx-auto -mt-1 mb-2 block h-36 w-28 overflow-hidden rounded-2xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-44 sm:w-36">
+                    // Drugar stoji u svojoj pozadini, preko cele širine vrha prozora
+                    <div className="relative -mx-6 -mt-6 mb-3 flex h-40 justify-center overflow-hidden bg-gradient-to-b from-brand-100 to-brand-50 sm:-mx-9 sm:-mt-9 sm:h-48">
+                        <ResultScene />
                         {/* Kad se pojave zvezdice drugar dva puta skoči i pljesne (pročitana priča: mali skok) */}
-                        <Teacher gender={teacher} variant="full" action={outcome.practice ? "hop" : outcome.stars > 0 ? "cheer" : undefined} className="h-full w-full" />
-                    </span>
+                        <Teacher gender={teacher} variant="full" background={false} action={outcome.practice ? "hop" : outcome.stars > 0 ? "cheer" : undefined} className="relative h-full w-32 sm:w-40" />
+                    </div>
                 )}
                 {outcome.practice ? (
                     // Pročitana priča nije „rezultat”: bez zvezdica koje bi izgledale kao slaba ocena
@@ -1420,9 +1423,35 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
 
 // ── Pratilac ──────────────────────────────────────────────────────────────────
 
+/** Kupljena pozadina drugara iza njega na kraju nivoa (bez nje: blagi prelaz boja) */
+function ResultScene() {
+    const background = useCompanion()?.wear.background;
+    return background ? <BackgroundArt id={background} sharp={SHARP.center} /> : null;
+}
+
 /** Lik koji govori: pratilac koga je dete izabralo (sa odećom i izgledom), a bez njega dosadašnji učitelj */
-function Teacher({ gender, variant, emotion, action, className }: { gender?: string; variant?: "bust" | "face" | "full" | "portrait"; emotion?: TeacherEmotion; action?: CompanionMove; className?: string }) {
+function Teacher({
+    gender,
+    variant,
+    emotion,
+    action,
+    background = true,
+    className,
+}: {
+    gender?: string;
+    variant?: "bust" | "face" | "full" | "portrait";
+    emotion?: TeacherEmotion;
+    action?: CompanionMove;
+    /** false: bez pozadine iz prodavnice (crta je mesto oko drugara, preko cele širine) */
+    background?: boolean;
+    className?: string;
+}) {
     const companion = useCompanion();
-    if (companion) return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} skin={chosenSkin(companion)} variant={variant} emotion={emotion} action={action} className={className} />;
+    if (companion) {
+        const { background: worn, ...rest } = companion.wear;
+        const wear = background ? companion.wear : rest;
+        void worn;
+        return <Companion kind={companion.kind as CompanionKindId} wear={wear} skin={chosenSkin(companion)} variant={variant} emotion={emotion} action={action} className={className} />;
+    }
     return <TeacherAvatar gender={gender} variant={variant} emotion={emotion} action={action} className={className} />;
 }
