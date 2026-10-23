@@ -150,6 +150,7 @@ export default function ItemsLab() {
             for (const cell of list) {
                 cell.req.quality = quality;
                 if (pose) cell.req.pose = pose;
+                if (q.get("dbg")) cell.req.debug = true;
             }
             setCells(list);
             const lab = new Lab();
@@ -159,6 +160,10 @@ export default function ItemsLab() {
                 const notes: string[] = [];
                 let bad = false;
                 for (const [id, n] of Object.entries(result.tris)) {
+                    if (id.includes("/")) {
+                        status.tris[id] = n;
+                        continue;
+                    }
                     status.tris[id] = Math.max(status.tris[id] ?? 0, n);
                     const slot = itemBuilder(id)?.slot ?? "background";
                     const budget = budgetFor(slot, id);

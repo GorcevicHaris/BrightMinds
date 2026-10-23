@@ -50,6 +50,8 @@ export interface CellRequest {
     time?: number;
     /** "low" kao u sličicama prodavnice */
     quality?: "high" | "low";
+    /** Trouglovi po delu predmeta (za podešavanje budžeta) */
+    debug?: boolean;
     /** Poza ruku (engine/pose.ts): prekrštene ruke, šake na ustima… */
     pose?: PoseName;
 }
@@ -210,6 +212,18 @@ export class Lab {
                 if (w) {
                     worn.push(w);
                     tris[id] = triangles(w.objects);
+                    if (req.debug) {
+                        for (const o of w.objects) {
+                            o.traverse((x) => {
+                                const m = x as THREE.Mesh;
+                                if (!m.isMesh) return;
+                                const g = m.geometry;
+                                const n = (g.index ? g.index.count : g.getAttribute("position").count) / 3;
+                                const key = `${id}/${m.name || "?"}`;
+                                tris[key] = (tris[key] ?? 0) + Math.round(n);
+                            });
+                        }
+                    }
                 }
             } catch (error) {
                 errors.push(`${id}: ${(error as Error).message}`);

@@ -565,7 +565,7 @@ export function polo(t: Tailor, o: { body: Cloth; collar?: string; buttons?: str
 
 export function cardigan(t: Tailor, o: { body: Cloth; under: Cloth; buttons?: string }) {
     const s = t.s;
-    tee(t, { body: o.under, neck: "scoop", offset: LAYER.top - 0.003, length: 0.05 });
+    tee(t, { body: o.under, neck: "scoop", offset: LAYER.top - 0.003, length: 0.05, sleeve: "cap" });
     const knit = clothMaterial({ kind: "knit", ...o.body });
     const rib = fabric(o.body.color, "rib", { side: THREE.DoubleSide });
     const off = LAYER.top + 0.008;
@@ -626,7 +626,7 @@ export function pufferVest(t: Tailor, o: { body: Cloth; under: Cloth; longSleeve
     const neckY = s.neckBaseY + 0.004;
     // Bez rukava: ljuska se sužava oko ramena (otvor za ruku)
     const armhole: TorsoExtra = (a, y) => quilt(a, y) - 0.014 * Math.pow(Math.abs(Math.sin(a)), 8) * smoothstep(s.chestY - 0.01, s.shoulderY - 0.02, y);
-    t.torso(hem, neckY, off, shell, armhole, 64, 64);
+    t.torso(hem, neckY, off, shell, armhole, 44, 52);
     const collarH = 0.034 * Math.min(1.3, s.height / 1.19);
     t.torso(neckY - 0.006, neckY + collarH, off - 0.008, shell, (a, y) => 0.008 + 0.004 * Math.sin(Math.PI * (y - neckY + 0.006) / (collarH + 0.006)), 10, 48);
     t.ring(neckY + collarH, off - 0.0, 0.004, 0.005, shell);

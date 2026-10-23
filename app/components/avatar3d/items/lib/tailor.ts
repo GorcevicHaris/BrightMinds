@@ -154,7 +154,7 @@ export class Tailor {
     /** Šav ili štep po trupu (tačke (a, y)) — tanka cev koja prati telo */
     stitch(points: [number, number][], offset: number, material: THREE.Material, r = 0.0011, extra?: TorsoExtra): THREE.SkinnedMesh {
         const world = points.map(([a, y]) => torsoPoint(this.s, a, y, offset, new THREE.Vector3(), extra));
-        const geometry = taperedTube(polyPath(world), () => r, seg(Math.max(12, points.length * 6), this.r, 6), seg(5, this.r, 3));
+        const geometry = taperedTube(polyPath(world), () => r, seg(Math.max(12, points.length * 4), this.r, 6), seg(5, this.r, 3));
         return this.kit.skinned(weighTorso(this.rig, geometry), material, "step");
     }
 
@@ -168,7 +168,7 @@ export class Tailor {
             path(s, tmp);
             return out.set(tmp.x, 0, tmp.z).normalize();
         };
-        const geometry = taperedTube(path, () => width / 2, seg(Math.max(16, points.length * 8), this.r, 8), seg(8, this.r, 4), outward, thick / width);
+        const geometry = taperedTube(path, () => width / 2, seg(Math.max(16, points.length * 3), this.r, 8), seg(6, this.r, 4), outward, thick / width);
         return this.kit.skinned(weighTorso(this.rig, geometry), material, "traka");
     }
 
@@ -179,7 +179,7 @@ export class Tailor {
             const a = q * Math.PI * 2;
             return out.copy(torsoPoint(this.s, a, typeof y === "number" ? y : y(a), offset, p, extra));
         };
-        return this.kit.skinned(ringTube(loop, r, seg(64, this.r, 16), 4, this.torsoW), material, "step");
+        return this.kit.skinned(ringTube(loop, r, seg(48, this.r, 16), 3, this.torsoW), material, "step");
     }
 
     /** Dugme na trupu: valjak sa zaobljenom ivicom i dve rupice (utisak) */
