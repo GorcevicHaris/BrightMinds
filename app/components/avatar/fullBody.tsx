@@ -35,9 +35,12 @@ export function fullLegs(wear: Wear | undefined, legFill: string, pants?: [strin
     );
 }
 
+/** Obuća je malo krupnija od stvarne mere, da se na malom liku vidi šta dete nosi */
+const FEET_ZOOM = `translate(120 ${GROUND_Y + 2}) scale(1.2) translate(-120 -${GROUND_Y + 2})`;
+
 /** Obuća iz prodavnice, ili podrazumevana stopala lika */
 export function fullFeet(wear: Wear | undefined, kind: CompanionKind, bare: ReactNode): ReactNode {
-    return renderWorn(wear, "feet", { variant: "full", kind }) ?? bare;
+    return <g transform={FEET_ZOOM}>{renderWorn(wear, "feet", { variant: "full", kind }) ?? bare}</g>;
 }
 
 /** Ruke koje vise pored tela: podlaktica u boji kože, rukav do lakta, šake */
@@ -49,6 +52,8 @@ export function fullArms(sleeve: string, skin: string, fist: (x: number, y: numb
         <>
             <line x1={ARM_L.x1} y1={ARM_L.y1} x2={ARM_L.x2} y2={ARM_L.y2} stroke={skin} strokeWidth="21" strokeLinecap="round" />
             <line x1={ARM_R.x1} y1={ARM_R.y1} x2={ARM_R.x2} y2={ARM_R.y2} stroke={skin} strokeWidth="21" strokeLinecap="round" />
+            {/* Tanak obris rukava: i bela odeća se jasno vidi na svetloj pozadini */}
+            <path d={`M${ARM_L.x1} ${ARM_L.y1}L${l.x} ${l.y}M${ARM_R.x1} ${ARM_R.y1}L${r.x} ${r.y}`} stroke="#1D1030" strokeOpacity="0.14" strokeWidth="29" strokeLinecap="round" />
             <line x1={ARM_L.x1} y1={ARM_L.y1} x2={l.x} y2={l.y} stroke={sleeve} strokeWidth="26" strokeLinecap="round" />
             <line x1={ARM_R.x1} y1={ARM_R.y1} x2={r.x} y2={r.y} stroke={sleeve} strokeWidth="26" strokeLinecap="round" />
             {fist(FIST_LX, FIST_Y)}

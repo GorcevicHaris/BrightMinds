@@ -229,14 +229,14 @@ function penguin(): ReactNode {
             {dotEye(6, -42, 2.6)}
             <path d="M-4 -36H4L0 -31Z" fill="#F2A516" />
             {cheeks(10, -34, 3)}
-            <path d="M-10 -56Q0 -62 10 -56" stroke="#E5484D" strokeWidth="0" />
         </>
     );
 }
 
 function pony(): ReactNode {
+    // Poni je veći od ostalih ljubimaca: malo umanjen, da stane pored drugara
     return (
-        <>
+        <g transform="translate(-4 0) scale(0.8)">
             {shadow(36)}
             <path d="M-26 0V-22M-14 0V-22M10 0V-22M22 0V-22" stroke="#F7E7FF" strokeWidth="8" strokeLinecap="round" />
             <path d="M-26 -1H-20M-14 -1H-8M10 -1H16M22 -1H28" stroke="#B9A2F2" strokeWidth="4" strokeLinecap="round" />
@@ -249,8 +249,7 @@ function pony(): ReactNode {
             <path d="M18 -54Q14 -62 22 -66" stroke="#FFD15C" strokeWidth="3" strokeLinecap="round" fill="none" />
             {dotEye(36, -58, 2.8)}
             <circle cx="42" cy="-50" r="1.2" fill="#3A2A2A" />
-            <path d="M-18 -38L-14 -34L-10 -38" stroke="#F78FB3" strokeWidth="0" />
-        </>
+        </g>
     );
 }
 

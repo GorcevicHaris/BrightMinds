@@ -63,7 +63,7 @@ export const FOOT_RX = 143;
 export const FOOT_Y = 398;
 export const GROUND_Y = 410;
 /** Ljubimac: sredina na tlu levo od drugara */
-export const PET_X = -14;
+export const PET_X = -10;
 
 export const VIEWBOX = {
     bust: "0 0 240 280",

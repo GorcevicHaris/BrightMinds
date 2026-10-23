@@ -7,7 +7,7 @@ import type { CompanionKind } from "../companions";
 import type { WearVariant } from "../wearables";
 import { gloss, heartPath, itemsFor, mirror, sparkle, starPath } from "./art";
 
-/** Deo cipele: putanja leve, boja, i (po želji) obris */
+/** Deo cipele: putanja leve, boja, i (po želji) linija; „none” kao boja = samo linija */
 type Part = [d: string, fill: string, stroke?: string];
 
 /** Crta deo levo i u ogledalu desno */
@@ -16,7 +16,7 @@ function pair(parts: Part[]): ReactNode {
         <g key={i}>
             {[d, mirror(d)].map((path, side) =>
                 stroke ? (
-                    <path key={side} d={path} fill={fill === "none" ? "none" : fill} stroke={stroke} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
+                    <path key={side} d={path} fill={fill} stroke={stroke} strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" />
                 ) : (
                     <path key={side} d={path} fill={fill} />
                 )
@@ -109,7 +109,7 @@ function rainBoots(color: string, shade: string, spots?: string): () => ReactNod
     return () => (
         <>
             {pair([
-                [BOOT, color],
+                [BOOT, color, shade],
                 [BOOT_SOLE, shade],
                 ["M84 352H114V358H84Z", shade],
             ])}
@@ -174,7 +174,7 @@ function iceSkates(): ReactNode {
     return (
         <>
             {pair([
-                [BOOT, "#fff"],
+                [BOOT, "#fff", "#AEB9C9"],
                 ["M84 352H114V358H84Z", "#DDE4EE"],
                 ["M88 364L110 368M88 374L110 377", "none", "#AEB9C9"],
                 ["M80 412V418M112 412V418", "none", "#AEB9C9"],
@@ -188,7 +188,7 @@ function rollerSkates(): ReactNode {
     return (
         <>
             {pair([
-                [BOOT, "#F45B8D"],
+                [BOOT, "#F45B8D", "#D93C70"],
                 ["M84 352H114V358H84Z", "#fff"],
                 [BOOT_SOLE, "#fff"],
                 ["M84 368L110 372M84 378L110 381", "none", "#fff"],
@@ -205,7 +205,7 @@ function snowBoots(): ReactNode {
     return (
         <>
             {pair([
-                [BOOT, "#9A6236"],
+                [BOOT, "#9A6236", "#7A4A28"],
                 [BOOT_SOLE, "#5C3A25"],
             ])}
             {circles([80, 89, 98, 107, 116].map((x) => [x, 356, 6, "#fff"] as [number, number, number, string]))}
@@ -217,7 +217,7 @@ function cowboyBoots(): ReactNode {
     return (
         <>
             {pair([
-                ["M84 350L90 356L96 350L102 356L108 350L114 356V390Q120 393 120 402V406Q120 412 112 412H80Q72 412 72 404Q74 392 84 390Z", "#9A6236"],
+                ["M84 350L90 356L96 350L102 356L108 350L114 356V390Q120 393 120 402V406Q120 412 112 412H80Q72 412 72 404Q74 392 84 390Z", "#9A6236", "#7A4A28"],
                 ["M72 404H120V406Q120 412 112 412H80Q72 412 72 406Z", "#5C3A25"],
                 ["M90 368Q99 376 108 368", "none", "#E9A10E"],
             ])}
@@ -244,8 +244,7 @@ function balletFlats(): ReactNode {
     return (
         <>
             {pair([
-                [FLAT, "#FFB8CB"],
-                ["M80 392Q74 376 86 360M114 392Q120 376 108 360", "none", "#F78FB3"],
+                [FLAT, "#FFB8CB", "#F78FB3"],
             ])}
             {circles([[97, 393, 3, "#F45B8D"]])}
         </>
@@ -280,7 +279,7 @@ function bigBoots(color: string, shade: string, band?: string, emblem?: string):
     return () => (
         <>
             {pair([
-                ["M82 348H116V390Q122 393 122 402V406Q122 413 114 413H78Q72 413 72 404Q72 392 82 390Z", color],
+                ["M82 348H116V390Q122 393 122 402V406Q122 413 114 413H78Q72 413 72 404Q72 392 82 390Z", color, shade],
                 ["M72 404H122V406Q122 413 114 413H78Q72 413 72 406Z", shade],
                 ["M82 348H116V356H82Z", shade],
             ])}

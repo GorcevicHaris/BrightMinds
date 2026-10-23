@@ -27,10 +27,10 @@ const balloonOne = () => (
 
 const balloonsThree = () => (
     <>
-        <path d="M0 0Q-8 -60 -6 -118M0 0Q10 -70 34 -142M0 0Q20 -50 60 -104" stroke="#8C98AB" strokeWidth="2" fill="none" />
+        <path d="M0 0Q-8 -60 -6 -118M0 0Q10 -70 30 -142M0 0Q18 -50 52 -104" stroke="#8C98AB" strokeWidth="2" fill="none" />
         {balloon(-6, -148, "#3D9BE9", "#2C6BC0")}
-        {balloon(60, -134, "#FFD15C", "#E9A10E")}
-        {balloon(32, -174, "#F45B8D", "#D93C70")}
+        {balloon(52, -134, "#FFD15C", "#E9A10E")}
+        {balloon(28, -174, "#F45B8D", "#D93C70")}
     </>
 );
 
@@ -119,7 +119,7 @@ const kite = () => (
 );
 
 const umbrella = () => (
-    <g transform="rotate(18)">
+    <g transform="rotate(18) scale(0.8)">
         <path d="M0 6V-96" stroke="#5B6475" strokeWidth="4" strokeLinecap="round" />
         <path d="M0 6Q0 16 -8 16Q-14 16 -14 10" stroke="#5B6475" strokeWidth="4" strokeLinecap="round" fill="none" />
         <path d="M-58 -92Q-56 -152 0 -154Q56 -152 58 -92Q48 -100 39 -92Q29 -100 19 -92Q10 -100 0 -92Q-10 -100 -19 -92Q-29 -100 -39 -92Q-48 -100 -58 -92Z" fill="#8E77E6" />

@@ -17,15 +17,15 @@ function straps(color: string, buckle = "#FFC83D"): () => ReactNode {
     );
 }
 
-const BAG = "M40 206Q40 188 60 188H180Q200 188 200 206V312Q200 328 184 328H56Q40 328 40 312Z";
+const BAG = "M48 208Q48 190 66 190H174Q192 190 192 208V308Q192 322 178 322H62Q48 322 48 308Z";
 
 function backpack(color: string, shade: string, extra?: ReactNode): () => ReactNode {
     return () => (
         <>
             <path d={BAG} fill={color} />
-            <path d="M40 206Q40 188 60 188H180Q200 188 200 206V222H40Z" fill={shade} />
-            <rect x="34" y="250" width="14" height="44" rx="6" fill={shade} />
-            <rect x="192" y="250" width="14" height="44" rx="6" fill={shade} />
+            <path d="M48 208Q48 190 66 190H174Q192 190 192 208V222H48Z" fill={shade} />
+            <rect x="40" y="250" width="14" height="44" rx="6" fill={shade} />
+            <rect x="186" y="250" width="14" height="44" rx="6" fill={shade} />
             {extra}
         </>
     );
@@ -50,24 +50,24 @@ function bearPack(): ReactNode {
     );
 }
 
-const CAPE = "M82 206Q44 260 30 398Q120 414 210 398Q196 260 158 206Z";
+const CAPE = "M76 204Q26 250 10 398Q120 416 230 398Q214 250 164 204Z";
 
 function cape(color: string, shade: string, trim?: string, stars?: string): () => ReactNode {
     return () => (
         <>
             <path d={CAPE} fill={color} />
             <path d="M120 214V404" stroke={shade} strokeWidth="3" opacity="0.4" />
-            <path d="M62 300Q48 350 44 396M178 300Q192 350 196 396" stroke={shade} strokeWidth="4" opacity="0.5" fill="none" strokeLinecap="round" />
-            {trim && <path d="M30 398Q120 414 210 398" stroke={trim} strokeWidth="10" strokeLinecap="round" fill="none" />}
-            {trim && [52, 84, 120, 156, 188].map((x) => <circle key={x} cx={x} cy={r1(401 + Math.sin(((x - 30) / 180) * Math.PI) * 6)} r="2" fill="#2A2733" />)}
+            <path d="M40 300Q28 350 26 396M200 300Q212 350 214 396" stroke={shade} strokeWidth="4" opacity="0.5" fill="none" strokeLinecap="round" />
+            {trim && <path d="M10 398Q120 416 230 398" stroke={trim} strokeWidth="10" strokeLinecap="round" fill="none" />}
+            {trim && [32, 76, 120, 164, 208].map((x) => <circle key={x} cx={x} cy={r1(401 + Math.sin(((x - 10) / 220) * Math.PI) * 6)} r="2" fill="#2A2733" />)}
             {stars &&
                 [
-                    [44, 340],
-                    [60, 270],
-                    [190, 330],
-                    [182, 262],
-                    [40, 386],
-                    [200, 382],
+                    [24, 340],
+                    [34, 270],
+                    [214, 330],
+                    [206, 262],
+                    [22, 384],
+                    [218, 380],
                 ].map(([x, y]) => <path key={`${x}-${y}`} d={starPath(x, y, 6, 2.6)} fill={stars} />)}
         </>
     );
@@ -109,8 +109,8 @@ function angelWings(): ReactNode {
     const lines = "M100 236Q50 206 0 218M100 244Q46 236 -2 252M100 252Q50 262 8 280";
     return (
         <>
-            <path d={`${wing}${mirror(wing)}`} fill="#fff" stroke="#DDE4EE" strokeWidth="3" strokeLinejoin="round" />
-            <path d={`${lines}${mirror(lines)}`} stroke="#DDE4EE" strokeWidth="3" fill="none" strokeLinecap="round" />
+            <path d={`${wing}${mirror(wing)}`} fill="#fff" stroke="#AEB9C9" strokeWidth="3" strokeLinejoin="round" />
+            <path d={`${lines}${mirror(lines)}`} stroke="#C7D0DD" strokeWidth="3" fill="none" strokeLinecap="round" />
         </>
     );
 }
@@ -175,8 +175,8 @@ function beeWings(): ReactNode {
     return (
         <>
             {[
-                [70, 196, -30, 34, 18],
-                [62, 248, 20, 26, 14],
+                [30, 186, -50, 42, 22],
+                [34, 252, 40, 30, 16],
             ].map(([x, y, deg, ry, rx]) => (
                 <g key={`${x}-${y}`}>
                     <ellipse cx={x} cy={y} rx={rx} ry={ry} fill="#E8F6FF" fillOpacity="0.8" stroke="#AEB9C9" strokeWidth="2.5" transform={`rotate(${deg} ${x} ${y})`} />
@@ -269,7 +269,7 @@ const back = itemsFor("back");
 
 export const BACKS = [
     back("ranac", "Ranac", 8, backpack("#3D86E0", "#2C6BC0"), { front: straps("#2C6BC0") }),
-    back("crveni-ranac", "Crveni ranac sa zvezdom", 9, backpack("#E5484D", "#B8323A", <path d={starPath(41, 272, 7, 3)} fill="#FFD15C" />), { front: straps("#B8323A") }),
+    back("crveni-ranac", "Crveni ranac sa zvezdom", 9, backpack("#E5484D", "#B8323A", <path d={starPath(47, 272, 6.5, 2.8)} fill="#FFD15C" />), { front: straps("#B8323A") }),
     back("ranac-meda", "Ranac meda", 10, bearPack, { front: straps("#8A5A30") }),
     back("plast", "Plašt sa zvezdama", 12, cape("#6C55C9", "#5641A8", undefined, "#FFD15C"), { front: clasp("#FFD15C") }),
     back("krila-pcelice", "Krila pčelice", 14, beeWings),

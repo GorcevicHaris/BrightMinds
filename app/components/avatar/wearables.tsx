@@ -99,8 +99,9 @@ export function wornItem(wear: Wear | undefined, slot: WearSlot): WearItem | und
 
 /** Gde se crta predmet sa sopstvenim koordinatama (u ruci, ljubimac) */
 const PLACE: Partial<Record<WearSlot, string>> = {
-    hand: `translate(${HOLD_X} ${HOLD_Y})`,
-    pet: `translate(${PET_X} ${GROUND_Y})`,
+    // Predmet u ruci je malo krupniji od prave mere, da se na malom liku jasno vidi
+    hand: `translate(${HOLD_X} ${HOLD_Y}) scale(1.25)`,
+    pet: `translate(${PET_X} ${GROUND_Y}) scale(1.4)`,
 };
 
 interface RenderOptions {

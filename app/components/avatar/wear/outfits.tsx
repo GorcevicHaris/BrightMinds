@@ -782,11 +782,11 @@ const clouds = (variant?: WearVariant) => scatter(variant, 30, 10, (x, y) => clo
 
 export const OUTFITS = [
     // Majice
-    outfit("majica-pruge", "Majica na plave pruge", 5, tee("#fff", "#3D7BE0", undefined, JEANS_SHORTS, stripes("#3D7BE0"))),
-    outfit("majica-crvene-pruge", "Majica na crvene pruge", 5, tee("#fff", "#E5484D", undefined, ["shorts", "#3A4A80", "#2E3A66"], stripes("#E5484D", 18, 8))),
+    outfit("majica-pruge", "Majica na plave pruge", 5, tee("#fff", "#3D7BE0", undefined, JEANS_SHORTS, stripes("#3D7BE0")), "#3D7BE0"),
+    outfit("majica-crvene-pruge", "Majica na crvene pruge", 5, tee("#fff", "#E5484D", undefined, ["shorts", "#3A4A80", "#2E3A66"], stripes("#E5484D", 18, 8)), "#E5484D"),
     base("majica-zvezda", "Majica sa zvezdom", 6, (variant) => (variant === "full" ? garment(tee("#8E77E6", "#7258C9", bigStar("#FFD15C", "#F2A516")))(variant) : starTeeBust()), { sleeve: "#7258C9", lower: true }),
     outfit("majica-duga", "Majica sa dugom", 6, tee("#7CC6F2", "#4FA6DA", rainbow, JEANS_SHORTS)),
-    outfit("majica-srce", "Majica sa srcem", 6, tee("#FFB8CB", "#E9708F", heart("#E5484D"), ["shorts", "#fff", "#DDE4EE"])),
+    outfit("majica-srce", "Majica sa srcem", 6, tee("#FFB8CB", "#E9708F", heart("#E5484D"), ["shorts", "#8E77E6", "#7258C9"])),
     outfit("majica-sunce", "Majica sa suncem", 6, tee("#3BB2A0", "#2C8F80", sun, JEANS_SHORTS)),
     outfit("majica-tufne", "Majica na tufne", 6, tee("#FFD15C", "#F2A516", undefined, ["shorts", "#3BB273", "#2A8E57"], dots("#fff"))),
     outfit("majica-auto", "Majica sa autićem", 7, tee("#DDE4EE", "#AEB9C9", car)),
@@ -810,7 +810,7 @@ export const OUTFITS = [
     outfit("letnja-haljina", "Letnja haljina", 11, dress("#FFD15C", "#F2A516", heartSpot("#F45B8D"))),
     outfit("haljina-zvezde", "Haljina sa zvezdama", 13, dress("#8E77E6", "#7258C9", star("#FFD15C"), starsAll("#FFD15C"))),
     outfit("kombinezon", "Kombinezon", 10, { color: "#FFD15C", shade: "#F2A516", deco: overallsDeco("#4A6FB5", "#3A5A9A"), lower: JEANS }),
-    outfit("roze-kombinezon", "Roze kombinezon", 10, { color: "#fff", shade: "#DDE4EE", deco: overallsDeco("#F78FB3", "#E0709A"), lower: ["pants", "#F78FB3", "#E0709A"] }),
+    outfit("roze-kombinezon", "Roze kombinezon", 10, { color: "#BFE9FF", shade: "#8FCBEA", deco: overallsDeco("#F78FB3", "#E0709A"), lower: ["pants", "#F78FB3", "#E0709A"] }),
     // Trenerke, pidžame, jakne
     outfit("crvena-trenerka", "Crvena trenerka", 11, tracksuit("#E5484D", "#C53035")),
     outfit("plava-trenerka", "Plava trenerka", 11, tracksuit("#3D7BE0", "#2C5DB0")),
@@ -824,10 +824,10 @@ export const OUTFITS = [
     outfit("roze-jakna", "Roze zimska jakna", 15, puffer("#F78FB3", "#E0709A")),
     outfit("zelena-jakna", "Zelena zimska jakna", 15, puffer("#3BB273", "#2A8E57")),
     // Leto i sport
-    outfit("kupaci-pruge", "Kupaći sa prugama", 8, tee("#fff", "#3BB2A0", undefined, ["shorts", "#3BB2A0", "#2C8F80"], stripes("#3BB2A0", 14, 6))),
+    outfit("kupaci-pruge", "Kupaći sa prugama", 8, tee("#fff", "#3BB2A0", undefined, ["shorts", "#3BB2A0", "#2C8F80"], stripes("#3BB2A0", 14, 6)), "#3BB2A0"),
     outfit("kupaci-ribice", "Kupaći sa ribicama", 8, tee("#7ED6F2", "#4FB7DD", () => [fish(104, 244, "#FF8A3D"), fish(138, 258, "#FFD15C", true), fish(112, 270, "#F45B8D")], ["shorts", "#FF8A3D", "#E5732A"])),
     outfit("kupaci-cvetovi", "Kupaći sa cvetovima", 8, tee("#F45B8D", "#D93C70", undefined, ["shorts", "#FFD15C", "#F2A516"], (variant) => scatter(variant, 28, 9, (x, y) => flower(x, y, "#FFD15C", 0.75)))),
-    outfit("fudbalski-dres", "Fudbalski dres", 12, { color: "#3BB273", shade: "#fff", neck: "v", deco: soccerBall, pattern: (variant) => columns(variant, [50], 6, "#fff"), lower: ["shorts", "#fff", "#DDE4EE"] }),
+    outfit("fudbalski-dres", "Fudbalski dres", 12, { color: "#3BB273", shade: "#fff", neck: "v", deco: soccerBall, pattern: (variant) => columns(variant, [50], 6, "#fff"), lower: ["shorts", "#3A3546", "#22202A"] }),
     outfit("kosarkaski-dres", "Košarkaški dres", 12, { color: "#FF8A3D", shade: "#fff", neck: "none", deco: () => (
             <>
                 {tankTrim("#fff")()}
