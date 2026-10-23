@@ -52,6 +52,7 @@ const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
     sequence: dynamic(() => import("@/app/components/games/SequenceGame"), { ssr: false, loading: MirrorLoading }),
     where: dynamic(() => import("@/app/components/games/WhereGame"), { ssr: false, loading: MirrorLoading }),
     uses: dynamic(() => import("@/app/components/games/UsesGame"), { ssr: false, loading: MirrorLoading }),
+    counting: dynamic(() => import("@/app/components/games/CountingGame"), { ssr: false, loading: MirrorLoading }),
     gaze: dynamic(() => import("@/app/components/games/GazeGame"), { ssr: false, loading: MirrorLoading }),
 };
 
