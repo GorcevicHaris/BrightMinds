@@ -4,11 +4,13 @@
 // Sve je u koordinatama kosti glave (0, 0, 0 = vrh vrata).
 
 import * as THREE from "three";
-import type { Expression } from "../catalog";
+import type { FaceControl, FaceExpression } from "../contract";
+import { FACE_POSES, mixPose, type FacePose } from "./expressions";
+import { Mouth, mouthSurfaceFrom } from "./mouth";
 import { basicMaterial, skinMaterial } from "./materials";
 import type { BodyShape } from "./rig";
 import { buildSurface, polyPath, taperedTube, type SurfaceFn } from "./surface";
-import { irisTexture, mouthTexture } from "./textures";
+import { irisTexture } from "./textures";
 
 const gauss3 = (x: number, y: number, z: number, cx: number, cy: number, cz: number, s: number) =>
     Math.exp(-((x - cx) ** 2 + (y - cy) ** 2 + (z - cz) ** 2) / (2 * s * s));
@@ -112,17 +114,20 @@ export interface FaceRig {
     upperLids: THREE.Object3D[];
     lowerLids: THREE.Object3D[];
     eyes: THREE.Object3D[];
-    mouth: THREE.Mesh;
+    mouth: Mouth;
     brows: THREE.Object3D[];
     ears: THREE.Mesh[];
-    setExpression: (expression: Expression) => void;
+    /** Lice po ugovoru (izraz, treptanje, usta pri govoru) */
+    control: FaceControl;
+    setExpression: (expression: FaceExpression) => void;
     /** 0 = otvoreno, 1 = zatvoreno */
     setBlink: (amount: number) => void;
-    expression: Expression;
+    expression: FaceExpression;
+    dispose: () => void;
 }
 
 /** Pravi glavu sa licem; `browColor` je boja kose (tamnija) */
-export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browColor: string, expression: Expression): FaceRig {
+export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browColor: string, expression: FaceExpression = "neutral"): FaceRig {
     const group = new THREE.Group();
     group.name = "glava";
     const geometry = buildSurface(info.fn, { nu: 88, nv: 64, closedU: true, inside: () => info.center.clone() });
@@ -238,7 +243,7 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
     nose.position.copy(info.point(0.5, nv)).addScaledVector(info.normal(0.5, nv), child ? 0.0015 : 0.004);
     group.add(nose);
 
-    // ── Obrve ──
+    // ── Obrve (svaka u svojoj grupi sa središtem u sredini obrve, da se diže i naginje) ──
     const browMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(browColor).multiplyScalar(0.85), roughness: 0.85 });
     const brows: THREE.Object3D[] = [];
     for (const side of [1, -1]) {
@@ -250,26 +255,82 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
             const v = info.eyeV - 0.105 - Math.sin(t * Math.PI) * 0.018 + t * 0.008;
             pts.push(info.point(u, v).addScaledVector(info.normal(u, v), 0.0026));
         }
+        const pivot = pts[3].clone();
+        for (const p of pts) p.sub(pivot);
         const tube = new THREE.Mesh(taperedTube(polyPath(pts), (s) => {
             const thick = girlish ? 0.0048 : 0.006;
             return thick * (0.3 + 0.7 * Math.pow(Math.sin(Math.min(1, s * 1.1 + 0.04) * Math.PI), 0.6));
         }, 24, 10, new THREE.Vector3(0, 0, 1), 0.5), browMat);
         brow.add(tube);
+        brow.position.copy(pivot);
+        brow.userData.rest = pivot.clone();
         group.add(brow);
         brows.push(brow);
     }
 
-    // ── Usta (nalepnica koja prati površinu) ──
-    const mouthGeo = buildSurface((u, v, out) => {
-        const uu = 0.5 + (u - 0.5) * 0.115;
-        const vv = (child ? 0.72 : 0.71) + (v - 0.5) * 0.085;
-        return info.point(uu, vv, out).addScaledVector(info.normal(uu, vv), 0.0008);
-    }, { nu: 16, nv: 8, inside: () => info.center.clone(), uv: (u, v) => [u, 1 - v] });
-    const lip = "#" + new THREE.Color(skinHex).lerp(new THREE.Color("#A8303E"), 0.55).getHexString();
-    const mouthMat = new THREE.MeshPhysicalMaterial({ map: mouthTexture(expression, lip), transparent: true, roughness: 0.5, polygonOffset: true, polygonOffsetFactor: -2, depthWrite: false });
-    const mouth = new THREE.Mesh(mouthGeo, mouthMat);
-    mouth.renderOrder = 2;
-    group.add(mouth);
+    // ── Nozdrve (blago tamnije udubljenje ispod nosa) ──
+    const nostrilMat = skinMaterial("#" + new THREE.Color(skinHex).multiplyScalar(0.72).getHexString());
+    for (const side of [1, -1]) {
+        const nostril = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), nostrilMat);
+        nostril.scale.set(child ? 0.0032 : 0.0036, 0.0018, 0.0028);
+        const nu = 0.5 + side * (child ? 0.012 : 0.014);
+        const nvv = nv + (child ? 0.022 : 0.03);
+        nostril.position.copy(info.point(nu, nvv)).addScaledVector(info.normal(nu, nvv), child ? 0.004 : 0.006);
+        group.add(nostril);
+    }
+
+    // ── Usta (prava 3D površina: usne, unutrašnjost, zubi, jezik) ──
+    const lip = "#" + new THREE.Color(skinHex).lerp(new THREE.Color("#B23A48"), girlish ? 0.5 : 0.36).getHexString();
+    const mouth = new Mouth(mouthSurfaceFrom(info.fn, info.normal, 0.5, child ? 0.72 : 0.71, 0.0021, 0.0033, child ? 0.0042 : 0.0048), lip);
+    group.add(mouth.group);
+
+    // ── Izraz: brojevi iz FACE_POSES, meko mešanje; usta dodatno otvara glas ──
+    let from: FacePose = FACE_POSES[expression];
+    let target: FacePose = FACE_POSES[expression];
+    let shown: FacePose = target;
+    let blink = 0;
+    let speech = 0;
+    let round = 0;
+    const apply = () => {
+        const pose = shown;
+        brows.forEach((brow, i) => {
+            const side = i === 0 ? 1 : -1;
+            const rest = brow.userData.rest as THREE.Vector3;
+            brow.position.set(rest.x, rest.y + pose.browY + (side === 1 ? pose.browLeft : 0), rest.z);
+            brow.rotation.z = side * pose.browTilt;
+        });
+        // Ivica gornjeg kapka: otvoreno ≈ 37° iznad središta, zatvoreno ≈ 12° ispod
+        const openEdge = 0.64 * pose.eye - (pose.eye - 1) * 0.2;
+        const upperEdge = THREE.MathUtils.lerp(openEdge, -0.22, blink);
+        const lowerRest = THREE.MathUtils.lerp(-0.84, -0.42, pose.lid);
+        const lowerEdge = THREE.MathUtils.lerp(lowerRest, -0.22, blink);
+        upperLids.forEach((lid) => (lid.rotation.x = -upperEdge));
+        lowerLids.forEach((lid) => (lid.rotation.x = -lowerEdge));
+        const open = Math.min(1, pose.open + speech * 0.85);
+        mouth.setShape({ width: pose.width * (1 - speech * 0.12), smile: pose.smile * (1 - speech * 0.35), open, round: round * speech });
+    };
+
+    const control: FaceControl = {
+        setExpression: (next, weight = 1) => {
+            const goal = FACE_POSES[next];
+            if (goal !== target) {
+                from = shown;
+                target = goal;
+                rig.expression = next;
+            }
+            shown = mixPose(from, target, Math.min(1, Math.max(0, weight)));
+            apply();
+        },
+        setBlink: (amount) => {
+            blink = amount;
+            apply();
+        },
+        setMouth: (open, r = 0) => {
+            speech = open;
+            round = r;
+            apply();
+        },
+    };
 
     const rig: FaceRig = {
         group,
@@ -281,23 +342,11 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
         brows,
         ears,
         expression,
-        setExpression: (next) => {
-            rig.expression = next;
-            mouthMat.map = mouthTexture(next, lip);
-            mouthMat.needsUpdate = true;
-            const raise = next === "happy" ? 0.004 : 0;
-            brows.forEach((brow) => (brow.position.y = raise));
-            rig.setBlink(0);
-        },
-        setBlink: (amount) => {
-            // Ivica gornjeg kapka: otvoreno ≈ 22° iznad središta, zatvoreno ≈ 12° ispod
-            const happy = rig.expression === "happy";
-            const upperEdge = THREE.MathUtils.lerp(0.64, -0.22, amount);
-            const lowerEdge = THREE.MathUtils.lerp(happy ? -0.66 : -0.84, -0.22, amount);
-            upperLids.forEach((lid) => (lid.rotation.x = -upperEdge));
-            lowerLids.forEach((lid) => (lid.rotation.x = -lowerEdge));
-        },
+        control,
+        setExpression: (next) => control.setExpression(next, 1),
+        setBlink: control.setBlink,
+        dispose: () => mouth.dispose(),
     };
-    rig.setBlink(0);
+    apply();
     return rig;
 }
