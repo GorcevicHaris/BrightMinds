@@ -135,15 +135,6 @@ const PROPS: Record<PropId, Draw> = {
             <path d="M-10 -50 L-6 -64 H6 L10 -50Z" fill="#f4d48a" {...stroke("#d9a84a")} />
         </g>
     ),
-    tv: () => (
-        <g>
-            <rect x={-30} y={-46} width={60} height={38} rx={4} fill="#2f3448" />
-            <rect x={-26} y={-42} width={52} height={30} rx={2} fill="#8fd0f0" />
-            <circle cx={-8} cy={-28} r={6} fill="#f4c94a" />
-            <path d="M-26 -16 Q0 -26 26 -16 V-12 H-26Z" fill="#8fd07a" />
-            <rect x={-12} y={-8} width={24} height={8} fill="#4a4f63" />
-        </g>
-    ),
     tvOff: () => (
         <g>
             <rect x={-30} y={-46} width={60} height={38} rx={4} fill="#2f3448" />
@@ -210,13 +201,6 @@ const PROPS: Record<PropId, Draw> = {
             <rect x={-26} y={-30} width={52} height={6} rx={2} fill={WOOD} {...stroke(WOOD_DARK)} />
             <rect x={-22} y={-24} width={5} height={24} fill="#7a8394" />
             <rect x={17} y={-24} width={5} height={24} fill="#7a8394" />
-        </g>
-    ),
-    board: () => (
-        <g>
-            <rect x={-30} y={-40} width={60} height={34} rx={2} fill="#3f6f5a" {...stroke(WOOD, 3)} />
-            <path d="M-20 -28 H6 M-20 -18 H14" stroke="#ffffff" strokeWidth={1.6} opacity={0.6} strokeLinecap="round" />
-            <path d="M-20 -6 L-26 0 M20 -6 L26 0" stroke={WOOD_DARK} strokeWidth={2.5} />
         </g>
     ),
     speaker: () => (
@@ -293,12 +277,6 @@ const PROPS: Record<PropId, Draw> = {
             <rect x={-14} y={-24} width={28} height={6} rx={2} fill={tone} {...stroke("#00000033")} />
             <rect x={-2.5} y={-24} width={5} height={24} fill="#f6d84a" />
             <path d="M0 -24 C-10 -34 -12 -24 0 -24 C12 -34 10 -24 0 -24Z" fill="#f6d84a" {...stroke("#d9a84a", 1)} />
-        </g>
-    ),
-    gifts: () => (
-        <g>
-            <g transform="translate(-14 0)">{PROPS.gift("#6cc0e8")}</g>
-            <g transform="translate(12 0) scale(0.8)">{PROPS.gift("#8fd07a")}</g>
         </g>
     ),
     cake: () => (
@@ -588,18 +566,6 @@ const PROPS: Record<PropId, Draw> = {
             ))}
         </g>
     ),
-    partyHat: () => <path d="M-7 0 L0 -18 L7 0 Z" fill="#f4b73f" {...stroke("#d97f06")} />,
-    candles: () => (
-        <g>
-            {[-6, 0, 6].map((x) => (
-                <g key={x}>
-                    <rect x={x - 1.2} y={-8} width={2.4} height={8} fill="#6cc0e8" />
-                    <path d={`M${x} -13 Q${x + 2} -10 ${x} -8 Q${x - 2} -10 ${x} -13Z`} fill="#f6a23e" />
-                </g>
-            ))}
-        </g>
-    ),
-
     // ── Hrana i posuđe ────────────────────────────────────────────────────────
     iceCream: (tone = "#f7a8c8") => (
         <g>
@@ -617,22 +583,7 @@ const PROPS: Record<PropId, Draw> = {
         </g>
     ),
     cone: () => <ConeBody />,
-    chocolate: () => (
-        <g>
-            <rect x={-9} y={-14} width={18} height={14} rx={1.5} fill="#7a4a28" />
-            <path d="M-3 -14 V0 M3 -14 V0 M-9 -7 H9" stroke="#5a3418" strokeWidth={1} />
-            <path d="M-9 -6 H9 V0 H-9Z" fill="#e8605a" />
-        </g>
-    ),
     wrapper: () => <path d="M-10 0 L-8 -6 L-2 -4 L2 -8 L8 -5 L10 0Z" fill="#e8605a" {...stroke("#b9443e", 1)} />,
-    bowl: () => (
-        <g>
-            <path d="M-14 -10 H14 Q12 0 0 0 Q-12 0 -14 -10Z" fill="#6cc0e8" {...stroke("#3f8fd8")} />
-            <ellipse cx={0} cy={-10} rx={14} ry={3} fill="#f4e6c8" />
-            <circle cx={-4} cy={-11} r={2} fill="#e8a23e" />
-            <circle cx={3} cy={-11} r={2} fill="#e8605a" />
-        </g>
-    ),
     bowlEmpty: () => (
         <g>
             <path d="M-14 -10 H14 Q12 0 0 0 Q-12 0 -14 -10Z" fill="#6cc0e8" {...stroke("#3f8fd8")} />
@@ -675,13 +626,6 @@ const PROPS: Record<PropId, Draw> = {
             <path d="M-5.5 -10 H5.5 L5 0 H-5Z" fill="#8fd0f0" opacity={0.8} />
         </g>
     ),
-    jug: () => (
-        <g>
-            <path d="M-8 -24 H6 L8 0 H-8Z" fill="#e6f4fb" {...stroke("#9ac4dc")} />
-            <path d="M-8 -14 H7 L8 0 H-8Z" fill="#8fd0f0" opacity={0.8} />
-            <path d="M6 -20 Q14 -18 7 -6" fill="none" stroke="#9ac4dc" strokeWidth={2} />
-        </g>
-    ),
     juiceSpill: () => (
         <g>
             <path d="M-22 0 Q-24 -5 -12 -5 Q-4 -9 6 -5 Q20 -6 22 0Z" fill="#f6a23e" opacity={0.85} />
@@ -722,12 +666,6 @@ const PROPS: Record<PropId, Draw> = {
             <path d="M10 -4 l-3 -2 v4z M18 -4 l3 -2 v4z" fill="#f4c94a" />
         </g>
     ),
-    tea: () => (
-        <g>
-            {PROPS.cup("#f28b6e")}
-            <path d="M-2 -18 Q-4 -22 -2 -26 M2 -18 Q0 -22 2 -26" fill="none" stroke="#c9c2b6" strokeWidth={1.2} strokeLinecap="round" />
-        </g>
-    ),
     syrup: () => (
         <g>
             <rect x={-6} y={-18} width={12} height={18} rx={2} fill="#c86a4a" {...stroke("#8a4a2a")} />
@@ -758,13 +696,6 @@ const PROPS: Record<PropId, Draw> = {
             <circle cx={0} cy={-56} r={22} fill="#7fc46a" />
             <circle cx={-14} cy={-46} r={13} fill="#8fd07a" />
             <circle cx={14} cy={-48} r={13} fill="#72b85e" />
-        </g>
-    ),
-    bush: () => (
-        <g fill="#7fc46a">
-            <circle cx={-10} cy={-8} r={9} />
-            <circle cx={6} cy={-10} r={11} />
-            <circle cx={16} cy={-6} r={7} fill="#72b85e" />
         </g>
     ),
     flowers: () => (
@@ -832,22 +763,6 @@ const PROPS: Record<PropId, Draw> = {
             <path d="M-26 -8 V-30 H26 V-8" fill="none" stroke="#e8605a" strokeWidth={3} strokeLinejoin="round" />
         </g>
     ),
-    sandbox: () => (
-        <g>
-            <rect x={-40} y={-10} width={80} height={10} fill={WOOD} />
-            <ellipse cx={0} cy={-10} rx={38} ry={5} fill="#f1dfb0" />
-        </g>
-    ),
-    sandcastle: () => (
-        <g fill="#e8c88a" {...stroke("#c9a46a", 1.2)}>
-            <rect x={-18} y={-18} width={36} height={18} />
-            <rect x={-20} y={-28} width={10} height={12} />
-            <rect x={10} y={-28} width={10} height={12} />
-            <rect x={-6} y={-34} width={12} height={18} />
-            <path d="M0 -34 V-42 L7 -39 L0 -37" fill="#e8605a" stroke="none" />
-            <path d="M-4 0 V-8 Q0 -12 4 -8 V0Z" fill="#c9a46a" />
-        </g>
-    ),
     sandcastleCrushed: () => (
         <g>
             <path d="M-24 0 Q-22 -8 -12 -9 Q-6 -15 2 -10 Q10 -14 16 -8 Q24 -7 26 0Z" fill="#e8c88a" {...stroke("#c9a46a", 1.2)} />
@@ -884,15 +799,6 @@ const PROPS: Record<PropId, Draw> = {
             <rect x={-20} y={-12} width={40} height={5} rx={2} fill="#e8605a" />
             <path d="M-18 -7 V-2 M16 -7 V-2" stroke="#6a7290" strokeWidth={2} />
             <path d="M-24 -2 H20 Q26 -2 26 -8" fill="none" stroke="#6a7290" strokeWidth={2.4} strokeLinecap="round" />
-        </g>
-    ),
-    house: (tone = "#f6d3a8") => (
-        <g>
-            <rect x={-26} y={-40} width={52} height={40} fill={tone} {...stroke("#00000022")} />
-            <path d="M-32 -38 L0 -62 L32 -38Z" fill="#d9765a" />
-            <rect x={-8} y={-24} width={16} height={24} rx={1.5} fill="#a8794e" />
-            <rect x={-20} y={-32} width={10} height={10} fill="#ffffff" />
-            <rect x={10} y={-32} width={10} height={10} fill="#ffffff" />
         </g>
     ),
     school: () => (
@@ -949,14 +855,6 @@ const PROPS: Record<PropId, Draw> = {
             ))}
             <circle cx={-26} cy={-5} r={6} fill="#3b3f52" />
             <circle cx={26} cy={-5} r={6} fill="#3b3f52" />
-        </g>
-    ),
-    car: (tone = "#e8605a") => (
-        <g>
-            <path d="M-30 -8 V-18 Q-28 -22 -18 -22 L-10 -32 H12 L20 -22 Q30 -21 30 -14 V-8Z" fill={tone} {...stroke("#00000033")} />
-            <rect x={-6} y={-29} width={14} height={7} fill="#dff1fb" />
-            <circle cx={-18} cy={-7} r={6} fill="#3b3f52" />
-            <circle cx={18} cy={-7} r={6} fill="#3b3f52" />
         </g>
     ),
     train: () => (
@@ -1065,18 +963,6 @@ const PROPS: Record<PropId, Draw> = {
         </g>
     ),
     moon: () => <path d="M0 -24 a12 12 0 1 0 10 18 a10 10 0 1 1 -10 -18Z" fill="#fff1a8" />,
-    stars: () => (
-        <g fill="#ffffff">
-            {[
-                [-20, -10],
-                [0, -24],
-                [18, -6],
-                [10, -16],
-            ].map(([x, y]) => (
-                <circle key={`${x}`} cx={x} cy={y} r={1.7} />
-            ))}
-        </g>
-    ),
     lightning: () => <path d="M4 -40 L-8 -18 H0 L-6 0 L12 -24 H3 Z" fill="#ffd84a" {...stroke("#e8a92a", 1)} />,
     smoke: () => (
         <g fill="#b9b9c2" opacity={0.85}>
@@ -1113,13 +999,6 @@ const PROPS: Record<PropId, Draw> = {
             <rect x={-30} y={-30} width={60} height={30} fill="#c9a27a" {...stroke(WOOD_DARK)} />
             <rect x={-12} y={-46} width={22} height={16} rx={2} fill="#3b3f52" />
             <rect x={-9} y={-43} width={16} height={6} fill="#8fe0a8" />
-        </g>
-    ),
-    queueRope: () => (
-        <g>
-            <rect x={-30} y={-26} width={3} height={26} fill="#c9a24a" />
-            <rect x={27} y={-26} width={3} height={26} fill="#c9a24a" />
-            <path d="M-28 -24 Q0 -12 28 -24" fill="none" stroke="#e8605a" strokeWidth={2.4} />
         </g>
     ),
     seat: (tone = "#4d7fc8") => (
@@ -1374,20 +1253,6 @@ const PROPS: Record<PropId, Draw> = {
             <path d="M-2 -30 V-33 M0 -30 V-33 M2 -30 V-33" stroke="#8fd0f0" strokeWidth={1} />
         </g>
     ),
-    toothpaste: () => (
-        <g transform="rotate(-10)">
-            <path d="M-14 -6 H8 L12 -3 L8 0 H-14Z" fill="#ffffff" {...stroke("#9aa6b2", 1)} />
-            <rect x={-12} y={-6} width={10} height={6} fill="#6cc4e8" />
-            <rect x={12} y={-4.5} width={4} height={3} fill="#e8605a" />
-        </g>
-    ),
-    medicine: () => (
-        <g>
-            <rect x={-5} y={-14} width={10} height={14} rx={2} fill="#ffffff" {...stroke("#9aa6b2")} />
-            <rect x={-4} y={-18} width={8} height={4} fill="#e8605a" />
-            <path d="M0 -11 V-3 M-4 -7 H4" stroke="#e8605a" strokeWidth={2} />
-        </g>
-    ),
     waitingChairs: () => (
         <g>
             {[-30, 0, 30].map((x) => (
@@ -1447,12 +1312,6 @@ const PROPS: Record<PropId, Draw> = {
             <rect x={-7} y={-3} width={16} height={3} fill="#ffffff" opacity={0.7} />
         </g>
     ),
-    jacket: () => (
-        <g>
-            <path d="M-14 -34 Q0 -38 14 -34 L16 0 H-16Z" fill="#d9534f" {...stroke("#a83a36")} />
-            <path d="M0 -36 V0" stroke="#a83a36" strokeWidth={1.4} />
-        </g>
-    ),
     shoe: () => (
         <g>
             <path d="M-14 0 V-8 Q-14 -12 -8 -12 L2 -12 Q6 -6 12 -6 Q16 -5 16 0Z" fill="#4d9be8" {...stroke("#2f6fb0")} />
@@ -1473,14 +1332,6 @@ const PROPS: Record<PropId, Draw> = {
             ))}
         </g>
     ),
-    swimsuit: () => <path d="M-10 -26 L-6 -26 Q0 -20 6 -26 L10 -26 L10 -6 L4 0 H-4 L-10 -6Z" fill="#e86aa0" {...stroke("#b9447a")} />,
-    goggles: () => (
-        <g>
-            <path d="M-14 -6 H14" stroke="#3b3f52" strokeWidth={1.6} />
-            <ellipse cx={-6} cy={-6} rx={5} ry={4} fill="#8fd0f0" {...stroke("#3f8fd8", 1.4)} />
-            <ellipse cx={6} cy={-6} rx={5} ry={4} fill="#8fd0f0" {...stroke("#3f8fd8", 1.4)} />
-        </g>
-    ),
     magnifier: () => (
         <g transform="rotate(-30)">
             <rect x={-1.6} y={-12} width={3.2} height={12} rx={1.6} fill={WOOD} />
@@ -1492,17 +1343,6 @@ const PROPS: Record<PropId, Draw> = {
             <circle cx={-7} cy={-6} r={5.5} />
             <circle cx={7} cy={-6} r={5.5} />
             <path d="M-1.5 -6 H1.5" />
-        </g>
-    ),
-    medal: () => (
-        <g transform="translate(-77 -96)">
-            <Medal />
-        </g>
-    ),
-    medalSilver: () => (
-        <g>
-            <path d="M-4 -24 L-1 -12 M4 -24 L1 -12" stroke="#4f7be8" strokeWidth={3} />
-            <circle cx={0} cy={-8} r={7} fill="#d6dce6" {...stroke("#9aa6b2")} />
         </g>
     ),
     nail: () => (
@@ -1578,13 +1418,6 @@ const PROPS: Record<PropId, Draw> = {
             {...stroke("#d9a84a", 1)}
         />
     ),
-    stars3: () => (
-        <g>
-            <g transform="translate(-14 0) scale(0.6)">{PROPS.star()}</g>
-            <g transform="translate(0 -8) scale(0.8)">{PROPS.star()}</g>
-            <g transform="translate(14 0) scale(0.6)">{PROPS.star()}</g>
-        </g>
-    ),
     notes: () => (
         <g fill="#6c61f0">
             <ellipse cx={-6} cy={-4} rx={3.5} ry={2.6} />
@@ -1642,13 +1475,6 @@ const PROPS: Record<PropId, Draw> = {
             <path d="M8 -16 H16 L8 -8 H16" />
         </g>
     ),
-    dots: () => (
-        <g fill="#9aa6b2">
-            <circle cx={-8} cy={-3} r={2.4} />
-            <circle cx={0} cy={-3} r={2.4} />
-            <circle cx={8} cy={-3} r={2.4} />
-        </g>
-    ),
     hourglass: () => (
         <g>
             <rect x={-9} y={-26} width={18} height={3} rx={1} fill={WOOD} />
@@ -1662,11 +1488,6 @@ const PROPS: Record<PropId, Draw> = {
             <circle cx={0} cy={-12} r={12} fill="#ffffff" {...stroke("#aca7fd", 2)} />
             <path d="M-4 -16 Q-4 -21 0 -21 Q4 -21 4 -17 Q4 -14 0 -12 V-9" fill="none" stroke="#6c61f0" strokeWidth={2.6} strokeLinecap="round" />
             <circle cx={0} cy={-5} r={1.6} fill="#6c61f0" />
-        </g>
-    ),
-    cross: () => (
-        <g stroke="#e8605a" strokeWidth={3.5} strokeLinecap="round">
-            <path d="M-8 -16 L8 0 M8 -16 L-8 0" />
         </g>
     ),
     arrow: () => <path d="M-14 -6 H6 V-12 L16 -4 L6 4 V-2 H-14Z" fill="#6c61f0" />,
