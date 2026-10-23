@@ -161,6 +161,8 @@ export const PROP_IDS = [
     "basket",
     "toilet",
     "mirror",
+    "wallShelf",
+    "boxOpen",
     // Igračke i igra
     "gift",
     "cake",
@@ -347,6 +349,21 @@ export interface Held {
     tone?: string;
 }
 
+/**
+ * Kuda lik gleda: tačka na slici (iste koordinate kao x i y predmeta). Bez pogleda lik gleda
+ * pravo, kao i do sada. Uz pogled se oči crtaju sa beonjačom i zenicom okrenutom ka tački.
+ */
+export interface Gaze {
+    x: number;
+    y: number;
+    /** Koliko se i glava okreće ka tački: 1 = jasno (podrazumevano), 0 = pomeraju se samo oči */
+    head?: number;
+    /** Tačkice od očiju do tačke — pomoć „prati pogled” */
+    line?: boolean;
+    /** Uz tačkice: poluprečnik blagog kruga oko tačke (0 = bez kruga) */
+    ring?: number;
+}
+
 export interface FigureItem {
     /** "hero" = glavni lik zadatka (izgled i izraz lica zadaje igra) */
     fig: "hero" | LookId | AdultId;
@@ -361,6 +378,8 @@ export interface FigureItem {
     flip?: boolean;
     wear?: readonly WearId[];
     hold?: Held;
+    /** Kuda lik gleda (podrazumevano pravo napred) */
+    gaze?: Gaze;
 }
 
 export interface PropItem {
