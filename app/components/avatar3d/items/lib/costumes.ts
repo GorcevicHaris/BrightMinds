@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import type { ItemBuild } from "../../contract";
-import { buildSurface, polyPath, smoothstep, taperedTube } from "../../engine/surface";
+import { polyPath, smoothstep, taperedTube } from "../../engine/surface";
 import { cloth, darker, decal, fabric, gauss, gem, gold, lighter, metal, plastic, plush, rubber, SIDES, silver, weighTorso } from "./common";
 import { pants, skirt, tailHole } from "./bottoms";
 import { blazer, cape, coat, dress, shirtFront, stripeAlongArm, tie, tracksuitTop } from "./dresses";

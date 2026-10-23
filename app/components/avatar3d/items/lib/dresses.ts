@@ -232,13 +232,8 @@ export function swimwear(t: Tailor, o: { top: Cloth; shorts: Cloth; print?: Prin
 // ── Odelo (sako, košulja, kravata, pantalone) ──────────────────────────────
 
 export function suit(t: Tailor, o: { color: string; shirt?: string; tie?: string; trousers?: string; pocket?: string }) {
-    const s = t.s;
-    const wool = cloth(o.color, "felt", { sheen: 0.6, sheenLift: 0.2, roughness: 0.75 });
-    const shirtMat = fabric(o.shirt ?? "#FFFFFF", "cotton");
     const off = LAYER.top + 0.004;
     const shirtNeck = shirtFront(t, o.shirt ?? "#FFFFFF", off - 0.006);
-    void shirtMat;
-    void wool;
     blazer(t, o.color, o.pocket);
     if (o.tie) tie(t, o.tie, off - 0.004, shirtNeck);
     pants(t, { cloth: { color: o.trousers ?? darker(o.color, 0.08), kind: "felt" }, offset: LAYER.bottom });
@@ -344,7 +339,11 @@ export function coat(t: Tailor, o: CoatOptions) {
     const len = o.length ?? "calf";
     const bottomY = len === "hip" ? hip - 0.03 : len === "knee" ? knee - 0.02 * scale : len === "calf" ? knee - 0.1 * scale : s.ankleY + 0.04 * scale;
     const openGap = o.open ? 0.035 : 0;
-    const { edge, fn } = t.skirt(hip, bottomY, off + 0.002, { rx: legOuter + 0.03 * scale + (len === "ankle" ? 0.03 * scale : 0), rz: Math.max(0.1 * scale, s.legR(0.2) + 0.05) + (len === "ankle" ? 0.03 : 0) }, main, (a, v) => 0.003 * v * Math.sin(a * 6) + (o.open ? openGap * v * gauss(a, 0, 0.12) : 0), len === "ankle" ? 30 : 22);
+    const { edge, fn } = t.skirt(hip, bottomY, off + 0.002, {
+        // Dug kaput je A-kroja i širi od duge suknje ispod (da se suknja ne probija)
+        rx: Math.max(legOuter + 0.03 * scale + (len === "ankle" ? 0.03 * scale : 0), len === "calf" || len === "ankle" ? 0.205 * scale : 0),
+        rz: Math.max(Math.max(0.1 * scale, s.legR(0.2) + 0.05) + (len === "ankle" ? 0.03 : 0), len === "calf" || len === "ankle" ? 0.175 * scale : 0),
+    }, main, (a, v) => 0.003 * v * Math.sin(a * 6) + (o.open ? openGap * v * gauss(a, 0, 0.12) : 0), len === "ankle" ? 30 : 22);
     t.edgeRing(edge, 0.004, 0.006, main);
     // Prednja ivica (preklop) niz kaput
     const edgeMat = fabric(darker(o.body.color, 0.15), o.body.kind ?? "felt");

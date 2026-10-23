@@ -85,7 +85,10 @@ function buildCells(): Cell[] {
         const only = q.get("ids")?.split(",");
         for (const set of SETS) {
             if (only && !only.includes(set.id)) continue;
-            const { background: _bg, pet: _pet, ...wear } = set.items;
+            // Pozadina i ljubimac se ne crtaju na liku (ljubimac stoji pored, pozadina je scena)
+            const wear = { ...set.items };
+            delete wear.background;
+            delete wear.pet;
             for (const kind of list) {
                 cells.push({ key: `${set.id}-${kind}`, title: set.label, sub: `${set.id} · ${kind}`, req: { kind, wear, focus: "full", yaw: -0.42, hijab, width: 220, height: 320 } });
             }

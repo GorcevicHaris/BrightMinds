@@ -371,7 +371,7 @@ function paintBrush(ctx: ItemContext): THREE.Object3D {
     return g;
 }
 
-function popcorn(ctx: ItemContext): THREE.Object3D {
+function popcorn(): THREE.Object3D {
     const g = new THREE.Group();
     const stripes = canvasMap("kokice", 128, 32, (c, w, h) => {
         c.fillStyle = "#FFFFFF";

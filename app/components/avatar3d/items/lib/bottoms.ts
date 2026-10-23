@@ -286,13 +286,15 @@ export function skirt(t: Tailor, o: SkirtOptions) {
     const knee = s.hipY - s.thigh;
     const len = o.length ?? (o.style === "maxi" || o.style === "tiered" ? "maxi" : o.style === "tutu" ? "mini" : "knee");
     const bottomY = len === "mini" ? knee + 0.09 * scale : len === "knee" ? knee + 0.03 * scale : len === "midi" ? knee - 0.09 * scale : s.ankleY + 0.035 * scale;
-    const top = s.waistY - 0.025;
+    // Ispod dugog kaputa vidi se samo deo ispod kaputa: suknja počinje kod kolena i uža je
+    const underCoat = /kaput|mantil|kostim-detektiva/.test(t.ctx.wear.outfit ?? "") && bottomY < knee;
+    const top = underCoat ? knee + 0.02 * scale : s.waistY - 0.025;
     const off = LAYER.bottom + 0.002;
     const kind = o.cloth.kind ?? (o.style === "denim" ? "denim" : o.style === "tutu" ? "mesh" : o.style === "pleated" ? "felt" : "cotton");
     const main = o.style === "denim" ? denim(o.cloth.color) : clothMaterial({ ...o.cloth, kind });
     const first = t.kit.objects.length;
     const legOuter = s.hipX + s.legR(0.15);
-    const width = (k: number) => Math.max(legOuter + 0.04 * scale, k * scale);
+    const width = (k: number) => Math.max(legOuter + 0.04 * scale, k * scale * (underCoat ? 0.78 : 1));
     const tri = (x: number) => Math.abs((((x / (Math.PI * 2)) % 1) + 1) % 1 - 0.5) * 2;
     let edge: (q: number, out: THREE.Vector3) => THREE.Vector3;
     switch (o.style) {
@@ -352,10 +354,12 @@ export function skirt(t: Tailor, o: SkirtOptions) {
     }
     const hemMat = o.trim ? fabric(o.trim, "satin") : main;
     if (o.style !== "tutu") t.edgeRing(edge, 0.0028, 0.004, hemMat);
-    const band = t.ring(top, off, 0.005, 0.013, o.trim ? fabric(o.trim, "satin") : main);
-    if (o.style === "denim") plainColors(band, 0.88);
+    if (!underCoat) {
+        const band = t.ring(top, off, 0.005, 0.013, o.trim ? fabric(o.trim, "satin") : main);
+        if (o.style === "denim") plainColors(band, 0.88);
+    }
     tailHole(t, off + 0.01, main);
-    if (o.bow) bowAt(t, top, off + 0.008, fabric(o.bow, "satin"), 1);
+    if (o.bow && !underCoat) bowAt(t, top, off + 0.008, fabric(o.bow, "satin"), 1);
     if (o.style === "denim") {
         for (const object of t.kit.objects.slice(first)) {
             const mesh = object as THREE.Mesh;

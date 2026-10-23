@@ -146,7 +146,7 @@ registerItems("outfit", withBudgets([
 /** Manja gustina za kostime od više slojeva (da ostanu ≤ 24k trouglova) */
 function withBudgets(list: ItemBuilder[]): ItemBuilder[] {
     const budget: Record<string, number> = {
-        "kosulja-prsluk": 0.85, odelo: 0.88, "super-ogrtac": 0.92, "kostim-bubamare": 0.9, "kostim-doktora": 0.74,
+        "kosulja-prsluk": 0.85, odelo: 0.88, "super-ogrtac": 0.86, "kostim-bubamare": 0.9, "kostim-doktora": 0.74,
         "kostim-kauboja": 0.8, "kostim-pilota": 0.7, "kostim-pirata": 0.84, "kostim-vatrogasca": 0.75, "haljina-princeze": 0.84,
         "kostim-princa": 0.9, "kostim-astronauta": 0.95, "kostim-detektiva": 0.78, "kostim-naucnika": 0.8, "kostim-bastovana": 0.9,
         "teget-sako": 0.92, "beli-kardigan": 0.8, "zuti-kardigan": 0.8, "beli-pernati-prsluk": 0.8, "sivi-pernati-prsluk": 0.8,

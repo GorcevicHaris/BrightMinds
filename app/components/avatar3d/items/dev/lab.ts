@@ -11,6 +11,7 @@ import { blobTexture } from "../../engine/textures";
 import { solvePose, type PoseName } from "../../engine/pose";
 import { buildTestFigure, takeOff, triangles, wearItem, type TestFigure, type Worn } from "./harness";
 import "../index";
+import "../../animals";
 
 /** Budžet trouglova po mestu (dogovor sa motorom) */
 export function budgetFor(slot: Slot, id: string): number {

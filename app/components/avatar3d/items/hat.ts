@@ -665,7 +665,7 @@ function crown(f: HeadFit) {
         const n = out.clone().sub(f.c).setY(0).normalize();
         return out.add(new THREE.Vector3(0, w * (0.026 + 0.032 * spikes) * k, 0)).addScaledVector(n, w * 0.008 * k);
     };
-    f.mesh(buildSurface(band, { nu: f.n(150, 50), nv: f.n(10, 4), closedU: true, inside: () => f.c.clone().add(new THREE.Vector3(0, 0.12, 0)) }), goldM, "kruna");
+    f.mesh(buildSurface(band, { nu: f.n(132, 50), nv: f.n(9, 4), closedU: true, inside: () => f.c.clone().add(new THREE.Vector3(0, 0.12, 0)) }), goldM, "kruna");
     f.rim((q, out) => band(q, 0, out), 0.0048 * k, 0.0048 * k, metal("#F2AE1C"), 120);
     f.rim((q, out) => band(q, 0.42, out).add(band(q, 0.42, new THREE.Vector3()).sub(f.c).setY(0).normalize().multiplyScalar(0.0015)), 0.0022 * k, 0.0022 * k, metal("#F2AE1C"), 120);
     const colors = ["#E5484D", "#3D9BE9", "#3BB273", "#3D9BE9", "#3BB273"];

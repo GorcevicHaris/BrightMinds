@@ -19,7 +19,7 @@ const item = (id: string, build: Build, extra: Partial<ItemBuilder> = {}): ItemB
 });
 
 const trousers = (id: string, o: PantsOptions) => item(id, (t) => pants(t, o));
-const skirtItem = (id: string, o: SkirtOptions) => item(id, (t) => skirt(t, o));
+const skirtItem = (id: string, o: SkirtOptions) => item(id, (t) => skirt(t, o), { dependsOn: ["outfit"] });
 
 /** Teksas boje (svetla, srednja, tamna) */
 const DENIM = { light: "#8FB4DE", mid: "#4A6FB5", dark: "#2E3F6E", pink: "#F29BBE" };

@@ -29,6 +29,8 @@ describe("3D katalog predmeta", () => {
         contract = await import("@/app/components/avatar3d/contract");
         harness = await import("@/app/components/avatar3d/items/dev/harness");
         await import("@/app/components/avatar3d/items/index");
+        // Prave životinje (#2): predmeti se proveravaju na njima, ne na zamenama
+        await import("@/app/components/avatar3d/animals/index");
     });
 
     it("svaki predmet iz podataka ima 3D crtež na svom mestu, i nema crteža bez podataka", () => {
@@ -78,9 +80,9 @@ describe("3D katalog predmeta", () => {
         }
     });
 
-    it("svaki predmet se sagradi na devojčici, učitelju i mački, bez grešaka i u budžetu", () => {
+    it("svaki predmet se sagradi na devojčici, učitelju i životinjama (mačka, zeka, jednorog, pingvin, lav), bez grešaka i u budžetu", () => {
         // Učitelj (odrasli) i zeka (visoke uši) u slabijem kvalitetu — samo da se sagrade bez greške
-        const kinds: [CompanionKind, "high" | "low"][] = [["girl", "high"], ["cat", "high"], ["man", "low"], ["bunny", "low"]];
+        const kinds: [CompanionKind, "high" | "low"][] = [["girl", "high"], ["cat", "high"], ["man", "low"], ["bunny", "low"], ["unicorn", "low"], ["penguin", "low"], ["lion", "low"]];
         const over: string[] = [];
         for (const [kind, quality] of kinds) {
             const plain = harness.buildTestFigure(kind, { hat: false });
