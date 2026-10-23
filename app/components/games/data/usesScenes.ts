@@ -7,7 +7,11 @@
 
 import { hero, scene, say, thing, think, who, type SceneSpec } from "@/app/components/games/scene/types";
 
-export const USES_SCENES: Readonly<Record<string, SceneSpec>> = {
+// Predmeti su već nacrtani krupno, preko cele slike: kamera se ne približava
+const fixed = (scenes: Record<string, SceneSpec>): Record<string, SceneSpec> =>
+    Object.fromEntries(Object.entries(scenes).map(([id, spec]) => [id, { ...spec, camera: "fixed" as const }]));
+
+export const USES_SCENES: Readonly<Record<string, SceneSpec>> = fixed({
     // Kuća
     spoon: scene("kitchen", [thing("table", 120, 150, { s: 1.4 }), thing("soup", 120, 102, { s: 1.8 })]),
     pencil: scene("plain", [thing("paper", 120, 140, { s: 4 })]),
@@ -65,7 +69,7 @@ export const USES_SCENES: Readonly<Record<string, SceneSpec>> = {
     moon: scene("street", [], "stars"),
     rainbow: scene("street", [thing("puddle", 70, 150, { s: 1.4 }), thing("puddle", 170, 152, { s: 1.1 })], "rain"),
     snowman: scene("snow", [thing("carrot", 110, 146, { s: 2 }), thing("stone", 150, 150, { s: 0.6 }), thing("stone", 166, 150, { s: 0.6 })]),
-};
+});
 
 export function usesScene(itemId: string): SceneSpec | undefined {
     return Object.hasOwn(USES_SCENES, itemId) ? USES_SCENES[itemId] : undefined;
