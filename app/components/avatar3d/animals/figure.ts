@@ -60,6 +60,15 @@ export interface AnimalSpec {
     extras?: (b: AnimalBuild) => void;
     /** Uši se mrdaju (šiljate) ili njišu (klempave) */
     earMotion?: "twitch" | "swing" | "none";
+    /** Sopstvena šara vrste (posle ugrađenih šara, pre senke) */
+    paint?: (pp: PaintPoint, ctx: PaintContext, out: THREE.Color) => void;
+    /** Sopstvena šaka/stopalo umesto ugrađenih (anchors.hands/feet.kind i dalje iz `hands`/`feet`) */
+    customHand?: (b: AnimalBuild, side: Side) => { objects: THREE.Object3D[]; grip: THREE.Vector3; radius: number };
+    customFoot?: (b: AnimalBuild, side: Side) => THREE.Object3D[];
+    /** Dodatne kosti (npr. surla), posle repa i ušiju */
+    bones?: (shape: BodyShape, head: AnimalHead, headBone: THREE.Vector3) => ExtraBone[];
+    /** Završna dorada sidara (dug vrat, vrh surle…) */
+    anchors?: (a: Anchors, b: AnimalBuild) => void;
 }
 
 /** Šta posebni delovi vrste dobijaju za crtanje */
@@ -77,6 +86,7 @@ export interface AnimalBuild {
     fur: THREE.Material;
     /** Svetski položaj kosti u mirovanju */
     boneAt: (name: string) => THREE.Vector3;
+    bone: (name: string) => THREE.Bone | undefined;
     /** Dodaj deo u spisak delova tela (motor ga sakriva kad predmet to traži) */
     part: (kind: BodyPart, object: THREE.Object3D) => void;
     /** Rog (jednorog) */
@@ -158,6 +168,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
             extras.push({ name: side === 1 ? "earL" : "earR", parent: "head", at: p });
         }
     }
+    if (spec.bones) extras.push(...spec.bones(shape, head, headBone));
     const rig = createRig(shape, extras);
     const root = new THREE.Group();
     root.name = `zivotinja-${spec.kind}`;
@@ -182,6 +193,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
         eyeR: head.spec.eye.r,
         belly: spec.belly,
         cheeks: spec.cheeks,
+        custom: spec.paint,
     };
     const fur = furMaterial({ sheen: coat.light, shimmer: coat.shimmer, sleek: spec.sleek });
     const parts: Partial<Record<BodyPart, THREE.Object3D[]>> = {};
@@ -194,6 +206,21 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
         mesh.name = name;
         skinned.push(mesh);
         return mesh;
+    };
+
+    // ── Glava (grupa) i opis za posebne delove vrste ──
+    const headGroup = new THREE.Group();
+    headGroup.name = "glava";
+    rig.bone("head").add(headGroup);
+    let horn: Anchors["horn"];
+    const animators: ((time: number, dt: number, live: boolean) => void)[] = [];
+    const build: AnimalBuild = {
+        spec, coat, skin, rig, shape, head, headGroup, paint, quality, fur, boneAt,
+        bone: (name) => rig.bones.find((b) => b.name === name),
+        part: addPart,
+        setHorn: (h) => (horn = h),
+        onAnimate: (fn) => animators.push(fn),
+        face: {},
     };
 
     // ── Trup ──
@@ -260,7 +287,15 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
         const paintAt = (g: THREE.BufferGeometry, region: PaintPoint["region"]) =>
             paintGeometry(g, paint, (_i, p) => ({ p: p.clone().add(at), region, side, t: 1 }));
         let g: THREE.Vector3;
-        if (spec.hands === "hoof") {
+        if (spec.customHand) {
+            const h = spec.customHand(build, side);
+            for (const o of h.objects) {
+                bone.add(o);
+                addPart("hands", o);
+            }
+            g = h.grip;
+            handRadius = h.radius;
+        } else if (spec.hands === "hoof") {
             const h = hoofHand(rig, side, pawR, quality);
             paintAt(h.fur, "arm");
             const cuff = new THREE.Mesh(h.fur, fur);
@@ -300,7 +335,12 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
         const boneName = side === 1 ? "footL" : "footR";
         const bone = rig.bone(boneName);
         const at = boneAt(boneName);
-        if (spec.feet === "hoof") {
+        if (spec.customFoot) {
+            for (const o of spec.customFoot(build, side)) {
+                bone.add(o);
+                addPart("feet", o);
+            }
+        } else if (spec.feet === "hoof") {
             const f = hoofFoot(shape, quality);
             paintGeometry(f.fur, paint, (_i, p) => ({ p: p.clone().add(at), region: "leg", side, t: 1 }));
             const a = new THREE.Mesh(f.fur, fur);
@@ -332,9 +372,6 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     }
 
     // ── Glava ──
-    const headGroup = new THREE.Group();
-    headGroup.name = "glava";
-    rig.bone("head").add(headGroup);
     const headGeo = headGeometry(head, quality);
     {
         const uv = headGeo.getAttribute("uv");
@@ -374,15 +411,6 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     headMesh.name = "glava-krzno";
     headGroup.add(headMesh);
 
-    let horn: Anchors["horn"];
-    const animators: ((time: number, dt: number, live: boolean) => void)[] = [];
-    const build: AnimalBuild = {
-        spec, coat, skin, rig, shape, head, headGroup, paint, quality, fur, boneAt,
-        part: addPart,
-        setHorn: (h) => (horn = h),
-        onAnimate: (fn) => animators.push(fn),
-        face: {},
-    };
     spec.extras?.(build);
 
     const browHex = coat.brow;
@@ -472,6 +500,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
 
     // ── Sidra ──
     const anchors = computeAnchors(shape, rig, head, headBone, face, earSpec?.kind ?? "none", earBase, earTips, earSpec, horn, spec, handRadius, grip, tailBase, tailPathPts);
+    spec.anchors?.(anchors, build);
 
     // ── Pokreti repa i ušiju ──
     const tailBones = ["tail1", "tail2", "tail3"].map((n) => rig.bones.find((b) => b.name === n)).filter(Boolean) as THREE.Bone[];

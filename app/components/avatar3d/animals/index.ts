@@ -3,3 +3,5 @@
 // na njenom mestu se crta 2D drugar.
 
 import "./extra";
+
+import "./cat";
