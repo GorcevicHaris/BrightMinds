@@ -4,6 +4,7 @@
 // Sve je u koordinatama kosti glave.
 
 import * as THREE from "three";
+import { detail } from "./detail";
 import type { HairStyle } from "../catalog";
 import type { HeadInfo } from "./head";
 import { hairMaterial } from "./materials";
@@ -63,8 +64,8 @@ function capSurface(head: HeadInfo, spec: CapSpec, underHat: boolean): { fn: Sur
 function capMesh(head: HeadInfo, spec: CapSpec, material: THREE.Material, underHat: boolean): THREE.Mesh {
     const { fn, maxV } = capSurface(head, spec, underHat);
     const geometry = buildSurface(fn, {
-        nu: 128,
-        nv: Math.round(96 * maxV),
+        nu: detail(128),
+        nv: detail(96 * maxV),
         closedU: true,
         inside: () => head.center.clone(),
         uv: (u, v) => [u * 6, v * maxV * 1.5],
@@ -116,8 +117,8 @@ function longBack(head: HeadInfo, rig: Rig, material: THREE.Material): THREE.Mes
         return out.set(x + nx * (side * th + groove), y, z + nz * (side * th + groove));
     };
     const geometry = buildSurface(fn, {
-        nu: 132,
-        nv: 56,
+        nu: detail(132),
+        nv: detail(56),
         closedU: true,
         inside: (_q, t, out) => out.set(0, yTop + (yBot - yTop) * t, c.z - 0.02),
         uv: (q, t) => [q * 6, t * 3],

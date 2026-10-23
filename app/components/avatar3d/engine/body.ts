@@ -3,6 +3,7 @@
 // samo sa pomakom napolje — pa odeća uvek prati telo i pomera se sa njim.
 
 import * as THREE from "three";
+import { detail } from "./detail";
 import { armWeights, legWeights, torsoWeights, type BodyShape, type Rig } from "./rig";
 import { buildSurface, merge, polyPath, smoothstep, superEllipse, sweepFn, type SurfaceFn, type SweepSpec } from "./surface";
 
@@ -239,8 +240,8 @@ export function buildBody(rig: Rig, skin: THREE.Material, options: { feet: boole
     };
 
     add(buildSurface(torsoSurface(shape, torsoBottom(shape), torsoTop(shape), 0), {
-        nu: 56,
-        nv: 72,
+        nu: detail(56),
+        nv: detail(72),
         closedU: true,
         inside: (_u, v, out) => out.set(0, torsoBottom(shape) + (torsoTop(shape) - torsoBottom(shape)) * v, 0),
         weights: (_u, _v, p) => torsoWeights(shape, p),
@@ -249,16 +250,16 @@ export function buildBody(rig: Rig, skin: THREE.Material, options: { feet: boole
     for (const side of [1, -1] as const) {
         const arm = armPath(rig, side, 0);
         add(buildSurface(sweepFn(arm.spec), {
-            nu: 28,
-            nv: 44,
+            nu: detail(28),
+            nv: detail(44),
             closedU: true,
             inside: (_u, v, out) => arm.spec.path(v, out),
             weights: (_u, _v, p) => armWeights(rig, side, p),
         }), side === 1 ? "leva-ruka" : "desna-ruka");
         const leg = legPath(rig, side, 0);
         add(buildSurface(sweepFn(leg.spec), {
-            nu: 32,
-            nv: 48,
+            nu: detail(32),
+            nv: detail(48),
             closedU: true,
             inside: (_u, v, out) => leg.spec.path(v, out),
             weights: (_u, _v, p) => legWeights(rig, side, p),

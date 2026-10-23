@@ -12,6 +12,7 @@ import { buildHair, hairCrown } from "./hair";
 import { buildHead, headInfo, type HeadInfo } from "./head";
 import { buildHijab, HIJAB_THICKNESS } from "./hijab";
 import { Kit } from "./kit";
+import { withDetail } from "./detail";
 import { disposeObject, skinMaterial } from "./materials";
 import { bodyShape, createRig, type Rig } from "./rig";
 
@@ -123,7 +124,11 @@ function humanAnchors(rig: Rig, info: HeadInfo, hijab: boolean): Anchors {
 }
 
 export function buildHuman(kind: HumanKind, look: HumanLook, ctx: FigureContext): HumanBody {
-    void ctx;
+    // Sličice: ista figura sa ~60 % podela (manje trouglova); živi prikaz: puna gustina
+    return withDetail(ctx.quality === "low" ? 0.6 : 1, () => buildHumanAt(kind, look, ctx));
+}
+
+function buildHumanAt(kind: HumanKind, look: HumanLook, ctx: FigureContext): HumanBody {
     const shape = bodyShape(kind);
     const rig = createRig(shape);
     const root = new THREE.Group();
@@ -160,7 +165,8 @@ export function buildHuman(kind: HumanKind, look: HumanLook, ctx: FigureContext)
         head: [face.group],
     };
 
-    const setHeadwear = (hat: boolean): number => {
+    const setHeadwear = (hat: boolean): number => withDetail(ctx.quality === "low" ? 0.6 : 1, () => headwear(hat));
+    const headwear = (hat: boolean): number => {
         if (hijabHex) return HIJAB_THICKNESS;
         if (!style) return 0;
         if (underHat !== hat) {

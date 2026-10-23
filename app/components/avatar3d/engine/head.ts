@@ -4,6 +4,7 @@
 // Sve je u koordinatama kosti glave (0, 0, 0 = vrh vrata).
 
 import * as THREE from "three";
+import { detail } from "./detail";
 import type { FaceControl, FaceExpression } from "../contract";
 import { FACE_POSES, mixPose, type FacePose } from "./expressions";
 import { Mouth, mouthSurfaceFrom } from "./mouth";
@@ -162,8 +163,8 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
     group.name = "glava";
     // Gušća mreža na licu (oko u = 0,5 i sredine visine), da nos i usne budu glatki
     const geometry = buildSurface(info.fn, {
-        nu: 150,
-        nv: 110,
+        nu: detail(150),
+        nv: detail(110),
         closedU: true,
         inside: () => info.center.clone(),
         uMap: (t) => t + (0.62 * Math.sin(2 * Math.PI * t)) / (2 * Math.PI),
