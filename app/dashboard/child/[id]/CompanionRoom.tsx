@@ -493,7 +493,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
     return (
         // Telefon: gore 3D (≈ 47 % visine), dole list koji se povlači nagore (≈ 75 %); tablet i
         // računar: 3D levo, list desno. List ima svoje listanje, a zaglavlje i čipovi ostaju vidljivi.
-        <div className="flex h-[calc(100svh-11.5rem)] min-h-[32rem] flex-col gap-3 sm:h-[calc(100svh-13rem)] lg:grid lg:h-[calc(100svh-12.5rem)] lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] xl:gap-6">
+        <div className="flex h-[calc(100svh-11.5rem)] min-h-[32rem] flex-col gap-3 sm:h-[calc(100svh-13rem)] lg:grid lg:h-[calc(100svh-12.5rem)] lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] xl:gap-6">
             <div className={cn("min-h-0 flex-none lg:h-full", !reduceMotion && "transition-[height] duration-300", expanded ? "h-[26%]" : "h-[47%]")}>{stage}</div>
 
             <section aria-label="Prodavnica, ormar i lik" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-t-[1.75rem] bg-surface px-3 pb-6 shadow-soft ring-1 ring-line sm:px-4 lg:h-full lg:rounded-card">
@@ -635,7 +635,7 @@ function ShopPanel({ category, sub, onCategory, onSub, owned, wear, coins, goal,
             )}
             </StickyChips>
             {category === "sets" ? (
-                <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4">
+                <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {SETS.map((set) => (
                         <SetTile
                             key={set.id}
@@ -660,7 +660,7 @@ function ShopPanel({ category, sub, onCategory, onSub, owned, wear, coins, goal,
 
 function ItemGrid({ items, owned, wear, coins, goal, selected, onPick }: { items: readonly ItemData[]; owned: readonly string[]; wear: Wear; coins: number; goal?: string; selected: Selection | null; onPick: (item: ItemData) => void }) {
     return (
-        <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 xl:grid-cols-5">
+        <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 xl:grid-cols-5 2xl:grid-cols-6">
             {items.map((item) => (
                 <ItemTile
                     key={item.id}
@@ -906,7 +906,7 @@ function StickyChips({ children }: { children: ReactNode }) {
 
 function ChipRow({ label, small = false, children }: { label: string; small?: boolean; children: ReactNode }) {
     return (
-        <div role="group" aria-label={label} className={cn("-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4", small && "gap-1.5")}>
+        <div role="group" aria-label={label} className={cn("-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0", small && "gap-1.5")}>
             {children}
         </div>
     );
@@ -1006,9 +1006,9 @@ function SetTile({ set, kind, skin, owned, worn, coins, active, isGoal, onPick }
         <li className={cn(OFFSCREEN, "[contain-intrinsic-size:auto_16rem]")}>
             <button type="button" onClick={() => onPick(set)} aria-pressed={active} aria-label={`${set.label}${status}`} className={cn(TILE, tileBorder(active, worn))}>
                 <SetThumb set={set} kind={kind} skin={skin} className={cn("aspect-[4/5] w-full rounded-xl bg-[#EEF0F3]", !complete && !affordable && "opacity-80")} />
-                <span className="line-clamp-2 min-h-8 text-sm font-extrabold leading-tight text-ink">{set.label}</span>
+                <span className="line-clamp-1 text-sm font-extrabold leading-tight text-ink">{set.label}</span>
                 <span className="text-xs font-bold text-ink-soft">
-                    Imaš {have} od {total}
+                    {have} / {total}
                 </span>
                 {complete ? <Price price={0} owned worn={worn} affordable /> : <Price price={price} owned={false} worn={false} affordable={affordable} />}
                 {worn && <WornBadge />}
