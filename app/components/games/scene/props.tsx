@@ -269,6 +269,22 @@ const PROPS: Record<PropId, Draw> = {
             <path d="M-5 -24 L3 -32 M-6 -16 L6 -28" stroke="#ffffff" strokeWidth={2} strokeLinecap="round" />
         </g>
     ),
+    // Polica na zidu: daska sa dva nosača; predmet koji stoji na njoj ima isto (x, y)
+    wallShelf: () => (
+        <g>
+            <path d="M-14 3 V10 L-8 3 M14 3 V10 L8 3" fill="none" {...stroke(WOOD_DARK, 2)} />
+            <rect x={-22} y={0} width={44} height={4} rx={1.5} fill={WOOD} {...stroke(WOOD_DARK, 1)} />
+        </g>
+    ),
+    // Otvorena kutija: poklopci su podignuti, a šta je unutra vidi samo onaj ko gleda odozgo
+    boxOpen: () => (
+        <g>
+            <path d="M-20 -22 L-30 -34 L-12 -34 L-6 -22 Z M20 -22 L30 -34 L12 -34 L6 -22 Z" fill="#d49a58" {...stroke("#b07a3f")} />
+            <rect x={-19} y={-25} width={38} height={5} rx={1.5} fill="#8a5a2b" />
+            <rect x={-20} y={-22} width={40} height={22} rx={2} fill="#e7b276" {...stroke("#b07a3f")} />
+            <rect x={-4} y={-22} width={8} height={9} fill="#f3d19c" opacity={0.9} />
+        </g>
+    ),
 
     // ── Igračke i igra ────────────────────────────────────────────────────────
     gift: (tone = "#e8605a") => (

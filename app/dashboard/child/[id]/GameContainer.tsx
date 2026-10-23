@@ -11,7 +11,7 @@ import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import { CelebrationLayer, celebrateBig, GamePauseContext, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
 import { useSpeakingLock } from "@/lib/voice";
-import Companion from "@/app/components/avatar/Companion";
+import Companion, { type CompanionAction as CompanionMove } from "@/app/components/avatar/Companion";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import type { VoiceEmotion as TeacherEmotion } from "@/lib/emotion";
 import { COINS_PER_STAR, type CompanionKindId } from "@/lib/companion";
@@ -58,6 +58,7 @@ const GAME_LOADERS = {
     sequence: () => import("@/app/components/games/SequenceGame"),
     where: () => import("@/app/components/games/WhereGame"),
     uses: () => import("@/app/components/games/UsesGame"),
+    gaze: () => import("@/app/components/games/GazeGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -72,6 +73,7 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     sequence: dynamic(GAME_LOADERS["sequence"], { ssr: false, loading: GameLoading }),
     where: dynamic(GAME_LOADERS["where"], { ssr: false, loading: GameLoading }),
     uses: dynamic(GAME_LOADERS["uses"], { ssr: false, loading: GameLoading }),
+    gaze: dynamic(GAME_LOADERS["gaze"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {
@@ -1334,7 +1336,8 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                 {/* Ceo drugar sa svim što je dete kupilo: kraj nivoa je trenutak nagrade */}
                 {teacher !== null && (
                     <span className="mx-auto -mt-1 mb-2 block h-36 w-28 overflow-hidden rounded-2xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-44 sm:w-36">
-                        <Teacher gender={teacher} variant="full" className="h-full w-full" />
+                        {/* Kad se pojave zvezdice drugar dva puta skoči i pljesne (pročitana priča: mali skok) */}
+                        <Teacher gender={teacher} variant="full" action={outcome.practice ? "hop" : outcome.stars > 0 ? "cheer" : undefined} className="h-full w-full" />
                     </span>
                 )}
                 {outcome.practice ? (
@@ -1418,8 +1421,8 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
 // ── Pratilac ──────────────────────────────────────────────────────────────────
 
 /** Lik koji govori: pratilac koga je dete izabralo (sa odećom i izgledom), a bez njega dosadašnji učitelj */
-function Teacher({ gender, variant, emotion, className }: { gender?: string; variant?: "bust" | "face" | "full" | "portrait"; emotion?: TeacherEmotion; className?: string }) {
+function Teacher({ gender, variant, emotion, action, className }: { gender?: string; variant?: "bust" | "face" | "full" | "portrait"; emotion?: TeacherEmotion; action?: CompanionMove; className?: string }) {
     const companion = useCompanion();
-    if (companion) return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} skin={chosenSkin(companion)} variant={variant} emotion={emotion} className={className} />;
-    return <TeacherAvatar gender={gender} variant={variant} emotion={emotion} className={className} />;
+    if (companion) return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} skin={chosenSkin(companion)} variant={variant} emotion={emotion} action={action} className={className} />;
+    return <TeacherAvatar gender={gender} variant={variant} emotion={emotion} action={action} className={className} />;
 }

@@ -1,7 +1,7 @@
 // app/dashboard/child/[id]/ChildPageClient.tsx
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Gamepad2, LogOut, Play, Shirt, Trophy } from "lucide-react";
@@ -16,6 +16,7 @@ import type { ResolvedSettings } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
 import { RealtimeTopicProvider, useWatcherPresence } from "@/lib/realtime";
 import { speak, stopSpeaking } from "@/lib/speech";
+import BackgroundArt from "@/app/components/avatar/BackgroundArt";
 import Companion from "@/app/components/avatar/Companion";
 import type { CompanionKindId } from "@/lib/companion";
 import CompanionRoom from "./CompanionRoom";
@@ -58,12 +59,55 @@ export default function ChildPageClient({ realtimeTopic = null, ...props }: Prop
     );
 }
 
-/** Izabrani pratilac deteta sa svojom odećom i izgledom (do učitavanja: dosadašnji učitelj) */
+/** Izabrani pratilac deteta sa svojom odećom i izgledom (do učitavanja: dosadašnji učitelj).
+ *  Ceo lik: dete vidi i obuću, ono što drži, krila i ljubimca. Pozadinu crta baner, preko cele širine. */
 function ChosenCompanion({ className }: { className: string }) {
     const companion = useCompanion();
     if (!companion) return null;
-    // Ceo lik: dete vidi i obuću, ono što drži, krila, ljubimca i pozadinu koje je kupilo
-    return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} skin={chosenSkin(companion)} variant="full" className={className} />;
+    const { background: _background, ...wear } = companion.wear;
+    return <Companion kind={companion.kind as CompanionKindId} wear={wear} skin={chosenSkin(companion)} variant="full" className={className} />;
+}
+
+/** Tekst pozdrava; boja zavisi od toga da li je baner pozadina drugara ili ljubičast */
+function BannerGreeting({ firstName, onGoal }: { firstName: string; onGoal: () => void }) {
+    const scene = Boolean(useCompanion()?.wear.background);
+    return (
+        <>
+            <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl">Zdravo, {firstName}!</h1>
+            <p className={cn("mt-1 text-base font-semibold sm:text-lg", scene ? "text-ink-soft" : "text-brand-100")}>Izaberi igru.</p>
+            {/* Cilj deteta („Radim za”) — samo kad je izabran */}
+            <GoalChip onClick={onGoal} className="mt-3" />
+        </>
+    );
+}
+
+/** Pozdrav na vrhu početne strane: kupljena pozadina drugara preko celog banera, ili ljubičasta */
+function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boolean; children: ReactNode; onCompanion: () => void }) {
+    const background = useCompanion()?.wear.background;
+    const scene = showAvatar && background ? background : null;
+    return (
+        <section className={cn("relative overflow-hidden rounded-card shadow-soft", scene ? "bg-sky-100 text-ink" : "bg-brand-600 text-white")}>
+            {scene ? (
+                <BackgroundArt id={scene} />
+            ) : (
+                <>
+                    <div className="absolute -right-10 -top-16 h-56 w-56 rounded-full bg-brand-500" aria-hidden="true" />
+                    <div className="absolute -bottom-20 right-24 h-48 w-48 rounded-full bg-brand-700" aria-hidden="true" />
+                </>
+            )}
+            <div className="relative flex min-h-32 items-center sm:min-h-44">
+                <div className="flex-1 p-5 pr-2 sm:p-8">
+                    {/* Na šarenoj pozadini tekst stoji na svetloj podlozi, da se uvek čita */}
+                    <div className={cn(scene && "inline-block max-w-full rounded-2xl bg-white/85 px-4 py-3 shadow-soft backdrop-blur-sm sm:px-5 sm:py-4")}>{children}</div>
+                </div>
+                {showAvatar && (
+                    <button type="button" onClick={onCompanion} aria-label="Moj drugar" className="mr-1 shrink-0 self-end rounded-2xl sm:mr-6 lg:mr-12">
+                        <ChosenCompanion className="block h-40 w-32 sm:h-64 sm:w-52" />
+                    </button>
+                )}
+            </div>
+        </section>
+    );
 }
 
 function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }: Omit<Props, "realtimeTopic">) {
@@ -183,29 +227,10 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
             <main className="w-full px-4 py-5 sm:px-6 sm:py-8 lg:px-10 2xl:px-16">
                 {view === "games" ? (
                     <div className="space-y-6 sm:space-y-8">
-                        {/* Pozdrav + učitelj */}
-                        <section className="relative overflow-hidden rounded-card bg-brand-600 text-white shadow-soft">
-                            <div className="absolute -right-10 -top-16 h-56 w-56 rounded-full bg-brand-500" aria-hidden="true" />
-                            <div className="absolute -bottom-20 right-24 h-48 w-48 rounded-full bg-brand-700" aria-hidden="true" />
-                            <div className="relative flex min-h-32 items-center sm:min-h-44">
-                                <div className="flex-1 p-5 pr-2 sm:p-8">
-                                    <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl">Zdravo, {firstName}!</h1>
-                                    <p className="mt-1 text-base font-semibold text-brand-100 sm:text-lg">Izaberi igru.</p>
-                                    {/* Cilj deteta („Radim za”) — samo kad je izabran */}
-                                    <GoalChip onClick={() => setView("companion")} className="mt-3" />
-                                </div>
-                                {showAvatar && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setView("companion")}
-                                        aria-label="Moj drugar"
-                                        className="mr-2 shrink-0 self-end overflow-hidden rounded-2xl ring-2 ring-white/70 shadow-soft sm:mr-6"
-                                    >
-                                        <ChosenCompanion className="block h-36 w-28 sm:h-60 sm:w-48" />
-                                    </button>
-                                )}
-                            </div>
-                        </section>
+                        {/* Pozdrav + drugar */}
+                        <GreetingBanner showAvatar={showAvatar} onCompanion={() => setView("companion")}>
+                            <BannerGreeting firstName={firstName} onGoal={() => setView("companion")} />
+                        </GreetingBanner>
 
                         <GameContainer
                             childId={child.id}

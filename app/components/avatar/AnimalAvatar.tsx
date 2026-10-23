@@ -9,12 +9,14 @@
 // Krzno (boja i šare) dolazi iz skins.ts. Šare se crtaju u SVG šari (<pattern>) u koordinatama
 // crteža: glava, uši, kapci i rep je dele, pa kapak koji se podiže preko oka ima istu fleku
 // kao lice. Id-jevi šara su jedinstveni po liku (useId), pa se drugari na istoj strani ne mešaju.
+//
+// Ceo lik i portret se mirno kreću (motion.ts): diše, mačka i pas polako mašu repom, uši
+// mačke i zeke retko mrdnu, a dok govori mahne, poskoči ili klimne.
 
 import { useId, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { FACE_FOR_EMOTION, type VoiceEmotion } from "@/lib/emotion";
 import { useVoiceState } from "@/lib/voice";
-import { useChildSettings } from "../ChildSettingsProvider";
 import { POSES, REST_MOUTH, useFaceRig } from "./faceRig";
 import {
     BROW_Y,
@@ -34,7 +36,8 @@ import {
     TORSO_PATH,
     VIEWBOX,
 } from "./geometry";
-import { fullArms, fullBackFront, fullBehind, fullFeet, fullHand, fullLegs, fullPet } from "./fullBody";
+import { fullArms, fullBack, fullBackFront, fullFeet, fullLegs, fullMotion, fullPet, fullScene } from "./fullBody";
+import { liveClass, sayMove, useCalmMotion, useCompanionMotion, type CompanionAction } from "./motion";
 import { animalSkin, type AnimalKind, type Coat } from "./skins";
 import { renderWorn, wornItem, type Wear } from "./wearables";
 
@@ -67,17 +70,24 @@ interface AnimalAvatarProps {
     wear?: Wear;
     /** Krzno iz skins.ts (bez njega ili nepoznato: dosadašnje) */
     skin?: string;
+    /** Jednokratni pokret celog lika (motion.ts); ponavlja se kad se promeni `actionKey` */
+    action?: CompanionAction;
+    actionKey?: number | string;
+    /** Bez ikakvih pokreta (sličice) */
+    still?: boolean;
     className?: string;
 }
 
-export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmotion, wear, skin, className }: AnimalAvatarProps) {
+export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmotion, wear, skin, action, actionKey, still = false, className }: AnimalAvatarProps) {
     const coat = animalSkin(kind, skin).coat;
     const top = coat.top ?? TOPS[kind];
     // Portret je isti crtež kao ceo lik, samo isečen na gornji deo
     const full = variant === "full" || variant === "portrait";
     const art = full ? "full" : variant;
     const voice = useVoiceState();
-    const settings = useChildSettings();
+    // Smanjeno kretanje gasi i lice; `still` (sličica) samo pokrete celog lika
+    const reduced = useCalmMotion();
+    const calm = reduced || still;
     const uid = useId();
 
     const emotion = fixedEmotion ?? voice.emotion;
@@ -85,7 +95,8 @@ export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmo
     const { expression, gesture } = FACE_FOR_EMOTION[emotion];
 
     const svgRef = useRef<SVGSVGElement>(null);
-    useFaceRig(svgRef, { expression, gesture, speaking, still: settings.reduceMotion });
+    useFaceRig(svgRef, { expression, gesture, speaking, still: reduced });
+    useCompanionMotion(svgRef, { action, actionKey, wear, full, calm });
 
     const id = (name: string) => `${uid}-${name}`;
     const fill = (name: string) => `url(#${id(name)})`;
@@ -140,11 +151,115 @@ export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmo
 
     const whisker = coat.whisker ?? WHISKERS[kind];
 
+    const nodWrap = (head: ReactNode) => (full ? <g className="cm-nod">{head}</g> : head);
+
+    // Lik (sve osim pozadine i ljubimca); na celom liku je u grupama koje se mirno pokreću
+    const body = (
+        <>
+            {full && (
+                <>
+                    {fullBack(wear, kind)}
+                    {tail(kind, coat, fur)}
+                    {fullLegs(wear, fill("paw"))}
+                </>
+            )}
+
+            {/* Telo: majica u boji lika, svetlo sleva odozgo */}
+            {full ? (
+                <>
+                    <path d={FULL_TORSO_PATH} fill={fill("top")} />
+                    <ellipse cx="88" cy="238" rx="26" ry="24" fill={fill("glow")} opacity="0.5" />
+                    <ellipse cx="120" cy="214" rx="52" ry="18" fill={fill("shade")} opacity="0.75" />
+                </>
+            ) : (
+                <>
+                    <path d={TORSO_PATH} fill={fill("top")} />
+                    <ellipse cx="78" cy="232" rx="46" ry="20" fill={fill("glow")} opacity="0.5" />
+                    <ellipse cx="120" cy="214" rx="62" ry="20" fill={fill("shade")} opacity="0.75" />
+                </>
+            )}
+            <path d="M94 206Q120 226 146 206" stroke={top[1]} strokeWidth="6" strokeLinecap="round" fill="none" />
+            {renderWorn(wear, "outfit", { variant: art, kind })}
+            {full && fullFeet(wear, kind, bareFeet, pawMid)}
+            <rect x="97" y="160" width="46" height="54" rx="18" fill={fill("neck")} />
+            <ellipse cx="120" cy="176" rx="26" ry="13" fill={fill("shade")} />
+            {full && fullBackFront(wear, kind)}
+            {renderWorn(wear, "neck", { variant: art, kind })}
+
+            {/* Ceo lik: šape vise pored tela, desna drži predmet iz prodavnice */}
+            {full && fullArms(wear, kind, sleeve, pawMid, fist)}
+
+            {/* Šape (vide se samo kad su podignute), isečene na okvir crteža */}
+            {!full && (
+                <g clipPath={`url(#${id("frame")})`}>
+                    <line data-part="sleeve-l" x1="50" y1="262" x2={HAND_LX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
+                    <line data-part="sleeve-r" x1="190" y1="262" x2={HAND_RX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
+                    {paw("arm-l", HAND_LX)}
+                    {paw("arm-r", HAND_RX)}
+                </g>
+            )}
+
+            {/* Glava (na celom liku u grupi za klimanje uz nežne reči) */}
+            {nodWrap(
+                <g data-part="head">
+                    {ears(kind, coat, fur)}
+                    <circle cx={HEAD_CX} cy={HEAD_CY} r={HEAD_R} fill={fur} />
+                    {markings(kind, coat, fur)}
+                    <ellipse cx="92" cy="72" rx="34" ry="20" fill={fill("glow")} opacity="0.55" />
+
+                    {/* Oči i donji kapci (u boji krzna, podižu se kad se lice smeje) */}
+                    {eye(EYE_LX, "eye-l")}
+                    {eye(EYE_RX, "eye-r")}
+                    <ellipse data-part="lid-l" cx={EYE_LX} cy={EYE_Y + LID_REST} rx="19" ry="12" fill={fur} />
+                    <ellipse data-part="lid-r" cx={EYE_RX} cy={EYE_Y + LID_REST} rx="19" ry="12" fill={fur} />
+
+                    {/* Njuška i nos */}
+                    <ellipse cx="120" cy="151" rx="34" ry="25" fill={coat.muzzle} />
+                    <ellipse cx="110" cy="141" rx="14" ry="7" fill="#fff" opacity="0.4" />
+                    {nose(kind, coat)}
+                    <path d="M120 143V150" stroke={mouthStroke} strokeWidth="3" strokeLinecap="round" />
+                    {whisker && (
+                        <path
+                            d={`M86 146L52 140M86 153L50 155M88 160L56 168${mirrorX("M86 146L52 140M86 153L50 155M88 160L56 168")}`}
+                            stroke={whisker}
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            opacity="0.8"
+                        />
+                    )}
+
+                    {/* Obrve: kratke i meke */}
+                    <g data-part="brow-l" transform={`translate(${EYE_LX} ${BROW_Y})`}>
+                        <path d="M-10 2Q0-4 10 2" stroke={coat.brow} strokeWidth="5" strokeLinecap="round" fill="none" />
+                    </g>
+                    <g data-part="brow-r" transform={`translate(${EYE_RX} ${BROW_Y})`}>
+                        <path d="M-10 2Q0-4 10 2" stroke={coat.brow} strokeWidth="5" strokeLinecap="round" fill="none" />
+                    </g>
+
+                    {/* Obrazi */}
+                    <circle data-part="blush-l" cx="76" cy="146" r="16" fill={fill("blush")} opacity={POSES.neutral.blush} />
+                    <circle data-part="blush-r" cx="164" cy="146" r="16" fill={fill("blush")} opacity={POSES.neutral.blush} />
+
+                    {/* Usta (bez zuba) */}
+                    <path data-part="mouth" d={REST_MOUTH} fill={fill("inside")} stroke={mouthStroke} strokeWidth="4.5" strokeLinejoin="round" strokeLinecap="round" />
+                    <g clipPath={`url(#${id("mouth")})`}>
+                        <ellipse data-part="tongue" cx={MOUTH_X} cy={MOUTH_Y + 10} rx="11" ry="0" fill={TONGUE} />
+                    </g>
+
+                    {renderWorn(wear, "glasses", { variant: art, kind })}
+                    {renderWorn(wear, "hat", { variant: art, kind })}
+                </g>
+            )}
+        </>
+    );
+
     return (
         <svg
             ref={svgRef}
             viewBox={VIEWBOX[variant]}
-            className={cn("pointer-events-none block select-none", className)}
+            className={cn("pointer-events-none block select-none", liveClass(full, calm), className)}
+            data-say={full && speaking && !calm ? sayMove(emotion) : undefined}
+            data-holding={full && wornItem(wear, "hand") ? "" : undefined}
             aria-hidden="true"
             focusable="false"
         >
@@ -211,100 +326,8 @@ export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmo
                 </linearGradient>
             </defs>
 
-            {full && (
-                <>
-                    {fullBehind(wear, kind)}
-                    {tail(kind, coat, fur)}
-                    {fullLegs(wear, fill("paw"))}
-                </>
-            )}
-
-            {/* Telo: majica u boji lika, svetlo sleva odozgo */}
-            {full ? (
-                <>
-                    <path d={FULL_TORSO_PATH} fill={fill("top")} />
-                    <ellipse cx="88" cy="238" rx="26" ry="24" fill={fill("glow")} opacity="0.5" />
-                    <ellipse cx="120" cy="214" rx="52" ry="18" fill={fill("shade")} opacity="0.75" />
-                </>
-            ) : (
-                <>
-                    <path d={TORSO_PATH} fill={fill("top")} />
-                    <ellipse cx="78" cy="232" rx="46" ry="20" fill={fill("glow")} opacity="0.5" />
-                    <ellipse cx="120" cy="214" rx="62" ry="20" fill={fill("shade")} opacity="0.75" />
-                </>
-            )}
-            <path d="M94 206Q120 226 146 206" stroke={top[1]} strokeWidth="6" strokeLinecap="round" fill="none" />
-            {renderWorn(wear, "outfit", { variant: art, kind })}
-            {full && fullFeet(wear, kind, bareFeet, pawMid)}
-            <rect x="97" y="160" width="46" height="54" rx="18" fill={fill("neck")} />
-            <ellipse cx="120" cy="176" rx="26" ry="13" fill={fill("shade")} />
-            {full && fullBackFront(wear, kind)}
-            {renderWorn(wear, "neck", { variant: art, kind })}
-
-            {/* Ceo lik: šape vise pored tela, desna drži predmet iz prodavnice */}
-            {full && fullArms(sleeve, pawMid, fist)}
-            {full && fullHand(wear, kind, fist)}
-
-            {/* Šape (vide se samo kad su podignute), isečene na okvir crteža */}
-            {!full && (
-                <g clipPath={`url(#${id("frame")})`}>
-                    <line data-part="sleeve-l" x1="50" y1="262" x2={HAND_LX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
-                    <line data-part="sleeve-r" x1="190" y1="262" x2={HAND_RX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
-                    {paw("arm-l", HAND_LX)}
-                    {paw("arm-r", HAND_RX)}
-                </g>
-            )}
-
-            {/* Glava */}
-            <g data-part="head">
-                {ears(kind, coat, fur)}
-                <circle cx={HEAD_CX} cy={HEAD_CY} r={HEAD_R} fill={fur} />
-                {markings(kind, coat, fur)}
-                <ellipse cx="92" cy="72" rx="34" ry="20" fill={fill("glow")} opacity="0.55" />
-
-                {/* Oči i donji kapci (u boji krzna, podižu se kad se lice smeje) */}
-                {eye(EYE_LX, "eye-l")}
-                {eye(EYE_RX, "eye-r")}
-                <ellipse data-part="lid-l" cx={EYE_LX} cy={EYE_Y + LID_REST} rx="19" ry="12" fill={fur} />
-                <ellipse data-part="lid-r" cx={EYE_RX} cy={EYE_Y + LID_REST} rx="19" ry="12" fill={fur} />
-
-                {/* Njuška i nos */}
-                <ellipse cx="120" cy="151" rx="34" ry="25" fill={coat.muzzle} />
-                <ellipse cx="110" cy="141" rx="14" ry="7" fill="#fff" opacity="0.4" />
-                {nose(kind, coat)}
-                <path d="M120 143V150" stroke={mouthStroke} strokeWidth="3" strokeLinecap="round" />
-                {whisker && (
-                    <path
-                        d={`M86 146L52 140M86 153L50 155M88 160L56 168${mirrorX("M86 146L52 140M86 153L50 155M88 160L56 168")}`}
-                        stroke={whisker}
-                        strokeWidth="2.2"
-                        strokeLinecap="round"
-                        opacity="0.8"
-                    />
-                )}
-
-                {/* Obrve: kratke i meke */}
-                <g data-part="brow-l" transform={`translate(${EYE_LX} ${BROW_Y})`}>
-                    <path d="M-10 2Q0-4 10 2" stroke={coat.brow} strokeWidth="5" strokeLinecap="round" fill="none" />
-                </g>
-                <g data-part="brow-r" transform={`translate(${EYE_RX} ${BROW_Y})`}>
-                    <path d="M-10 2Q0-4 10 2" stroke={coat.brow} strokeWidth="5" strokeLinecap="round" fill="none" />
-                </g>
-
-                {/* Obrazi */}
-                <circle data-part="blush-l" cx="76" cy="146" r="16" fill={fill("blush")} opacity={POSES.neutral.blush} />
-                <circle data-part="blush-r" cx="164" cy="146" r="16" fill={fill("blush")} opacity={POSES.neutral.blush} />
-
-                {/* Usta (bez zuba) */}
-                <path data-part="mouth" d={REST_MOUTH} fill={fill("inside")} stroke={mouthStroke} strokeWidth="4.5" strokeLinejoin="round" strokeLinecap="round" />
-                <g clipPath={`url(#${id("mouth")})`}>
-                    <ellipse data-part="tongue" cx={MOUTH_X} cy={MOUTH_Y + 10} rx="11" ry="0" fill={TONGUE} />
-                </g>
-
-                {renderWorn(wear, "glasses", { variant: art, kind })}
-                {renderWorn(wear, "hat", { variant: art, kind })}
-            </g>
-
+            {full && fullScene(wear, kind)}
+            {full ? fullMotion(body) : body}
             {full && fullPet(wear, kind)}
         </svg>
     );
@@ -427,17 +450,44 @@ function earFills(coat: Coat, fur: string): [string, string] {
     return coat.ears ?? [fur, fur];
 }
 
-/** Uspravne trouglaste uši (mačka, haski) */
-function pointyEars(coat: Coat, fur: string): ReactNode {
+/** Uho koje retko i kratko mrdne (ceo lik, globals.css); `base` je tačka oko koje se okreće */
+function twitch(side: "l" | "r", base: [number, number], ear: ReactNode): ReactNode {
+    return (
+        <g className={`cm-ear-${side}`} style={{ transformOrigin: `${base[0]}px ${base[1]}px` }}>
+            {ear}
+        </g>
+    );
+}
+
+/** Uspravne trouglaste uši (mačka, haski); kod mačke povremeno mrdnu */
+function pointyEars(coat: Coat, fur: string, alive = false): ReactNode {
     const outer = "M58 98L63 34Q65 25 74 29L114 50Z";
     const inner = "M68 82L71 42Q72 37 77 40L102 56Z";
     const [left, right] = earFills(coat, fur);
-    return (
+    const leftEar = (
         <>
             <path d={outer} fill={left} stroke={coat.fur[2]} strokeOpacity="0.35" strokeWidth="2" strokeLinejoin="round" />
-            <path d={mirrorX(outer)} fill={right} stroke={coat.fur[2]} strokeOpacity="0.35" strokeWidth="2" strokeLinejoin="round" />
             <path d={inner} fill={coat.inner} />
+        </>
+    );
+    const rightEar = (
+        <>
+            <path d={mirrorX(outer)} fill={right} stroke={coat.fur[2]} strokeOpacity="0.35" strokeWidth="2" strokeLinejoin="round" />
             <path d={mirrorX(inner)} fill={coat.inner} />
+        </>
+    );
+    if (!alive) {
+        return (
+            <>
+                {leftEar}
+                {rightEar}
+            </>
+        );
+    }
+    return (
+        <>
+            {twitch("l", [86, 74], leftEar)}
+            {twitch("r", [154, 74], rightEar)}
         </>
     );
 }
@@ -446,18 +496,26 @@ function ears(kind: AnimalKind, coat: Coat, fur: string): ReactNode {
     const [left, right] = earFills(coat, fur);
     switch (kind) {
         case "cat":
-            return pointyEars(coat, fur);
+            return pointyEars(coat, fur, true);
         case "bunny":
             return (
                 <>
-                    <g transform="rotate(-20 86 40)">
-                        <ellipse cx="86" cy="40" rx="16" ry="36" fill={left} />
-                        <ellipse cx="86" cy="42" rx="8" ry="26" fill={coat.inner} />
-                    </g>
-                    <g transform="rotate(20 154 40)">
-                        <ellipse cx="154" cy="40" rx="16" ry="36" fill={right} />
-                        <ellipse cx="154" cy="42" rx="8" ry="26" fill={coat.inner} />
-                    </g>
+                    {twitch(
+                        "l",
+                        [98, 72],
+                        <g transform="rotate(-20 86 40)">
+                            <ellipse cx="86" cy="40" rx="16" ry="36" fill={left} />
+                            <ellipse cx="86" cy="42" rx="8" ry="26" fill={coat.inner} />
+                        </g>
+                    )}
+                    {twitch(
+                        "r",
+                        [142, 72],
+                        <g transform="rotate(20 154 40)">
+                            <ellipse cx="154" cy="40" rx="16" ry="36" fill={right} />
+                            <ellipse cx="154" cy="42" rx="8" ry="26" fill={coat.inner} />
+                        </g>
+                    )}
                 </>
             );
         case "bear":
@@ -548,13 +606,22 @@ function markings(kind: AnimalKind, coat: Coat, fur: string): ReactNode {
     }
 }
 
-/** Rep celog lika: iza leve noge, ne smeta ljubimcu ni predmetu u ruci */
+/** Rep koji se polako njiše oko svog korena (ceo lik, globals.css) */
+function sway(base: [number, number], art: ReactNode): ReactNode {
+    return (
+        <g className="cm-tail" style={{ transformOrigin: `${base[0]}px ${base[1]}px` }}>
+            {art}
+        </g>
+    );
+}
+
+/** Rep celog lika: iza leve noge, ne smeta ljubimcu ni predmetu u ruci; mačka i pas njime polako mašu */
 function tail(kind: AnimalKind, coat: Coat, fur: string): ReactNode {
     switch (kind) {
         case "cat":
-            return <path d="M92 318Q58 336 44 312Q36 296 46 284" stroke={coat.tail ?? fur} strokeWidth="13" strokeLinecap="round" fill="none" />;
+            return sway([92, 318], <path d="M92 318Q58 336 44 312Q36 296 46 284" stroke={coat.tail ?? fur} strokeWidth="13" strokeLinecap="round" fill="none" />);
         case "dog":
-            return <path d="M90 316Q66 318 58 296" stroke={coat.tail ?? fur} strokeWidth="13" strokeLinecap="round" fill="none" />;
+            return sway([90, 316], <path d="M90 316Q66 318 58 296" stroke={coat.tail ?? fur} strokeWidth="13" strokeLinecap="round" fill="none" />);
         case "bunny":
             return <circle cx="78" cy="320" r="11" fill={coat.tail ?? "#fff"} />;
         case "bear":

@@ -13,7 +13,8 @@ export type GameId =
     | "sorting"
     | "sequence"
     | "where"
-    | "uses";
+    | "uses"
+    | "gaze";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -27,7 +28,8 @@ export type GameType =
     | "sorting"
     | "sequence"
     | "where"
-    | "uses";
+    | "uses"
+    | "gaze";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -297,6 +299,28 @@ export const GAMES: GameDefinition[] = [
             gradient: "from-fuchsia-400 to-purple-500",
         },
         offscreenTip: "Dok spremate doručak ili se kupate, pitajte: „Čime jedemo supu?”, „Čime peremo kosu?” — neka dete pokaže ili donese predmet.",
+        graded: true,
+    },
+    {
+        id: "gaze",
+        gameType: "gaze",
+        activityId: 14,
+        title: "Šta gleda?",
+        description: "Prati pogled i pronađi predmet",
+        skill: "Zajednička pažnja",
+        icon: "👀",
+        image: "/images/stagleda.svg",
+        accent: {
+            solid: "bg-blue-500",
+            edge: "border-blue-700",
+            soft: "bg-blue-50",
+            text: "text-blue-700",
+            border: "border-blue-200",
+            ring: "ring-blue-200",
+            gradient: "from-blue-400 to-indigo-500",
+        },
+        offscreenTip:
+            "Sedite jedno pored drugog, pogledajte u neku igračku i pitajte: „Šta ja gledam?” Pokažite i rukom ako treba. Ne tražite da vas dete gleda u oči — dovoljno je da prati gde gledate.",
         graded: true,
     },
 ];

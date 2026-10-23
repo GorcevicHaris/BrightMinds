@@ -26,7 +26,7 @@ function Tile({ kind, skin, label, price }: { kind: (typeof COMPANIONS)[number][
         <figure className="rounded-xl border border-line bg-white p-1 text-center" data-skin={`${kind}:${skin}`}>
             <div className="flex items-end justify-center gap-1">
                 <Companion kind={kind} skin={skin} variant="face" emotion="happy" className="h-16 w-16 rounded-full bg-brand-50" />
-                <Companion kind={kind} skin={skin} variant="full" emotion="neutral" className="h-28 w-20" />
+                <Companion kind={kind} skin={skin} variant="full" emotion="neutral" still className="h-28 w-20" />
             </div>
             <figcaption className="text-[11px] font-extrabold leading-tight text-ink">
                 {label}
