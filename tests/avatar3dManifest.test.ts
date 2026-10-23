@@ -7,7 +7,7 @@ import { WEAR_ITEMS, WEAR_SETS } from "@/app/components/avatar/wearables";
 import { ANIMAL_SKINS as SKINS_2D } from "@/app/components/avatar/skins";
 import { ANIMAL_KINDS, EXTRA_ANIMAL_KINDS, HUMAN_KINDS, SLOTS, SLOT_LABELS } from "@/app/components/avatar3d/data";
 import { ANIMAL_SKINS } from "@/app/components/avatar3d/animals/skins.data";
-import { COMPANION_CATALOG, ITEMS, SETS, getItem, getSet, skinPrice } from "@/app/components/avatar3d/manifest";
+import { COMPANION_CATALOG, ITEMS, SETS, animalSkins, getItem, getSet, skinPrice } from "@/app/components/avatar3d/manifest";
 import { HAIRSTYLES, HUMAN_DEFAULT, NO_HIJAB, humanLook, humanLookId, parseHumanLook } from "@/app/components/avatar3d/looks";
 import { COMPANION_KINDS, WEAR_SLOT_IDS } from "@/lib/companion";
 
@@ -50,9 +50,11 @@ describe("3D manifest", () => {
         for (const [kind, list] of Object.entries(SKINS_2D)) {
             for (const old of list) assert.equal(skinPrice(kind, old.id), old.price, `${kind}/${old.id}`);
         }
-        for (const kind of ANIMAL_KINDS) {
-            assert.ok(ANIMAL_SKINS[kind].length >= 1, kind);
-            assert.equal(ANIMAL_SKINS[kind][0].price, 0, kind);
+        for (const kind of [...ANIMAL_KINDS, ...EXTRA_ANIMAL_KINDS]) {
+            const list = animalSkins(kind);
+            assert.ok(list.length >= 1, kind);
+            assert.equal(list[0].price, 0, kind);
+            assert.equal(skinPrice(kind, list[0].id), 0, kind);
         }
     });
 
