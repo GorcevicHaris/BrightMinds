@@ -100,9 +100,9 @@ export class StageScene {
         this.keyLight = key;
         this.fill = new THREE.DirectionalLight("#E4EEFF", 0.32);
         this.fill.position.set(2.2, 1.0, 2.2);
-        const rim = new THREE.DirectionalLight("#FFE4CF", 1.9);
+        const rim = new THREE.DirectionalLight("#FFE4CF", 1.35);
         rim.position.set(0.8, 2.6, -3.0);
-        const rim2 = new THREE.DirectionalLight("#FFE9DC", 1.0);
+        const rim2 = new THREE.DirectionalLight("#FFE9DC", 0.7);
         rim2.position.set(-2.2, 1.8, -2.0);
         this.hemi = new THREE.HemisphereLight("#FFFFFF", "#CFC4BA", 0.2);
         this.scene.add(key, key.target, this.fill, rim, rim2, this.hemi);

@@ -1053,36 +1053,30 @@ interface TryOnProps {
     onClose: () => void;
 }
 
+/** Proba: naziv (i koliko još treba) levo, jedno veliko dugme desno — sažeto, da se drugar vidi */
 function TryOn({ label, price, coins, isGoal, busy, buyLabel, workLabel, note, onBuy, onWorkFor, onClose }: TryOnProps) {
     const missing = Math.max(0, price - coins);
+    const status = missing > 0 ? (isGoal ? `Radiš za ovo · još ${missing}` : `Još ${missing}`) : "Možeš da kupiš";
     return (
-        <div className="flex flex-col gap-2 rounded-2xl bg-white/95 p-2.5 shadow-soft backdrop-blur-sm sm:p-3">
-            <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                    <p className="text-base font-extrabold leading-tight text-ink sm:text-lg">{label}</p>
-                    {note && <p className="text-xs font-bold text-ink-soft sm:text-sm">{note}</p>}
-                </div>
-                <CloseButton onClick={onClose} label="Skini probu" />
+        <div className="flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-soft backdrop-blur-sm">
+            <CloseButton onClick={onClose} label="Skini probu" />
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-extrabold leading-tight text-ink sm:text-base">{label}</p>
+                <p className="truncate text-xs font-bold text-ink-soft">{note ? `${note} · ${status}` : status}</p>
             </div>
             {missing === 0 ? (
-                <Button chunky size="lg" block variant="success" onClick={onBuy} disabled={busy}>
+                <Button chunky size="md" variant="success" onClick={onBuy} disabled={busy} className="shrink-0">
                     <BuyLabel text={buyLabel} price={price} />
                 </Button>
             ) : isGoal ? (
-                <p className="inline-flex items-center gap-1.5 text-sm font-extrabold text-sun-700">
-                    <Target className="h-4 w-4" aria-hidden="true" />
-                    Radiš za ovo · još {missing} <CoinIcon />
-                </p>
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-sun-100 text-sun-700" aria-hidden="true">
+                    <Target className="h-5 w-5" />
+                </span>
             ) : (
-                <>
-                    <p className="inline-flex items-center gap-1 text-sm font-bold text-ink-soft">
-                        <CoinIcon /> {price} · još {missing}
-                    </p>
-                    <Button chunky size="lg" block variant="sun" onClick={onWorkFor} disabled={busy}>
-                        <Target className="h-5 w-5" aria-hidden="true" />
-                        {workLabel}
-                    </Button>
-                </>
+                <Button chunky size="md" variant="sun" onClick={onWorkFor} disabled={busy} className="shrink-0">
+                    <Target className="h-5 w-5" aria-hidden="true" />
+                    {workLabel}
+                </Button>
             )}
         </div>
     );
@@ -1119,27 +1113,28 @@ function SetTryOn({ set, owned, worn, coins, isGoal, busy, onBuy, onWear, onWork
     );
 }
 
+/** „Radim za”: sličica cilja, naziv i traka napretka u jednom redu; kad je dosta novčića — „Kupi” */
 function GoalCard({ goal, kind, skin, busy, onTry, onBuy, onClear }: { goal: GoalProgress; kind: string; skin?: string; busy: boolean; onTry: () => void; onBuy: () => void; onClear: () => void }) {
     return (
-        <div className="flex flex-col gap-2 rounded-2xl bg-white/95 p-2.5 shadow-soft ring-2 ring-sun-300 sm:p-3">
-            <div className="flex items-center gap-2.5">
-                <button type="button" onClick={onTry} aria-label={`Probaj: ${goal.label}`} className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-sun-50 ring-1 ring-sun-200 hover:bg-sun-100">
-                    <GoalThumb goal={goal} kind={kind} skin={skin} itemClassName="h-11 w-11" setClassName="h-12 w-11" />
-                </button>
-                <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold text-ink-soft">Radim za:</p>
-                    <p className="truncate text-base font-extrabold leading-tight text-ink">{goal.label}</p>
+        <div className="flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-soft ring-2 ring-sun-300">
+            <button type="button" onClick={onTry} aria-label={`Probaj: ${goal.label}`} className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-sun-50 ring-1 ring-sun-200 hover:bg-sun-100">
+                <GoalThumb goal={goal} kind={kind} skin={skin} itemClassName="h-10 w-10" setClassName="h-11 w-10" />
+            </button>
+            <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-extrabold leading-tight text-ink">
+                    <span className="font-bold text-ink-soft">Radim za:</span> {goal.label}
+                </p>
+                <div className="mt-1 flex items-center gap-2">
+                    <GoalBar goal={goal} className="h-2.5 min-w-0 flex-1" />
+                    <GoalStatus goal={goal} className="shrink-0 text-xs" />
                 </div>
-                <CloseButton onClick={onClear} label="Ukloni cilj" />
             </div>
-            <div className="flex items-center gap-2 text-sm">
-                <GoalBar goal={goal} className="min-w-0 flex-1" />
-                <GoalStatus goal={goal} className="shrink-0 text-sm" />
-            </div>
-            {goal.missing === 0 && (
-                <Button chunky size="lg" block variant="success" onClick={onBuy} disabled={busy}>
-                    <BuyLabel text={goal.set ? "Kupi komplet za" : "Kupi za"} price={goal.price} />
+            {goal.missing === 0 ? (
+                <Button chunky size="md" variant="success" onClick={onBuy} disabled={busy} className="shrink-0">
+                    <BuyLabel text="Kupi" price={goal.price} />
                 </Button>
+            ) : (
+                <CloseButton onClick={onClear} label="Ukloni cilj" />
             )}
         </div>
     );

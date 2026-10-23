@@ -42,7 +42,7 @@ class LiveRenderer {
         this.renderer.setPixelRatio(this.dpr);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 0.95;
+        this.renderer.toneMappingExposure = 0.86;
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.renderer.setClearColor(0x000000, 0);

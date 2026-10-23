@@ -60,7 +60,7 @@ class SnapshotRenderer {
         this.renderer.setPixelRatio(1);
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        this.renderer.toneMappingExposure = 0.97;
+        this.renderer.toneMappingExposure = 0.88;
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFShadowMap;
         this.renderer.setClearColor(0x000000, 0);
@@ -169,16 +169,18 @@ class SnapshotRenderer {
         const height = Math.max(16, Math.round(spec.height * this.dpr));
         this.renderer.setSize(width, height, false);
         scene.resize(width, height);
-        const item = spec.framing === "item";
-        scene.setBackground(item ? "none" : spec.background);
+        const scenery = spec.framing === "item" && spec.slot === "background";
+        const item = spec.framing === "item" && !scenery;
+        // Sličica pozadine je sam svet (bez lika), široko kadriran
+        scene.setBackground(scenery ? (spec.wear.background ?? null) : item ? "none" : spec.background);
         if (figure) {
             figure.setWear(spec.wear);
             figure.setExpressionNow(spec.expression ?? "happy");
             figure.setPose(spec.pose ?? "relaxed", true);
             figure.update(0, 0, false);
         }
-        scene.setFigure(spec.slot === "background" ? null : figure);
-        scene.setFraming(spec.framing === "item" ? "full" : spec.framing);
+        scene.setFigure(scenery ? null : figure);
+        scene.setFraming(scenery ? "wide" : spec.framing === "item" ? "full" : spec.framing);
         scene.yaw = scene.restYaw = spec.yaw ?? (item ? 0.5 : REST_YAW);
         scene.update(0, 0, false);
         let box: THREE.Box3 | null = null;
