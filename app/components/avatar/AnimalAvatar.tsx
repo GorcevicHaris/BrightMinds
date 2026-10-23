@@ -60,7 +60,7 @@ const mirrorX = (d: string) => d.replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g,
 interface AnimalAvatarProps {
     kind: AnimalKind;
     /** `bust` = glava i ramena (može da maše); `face` = samo lice, za mala mesta; `full` = ceo lik */
-    variant?: "bust" | "face" | "full";
+    variant?: "bust" | "face" | "full" | "portrait";
     /** Stalna emocija, umesto one iz govora (pregled i primeri) */
     emotion?: VoiceEmotion;
     /** Predmeti iz prodavnice (na poprsju i licu: kapa, naočare, oko vrata, odeća; na celom liku sve) */
@@ -73,7 +73,9 @@ interface AnimalAvatarProps {
 export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmotion, wear, skin, className }: AnimalAvatarProps) {
     const coat = animalSkin(kind, skin).coat;
     const top = coat.top ?? TOPS[kind];
-    const full = variant === "full";
+    // Portret je isti crtež kao ceo lik, samo isečen na gornji deo
+    const full = variant === "full" || variant === "portrait";
+    const art = full ? "full" : variant;
     const voice = useVoiceState();
     const settings = useChildSettings();
     const uid = useId();
@@ -232,12 +234,12 @@ export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmo
                 </>
             )}
             <path d="M94 206Q120 226 146 206" stroke={top[1]} strokeWidth="6" strokeLinecap="round" fill="none" />
-            {renderWorn(wear, "outfit", { variant, kind })}
+            {renderWorn(wear, "outfit", { variant: art, kind })}
             {full && fullFeet(wear, kind, bareFeet, pawMid)}
             <rect x="97" y="160" width="46" height="54" rx="18" fill={fill("neck")} />
             <ellipse cx="120" cy="176" rx="26" ry="13" fill={fill("shade")} />
             {full && fullBackFront(wear, kind)}
-            {renderWorn(wear, "neck", { variant, kind })}
+            {renderWorn(wear, "neck", { variant: art, kind })}
 
             {/* Ceo lik: šape vise pored tela, desna drži predmet iz prodavnice */}
             {full && fullArms(sleeve, pawMid, fist)}
@@ -299,8 +301,8 @@ export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmo
                     <ellipse data-part="tongue" cx={MOUTH_X} cy={MOUTH_Y + 10} rx="11" ry="0" fill={TONGUE} />
                 </g>
 
-                {renderWorn(wear, "glasses", { variant, kind })}
-                {renderWorn(wear, "hat", { variant, kind })}
+                {renderWorn(wear, "glasses", { variant: art, kind })}
+                {renderWorn(wear, "hat", { variant: art, kind })}
             </g>
 
             {full && fullPet(wear, kind)}

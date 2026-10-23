@@ -62,7 +62,8 @@ export default function ChildPageClient({ realtimeTopic = null, ...props }: Prop
 function ChosenCompanion({ className }: { className: string }) {
     const companion = useCompanion();
     if (!companion) return null;
-    return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} skin={chosenSkin(companion)} className={className} />;
+    // Ceo lik: dete vidi i obuću, ono što drži, krila, ljubimca i pozadinu koje je kupilo
+    return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} skin={chosenSkin(companion)} variant="full" className={className} />;
 }
 
 function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }: Omit<Props, "realtimeTopic">) {
@@ -198,9 +199,9 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                                         type="button"
                                         onClick={() => setView("companion")}
                                         aria-label="Moj drugar"
-                                        className="mr-2 shrink-0 self-end rounded-2xl sm:mr-6"
+                                        className="mr-2 shrink-0 self-end overflow-hidden rounded-2xl ring-2 ring-white/70 shadow-soft sm:mr-6"
                                     >
-                                        <ChosenCompanion className="h-32 w-28 sm:h-44 sm:w-40" />
+                                        <ChosenCompanion className="block h-36 w-28 sm:h-60 sm:w-48" />
                                     </button>
                                 )}
                             </div>

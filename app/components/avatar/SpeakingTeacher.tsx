@@ -37,7 +37,7 @@ export default function SpeakingTeacher({ gender, kind, wear, skin, className }:
             )}
         >
             {isCompanionKind(kind) ? (
-                <Companion kind={kind} wear={wear} skin={skin} variant="face" className="h-full w-full" />
+                <Companion kind={kind} wear={wear} skin={skin} variant="portrait" className="h-full w-full" />
             ) : (
                 <TeacherAvatar gender={gender} variant="face" className="h-full w-full" />
             )}

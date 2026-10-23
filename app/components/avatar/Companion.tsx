@@ -13,8 +13,9 @@ export { COMPANIONS, isCompanionKind, type CompanionKind } from "./companions";
 interface CompanionProps {
     kind: CompanionKind;
     /** `bust` = glava i ramena (može da maše); `face` = samo lice, za mala mesta;
-     *  `full` = ceo lik od glave do stopala, sa svim predmetima (prodavnica) */
-    variant?: "bust" | "face" | "full";
+     *  `full` = ceo lik od glave do stopala, sa svim predmetima (prodavnica);
+     *  `portrait` = gornji deo celog lika sa pozadinom i krilima (mali portret u igri) */
+    variant?: "bust" | "face" | "full" | "portrait";
     /** Stalna emocija, umesto one iz govora (pregled i primeri) */
     emotion?: VoiceEmotion;
     /** Predmeti iz prodavnice; poprsje i lice crtaju samo kapu, naočare, vrat i odeću */
