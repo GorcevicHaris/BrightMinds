@@ -50,6 +50,8 @@ const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
     emotions: dynamic(() => import("@/app/components/games/EmotionsGame"), { ssr: false, loading: MirrorLoading }),
     sorting: dynamic(() => import("@/app/components/games/SortingGame"), { ssr: false, loading: MirrorLoading }),
     sequence: dynamic(() => import("@/app/components/games/SequenceGame"), { ssr: false, loading: MirrorLoading }),
+    where: dynamic(() => import("@/app/components/games/WhereGame"), { ssr: false, loading: MirrorLoading }),
+    uses: dynamic(() => import("@/app/components/games/UsesGame"), { ssr: false, loading: MirrorLoading }),
 };
 
 const noop = () => {};
