@@ -70,30 +70,30 @@ function addMane(b: AnimalBuild) {
     const head = b.head;
     const rainbow = colors.length > 2;
     const pick = (i: number, t: number) => (rainbow ? colors[i % colors.length] : colors[(i + (t > 0.5 ? 1 : 0)) % colors.length]);
-    // Šiška: debeli meki pramenovi sa temena napred preko čela, zabačeni u stranu (+x)
+    // Šiška: tri krupna pramena sa temena, savijena preko čela u stranu (+x), kao u crtanim ponijima
     const fore: Clump[] = [];
-    for (let i = 0; i < 5; i++) {
-        const u = 0.5 + (i - 2) * 0.028;
-        const v = 0.07 + Math.abs(i - 2) * 0.012;
+    for (let i = 0; i < 3; i++) {
+        const u = 0.5 + (i - 1) * 0.04;
+        const v = 0.05 + i * 0.012;
         const base = head.point(u, v);
         const n = head.normal(u, v);
-        const dir = n.clone().multiplyScalar(0.5).add(new THREE.Vector3(0.25 + (i - 2) * 0.1, 0.1, 1)).normalize();
-        fore.push({ base, dir, len: (0.1 - Math.abs(i - 2) * 0.012) * k, r: 0.026 * k, curl: new THREE.Vector3(0.5, -1, 0.1).normalize(), color: pick(i, 0), flat: 0.5 });
+        const dir = n.clone().multiplyScalar(0.6).add(new THREE.Vector3(0.45 - i * 0.12, 0.25, 0.9)).normalize();
+        fore.push({ base, dir, len: (0.13 - i * 0.015) * k, r: (0.034 - i * 0.003) * k, curl: new THREE.Vector3(0.6, -1, 0.15).normalize(), color: pick(i, 0), flat: 0.55 });
     }
     const forelock = new THREE.Mesh(clumpGeometry(fore, b.quality), furMaterial({ sheen: b.coat.light }));
     b.headGroup.add(forelock);
     b.part("hair", forelock);
-    // Griva na glavi: dva reda punih pramenova od temena ka potiljku, padaju na jednu stranu
+    // Griva na glavi: krupni pramenovi od temena niz potiljak, padaju na levu stranu lika (+x)
     const crest: Clump[] = [];
-    for (let i = 0; i < 9; i++) {
-        const v = 0.04 + i * 0.065;
-        for (const [row, du] of [[0, 0.0], [1, 0.035]] as const) {
-            const u = 1 - du;
-            const base = head.point(u, Math.min(0.62, v));
-            const n = head.normal(u, Math.min(0.62, v));
-            const dir = n.clone().multiplyScalar(0.5).add(new THREE.Vector3(1, -0.55, -0.35)).normalize();
-            crest.push({ base, dir, len: (0.1 + 0.02 * ((i + row) % 2)) * k, r: (0.026 - row * 0.004) * k, curl: new THREE.Vector3(0.2, -1, -0.2).normalize(), color: pick(i + row, i / 9), flat: 0.5 });
-        }
+    for (let i = 0; i < 7; i++) {
+        const v = 0.06 + i * 0.075;
+        const u = 1 - 0.012;
+        const base = head.point(u, Math.min(0.62, v));
+        const n = head.normal(u, Math.min(0.62, v));
+        const dir = n.clone().multiplyScalar(0.45).add(new THREE.Vector3(1, -0.35 - i * 0.05, -0.25)).normalize();
+        crest.push({ base, dir, len: (0.12 + 0.03 * (i % 2)) * k, r: 0.034 * k, curl: new THREE.Vector3(0.05, -1, -0.1).normalize(), color: pick(i, i / 7), flat: 0.5 });
+        // Drugi, kraći red sa druge strane (griva ne izgleda kao češalj)
+        if (i % 2 === 0) crest.push({ base: base.clone(), dir: n.clone().multiplyScalar(0.5).add(new THREE.Vector3(-0.8, -0.4, -0.3)).normalize(), len: 0.07 * k, r: 0.026 * k, curl: new THREE.Vector3(-0.1, -1, 0).normalize(), color: pick(i + 1, i / 7), flat: 0.5 });
     }
     const crestMesh = new THREE.Mesh(clumpGeometry(crest, b.quality), furMaterial({ sheen: b.coat.light }));
     b.headGroup.add(crestMesh);
@@ -102,10 +102,10 @@ function addMane(b: AnimalBuild) {
     const neck: Clump[] = [];
     const y0 = shape.shoulderY - 0.01;
     const y1 = shape.headBoneY + 0.02;
-    for (let i = 0; i < 6; i++) {
-        const y = y0 + ((y1 - y0) * i) / 5;
-        const z = -shape.torsoBack(Math.min(y, shape.neckBaseY)) + 0.006;
-        neck.push({ base: new THREE.Vector3(0.006 * k, y, z), dir: new THREE.Vector3(0.85, -0.6, -0.3).normalize(), len: 0.09 * k, r: 0.024 * k, curl: new THREE.Vector3(0.1, -1, 0).normalize(), color: pick(i + 1, 0.8), flat: 0.5 });
+    for (let i = 0; i < 4; i++) {
+        const y = y0 + ((y1 - y0) * i) / 3;
+        const z = -shape.torsoBack(Math.min(y, shape.neckBaseY)) + 0.008;
+        neck.push({ base: new THREE.Vector3(0.006 * k, y, z), dir: new THREE.Vector3(0.9, -0.5, -0.25).normalize(), len: 0.11 * k, r: 0.03 * k, curl: new THREE.Vector3(0.05, -1, 0).normalize(), color: pick(i + 1, 0.8), flat: 0.5 });
     }
     const neckMesh = new THREE.Mesh(clumpGeometry(neck, b.quality), furMaterial({ sheen: b.coat.light }));
     neckMesh.position.copy(b.boneAt("neck")).negate();
