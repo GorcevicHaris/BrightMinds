@@ -219,11 +219,25 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
         eye.rotation.set(0, side * 0.12, side * 0.09, "YXZ");
         // Bademast oblik (Bitmoji): oko šire nego više, spoljni ugao blago podignut
         eye.scale.set(1.22, 0.9, 1);
-        const ball = new THREE.Mesh(new THREE.SphereGeometry(re, 40, 24), eyeMat);
+        // Rožnjača blago ispupčena iznad dužice (odsjaj „klizi” preko oka kao kod pravog oka)
+        const ballGeo = new THREE.SphereGeometry(re, 48, 32);
+        {
+            const p = ballGeo.getAttribute("position");
+            const v = new THREE.Vector3();
+            for (let i = 0; i < p.count; i++) {
+                v.fromBufferAttribute(p, i);
+                const angle = Math.acos(Math.max(-1, Math.min(1, v.z / re)));
+                const k = Math.min(1, Math.max(0, 1 - angle / (0.66 * 1.08)));
+                v.multiplyScalar(1 + 0.07 * k * k * (3 - 2 * k));
+                p.setXYZ(i, v.x, v.y, v.z);
+            }
+            ballGeo.computeVertexNormals();
+        }
+        const ball = new THREE.Mesh(ballGeo, eyeMat);
         eye.add(ball);
         // Odsjaj: mali beli oval gore-levo (gledano spreda), uvek isti — „živ” pogled
         const shine = new THREE.Mesh(new THREE.SphereGeometry(re * 0.15, 14, 10), shineMat);
-        shine.scale.set(1, 1.2, 0.35);
+        shine.scale.set(1, 1.15, 0.3);
         const dir = new THREE.Vector3(-0.2, 0.24, 0.95).normalize();
         shine.position.copy(dir).multiplyScalar(re * 1.0);
         eye.add(shine);
