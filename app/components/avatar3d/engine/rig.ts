@@ -26,11 +26,11 @@ function childShape(kind: "girl" | "boy"): BodyShape {
         chestY: 0.715,
         shoulderY: 0.79,
         neckBaseY: 0.83,
-        headBoneY: 0.875,
-        head: { w: 0.268, h: 0.28, d: 0.266, up: 0.118, fwd: 0.01, chin: girl ? 0.84 : 0.86, cheeks: 1 },
+        headBoneY: 0.866,
+        head: { w: 0.284, h: 0.297, d: 0.282, up: 0.124, fwd: 0.01, chin: girl ? 0.84 : 0.86, cheeks: 1 },
         torsoW: profile([
             [0.44, 0.06], [0.47, 0.095], [0.52, 0.106 * k], [0.58, 0.1 * k], [0.63, 0.094 * k], [0.7, 0.098 * k],
-            [0.76, 0.108 * k], [0.79, 0.112 * k], [0.81, 0.1], [0.828, 0.066], [0.845, 0.042], [0.9, 0.039],
+            [0.76, 0.108 * k], [0.79, 0.112 * k], [0.81, 0.1], [0.828, 0.07], [0.845, 0.047], [0.9, 0.044],
         ]),
         torsoFront: profile([
             [0.44, 0.04], [0.47, 0.062], [0.53, 0.072], [0.6, 0.076], [0.66, 0.074], [0.72, 0.07], [0.78, 0.062],
@@ -41,7 +41,7 @@ function childShape(kind: "girl" | "boy"): BodyShape {
             [0.815, 0.056], [0.835, 0.041], [0.9, 0.038],
         ]),
         bust: 0,
-        neckR: 0.039,
+        neckR: 0.044,
         shoulderX: 0.098 * k,
         armAngle: 0.13,
         upperArm: 0.165,
@@ -76,7 +76,8 @@ function adultShape(kind: "woman" | "man"): BodyShape {
         shoulderY: y(1.245),
         neckBaseY: y(1.3),
         headBoneY: y(1.338),
-        head: { w: 0.27, h: 0.315, d: 0.285, up: 0.14, fwd: 0.015, chin: man ? 0.9 : 0.84, cheeks: 0.6 },
+        // Stilizovano: glava ≈ 1/4,5 visine (kao crtani lik), okruglo lice
+        head: { w: 0.318, h: 0.36, d: 0.33, up: 0.158, fwd: 0.015, chin: man ? 0.88 : 0.84, cheeks: 0.8 },
         torsoW: profile([
             [y(0.72), 0.07], [y(0.76), 0.12], [y(0.83), man ? 0.15 : 0.165], [y(0.92), man ? 0.142 : 0.14], [y(0.99), man ? 0.14 : 0.118],
             [y(1.08), 0.135 * w], [y(1.18), 0.152 * w], [y(1.24), 0.16 * w], [y(1.27), 0.14 * w], [y(1.295), man ? 0.09 : 0.08], [y(1.315), man ? 0.058 : 0.052], [y(1.4), man ? 0.054 : 0.048],

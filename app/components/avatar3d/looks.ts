@@ -21,21 +21,21 @@ export interface ColorLookPart extends LookPart {
 
 /** Boje kože (iste id-jeve ima 2D izgled, skins.ts), od najsvetlije do najtamnije */
 export const SKIN_TONES: readonly ColorLookPart[] = [
-    { id: "vrlo-svetla", label: "Vrlo svetla koža", hex: "#F6D2B8" },
-    { id: "svetla", label: "Svetla koža", hex: "#EFC29E" },
-    { id: "psenicna", label: "Pšenična koža", hex: "#E0AC7E" },
-    { id: "maslinasta", label: "Maslinasta koža", hex: "#C99566" },
-    { id: "smedja", label: "Smeđa koža", hex: "#A06E48" },
-    { id: "tamna", label: "Tamna koža", hex: "#7A4E33" },
-    { id: "vrlo-tamna", label: "Vrlo tamna koža", hex: "#5A3624" },
+    { id: "vrlo-svetla", label: "Vrlo svetla koža", hex: "#F8CFB2" },
+    { id: "svetla", label: "Svetla koža", hex: "#F2BE96" },
+    { id: "psenicna", label: "Pšenična koža", hex: "#E2A374" },
+    { id: "maslinasta", label: "Maslinasta koža", hex: "#C98A5A" },
+    { id: "smedja", label: "Smeđa koža", hex: "#A2673F" },
+    { id: "tamna", label: "Tamna koža", hex: "#7E4A2C" },
+    { id: "vrlo-tamna", label: "Vrlo tamna koža", hex: "#5E3521" },
 ];
 
 export const EYE_COLORS: readonly ColorLookPart[] = [
-    { id: "smedje", label: "Smeđe oči", hex: "#6B4226" },
-    { id: "tamne", label: "Tamne oči", hex: "#3A2418" },
-    { id: "lesnik", label: "Oči boje lešnika", hex: "#8A6A2E" },
-    { id: "zelene", label: "Zelene oči", hex: "#5E9A55" },
-    { id: "plave", label: "Plave oči", hex: "#3F86C4" },
+    { id: "smedje", label: "Smeđe oči", hex: "#8A5630" },
+    { id: "tamne", label: "Tamne oči", hex: "#5A3522" },
+    { id: "lesnik", label: "Oči boje lešnika", hex: "#A07A34" },
+    { id: "zelene", label: "Zelene oči", hex: "#5FA35A" },
+    { id: "plave", label: "Plave oči", hex: "#4A93D4" },
     { id: "sive", label: "Sive oči", hex: "#7D8A96" },
 ];
 
