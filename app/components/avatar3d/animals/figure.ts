@@ -9,6 +9,7 @@ import type { AnimalKind } from "../data";
 import { armPath, legPath, torsoBottom, torsoPoint, torsoSurface, torsoTop } from "../engine/body";
 import { armWeights, createRig, legWeights, torsoWeights, type ExtraBone } from "../engine/rig";
 import { buildSurface, clamp01, polyPath, smoothstep, sweepFn } from "../engine/surface";
+import { mix } from "../contract";
 import { COATS, type Coat } from "./coats";
 import { buildFace, type FaceSpec } from "./face";
 import { animalHead, headGeometry, type AnimalHead, type HeadSpec } from "./head";
@@ -277,7 +278,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     }
 
     // ── Šake ──
-    const pawR = spec.pawR ?? shape.armR(1) * 1.32;
+    const pawR = spec.pawR ?? shape.armR(1) * 1.22;
     let grip = new THREE.Vector3();
     let handRadius = pawR;
     for (const side of [1, -1] as const) {
@@ -388,7 +389,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
             const q = tmp.clone().sub(head.center).divide(R);
             // Senka: nabori, ispod brade, oko očiju, koren uha
             let ao = s.crease * 0.55;
-            ao += smoothstep(-0.55, -0.95, q.y) * 0.55 * (q.z > -0.4 ? 1 : 0.6);
+            ao += smoothstep(-0.6, -0.98, q.y) * 0.4 * smoothstep(-0.6, 0.2, q.z);
             const body = tmp.clone().add(headBone);
             for (const e of eyeCenters) {
                 const d = body.distanceTo(e) / head.spec.eye.r;
@@ -413,7 +414,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
 
     spec.extras?.(build);
 
-    const browHex = coat.brow;
+    const browHex = mix(coat.fur, coat.brow, 0.7);
     const face = buildFace(head, faceSpec, {
         nose: coat.nose,
         brow: browHex,

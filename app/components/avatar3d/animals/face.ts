@@ -146,7 +146,7 @@ function buildEye(head: AnimalHead, spec: FaceSpec, colors: FaceColors, side: 1 
     const lidR = r * 1.06;
     const seg = quality === "high" ? 40 : 24;
     const upperGeo = new THREE.SphereGeometry(lidR, seg, 14, 0, Math.PI * 2, 0, Math.PI / 2);
-    const lowerGeo = new THREE.SphereGeometry(lidR * 0.995, seg, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+    const lowerGeo = new THREE.SphereGeometry(lidR * 0.975, seg, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
     // Zadebljanje ivice kapka (mek obod)
     for (const [g, sign] of [[upperGeo, 1], [lowerGeo, -1]] as const) {
         const p = g.getAttribute("position");
@@ -193,17 +193,32 @@ function buildEye(head: AnimalHead, spec: FaceSpec, colors: FaceColors, side: 1 
 function buildBrow(head: AnimalHead, spec: FaceSpec, colors: FaceColors, side: 1 | -1): { group: THREE.Group; base: THREE.Vector3 } {
     const e = head.spec.eye;
     const b = spec.brow;
-    const pts: THREE.Vector3[] = [];
-    const center = new THREE.Vector3();
-    for (let i = 0; i <= 6; i++) {
-        const t = i / 6;
-        const u = 0.5 + side * (e.u + (b.du ?? 0) + (t - 0.5) * b.len);
-        const v = e.v - b.dv - Math.sin(t * Math.PI) * 0.012 + (t - 0.5) * 0.01 * side * side;
-        pts.push(head.offsetPoint(u, v, b.thick * 0.35));
-    }
-    for (const p of pts) center.add(p);
-    center.divideScalar(pts.length);
-    const geo = taperedTube(polyPath(pts.map((p) => p.clone().sub(center))), (s) => b.thick * (0.35 + 0.65 * Math.pow(Math.sin(Math.min(1, s * 1.05 + 0.02) * Math.PI), 0.7)), 24, 12, new THREE.Vector3(0, 0, 1), 0.55);
+    // Meki jastučić krzna koji prati površinu glave (okvir iz normale površine — bez uvrtanja)
+    const uvAt = (t: number): [number, number] => [0.5 + side * (e.u + (b.du ?? 0) + (t - 0.5) * b.len), e.v - b.dv - Math.sin(t * Math.PI) * 0.01 + (t - 0.5) * 0.008];
+    const center = head.point(...uvAt(0.5));
+    const c = new THREE.Vector3();
+    const c2 = new THREE.Vector3();
+    const n = new THREE.Vector3();
+    const tangent = new THREE.Vector3();
+    const perp = new THREE.Vector3();
+    const geo = buildSurface((a01, t, out) => {
+        const [u, v] = uvAt(t);
+        head.point(u, v, c);
+        head.normal(u, v, n);
+        const [u2, v2] = uvAt(Math.min(1, t + 0.01));
+        const [u0, v0] = uvAt(Math.max(0, t - 0.01));
+        tangent.subVectors(head.point(u2, v2, c2), head.point(u0, v0, out)).normalize();
+        perp.crossVectors(n, tangent).normalize();
+        const inner = side === 1 ? 1 - t : t;
+        const k = Math.pow(Math.sin(Math.PI * t), 0.55);
+        const w = b.thick * (0.75 + 0.35 * inner) * k;
+        const h = b.thick * 0.62 * k;
+        const a = a01 * Math.PI * 2;
+        return out.copy(c).addScaledVector(perp, Math.cos(a) * w).addScaledVector(n, Math.sin(a) * h - h * 0.15).sub(center);
+    }, { nu: 14, nv: 16, closedU: true, inside: (_a, t, out) => {
+        const [u, v] = uvAt(t);
+        return head.point(u, v, out).addScaledVector(head.normal(u, v), -b.thick).sub(center);
+    } });
     colors.paintBrow(geo);
     const group = new THREE.Group();
     group.position.copy(center);
@@ -292,7 +307,7 @@ function mouthCurves(ms: FaceSpec["mouth"], s: MouthState) {
     const wShape = ms.curve === "w" ? 1 - clamp01(s.open + s.wide + s.round) : 0;
     const mid = (x: number) => {
         // Uglovi gore pri osmehu, dole pri tuzi; „w” oblik (mačka) — vrh u sredini
-        let y = s.smile * 0.5 * ms.w * x * x;
+        let y = s.smile * 0.75 * ms.w * x * x;
         y += wShape * ms.w * 0.26 * Math.exp(-((x / 0.24) ** 2)) - wShape * ms.w * 0.04;
         y -= s.wide * ms.w * 0.05;
         return y;

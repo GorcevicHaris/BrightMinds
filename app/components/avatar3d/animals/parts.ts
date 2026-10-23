@@ -119,14 +119,11 @@ export function earGeometry(shape: EarShape, quality: "high" | "low"): { shell: 
     if (shape.inner) {
         const k = shape.inner;
         inner = buildSurface((s, t, out) => {
-            const tt = t * 0.9 * (0.4 + 0.6 * k) + 0.04;
-            const x = (s - 0.5) * 2;
-            const w = (width / 2) * shape.profile(tt) * k;
-            const d = (depth / 2) * Math.max(0.08, shape.profile(tt));
-            center(tt, c);
-            // Na prednjoj strani, malo uvučeno u sredini
-            const z = c.z + d * (0.45 * (1 - cup)) * Math.sqrt(Math.max(0, 1 - x * x)) * 0.9 + d * 0.25 * cup + d * 0.5 * cup * (1 - Math.sqrt(Math.max(0, 1 - x * x))) * 0.6 + 0.0012 - d * 0.18 * (1 - x * x);
-            return out.set(x * w, c.y, z);
+            const tt = t * (0.55 + 0.38 * k) + 0.03;
+            // Na prednjoj (udubljenoj) strani ljuske, uže od nje, malo ispred
+            const a = Math.asin(Math.max(-1, Math.min(1, (s - 0.5) * 2 * k)));
+            fn(a / (Math.PI * 2), tt, out);
+            return out.add(new THREE.Vector3(0, 0, 0.0016));
         }, { nu: hi ? 16 : 10, nv: hi ? 18 : 10, inside: (_s, t, out) => center(t, out).add(new THREE.Vector3(0, 0, -depth)) });
     }
     let tufts: THREE.BufferGeometry | null = null;
@@ -134,11 +131,11 @@ export function earGeometry(shape: EarShape, quality: "high" | "low"): { shell: 
         const parts: THREE.BufferGeometry[] = [];
         for (let i = 0; i < shape.tufts; i++) {
             const x = (i / Math.max(1, shape.tufts - 1) - 0.5) * width * 0.35;
-            const a = new THREE.Vector3(x, len * 0.08, depth * 0.3);
-            const b = new THREE.Vector3(x * 1.6, len * (0.32 + 0.08 * (i % 2)), depth * 0.55);
-            const e = new THREE.Vector3(x * 2.4, len * (0.48 + 0.1 * (i % 2)), depth * 0.45);
+            const a = new THREE.Vector3(x, len * 0.06, depth * 0.2);
+            const b = new THREE.Vector3(x * 1.3, len * (0.2 + 0.05 * (i % 2)), depth * 0.42);
+            const e = new THREE.Vector3(x * 1.8, len * (0.3 + 0.06 * (i % 2)), depth * 0.36);
             const path = polyPath([a, b, e]);
-            const g = weightedTube(path, (s) => width * 0.07 * Math.pow(1 - s, 0.8) + 0.0006, 8, 6);
+            const g = weightedTube(path, (s) => width * 0.045 * Math.pow(1 - s, 0.8) + 0.0005, 8, 6);
             g.deleteAttribute("uv");
             parts.push(g);
         }
