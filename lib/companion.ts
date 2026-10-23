@@ -156,9 +156,12 @@ function isOpenGoal(goal: string, owned: readonly string[], catalog: CompanionCa
     return catalog.item(goal) !== undefined && !owned.includes(goal);
 }
 
-/** Podrazumevani pratilac: isti kao dosadašnji učitelj (devojčica — učiteljica, dečak — učitelj) */
+/**
+ * Podrazumevani drugar dok dete ništa ne izabere: dete kao i ono (devojčica ili dečak). Već
+ * sačuvan izbor (i dosadašnja učiteljica/učitelj) ostaje kakav je.
+ */
 export function defaultCompanion(gender: string | null | undefined): CompanionState {
-    return { kind: gender?.toLowerCase() === "female" ? "woman" : "man", owned: [], wear: {}, spent: 0, v: 0 };
+    return { kind: gender?.toLowerCase() === "female" ? "girl" : "boy", owned: [], wear: {}, spent: 0, v: 0 };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

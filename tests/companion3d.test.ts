@@ -35,9 +35,9 @@ describe("3D drugar: stari podaci", () => {
         assert.equal(parseHumanLook("woman", "smedja.crna.rep")?.style, "rep");
     });
 
-    it("bez sačuvanog stanja: dosadašnji učitelj prema polu deteta", () => {
-        assert.equal(sanitizeCompanion(undefined, "female", COMPANION_CATALOG).kind, "woman");
-        assert.equal(sanitizeCompanion(undefined, "male", COMPANION_CATALOG).kind, "man");
+    it("bez sačuvanog stanja: devojčica ili dečak prema polu deteta", () => {
+        assert.equal(sanitizeCompanion(undefined, "female", COMPANION_CATALOG).kind, "girl");
+        assert.equal(sanitizeCompanion(undefined, "male", COMPANION_CATALOG).kind, "boy");
     });
 });
 

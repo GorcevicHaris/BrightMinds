@@ -100,7 +100,7 @@ export function headInfo(shape: BodyShape): HeadInfo {
         normal(u, v, n);
         return out.addScaledVector(n, offset(u, v));
     };
-    const eyeR = w * (child ? 0.142 : 0.128);
+    const eyeR = w * (child ? 0.13 : 0.126);
     return { shape, center, fn, point, normal, offsetFn, eyeU: child ? 0.073 : 0.07, eyeV: child ? 0.545 : 0.53, eyeR };
 }
 
@@ -200,7 +200,7 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
     }
 
     // ── Oči ──
-    const eyeMat = new THREE.MeshPhysicalMaterial({ map: irisTexture(eyeHex), roughness: 0.18, clearcoat: 1, clearcoatRoughness: 0.04, specularIntensity: 0.6 });
+    const eyeMat = new THREE.MeshPhysicalMaterial({ map: irisTexture(eyeHex), roughness: 0.32, clearcoat: 0.75, clearcoatRoughness: 0.06, specularIntensity: 0.45 });
     const lidMat = skinMaterial(skinHex);
     const lashMat = new THREE.MeshStandardMaterial({ color: "#140C0E", roughness: 0.75 });
     const shineMat = basicMaterial("#FFFFFF");

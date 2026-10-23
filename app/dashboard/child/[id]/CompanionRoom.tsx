@@ -13,7 +13,7 @@
 //  • Lik: drugar, koža, oči, kosa, frizura, hidžab (besplatno — identitet se ne plaća), krzno.
 // Drugar se okreće prevlačenjem i sam se vrati; uz „Manje animacija” stoji mirno.
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
     Backpack,
     Check,
@@ -144,6 +144,9 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [history, setHistory] = useState<{ past: LookState[]; future: LookState[] }>({ past: [], future: [] });
+    // List na telefonu: spušten (više drugara) ili podignut (više predmeta)
+    const [expanded, setExpanded] = useState(false);
+    const dragY = useRef<number | null>(null);
     // Jednokratni pokret: skok pri probi, radost posle kupovine, pojava novog izgleda
     const [move, setMove] = useState<{ action?: CompanionMove; key: number }>({ key: 0 });
     const play = (action: CompanionMove) => setMove((current) => ({ action, key: current.key + 1 }));
@@ -381,7 +384,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
 
     // ── Gornji deo: živ drugar ───────────────────────────────────────────────────
     const stage = (
-        <section aria-label="Moj drugar" className="relative h-[46svh] min-h-[18rem] overflow-hidden rounded-card bg-[#E4E6EB] shadow-soft ring-1 ring-line lg:h-[min(44rem,calc(100svh-11rem))]">
+        <section aria-label="Moj drugar" className="relative h-full overflow-hidden rounded-card bg-[#E4E6EB] shadow-soft ring-1 ring-line">
             <CompanionStage
                 kind={kind}
                 skin={previewSkin}
@@ -488,13 +491,34 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
     ];
 
     return (
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] lg:items-start xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] xl:gap-6">
-            <div className="sticky top-[4.5rem] z-30 sm:top-20 lg:top-24">{stage}</div>
+        // Telefon: gore 3D (≈ 47 % visine), dole list koji se povlači nagore (≈ 75 %); tablet i
+        // računar: 3D levo, list desno. List ima svoje listanje, a zaglavlje i čipovi ostaju vidljivi.
+        <div className="flex h-[calc(100svh-11.5rem)] min-h-[32rem] flex-col gap-3 sm:h-[calc(100svh-13rem)] lg:grid lg:h-[calc(100svh-12.5rem)] lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,30rem)_minmax(0,1fr)] xl:gap-6">
+            <div className={cn("min-h-0 flex-none lg:h-full", !reduceMotion && "transition-[height] duration-300", expanded ? "h-[26%]" : "h-[47%]")}>{stage}</div>
 
-            <section aria-label="Prodavnica, ormar i lik" className="min-w-0 rounded-t-[1.75rem] bg-surface px-3 pb-6 pt-2 shadow-soft ring-1 ring-line sm:px-4 lg:rounded-card">
-                <span aria-hidden="true" className="mx-auto mb-2 block h-1.5 w-12 rounded-full bg-line lg:hidden" />
+            <section aria-label="Prodavnica, ormar i lik" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-t-[1.75rem] bg-surface px-3 pb-6 shadow-soft ring-1 ring-line sm:px-4 lg:h-full lg:rounded-card">
+                <div className="sticky top-0 z-20 -mx-3 bg-surface px-3 pb-2 pt-1 sm:-mx-4 sm:px-4">
+                {/* Ručka: povlačenje nagore pokazuje više predmeta, nadole više drugara */}
+                <button
+                    type="button"
+                    aria-label={expanded ? "Više drugara" : "Više predmeta"}
+                    aria-expanded={expanded}
+                    onClick={() => setExpanded((value) => !value)}
+                    onPointerDown={(event) => {
+                        dragY.current = event.clientY;
+                    }}
+                    onPointerUp={(event) => {
+                        const dy = event.clientY - (dragY.current ?? event.clientY);
+                        dragY.current = null;
+                        if (dy < -24) setExpanded(true);
+                        else if (dy > 24) setExpanded(false);
+                    }}
+                    className="mx-auto mb-1 flex h-7 w-24 touch-none items-center justify-center lg:hidden"
+                >
+                    <span aria-hidden="true" className="block h-1.5 w-12 rounded-full bg-line" />
+                </button>
                 {/* Tri dela: ikonica + reč */}
-                <div role="tablist" aria-label="Delovi" className="grid grid-cols-3 gap-1 rounded-2xl bg-brand-50 p-1">
+                <div role="tablist" aria-label="Delovi" className="grid grid-cols-3 gap-1 rounded-2xl bg-brand-50 p-1 lg:mt-2">
                     {panels.map(({ id, label, Icon }) => {
                         const active = panel === id;
                         return (
@@ -511,6 +535,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                             </button>
                         );
                     })}
+                </div>
                 </div>
 
                 {panel === "shop" && (
@@ -587,7 +612,8 @@ function ShopPanel({ category, sub, onCategory, onSub, owned, wear, coins, goal,
     const shown = sub ? items.filter((item) => groupOf(item) === sub) : items;
     const label = CATEGORIES.find((c) => c.id === category)?.label ?? "";
     return (
-        <div className="mt-3 space-y-3">
+        <div className="space-y-3">
+            <StickyChips>
             <ChipRow label="Kategorije">
                 {CATEGORIES.map((c) => (
                     <Chip key={c.id} active={c.id === category} onClick={() => onCategory(c.id, c.label)} Icon={CATEGORY_ICON[c.id]}>
@@ -607,6 +633,7 @@ function ShopPanel({ category, sub, onCategory, onSub, owned, wear, coins, goal,
                     ))}
                 </ChipRow>
             )}
+            </StickyChips>
             {category === "sets" ? (
                 <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4">
                     {SETS.map((set) => (
@@ -659,11 +686,12 @@ function ClosetPanel({ owned, wear, busy, anythingWorn, onPick, onUndress }: { o
         .filter((c) => c.items.length > 0);
     const current = mine.find((c) => c.id === slot) ?? mine[0];
     return (
-        <div className="mt-3 space-y-3">
+        <div className="space-y-3">
             {mine.length === 0 ? (
                 <p className="rounded-tile bg-brand-50 p-5 text-center text-base font-bold text-ink-soft">Ormar je još prazan.</p>
             ) : (
                 <>
+                    <StickyChips>
                     <ChipRow label="Kategorije u ormaru">
                         {mine.map((c) => (
                             <Chip
@@ -679,6 +707,7 @@ function ClosetPanel({ owned, wear, busy, anythingWorn, onPick, onUndress }: { o
                             </Chip>
                         ))}
                     </ChipRow>
+                    </StickyChips>
                     {current && <ItemGrid items={current.items} owned={owned} wear={wear} coins={0} selected={null} onPick={onPick} />}
                 </>
             )}
@@ -734,14 +763,16 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
     void _bg;
 
     return (
-        <div className="mt-3 space-y-3">
-            <ChipRow label="Lik">
-                {tabs.map((t) => (
-                    <Chip key={t.id} active={active === t.id} onClick={() => onTab(t.id, t.label)} Icon={t.Icon}>
-                        {t.label}
-                    </Chip>
-                ))}
-            </ChipRow>
+        <div className="space-y-3">
+            <StickyChips>
+                <ChipRow label="Lik">
+                    {tabs.map((t) => (
+                        <Chip key={t.id} active={active === t.id} onClick={() => onTab(t.id, t.label)} Icon={t.Icon}>
+                            {t.label}
+                        </Chip>
+                    ))}
+                </ChipRow>
+            </StickyChips>
 
             {active === "companion" && (
                 <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 xl:grid-cols-6">
@@ -867,6 +898,11 @@ function HijabPicker({ look, busy, onPick }: { look: HumanLook; busy: boolean; o
 }
 
 // ── Pločice i delovi ──────────────────────────────────────────────────────────
+
+/** Čipovi ostaju vidljivi ispod zaglavlja lista dok dete lista predmete */
+function StickyChips({ children }: { children: ReactNode }) {
+    return <div className="sticky top-[6.25rem] z-10 -mx-3 space-y-2 bg-surface px-3 pb-2 sm:-mx-4 sm:px-4 lg:top-[4.5rem]">{children}</div>;
+}
 
 function ChipRow({ label, small = false, children }: { label: string; small?: boolean; children: ReactNode }) {
     return (

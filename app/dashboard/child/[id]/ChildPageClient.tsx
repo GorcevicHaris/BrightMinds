@@ -86,7 +86,7 @@ function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boo
     }
     return (
         <section className="relative min-h-52 overflow-hidden rounded-card bg-[#E4E6EB] text-ink shadow-soft sm:min-h-64">
-            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="wide" align={0.55} background className="absolute inset-0" />
+            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="wide" align={0.42} background className="absolute inset-0" />
             <div className="relative flex min-h-52 items-center sm:min-h-64">
                 <div className="w-[62%] p-4 sm:w-1/2 sm:p-8">
                     <div className="inline-block max-w-full rounded-2xl bg-white/88 px-4 py-3 shadow-soft backdrop-blur-sm sm:px-5 sm:py-4">{children}</div>
@@ -235,7 +235,8 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                     </div>
                 ) : view === "companion" ? (
                     <div className="space-y-5 sm:space-y-6">
-                        <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">Moj drugar</h1>
+                        {/* Na telefonu naslov samo za čitač ekrana: ekran pripada drugaru i predmetima */}
+                        <h1 className="text-2xl font-extrabold text-ink max-sm:sr-only sm:text-3xl">Moj drugar</h1>
                         <CompanionRoom gender={gender} />
                     </div>
                 ) : (

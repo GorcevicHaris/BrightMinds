@@ -103,9 +103,9 @@ export function hairMaterial(hex: string): THREE.MeshPhysicalMaterial {
         const color = new THREE.Color(hex);
         return new THREE.MeshPhysicalMaterial({
             color,
-            roughness: 0.62,
+            roughness: 0.66,
             metalness: 0,
-            specularIntensity: 0.3,
+            specularIntensity: 0.24,
             specularColor: color.clone().lerp(new THREE.Color("#FFFFFF"), 0.6),
             anisotropy: 0.22,
             anisotropyRotation: Math.PI / 2,

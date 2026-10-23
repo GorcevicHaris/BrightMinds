@@ -234,7 +234,7 @@ export function irisTexture(color: string): THREE.Texture {
         const base = new THREE.Color(color);
         const dark = base.clone().multiplyScalar(0.5);
         const light = base.clone().lerp(new THREE.Color("#FFFFFF"), 0.45);
-        const sclera = new THREE.Color("#FBF8F4");
+        const sclera = new THREE.Color("#F2EDE7");
         const tmp = new THREE.Color();
         const IRIS = 0.66;
         const PUPIL = 0.19;
@@ -263,8 +263,9 @@ export function irisTexture(color: string): THREE.Texture {
                 } else {
                     const edge = Math.min(1, (angle - IRIS) / 0.05);
                     tmp.copy(dark).lerp(sclera, edge);
-                    // Belo oka blago sivi ka uglovima
-                    tmp.multiplyScalar(1 - Math.max(0, angle - 1.0) * 0.08);
+                    // Belo oka blago sivi ka uglovima, a pod gornjim kapkom je meka senka
+                    tmp.multiplyScalar(1 - Math.max(0, angle - 1.0) * 0.1);
+                    if (dy > 0.25) tmp.multiplyScalar(1 - (dy - 0.25) * 0.28);
                 }
                 const k = (y * w + x) * 4;
                 image.data[k] = tmp.r * 255;

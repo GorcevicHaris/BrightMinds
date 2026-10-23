@@ -32,7 +32,8 @@ function adultShape(kind: "woman" | "man"): BodyShape {
         shoulderY: y(1.255),
         neckBaseY: y(1.3),
         headBoneY: y(1.338),
-        head: { w: 0.255, h: 0.3, d: 0.27, up: 0.136, fwd: 0.014, chin: man ? 0.86 : 0.8, cheeks: 0.55 },
+        // Uže lice (Bitmoji): manji obrazi i vilica, sitna brada
+        head: { w: 0.245, h: 0.296, d: 0.266, up: 0.134, fwd: 0.014, chin: man ? 0.84 : 0.77, cheeks: 0.38 },
         torsoW: profile([
             [y(0.78), 0.07], [y(0.82), 0.118], [y(0.88), man ? 0.142 : 0.156], [y(0.95), man ? 0.136 : 0.132], [y(1.02), man ? 0.132 : 0.108],
             [y(1.1), 0.128 * w], [y(1.19), 0.146 * w], [y(1.245), 0.154 * w], [y(1.27), 0.136 * w], [y(1.295), man ? 0.088 : 0.078], [y(1.315), man ? 0.056 : 0.05], [y(1.4), man ? 0.052 : 0.046],

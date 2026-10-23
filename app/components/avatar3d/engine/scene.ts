@@ -215,13 +215,15 @@ export class StageScene {
                 width = span * 0.8;
                 break;
             case "wide":
-                target = Math.max(H, top) * 0.53;
-                span = Math.max(H, top) * 1.12;
+                // Baner: lik ≈ 90 % visine banera
+                target = Math.max(H, top) * 0.5;
+                span = Math.max(H, top) * 1.06;
                 width = H * 0.62;
                 break;
             default:
+                // Ceo lik ≈ 88 % visine prikaza
                 target = Math.max(H, top) * 0.5;
-                span = Math.max(H, top) * 1.14;
+                span = Math.max(H, top) * 1.08;
                 width = H * (this.figure && this.figure.hasPet ? 1.05 : 0.66);
         }
         const vDist = span / 2 / tan;
@@ -231,7 +233,7 @@ export class StageScene {
         if (this.options.framing === "wide") {
             // Lik na zadatom mestu ekrana (npr. desno od pozdrava)
             const halfW = tan * dist * this.aspect;
-            pan = -(this.options.align ?? 0) * halfW * 0.72;
+            pan = -(this.options.align ?? 0) * halfW * 0.8;
         }
         this.camera.position.set(pan, target + dist * 0.07, dist);
         this.camera.lookAt(pan, target - 0.01, 0);

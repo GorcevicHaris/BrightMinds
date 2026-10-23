@@ -49,9 +49,9 @@ const catalog: CompanionCatalog = {
 
 describe("companion state", () => {
     it("starts with the teacher the child already knows (girl → woman, boy → man)", () => {
-        assert.equal(defaultCompanion("female").kind, "woman");
-        assert.equal(defaultCompanion("male").kind, "man");
-        assert.equal(defaultCompanion(null).kind, "man");
+        assert.equal(defaultCompanion("female").kind, "girl");
+        assert.equal(defaultCompanion("male").kind, "boy");
+        assert.equal(defaultCompanion(null).kind, "boy");
     });
 
     it("drops unknown companions and items, and never wears an item that was not bought", () => {
@@ -60,7 +60,7 @@ describe("companion state", () => {
             "female",
             catalog
         );
-        assert.equal(state.kind, "woman");
+        assert.equal(state.kind, "girl");
         assert.deepEqual(state.owned, ["cap"]);
         assert.deepEqual(state.wear, {});
         assert.equal(state.spent, 0);

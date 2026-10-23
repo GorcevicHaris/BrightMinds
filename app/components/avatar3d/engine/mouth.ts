@@ -51,6 +51,7 @@ function curves(shape: MouthShape, x: number): { top: number; bottom: number } {
 export class Mouth {
     readonly group = new THREE.Group();
     private lips: THREE.Mesh;
+    private corners: THREE.Mesh;
     private inner: THREE.Mesh;
     private teeth: THREE.Mesh;
     private tongue: THREE.Mesh;
@@ -77,7 +78,9 @@ export class Mouth {
         this.teeth.renderOrder = 2;
         this.tongue.renderOrder = 2;
         this.lips.renderOrder = 3;
-        this.group.add(this.inner, this.teeth, this.tongue, this.lips);
+        this.corners = new THREE.Mesh(this.cornerGeometry(), innerMat);
+        this.corners.renderOrder = 1;
+        this.group.add(this.inner, this.teeth, this.tongue, this.lips, this.corners);
         this.setShape({ width: 1, smile: 0.5, open: 0, round: 0 });
     }
 
@@ -100,6 +103,43 @@ export class Mouth {
         }
         geometry.setIndex(index);
         return geometry;
+    }
+
+    /** Dva kratka nabora u uglovima usana (linija osmeha) */
+    private cornerGeometry(): THREE.BufferGeometry {
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute("position", new THREE.BufferAttribute(new Float32Array(2 * 2 * 6 * 3), 3));
+        const index: number[] = [];
+        for (let side = 0; side < 2; side++) {
+            const base = side * 12;
+            for (let i = 0; i < 5; i++) index.push(base + i, base + 6 + i, base + i + 1, base + i + 1, base + 6 + i, base + 6 + i + 1);
+        }
+        geometry.setIndex(index);
+        return geometry;
+    }
+
+    private updateCorners(shape: MouthShape, w: number) {
+        const pos = this.corners.geometry.getAttribute("position") as THREE.BufferAttribute;
+        const corner = -shape.smile * 5;
+        // Nabor je izraženiji kad je osmeh širi; kod tužnih usta skoro nestaje
+        const k = Math.max(0, shape.smile);
+        this.corners.visible = k > 0.15;
+        for (let side = 0; side < 2; side++) {
+            const sign = side === 0 ? -1 : 1;
+            for (let i = 0; i < 6; i++) {
+                const t = i / 5;
+                const x = sign * (w + 0.6 + t * 2.2 * k);
+                const y = corner - 0.6 - t * 3.2 * k + t * t * 2.4 * k;
+                const half = 0.45 * (1 - t * 0.7);
+                this.at(x, y - half, 0.0007, this.p);
+                pos.setXYZ(side * 12 + i, this.p.x, this.p.y, this.p.z);
+                this.at(x, y + half, 0.0007, this.p);
+                pos.setXYZ(side * 12 + 6 + i, this.p.x, this.p.y, this.p.z);
+            }
+        }
+        pos.needsUpdate = true;
+        this.corners.geometry.computeVertexNormals();
+        this.corners.geometry.computeBoundingSphere();
     }
 
     /** Traka od dve krive (gornja i donja ivica), N tačaka po ivici */
@@ -177,6 +217,7 @@ export class Mouth {
         // Unutrašnjost: između krivih, tik iznad kože (kao naslikano, bez rupe u glavi). Zatvorena
         // usta imaju tanku tamnu liniju između usana (linija osmeha)
         this.inner.visible = true;
+        this.updateCorners(shape, w);
         this.teeth.visible = shape.open > 0.18;
         this.tongue.visible = shape.open > 0.28;
         this.strip(this.inner, w * 0.96, (c) => c.top - 0.5, (c) => Math.max(c.bottom, c.top + 1.1), 0.0006);
@@ -203,7 +244,7 @@ export class Mouth {
     private lastShape: MouthShape = { width: 1, smile: 0.5, open: 0, round: 0 };
 
     dispose() {
-        for (const mesh of [this.lips, this.inner, this.teeth, this.tongue]) {
+        for (const mesh of [this.lips, this.inner, this.teeth, this.tongue, this.corners]) {
             mesh.geometry.dispose();
             (mesh.material as THREE.Material).dispose();
         }

@@ -38,7 +38,8 @@ function capSurface(head: HeadInfo, spec: CapSpec, underHat: boolean): { fn: Sur
     const offset = (u: number, v: number) => {
         const th = thetaOf(u);
         const a = Math.abs(th);
-        const hl = line(a) + (spec.wave ? spec.wave(th) : 0);
+        // Linija kose u sitnim pramenovima (ne kao ivica kacige)
+        const hl = line(a) + (spec.wave ? spec.wave(th) : 0) + (spec.clumps ?? 1) * 0.006 * Math.pow(Math.abs(Math.sin(th * 13 + 0.7)), 2) * (1 - 0.5 * Math.abs(Math.cos(th)));
         const cover = 1 - smoothstep(hl - soft, hl + soft, v);
         let t = spec.thickness(th, v);
         // Oblikovani pramenovi: blagi žlebovi koji teku od temena, pa kosa nije „kaciga”
@@ -47,6 +48,8 @@ function capSurface(head: HeadInfo, spec: CapSpec, underHat: boolean): { fn: Sur
             const flow = th * 11 + Math.sin(th * 3) * 0.8 + v * 2.2;
             t += k * 0.0042 * (Math.pow(Math.abs(Math.sin(flow)), 0.55) - 0.55) * smoothstep(0.06, 0.28, v);
             t += k * 0.0025 * Math.sin(th * 5 + 1.3) * smoothstep(0.1, 0.4, v);
+            // Fini žlebovi vlasi
+            t += k * 0.0011 * Math.sin(th * 46 + v * 7 + Math.sin(th * 9) * 2) * smoothstep(0.08, 0.3, v);
         }
         if (underHat && v < 0.42) t = Math.min(t, UNDER_HAT_TOP + (v / 0.42) * 0.004);
         // Debljina se tanji ka liniji kose, pa se kosa „utapa” u kožu (−5 mm = ispod kože)
