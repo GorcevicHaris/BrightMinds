@@ -41,6 +41,8 @@ export interface PaintContext {
     belly: number;
     /** Svetli obrazi i brada (lisica, haski, pingvin) */
     cheeks: number;
+    /** Sopstvena šara vrste (AnimalSpec.paint): posle ugrađenih šara, pre senke */
+    custom?: (pp: PaintPoint, ctx: PaintContext, out: THREE.Color) => void;
 }
 
 // ── 3D šum ────────────────────────────────────────────────────────────────────
@@ -406,6 +408,8 @@ export function coatColor(ctx: PaintContext, pp: PaintPoint, out: THREE.Color): 
         default:
             break;
     }
+
+    ctx.custom?.(pp, ctx, out);
 
     // ── Senka u naborima ──
     const ao = clamp01(pp.ao ?? 0);
