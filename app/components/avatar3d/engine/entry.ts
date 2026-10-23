@@ -4,6 +4,7 @@
 import "./human";
 import "../items";
 import "../animals";
+import { backgroundBuilder, itemBuilder } from "../contract";
 import { Figure } from "./figure";
 
 export { Figure } from "./figure";
@@ -15,4 +16,9 @@ export type { PoseName } from "./pose";
 /** Da li za tog drugara postoji 3D telo (inače se crta 2D) */
 export function supports3D(kind: string): boolean {
     return Figure.supports(kind);
+}
+
+/** Da li predmet (ili pozadina) ima 3D crtež */
+export function hasItem3D(id: string): boolean {
+    return Boolean(itemBuilder(id) ?? backgroundBuilder(id));
 }

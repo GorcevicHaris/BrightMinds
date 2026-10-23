@@ -165,10 +165,13 @@ export default function CompanionStage({ kind, skin, wear = {}, framing = "full"
             </div>
         );
     }
+    // Platno je u unutrašnjem sloju preko celog prikaza (spoljni sloj nosi raspored stranice)
+    const positioned = /(absolute|fixed|sticky)/.test(className ?? "");
     return (
-        <div ref={hostRef} className={cn("relative overflow-hidden", className)} role={label ? "img" : undefined} aria-label={label}>
+        <div className={cn(!positioned && "relative", "overflow-hidden", className)} role={label ? "img" : undefined} aria-label={label}>
+            <div ref={hostRef} className="absolute inset-0" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {!owner && snapshot && <img src={snapshot} alt="" className="absolute inset-0 h-full w-full object-cover" />}
+            {!owner && snapshot && <img src={snapshot} alt="" className="pointer-events-none absolute inset-0 h-full w-full object-cover" />}
         </div>
     );
 }
