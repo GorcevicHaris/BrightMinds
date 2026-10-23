@@ -2,3 +2,10 @@
 // Svaka vrsta je u svom fajlu extra/<vrsta>.ts (registerCompanion) i uvozi se ovde.
 
 import "./panda";
+import "./koala";
+import "./tiger";
+import "./elephant";
+import "./monkey";
+import "./owl";
+import "./dinosaur";
+import "./giraffe";

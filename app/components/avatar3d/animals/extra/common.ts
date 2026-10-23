@@ -75,8 +75,9 @@ export function eyePatch(ctx: PaintContext, p: THREE.Vector3, o: { rx: number; r
         const s = Math.sin(o.tilt ?? 0);
         const x = (lx * c + ly * s) / (o.rx * r);
         const y = (-lx * s + ly * c) / (o.ry * r);
-        const z = (p.z - e.z) / (r * 2.6);
-        const d = Math.hypot(x, y, Math.min(0, z) * 1.2);
+        // Po dubini širokogrudo (mrlja pokriva i kapke i udubljenje oko oka)
+        const z = (p.z - e.z) / (r * 3.2);
+        const d = Math.hypot(x, y, z);
         const soft = o.soft ?? 0.12;
         best = Math.max(best, 1 - smoothstep(1 - soft, 1 + soft, d));
     }

@@ -18,7 +18,8 @@ function panda(fur: string, mark: string | string[], extra: Partial<Coat> = {}):
     const marks = Array.isArray(mark) ? mark : [mark];
     return {
         fur,
-        light: "#FFFFFF",
+        // Svetla boja daje i sjaj krzna po ivicama: srednje siva, da crne šare ne „izblede”
+        light: "#4E4E56",
         muzzle: "#FFFFFF",
         inner: marks[0],
         nose: INK,
@@ -67,8 +68,8 @@ function paintPanda(pp: PaintPoint, ctx: PaintContext, out: THREE.Color) {
         case "head":
         case "lid": {
             // Mrlja kao suza: veća ispod oka, nagnuta napolje-dole
-            const patch = eyePatch(ctx, p, { rx: 1.55, ry: 2.05, dx: 0.25, dy: -0.35, tilt: -0.55, soft: 0.1 });
-            out.lerp(mark, patch * (1 - muzzleOf(pp, 0.25, 0.7)));
+            const patch = eyePatch(ctx, p, { rx: 1.4, ry: 1.9, dx: 0.3, dy: -0.32, tilt: -0.5, soft: 0.28 });
+            out.lerp(mark, Math.min(1, patch * 1.35) * (1 - muzzleOf(pp, 0.25, 0.7)));
             return;
         }
         default:
