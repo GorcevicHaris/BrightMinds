@@ -1,0 +1,193 @@
+"use client";
+
+// Proba dodatnih 3D životinja (samo u razvoju). Gore: jedna vrsta u studiju (izgled, izraz,
+// odeća, okretanje). Dole: galerija — svaka vrsta × izgled spreda i iz 3/4, pa svaka vrsta
+// obučena (kapa, duks, pantalone, patike: pravi predmeti iz kataloga kad postoje, inače probni
+// kroj istim alatom). `window.__extra` služi skriptama za snimke ekrana.
+
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+import "@/app/components/avatar3d/animals";
+import "@/app/components/avatar3d/items";
+import { companionBuilder, itemBuilder, type FaceExpression, type Wear } from "@/app/components/avatar3d/contract";
+import { COMPANION_LABELS, EXTRA_ANIMAL_KINDS, type ExtraAnimalKind } from "@/app/components/avatar3d/data";
+import { EXTRA_SKINS } from "@/app/components/avatar3d/animals/extra/skins.data";
+import { Figure } from "@/app/components/avatar3d/engine/figure";
+import { Stage } from "@/app/components/avatar3d/engine/stage";
+import { itemsOf } from "@/app/components/avatar3d/manifest";
+import { dressProbe, type Probe } from "../avatar3d-animals/probes";
+
+const EXPRESSIONS: FaceExpression[] = ["neutral", "happy", "proud", "gentle", "curious", "sad", "serious", "worried", "surprised"];
+
+interface View {
+    kind: ExtraAnimalKind;
+    skin: string;
+    expression: FaceExpression;
+    dressed: boolean;
+    yaw: number;
+    quality: "high" | "low";
+}
+
+function triangles(object: THREE.Object3D): number {
+    let tris = 0;
+    object.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh || !mesh.visible) return;
+        const g = mesh.geometry;
+        tris += (g.index ? g.index.count : g.getAttribute("position").count) / 3;
+    });
+    return Math.round(tris);
+}
+
+/** Pravi predmet iz kataloga za mesto (i podvrstu), ako ima 3D crtež */
+function realItem(slot: "hat" | "outfit" | "bottom" | "feet", group: string): string | undefined {
+    const list = itemsOf(slot);
+    return (list.find((item) => item.group === group && itemBuilder(item.id)) ?? list.find((item) => itemBuilder(item.id)))?.id;
+}
+
+/** Kapa + duks + pantalone + patike: pravi predmeti gde postoje, probni kroj za ostalo */
+function outfit(): { wear: Wear; probes: Probe[] } {
+    const wear: Wear = {};
+    const probes: Probe[] = [];
+    const pairs: ["hat" | "outfit" | "bottom" | "feet", string, Probe][] = [["hat", "kape", "beanie"], ["outfit", "duksevi", "hoodie"], ["bottom", "pantalone", "pants"], ["feet", "patike", "sneakers"]];
+    for (const [slot, group, probe] of pairs) {
+        const id = realItem(slot, group);
+        if (id) wear[slot] = id;
+        else probes.push(probe);
+    }
+    return { wear, probes };
+}
+
+export default function ExtraLab() {
+    const hostRef = useRef<HTMLDivElement>(null);
+    const stageRef = useRef<Stage | null>(null);
+    const figureRef = useRef<Figure | null>(null);
+    const [view, setView] = useState<View>({ kind: "panda", skin: EXTRA_SKINS.panda[0].id, expression: "happy", dressed: false, yaw: 0, quality: "high" });
+    const [info, setInfo] = useState("");
+    const [gallery, setGallery] = useState<{ title: string; src: string }[]>([]);
+    const showRef = useRef<(v: View) => { tris: number; ms: number; registered: boolean }>(() => ({ tris: 0, ms: 0, registered: false }));
+
+    useEffect(() => {
+        const host = hostRef.current;
+        if (!host) return;
+        const stage = new Stage(host, { still: true, framing: "full" });
+        stage.disableAdaptiveQuality();
+        stageRef.current = stage;
+        const show = (v: View) => {
+            figureRef.current?.dispose();
+            figureRef.current = null;
+            if (!companionBuilder(v.kind)) {
+                stage.setFigure(null);
+                return { tris: 0, ms: 0, registered: false };
+            }
+            const dress = v.dressed ? outfit() : { wear: {}, probes: [] as Probe[] };
+            const t0 = performance.now();
+            const figure = new Figure({ kind: v.kind, skin: v.skin }, dress.wear, { quality: v.quality });
+            const ms = Math.round(performance.now() - t0);
+            const tris = triangles(figure.body.root);
+            for (const probe of dress.probes) dressProbe(figure.body, probe);
+            figure.setExpressionNow(v.expression);
+            figureRef.current = figure;
+            stage.setFigure(figure);
+            stage.setYaw(v.yaw);
+            return { tris, ms, registered: true };
+        };
+        showRef.current = show;
+        const api = {
+            show: (v: Partial<View>) => {
+                const next: View = { kind: "panda", skin: "", expression: "happy", dressed: false, yaw: 0, quality: "high", ...v };
+                if (!next.skin) next.skin = EXTRA_SKINS[next.kind][0].id;
+                return show(next);
+            },
+            frame: (y: number, span: number) => stage.frameAt(y, span),
+            reframe: () => stage.setFraming("full"),
+            snapshot: () => stage.snapshot(),
+            anchors: () => figureRef.current?.body.anchors,
+            registered: () => EXTRA_ANIMAL_KINDS.filter((k) => companionBuilder(k)),
+        };
+        (window as unknown as { __extra: typeof api }).__extra = api;
+        return () => {
+            figureRef.current?.dispose();
+            stage.dispose();
+            stageRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
+        const r = showRef.current(view);
+        setInfo(r.registered ? `${COMPANION_LABELS[view.kind]} · ${view.skin} · ${r.tris.toLocaleString("sr")} trouglova (telo) · ${r.ms} ms` : `${COMPANION_LABELS[view.kind]}: još nije napravljen`);
+    }, [view]);
+
+    const makeGallery = async () => {
+        const stage = stageRef.current;
+        if (!stage) return;
+        const out: { title: string; src: string }[] = [];
+        const wait = () => new Promise((r) => setTimeout(r, 30));
+        for (const kind of EXTRA_ANIMAL_KINDS) {
+            if (!companionBuilder(kind)) continue;
+            for (const skin of EXTRA_SKINS[kind]) {
+                for (const yaw of [0, 0.7]) {
+                    showRef.current({ kind, skin: skin.id, expression: "happy", dressed: false, yaw, quality: "high" });
+                    await wait();
+                    out.push({ title: `${COMPANION_LABELS[kind]} · ${skin.label}${yaw ? " · 3/4" : ""}`, src: stage.snapshot() });
+                }
+            }
+            showRef.current({ kind, skin: EXTRA_SKINS[kind][0].id, expression: "happy", dressed: true, yaw: 0.45, quality: "high" });
+            await wait();
+            out.push({ title: `${COMPANION_LABELS[kind]} · obučen`, src: stage.snapshot() });
+            setGallery([...out]);
+        }
+        showRef.current(view);
+    };
+
+    const skins = EXTRA_SKINS[view.kind];
+    return (
+        <main className="min-h-screen bg-[#F4F1EC] p-4 text-[#2A2230]">
+            <h1 className="mb-2 text-xl font-bold">Dodatne 3D životinje (proba)</h1>
+            <div className="flex flex-wrap gap-4">
+                <div ref={hostRef} data-stage className="h-[700px] w-[560px] rounded-2xl bg-gradient-to-b from-[#E9EEF6] to-[#F7F2EA]" />
+                <div className="flex max-w-[440px] flex-col gap-3 text-sm">
+                    <p data-info>{info}</p>
+                    <div className="flex flex-wrap gap-1">
+                        {EXTRA_ANIMAL_KINDS.map((kind) => (
+                            <button key={kind} type="button" onClick={() => setView((v) => ({ ...v, kind, skin: EXTRA_SKINS[kind][0].id }))} className={`rounded-full px-3 py-1 ${view.kind === kind ? "bg-[#5B4BDB] text-white" : companionBuilder(kind) ? "bg-white" : "bg-white/50 text-slate-400"}`}>
+                                {COMPANION_LABELS[kind]}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                        {skins.map((skin) => (
+                            <button key={skin.id} type="button" onClick={() => setView((v) => ({ ...v, skin: skin.id }))} className={`rounded-full px-3 py-1 ${view.skin === skin.id ? "bg-[#2A9D8F] text-white" : "bg-white"}`}>
+                                {skin.label} {skin.price ? `(${skin.price})` : ""}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                        {EXPRESSIONS.map((e) => (
+                            <button key={e} type="button" onClick={() => setView((v) => ({ ...v, expression: e }))} className={`rounded-full px-3 py-1 ${view.expression === e ? "bg-[#E76F51] text-white" : "bg-white"}`}>
+                                {e}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                        <button type="button" onClick={() => setView((v) => ({ ...v, dressed: !v.dressed }))} className={`rounded-full px-3 py-1 ${view.dressed ? "bg-[#264653] text-white" : "bg-white"}`}>obučen</button>
+                        <button type="button" onClick={() => setView((v) => ({ ...v, yaw: v.yaw ? 0 : 0.7 }))} className="rounded-full bg-white px-3 py-1">spreda / 3/4</button>
+                        <button type="button" onClick={() => setView((v) => ({ ...v, quality: v.quality === "high" ? "low" : "high" }))} className="rounded-full bg-white px-3 py-1">kvalitet: {view.quality}</button>
+                        <button type="button" onClick={makeGallery} className="rounded-full bg-[#F4A261] px-3 py-1 text-white">napravi galeriju</button>
+                    </div>
+                </div>
+            </div>
+            {gallery.length > 0 && (
+                <section className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3" data-gallery>
+                    {gallery.map((g) => (
+                        <figure key={g.title} className="rounded-xl bg-white p-2 text-xs">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={g.src} alt={g.title} className="w-full" />
+                            <figcaption>{g.title}</figcaption>
+                        </figure>
+                    ))}
+                </section>
+            )}
+        </main>
+    );
+}
