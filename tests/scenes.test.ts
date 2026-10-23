@@ -10,6 +10,9 @@ import { socialScene } from "@/app/components/games/data/socialScenes";
 import { getSituationsForLevel } from "@/app/components/games/data/socialSituations";
 import { storyForLevel } from "@/app/components/games/data/socialStories";
 import { STORY_SCENES, storyScene } from "@/app/components/games/data/storyScenes";
+import { USE_ITEMS } from "@/app/components/games/data/usesItems";
+import { USES_SCENES, usesScene } from "@/app/components/games/data/usesScenes";
+import type { PropId, ViewId } from "@/app/components/games/scene/types";
 import { BACKGROUND_IDS, hero, inBed, PROP_IDS, scene, sceneParts, thing, think, type SceneSpec } from "@/app/components/games/scene/types";
 
 /** Svaki deo slike postoji u kompletu: pozadine, predmeti i likovi */
@@ -106,6 +109,67 @@ describe("story scenes", () => {
         for (const [level, pictures] of Object.entries(STORY_SCENES)) {
             assertDrawable(pictures.cover, `nivo ${level}, naslovna`);
             pictures.steps.forEach((spec, i) => assertDrawable(spec, `nivo ${level}, stranica ${i + 1}`));
+        }
+    });
+});
+
+describe("uses scenes", () => {
+    /** Predmeti iz kompleta koji crtaju neki od odgovora (i nebo sa suncem ili mesecom) */
+    const DEPICTS: Partial<Record<string, readonly PropId[]>> = {
+        spoon: ["spoon"],
+        pencil: ["pencil"],
+        scissors: ["scissors"],
+        soap: ["soapBubbles"],
+        key: [],
+        bed: ["bed", "dogBed"],
+        glass: ["glass", "cup"],
+        phone: ["phone"],
+        ball: ["ball"],
+        eyes: ["glasses"],
+        backpack: ["backpack", "book", "bookOpen", "shelf"],
+        alarm: ["clock"],
+        bathtub: ["bathtubTiles"],
+        glasses: ["glasses"],
+        sneakers: ["shoe", "shoes"],
+        gloves: ["glove"],
+        cap: ["cap"],
+        thermometer: ["thermometer"],
+        brush: [],
+        book: ["book", "bookOpen", "shelf"],
+        bird: ["bird", "duck"],
+        fish: ["fish"],
+        rabbit: ["rabbit"],
+        bee: ["bee"],
+        bicycle: ["bicycle", "bicycleSmall"],
+        boat: ["boat"],
+        plane: ["plane"],
+        sun: ["sun"],
+        moon: ["moon"],
+        rainbow: ["rainbow"],
+        snowman: ["snowman"],
+        magnifier: ["magnifier"],
+    };
+    /** Pogled koji crta sunce, mesec ili dugu */
+    const SKY_SHOWS: Partial<Record<ViewId, string>> = { day: "sun", night: "moon", dark: "moon", rainbow: "rainbow" };
+
+    it("has a picture for every question", () => {
+        const missing = USE_ITEMS.filter((item) => !usesScene(item.id)).map((item) => item.id);
+        assert.deepEqual(missing, [], `bez slike: ${missing.join(", ")}`);
+        const extra = Object.keys(USES_SCENES).filter((id) => !USE_ITEMS.some((item) => item.id === id));
+        assert.deepEqual(extra, [], `slika bez pitanja: ${extra.join(", ")}`);
+    });
+
+    it("never shows the answer or another picture from the same group", () => {
+        for (const item of USE_ITEMS) {
+            const spec = usesScene(item.id)!;
+            assertDrawable(spec, `pitanje ${item.id}`);
+            const { props } = sceneParts(spec);
+            for (const other of USE_ITEMS.filter((candidate) => candidate.group === item.group)) {
+                for (const prop of DEPICTS[other.id] ?? []) assert.ok(!props.includes(prop), `pitanje ${item.id}: na slici je „${prop}” (${other.name})`);
+                // Sunce, mesec i duga dolaze i sa neba (pogled), ne samo kao predmet
+                const sky = spec.view ? SKY_SHOWS[spec.view] : spec.bg === "park" || spec.bg === "playground" || spec.bg === "beach" ? "sun" : undefined;
+                if (item.group === "world") assert.notEqual(sky, other.id, `pitanje ${item.id}: nebo pokazuje ${other.name}`);
+            }
         }
     });
 });

@@ -10,7 +10,9 @@ export const HORIZON = 100;
 
 const SKY: Record<ViewId, string> = {
     day: "#cfe8fb",
+    clear: "#cfe8fb",
     night: "#2f3d6e",
+    stars: "#2f3d6e",
     dusk: "#f7c9a3",
     rain: "#c5ccd8",
     storm: "#8f98ab",
@@ -66,6 +68,13 @@ function Sky({ view, x, y, w, h }: { view: ViewId; x: number; y: number; w: numb
             )}
             {view === "dusk" && <circle cx={cx} cy={y + h * 0.85} r={Math.min(w, h) * 0.18} fill="#f6a35a" />}
             {(view === "night" || view === "dark") && <MoonAndStars x={x + w * 0.7} y={y + h * 0.35} />}
+            {view === "stars" && (
+                <g fill="#ffffff">
+                    {Array.from({ length: Math.round(w / 14) }, (_, i) => (
+                        <circle key={i} cx={x + 6 + i * 14} cy={y + 8 + ((i * 23) % Math.max(h * 0.6, 10))} r={1.7} opacity={0.9} />
+                    ))}
+                </g>
+            )}
             {(view === "rain" || view === "storm") && (
                 <>
                     <Cloud x={x + w * 0.35} y={y + h * 0.25} s={Math.min(w, 120) / 110} color={view === "storm" ? "#6d7587" : "#a9b2c0"} />

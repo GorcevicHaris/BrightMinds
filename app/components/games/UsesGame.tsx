@@ -17,6 +17,7 @@ import {
     GamePrompt,
     GameStage,
     hintDue,
+    isFemale,
     PlayArea,
     playSfx,
     useGameSync,
@@ -31,6 +32,9 @@ import {
     type TimerId,
 } from "@/app/components/games/kit";
 import { buildUsesLevel, emptyUsesView, getUseItem, itIs, mergeUsesMonitor, type UseItem, type UsesRound, type UsesView } from "@/app/components/games/data/usesItems";
+import { usesScene } from "@/app/components/games/data/usesScenes";
+import { storyHero } from "@/app/components/games/scene/heroes";
+import { SceneArt } from "@/app/components/games/scene/SceneArt";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
@@ -194,12 +198,20 @@ export default function UsesGame({ childId, level, gender, onComplete, isMonitor
     const pickedItem = shown.picked ? getUseItem(shown.picked) : undefined;
     const message = solved ? item.answer : shown.feedback === "wrong" && pickedItem ? wrongText(pickedItem, shown.hint) : "";
     const count = shown.choices.length;
+    const picture = usesScene(item.id);
 
     return (
         <GameStage>
             <GameHud round={shown.round} totalRounds={shown.totalRounds} unit="Pitanje" score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
-            <GamePrompt key={`prompt-${shown.round}-${item.id}`} className="animate-fade-up" title={item.question} />
+            <GamePrompt
+                key={`prompt-${shown.round}-${item.id}`}
+                className="animate-fade-up"
+                compact
+                // Mala slika situacije iz pitanja (nikad sam odgovor)
+                illustration={picture && <SceneArt spec={picture} hero={storyHero(isFemale(gender))} className="h-auto w-full" />}
+                title={item.question}
+            />
 
             <PlayArea accent={GAME.accent}>
                 <div

@@ -1670,6 +1670,108 @@ const PROPS: Record<PropId, Draw> = {
         </g>
     ),
     arrow: () => <path d="M-14 -6 H6 V-12 L16 -4 L6 4 V-2 H-14Z" fill="#6c61f0" />,
+
+    // ── Delovi životinja i stvari ─────────────────────────────────────────────
+    trunk: () => (
+        <g>
+            <path d="M-8 -60 Q-12 -30 -6 -14 Q0 0 12 -2 Q18 -4 16 -10 Q8 -8 6 -14 Q4 -30 8 -60Z" fill="#a9aab8" {...stroke("#7f8094")} />
+            <path d="M-6 -48 H6 M-5 -38 H5 M-4 -28 H4" stroke="#7f8094" strokeWidth={1.2} strokeLinecap="round" />
+        </g>
+    ),
+    spikes: () => (
+        <g>
+            <ellipse cx={0} cy={-6} rx={24} ry={8} fill="#a8794e" />
+            {Array.from({ length: 9 }, (_, i) => {
+                const x = -20 + i * 5;
+                return <path key={i} d={`M${x - 3} -8 L${x} -${24 + (i % 3) * 4} L${x + 3} -8Z`} fill={i % 2 ? "#7a5232" : "#8f6440"} />;
+            })}
+        </g>
+    ),
+    longEars: () => (
+        <g>
+            {[-8, 8].map((x) => (
+                <g key={x} transform={`rotate(${x / 2} ${x} 0)`}>
+                    <ellipse cx={x} cy={-22} rx={6} ry={22} fill="#f4f0f6" {...stroke("#c9c2d6")} />
+                    <ellipse cx={x} cy={-22} rx={3} ry={16} fill="#f7c8d8" />
+                </g>
+            ))}
+        </g>
+    ),
+    feather: () => (
+        <g transform="rotate(-25)">
+            <path d="M0 0 V-40" stroke="#c9a24a" strokeWidth={1.6} strokeLinecap="round" />
+            <path d="M0 -6 Q-12 -14 -8 -34 Q-2 -44 0 -42 Q2 -44 8 -34 Q12 -14 0 -6Z" fill="#6cc0e8" {...stroke("#3f8fd8", 1)} />
+            <path d="M0 -12 L-6 -18 M0 -20 L-7 -26 M0 -28 L-5 -33 M0 -16 L6 -22 M0 -24 L6 -30" stroke="#3f8fd8" strokeWidth={0.9} strokeLinecap="round" />
+        </g>
+    ),
+    shell: () => (
+        <g>
+            <path d="M-26 0 Q-26 -30 0 -30 Q26 -30 26 0Z" fill="#8fb86a" {...stroke("#5f8a3f")} />
+            <path d="M-8 -30 L-12 -16 L-4 -6 L8 -6 L14 -16 L8 -30 M-12 -16 H-26 M14 -16 H26 M-4 -6 L-8 0 M8 -6 L12 0" fill="none" stroke="#5f8a3f" strokeWidth={1.6} />
+        </g>
+    ),
+    honey: () => (
+        <g>
+            <rect x={-12} y={-24} width={24} height={24} rx={6} fill="#f6b23e" {...stroke("#c9821a")} />
+            <rect x={-13} y={-28} width={26} height={6} rx={2} fill="#e8d2a8" {...stroke("#b9a07a", 1)} />
+            <path d="M-6 -22 Q-6 -14 -3 -12 Q0 -14 0 -22" fill="#f8cf6a" />
+            <ellipse cx={-4} cy={-14} rx={3} ry={5} fill="#ffffff" opacity={0.3} />
+        </g>
+    ),
+    pedal: () => (
+        <g>
+            <circle cx={0} cy={-26} r={9} fill="#9aa6b2" {...stroke("#6a7290")} />
+            <circle cx={0} cy={-26} r={3} fill="#6a7290" />
+            <path d="M0 -26 L14 -6" stroke="#6a7290" strokeWidth={4} strokeLinecap="round" />
+            <rect x={6} y={-8} width={18} height={6} rx={2} fill="#3b3f52" />
+            <path d="M8 -5 H22" stroke="#f4c94a" strokeWidth={1.4} />
+        </g>
+    ),
+    ladybug: () => (
+        <g>
+            <path d="M-18 0 Q-14 -16 4 -16 Q20 -14 22 0Z" fill="#7fc46a" {...stroke("#5f9a4f", 1)} />
+            <g transform="translate(2 -16)">
+                <circle cx={0} cy={0} r={2.6} fill="#e8463f" />
+                <circle cx={-0.8} cy={-0.6} r={0.6} fill="#3b3f52" />
+                <circle cx={0.9} cy={0.6} r={0.6} fill="#3b3f52" />
+            </g>
+        </g>
+    ),
+    bubbles: () => (
+        <g fill="none" stroke="#ffffff" strokeWidth={1.6}>
+            <circle cx={-6} cy={-8} r={4} />
+            <circle cx={4} cy={-20} r={3} />
+            <circle cx={-2} cy={-32} r={2.4} />
+            <circle cx={8} cy={-40} r={1.8} />
+        </g>
+    ),
+    // Flaša vode (drugačija od čaše, da ne odaje odgovor „Iz čega pijemo vodu?”)
+    bottle: () => (
+        <g>
+            <path d="M-8 -26 Q-8 -30 -4 -32 V-36 H4 V-32 Q8 -30 8 -26 V-2 Q8 0 6 0 H-6 Q-8 0 -8 -2Z" fill="#dff1fb" {...stroke("#6f9fd8")} />
+            <path d="M-7.5 -20 H7.5 V-2 Q7.5 -0.5 6 -0.5 H-6 Q-7.5 -0.5 -7.5 -2Z" fill="#8fd0f0" />
+            <rect x={-5} y={-40} width={10} height={5} rx={1.5} fill="#3f8fd8" />
+        </g>
+    ),
+    // Mlaz vode iz slavine
+    stream: () => (
+        <g>
+            <path d="M0 -16 Q2 -8 0 0" fill="none" stroke="#6cc0e8" strokeWidth={3.5} strokeLinecap="round" />
+            <circle cx={-3} cy={3} r={1.4} fill="#6cc0e8" />
+            <circle cx={3} cy={4} r={1.2} fill="#6cc0e8" />
+        </g>
+    ),
+    strings: () => (
+        <g>
+            <rect x={-26} y={-30} width={52} height={30} rx={4} fill="#e8c9a0" {...stroke("#b9894a")} />
+            <g stroke="#6a7290" strokeWidth={1.2}>
+                {[-24, -18, -12, -6, 0].map((y) => (
+                    <line key={y} x1={-26} y1={y} x2={26} y2={y} />
+                ))}
+            </g>
+            <g transform="translate(14 -36)">{PROPS.notes()}</g>
+        </g>
+    ),
 };
 
 export function Prop({ id, tone }: { id: PropId; tone?: string }) {

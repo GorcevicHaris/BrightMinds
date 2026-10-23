@@ -35,8 +35,11 @@ export const BACKGROUND_IDS = [
 ] as const;
 export type BackgroundId = (typeof BACKGROUND_IDS)[number];
 
-/** Šta se vidi napolju: kroz prozor sobe ili nebo na otvorenom */
-export const VIEW_IDS = ["day", "night", "dusk", "rain", "storm", "snow", "rainbow", "dark"] as const;
+/**
+ * Šta se vidi napolju: kroz prozor sobe ili nebo na otvorenom. „clear” je dan bez sunca i
+ * oblaka, „stars” noć bez meseca — za pitanja čiji je odgovor baš sunce ili mesec.
+ */
+export const VIEW_IDS = ["day", "clear", "night", "stars", "dusk", "rain", "storm", "snow", "rainbow", "dark"] as const;
 export type ViewId = (typeof VIEW_IDS)[number];
 
 /** Izrazi lica: šest osećanja iz igre (isti crtež kao na karticama) i tri mirna izraza */
@@ -340,6 +343,19 @@ export const PROP_IDS = [
     "question",
     "cross",
     "arrow",
+    // Delovi životinja i stvari (za pitanja „Ko ima …?”, „Šta ima …?”)
+    "trunk",
+    "spikes",
+    "longEars",
+    "feather",
+    "shell",
+    "honey",
+    "pedal",
+    "ladybug",
+    "bubbles",
+    "strings",
+    "stream",
+    "bottle",
 ] as const;
 export type PropId = (typeof PROP_IDS)[number];
 

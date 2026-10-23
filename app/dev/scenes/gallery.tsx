@@ -6,6 +6,8 @@ import { emotionScene } from "@/app/components/games/data/emotionScenes";
 import { socialScene } from "@/app/components/games/data/socialScenes";
 import { storyForLevel } from "@/app/components/games/data/socialStories";
 import { storyScene } from "@/app/components/games/data/storyScenes";
+import { USE_ITEMS } from "@/app/components/games/data/usesItems";
+import { usesScene } from "@/app/components/games/data/usesScenes";
 import { getSituationsForLevel, type SocialSituation } from "@/app/components/games/data/socialSituations";
 import { emotionHero, storyHero } from "@/app/components/games/scene/heroes";
 import { genderText } from "@/app/components/games/kit/utils";
@@ -168,8 +170,26 @@ function storiesPart(): Part {
     return { title: "Socijalne priče", note: "Naslovna slika i po jedna slika za svaku stranicu. Slika ne pokazuje odgovor na pitanje sa stranice.", cards };
 }
 
+const GROUP_LABEL = { home: "kuća", body: "telo", things: "stvari", animals: "životinje", world: "priroda i prevoz" } as const;
+
+function usesPart(): Part {
+    const cards = USE_ITEMS.map((item): Card => {
+        const spec = usesScene(item.id);
+        return {
+            key: `uses-${item.id}`,
+            label: `${item.id} · ${GROUP_LABEL[item.group]}`,
+            text: item.question,
+            sub: `Odgovor (nije na slici): ${item.name}`,
+            picture: spec ? <SceneArt spec={spec} hero={storyHero(true)} /> : <Missing text="?" />,
+        };
+    });
+    return { title: "Čemu služi?", note: "Slika pokazuje situaciju iz pitanja, ne odgovor; nema ni drugih predmeta iz iste grupe.", cards };
+}
+
 export function galleryPart(id: GalleryPartId): Part {
     switch (id) {
+        case "uses":
+            return usesPart();
         case "stories":
             return storiesPart();
         case "social":
