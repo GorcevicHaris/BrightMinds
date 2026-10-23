@@ -93,6 +93,26 @@ export const HIJAB_COLORS: readonly ColorLookPart[] = [
     { id: "crna", label: "Crni hidžab", hex: "#2A2A30" },
 ];
 
+/** Kroj hidžaba: id se dodaje boji (`roze` = omotan, `roze-sportski` = sportski, iz jednog dela) */
+export const HIJAB_STYLES: readonly LookPart[] = [
+    { id: "omotan", label: "Omotan hidžab" },
+    { id: "sportski", label: "Sportski hidžab" },
+];
+
+const SPORT = "-sportski";
+
+/** Vrednost hidžaba → boja i kroj (ili null bez hidžaba / za neispravnu vrednost) */
+export function hijabParts(value: string): { color: string; style: "omotan" | "sportski" } | null {
+    if (value === NO_HIJAB) return null;
+    const sport = value.endsWith(SPORT);
+    const color = sport ? value.slice(0, -SPORT.length) : value;
+    return HIJAB_COLORS.some((part) => part.id === color) ? { color, style: sport ? "sportski" : "omotan" } : null;
+}
+
+export function hijabValue(color: string, style: "omotan" | "sportski"): string {
+    return style === "sportski" ? color + SPORT : color;
+}
+
 export function hasHijabOption(kind: HumanKind): boolean {
     return kind === "girl" || kind === "woman";
 }
@@ -129,7 +149,7 @@ export function parseHumanLook(kind: HumanKind, id: string): HumanLook | undefin
     else return undefined;
     if (!known(SKIN_TONES, look.tone) || !known(EYE_COLORS, look.eye) || !known(HAIR_COLORS, look.hair)) return undefined;
     if (!known(HAIRSTYLES[kind], look.style)) return undefined;
-    if (look.hijab !== NO_HIJAB && (!hasHijabOption(kind) || !known(HIJAB_COLORS, look.hijab))) return undefined;
+    if (look.hijab !== NO_HIJAB && (!hasHijabOption(kind) || !hijabParts(look.hijab))) return undefined;
     return look;
 }
 

@@ -58,7 +58,7 @@ export const BONES = [
 export type BoneName = (typeof BONES)[number];
 
 /** Dodatne kosti koje životinja SME da ima (posle 18 obaveznih, istim redom); predmeti ih ne koriste */
-export const EXTRA_BONES = ["tail1", "tail2", "tail3", "earL", "earR"] as const;
+export const EXTRA_BONES = ["tail1", "tail2", "tail3", "earL", "earR", "trunk1", "trunk2", "wingL", "wingR"] as const;
 export type ExtraBoneName = (typeof EXTRA_BONES)[number];
 
 /**
@@ -121,6 +121,8 @@ export interface Rig {
     /** Leva (+x) i desna (−x) strana */
     left: Joints;
     right: Joints;
+    /** Položaj svake kosti u mirovanju (prostor tela); kosti u mirovanju nemaju rotaciju */
+    rest: Record<string, THREE.Vector3>;
 }
 
 // ── Sidra za predmete ─────────────────────────────────────────────────────────────────
@@ -249,7 +251,7 @@ export interface ItemContext {
     kit: Kit;
     /** Rigidan deo koji prati kost (kapa → head, sat → handL…); motor ga prati i skida */
     attach: (bone: BoneName, object: THREE.Object3D) => THREE.Object3D;
-    /** Tačka iz prostora tela (mirovanje) u lokalne koordinate kosti */
+    /** Tačka iz prostora tela (mirovanje) u lokalne koordinate kosti — ne zavisi od trenutne poze */
     toBone: (bone: BoneName, p: THREE.Vector3) => THREE.Vector3;
 }
 

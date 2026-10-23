@@ -46,12 +46,14 @@ function childShape(kind: "girl" | "boy"): BodyShape {
         armAngle: 0.13,
         upperArm: 0.165,
         forearm: 0.145,
-        armR: profile([[0, 0.04], [0.15, 0.038], [0.45, 0.033], [0.55, 0.032], [0.75, 0.03], [1, 0.025]]),
-        hand: 1.45,
+        // Mekana linija ruke: rame, nadlaktica, lakat, podlaktica, zglob
+        armR: profile([[0, 0.043], [0.12, 0.04], [0.3, 0.036], [0.5, 0.032], [0.6, 0.034], [0.7, 0.033], [0.88, 0.028], [1, 0.025]]),
+        hand: 1.7,
         hipX: 0.058,
         thigh: 0.215,
         shin: 0.215,
-        legR: profile([[0, 0.058], [0.2, 0.053], [0.45, 0.043], [0.5, 0.041], [0.65, 0.042], [0.85, 0.034], [1, 0.029]]),
+        // Butina, koleno, list (najdeblji ispod kolena), članak
+        legR: profile([[0, 0.059], [0.2, 0.054], [0.44, 0.043], [0.5, 0.041], [0.6, 0.044], [0.68, 0.0445], [0.86, 0.034], [1, 0.029]]),
         ankleY: 0.062,
         foot: { len: 0.15, w: 0.066, h: 0.064, back: 0.036 },
         height: 1.19,
@@ -73,11 +75,11 @@ function adultShape(kind: "woman" | "man"): BodyShape {
         chestY: y(1.13),
         shoulderY: y(1.245),
         neckBaseY: y(1.3),
-        headBoneY: y(1.36),
+        headBoneY: y(1.338),
         head: { w: 0.27, h: 0.315, d: 0.285, up: 0.14, fwd: 0.015, chin: man ? 0.9 : 0.84, cheeks: 0.6 },
         torsoW: profile([
             [y(0.72), 0.07], [y(0.76), 0.12], [y(0.83), man ? 0.15 : 0.165], [y(0.92), man ? 0.142 : 0.14], [y(0.99), man ? 0.14 : 0.118],
-            [y(1.08), 0.135 * w], [y(1.18), 0.152 * w], [y(1.24), 0.16 * w], [y(1.27), 0.14 * w], [y(1.295), 0.08], [y(1.315), 0.05], [y(1.4), 0.046],
+            [y(1.08), 0.135 * w], [y(1.18), 0.152 * w], [y(1.24), 0.16 * w], [y(1.27), 0.14 * w], [y(1.295), man ? 0.09 : 0.08], [y(1.315), man ? 0.058 : 0.052], [y(1.4), man ? 0.054 : 0.048],
         ]),
         torsoFront: profile([
             [y(0.72), 0.05], [y(0.76), 0.08], [y(0.85), 0.088], [y(0.95), man ? 0.088 : 0.082], [y(1.05), 0.088], [y(1.15), man ? 0.098 : 0.09],
@@ -88,21 +90,22 @@ function adultShape(kind: "woman" | "man"): BodyShape {
             [y(1.24), 0.08], [y(1.29), 0.062], [y(1.31), 0.048], [y(1.4), 0.046],
         ]),
         bust: man ? 0 : 1,
-        neckR: man ? 0.05 : 0.044,
+        neckR: man ? 0.056 : 0.047,
         shoulderX: 0.148 * w,
         armAngle: 0.1,
         upperArm: y(0.27),
         forearm: y(0.235),
+        // Rame (deltoid), biceps, lakat, mišić podlaktice, tanak zglob
         armR: man
-            ? profile([[0, 0.052], [0.15, 0.048], [0.45, 0.04], [0.55, 0.038], [0.75, 0.036], [1, 0.029]])
-            : profile([[0, 0.044], [0.15, 0.041], [0.45, 0.034], [0.55, 0.032], [0.75, 0.03], [1, 0.024]]),
-        hand: man ? 1.45 : 1.3,
+            ? profile([[0, 0.057], [0.1, 0.055], [0.3, 0.047], [0.5, 0.039], [0.6, 0.043], [0.7, 0.042], [0.88, 0.033], [1, 0.029]])
+            : profile([[0, 0.046], [0.1, 0.044], [0.3, 0.037], [0.5, 0.031], [0.6, 0.034], [0.7, 0.033], [0.88, 0.027], [1, 0.024]]),
+        hand: man ? 1.65 : 1.5,
         hipX: man ? 0.078 : 0.082,
         thigh: y(0.36),
         shin: y(0.355),
         legR: man
-            ? profile([[0, 0.078], [0.2, 0.07], [0.45, 0.054], [0.5, 0.05], [0.65, 0.054], [0.85, 0.042], [1, 0.034]])
-            : profile([[0, 0.08], [0.2, 0.07], [0.45, 0.05], [0.5, 0.046], [0.65, 0.05], [0.85, 0.038], [1, 0.03]]),
+            ? profile([[0, 0.08], [0.2, 0.072], [0.43, 0.057], [0.5, 0.051], [0.6, 0.056], [0.68, 0.057], [0.86, 0.042], [1, 0.034]])
+            : profile([[0, 0.081], [0.2, 0.071], [0.43, 0.052], [0.5, 0.046], [0.6, 0.051], [0.68, 0.051], [0.86, 0.037], [1, 0.03]]),
         ankleY: 0.075,
         foot: { len: man ? 0.21 : 0.19, w: man ? 0.082 : 0.07, h: 0.075, back: 0.05 },
         height: y(1.73),
@@ -201,7 +204,8 @@ export function createRig(shape: BodyShape, extras: readonly ExtraBone[] = []): 
     }
     bones[0].updateMatrixWorld(true);
     const skeleton = new THREE.Skeleton(bones);
-    return { shape, bones, skeleton, root: bones[0], bone: (name) => bones[B[name]], left, right };
+    const rest = Object.fromEntries([...at.entries()].map(([name, p]) => [name, p.clone()]));
+    return { shape, bones, skeleton, root: bones[0], bone: (name) => bones[B[name]], left, right, rest };
 }
 
 // ── Težine kostiju po položaju (telo i odeća koriste iste, pa se pomeraju zajedno) ─

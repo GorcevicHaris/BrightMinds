@@ -23,6 +23,8 @@ export interface GarmentContext extends KitContext {
     skin: string;
 }
 
+const IDENTITY = new THREE.Matrix4();
+
 export type Side = 1 | -1;
 export const SIDES: readonly Side[] = [1, -1];
 
@@ -38,7 +40,9 @@ export class Kit<C extends KitContext = KitContext> {
     skinned(geometry: THREE.BufferGeometry, material: THREE.Material, name = "odeca"): THREE.SkinnedMesh {
         const mesh = new THREE.SkinnedMesh(geometry, material);
         mesh.name = name;
-        mesh.bind(this.ctx.rig.skeleton);
+        // Jedinična matrica vezivanja: bez nje bi three.js preračunao kosti iz TRENUTNE poze
+        // (lik se okreće i diše dok se predmet pravi), pa bi se odeća pomerila
+        mesh.bind(this.ctx.rig.skeleton, IDENTITY);
         mesh.frustumCulled = false;
         this.ctx.root.add(mesh);
         this.objects.push(mesh);
@@ -51,10 +55,9 @@ export class Kit<C extends KitContext = KitContext> {
         return object;
     }
 
-    /** Svetski položaj kosti u mirovanju → lokalne koordinate te kosti */
+    /** Tačka u koordinatama mirovanja → lokalne koordinate kosti (ne zavisi od trenutne poze) */
     toBone(bone: BoneName, p: THREE.Vector3): THREE.Vector3 {
-        const b = this.ctx.rig.bone(bone);
-        return b.worldToLocal(p.clone());
+        return p.clone().sub(this.ctx.rig.rest[bone]);
     }
 
     private torsoW = (_u: number, _v: number, p: THREE.Vector3) => torsoWeights(this.shape, p);
