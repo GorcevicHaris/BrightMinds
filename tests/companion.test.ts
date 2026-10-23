@@ -7,6 +7,7 @@ import {
     parseCompanionAction,
     sanitizeCompanion,
     setMissing,
+    skinGoalId,
     WEAR_SLOT_IDS,
     type CompanionCatalog,
     type WearSlotId,
@@ -28,10 +29,17 @@ const SETS: Record<string, { items: Partial<Record<WearSlotId, string>> }> = {
     wrongSlot: { items: { feet: "crown" } },
     empty: { items: {} },
 };
+/** Izgledi: mačka ima dve besplatne boje i jednu koja se plaća; učiteljica jedan besplatan izgled */
+const SKINS: Record<string, Record<string, number>> = {
+    cat: { orange: 0, grey: 0, tiger: 12, gold: 25 },
+    dog: { brown: 0, spots: 14 },
+    woman: { "dark.black.braids": 0 },
+};
 const catalog: CompanionCatalog = {
     isKind: (value) => typeof value === "string" && ["woman", "man", "cat", "dog", "bunny", "bear"].includes(value),
     item: (id) => ITEMS[id],
     set: (id) => SETS[id],
+    skin: (kind, id) => (Object.hasOwn(SKINS, kind) && Object.hasOwn(SKINS[kind], id) ? { price: SKINS[kind][id] } : undefined),
 };
 
 describe("companion state", () => {
@@ -79,6 +87,33 @@ describe("companion state", () => {
         assert.equal(sanitizeCompanion({ owned: ["crown"], goal: "set:king" }, null, catalog).goal, "set:king");
         assert.equal(sanitizeCompanion({ owned: ["crown", "wings", "puppy"], goal: "set:king" }, null, catalog).goal, undefined);
         assert.equal(sanitizeCompanion({ owned: [], goal: "set:nope" }, null, catalog).goal, undefined);
+    });
+
+    it("keeps each companion's own look and owned special looks; drops unknown or unpaid ones", () => {
+        const state = sanitizeCompanion(
+            {
+                kind: "cat",
+                skin: { cat: "tiger", dog: "spots", woman: "dark.black.braids", bear: "nope", dragon: "orange" },
+                skins: ["cat:tiger", "cat:tiger", "cat:orange", "dog:nope", "dragon:tiger", 5, "tiger"],
+            },
+            null,
+            catalog
+        );
+        // Pegavi pas nije kupljen, pa ostaje dosadašnji; besplatna boja se ne „kupuje”
+        assert.deepEqual(state.skin, { woman: "dark.black.braids", cat: "tiger" });
+        assert.deepEqual(state.skins, ["cat:tiger"]);
+        // Bez izgleda: nema ključeva (sačuvani podaci ostaju isti)
+        const plain = sanitizeCompanion({ kind: "cat", skin: { cat: "nope" }, skins: [] }, null, catalog);
+        assert.equal("skin" in plain, false);
+        assert.equal("skins" in plain, false);
+    });
+
+    it("keeps a goal for a special look only while it is not bought", () => {
+        assert.equal(sanitizeCompanion({ goal: "skin:cat:tiger" }, null, catalog).goal, "skin:cat:tiger");
+        assert.equal(sanitizeCompanion({ goal: "skin:cat:tiger", skins: ["cat:tiger"] }, null, catalog).goal, undefined);
+        assert.equal(sanitizeCompanion({ goal: "skin:cat:grey" }, null, catalog).goal, undefined);
+        assert.equal(sanitizeCompanion({ goal: "skin:dragon:tiger" }, null, catalog).goal, undefined);
+        assert.equal(sanitizeCompanion({ goal: "skin:cat" }, null, catalog).goal, undefined);
     });
 
     it("turns stars into coins: one star is one coin, spent coins are subtracted, never below zero", () => {
@@ -207,7 +242,55 @@ describe("companion actions", () => {
         assert.equal(setMissing("broken", [], catalog), undefined);
     });
 
+    it("puts on free looks any time and paid looks only once bought; each companion keeps its own", () => {
+        const grey = applyCompanionAction(start, { action: "skin", kind: "cat", skin: "grey" }, 0, catalog);
+        assert.ok(grey.ok);
+        assert.deepEqual(grey.state.skin, { cat: "grey" });
+        assert.equal(grey.state.spent, 0);
+        // Drugi drugar ne menja boju mačke
+        const human = applyCompanionAction(grey.state, { action: "skin", kind: "woman", skin: "dark.black.braids" }, 0, catalog);
+        assert.ok(human.ok);
+        assert.deepEqual(human.state.skin, { cat: "grey", woman: "dark.black.braids" });
+        assert.deepEqual(applyCompanionAction(start, { action: "skin", kind: "cat", skin: "tiger" }, 999, catalog), { ok: false, reason: "not-owned" });
+        assert.deepEqual(applyCompanionAction(start, { action: "skin", kind: "cat", skin: "spots" }, 0, catalog), { ok: false, reason: "unknown" });
+        assert.deepEqual(applyCompanionAction(start, { action: "skin", kind: "dragon", skin: "grey" }, 0, catalog), { ok: false, reason: "unknown" });
+        const owned = applyCompanionAction({ ...start, skins: ["cat:tiger"] }, { action: "skin", kind: "cat", skin: "tiger" }, 0, catalog);
+        assert.ok(owned.ok && owned.state.skin?.cat === "tiger");
+    });
+
+    it("buys a special look at its fixed price, puts it on and clears it as a goal", () => {
+        const withGoal = { ...start, skin: { dog: "brown" }, goal: skinGoalId("cat", "tiger") };
+        assert.deepEqual(applyCompanionAction(withGoal, { action: "buySkin", kind: "cat", skin: "tiger" }, 11 * 5, catalog), { ok: false, reason: "coins" });
+        const bought = applyCompanionAction(withGoal, { action: "buySkin", kind: "cat", skin: "tiger" }, 12 * 5, catalog);
+        assert.ok(bought.ok);
+        assert.deepEqual(bought.state.skins, ["cat:tiger"]);
+        assert.deepEqual(bought.state.skin, { dog: "brown", cat: "tiger" });
+        assert.equal(bought.state.spent, 12);
+        assert.equal("goal" in bought.state, false);
+        // Ne kupuje se dvaput, a besplatna boja se ne kupuje
+        assert.deepEqual(applyCompanionAction(bought.state, { action: "buySkin", kind: "cat", skin: "tiger" }, 999, catalog), { ok: false, reason: "owned" });
+        assert.deepEqual(applyCompanionAction(start, { action: "buySkin", kind: "cat", skin: "grey" }, 999, catalog), { ok: false, reason: "owned" });
+        assert.deepEqual(applyCompanionAction(start, { action: "buySkin", kind: "cat", skin: "nope" }, 999, catalog), { ok: false, reason: "unknown" });
+        // Novčići potrošeni na izgled se ne mogu potrošiti ponovo
+        assert.deepEqual(applyCompanionAction(bought.state, { action: "buy", item: "wings" }, 12 * 5 + 13 * 5, catalog), { ok: false, reason: "coins" });
+    });
+
+    it("takes a paid look as a goal; a free or bought look cannot be one", () => {
+        const goal = applyCompanionAction(start, { action: "goal", item: skinGoalId("cat", "gold") }, 0, catalog);
+        assert.ok(goal.ok && goal.state.goal === "skin:cat:gold");
+        assert.deepEqual(applyCompanionAction(start, { action: "goal", item: "skin:cat:grey" }, 0, catalog), { ok: false, reason: "unknown" });
+        assert.deepEqual(applyCompanionAction(start, { action: "goal", item: "skin:cat:nope" }, 0, catalog), { ok: false, reason: "unknown" });
+        assert.deepEqual(applyCompanionAction({ ...start, skins: ["cat:gold"] }, { action: "goal", item: "skin:cat:gold" }, 0, catalog), { ok: false, reason: "owned" });
+        // Kupovina predmeta ne briše cilj izgleda
+        const other = applyCompanionAction(goal.state, { action: "buy", item: "cap" }, 99 * 5, catalog);
+        assert.ok(other.ok && other.state.goal === "skin:cat:gold");
+    });
+
     it("parses only well-formed requests", () => {
+        assert.deepEqual(parseCompanionAction({ action: "skin", kind: "cat", skin: "grey" }), { action: "skin", kind: "cat", skin: "grey" });
+        assert.deepEqual(parseCompanionAction({ action: "buySkin", kind: "cat", skin: "tiger" }), { action: "buySkin", kind: "cat", skin: "tiger" });
+        assert.equal(parseCompanionAction({ action: "skin", kind: "cat" }), null);
+        assert.equal(parseCompanionAction({ action: "buySkin", kind: 1, skin: "tiger" }), null);
         assert.deepEqual(parseCompanionAction({ action: "buySet", set: "king" }), { action: "buySet", set: "king" });
         assert.equal(parseCompanionAction({ action: "buySet", set: ["king"] }), null);
         assert.deepEqual(parseCompanionAction({ action: "undress" }), { action: "undress" });
