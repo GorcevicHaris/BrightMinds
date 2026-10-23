@@ -1,17 +1,18 @@
 // tests/setup/register.mjs
 // Učitava se pre testova (`node --import ./tests/setup/register.mjs --test …`).
 //
-// Node sam izvršava .ts fajlove (briše tipove), ali ne zna za tri stvari koje Next.js
+// Node sam izvršava .ts fajlove (briše tipove), ali ne zna za četiri stvari koje Next.js
 // rešava sam, pa ih ovde dodaje mala kuka za razrešavanje modula:
 //   1. alias `@/x` → `<koren>/x` (tsconfig `paths`);
 //   2. uvoz bez nastavka (`./games`) → `.ts`, `.tsx`, `/index.ts`;
-//   3. `next/server` i slični podputevi paketa bez nastavka → `.js`.
+//   3. `next/server` i slični podputevi paketa bez nastavka → `.js`;
+//   4. `.tsx` iz projekta (JSX) se prevodi TypeScript kompajlerom.
 // Uz to zamenjuje dva modula test-dvojnicima (videti README, odeljak „Testovi”):
 //   • `next/headers`          → tests/setup/nextHeaders.ts (kolačići koje postavlja test);
 //   • `@supabase/supabase-js` → tests/setup/fakeSupabase.ts (baza u memoriji).
 // Pravi lib/supabase.ts i lib/auth.ts ostaju netaknuti i izvršavaju se u testovima.
 import { createRequire, registerHooks } from "node:module";
-import { statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -58,6 +59,7 @@ let typescript = null;
 
 /** Prevodi jedan fajl TypeScript kompajlerom koji je već u devDependencies (učitava se tek kad zatreba). */
 function transpile(source, url) {
+    const jsx = url.endsWith(".tsx");
     typescript ??= createRequire(import.meta.url)("typescript");
     return typescript.transpileModule(source, {
         fileName: fileURLToPath(url),
@@ -66,6 +68,8 @@ function transpile(source, url) {
             target: typescript.ScriptTarget.ES2022,
             // Kao Next.js (SWC): polja klase se dodeljuju u konstruktoru
             useDefineForClassFields: false,
+            // .tsx (npr. katalog predmeta sa SVG crtežima): JSX → react/jsx-runtime, kao u Next.js
+            ...(jsx ? { jsx: typescript.JsxEmit.ReactJSX } : {}),
             inlineSourceMap: true,
             inlineSources: true,
         },
@@ -105,6 +109,11 @@ registerHooks({
     },
 
     load(url, context, nextLoad) {
+        // Node ume samo da obriše tipove, JSX ne razume: .tsx iz projekta se uvek prevodi
+        if (isProjectSource(url) && url.endsWith(".tsx")) {
+            const source = readFileSync(fileURLToPath(url), "utf8");
+            return { format: "module", source: transpile(source, url), shortCircuit: true };
+        }
         const result = nextLoad(url, context);
         if (!isProjectSource(url) || !url.endsWith(".ts") || result.source == null) return result;
 
