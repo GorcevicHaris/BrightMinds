@@ -551,15 +551,24 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                         className={cn("grid animate-fade-up gap-4 sm:gap-5", choosing ? "lg:grid-cols-2 lg:items-start" : "mx-auto w-full max-w-2xl")}
                     >
                         <article className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
-                            <Scene emojis={step.scene} tone={story.tone} label={`${story.icon} ${story.title}`} picture={storyScene(level, shown.stepIndex)} female={female} />
-                            <div className="flex flex-col gap-3 px-4 py-4 sm:px-6 sm:py-5">
+                            {/* Korak sa izborom na telefonu: slika je sličica pored teksta, da izbori stanu na ekran */}
+                            <div className={cn(choosing && "hidden lg:block")}>
+                                <Scene emojis={step.scene} tone={story.tone} label={`${story.icon} ${story.title}`} picture={storyScene(level, shown.stepIndex)} female={female} />
+                            </div>
+                            <div className={cn("flex gap-3 px-4 py-4 sm:px-6 sm:py-5", choosing ? "flex-row items-start lg:flex-col" : "flex-col")}>
+                                {choosing && (
+                                    <div className="w-24 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/5 sm:w-32 lg:hidden">
+                                        <Scene emojis={step.scene} tone={story.tone} size="thumb" picture={storyScene(level, shown.stepIndex)} female={female} />
+                                    </div>
+                                )}
+                                <div className="flex min-w-0 flex-1 flex-col gap-3">
                                 {step.affirm && (
                                     <p className={cn("self-start rounded-full border px-3 py-1 text-sm font-extrabold", ACCENT.soft, ACCENT.text, ACCENT.border)}>
                                         <span aria-hidden="true">⭐ </span>
                                         {AFFIRM_LABEL}
                                     </p>
                                 )}
-                                <p className="text-xl font-bold leading-snug text-ink sm:text-2xl sm:leading-relaxed">{t(step.text)}</p>
+                                <p className={cn("font-bold leading-snug text-ink sm:leading-relaxed", choosing ? "text-lg sm:text-xl lg:text-2xl" : "text-xl sm:text-2xl")}>{t(step.text)}</p>
                                 {decision && shown.mode === "read" && (
                                     <div className={cn("rounded-2xl border p-4", ACCENT.soft, ACCENT.border)}>
                                         <p className={cn("text-base font-extrabold sm:text-lg", ACCENT.text)}>{IDEAS_HEADING}</p>
@@ -575,6 +584,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                         </ul>
                                     </div>
                                 )}
+                                </div>
                             </div>
                         </article>
 
@@ -707,6 +717,7 @@ const SCENE_TONES: Record<SceneTone, { sky: string; ground: string }> = {
 const SCENE_SIZES = {
     page: { box: "h-32 sm:h-44 lg:h-56", main: "text-7xl sm:text-8xl", side: "text-5xl sm:text-6xl" },
     cover: { box: "h-40 sm:h-56", main: "text-7xl sm:text-8xl", side: "text-5xl sm:text-6xl" },
+    thumb: { box: "h-20 sm:h-24", main: "text-4xl", side: "text-3xl" },
 };
 
 interface SceneProps {
@@ -726,6 +737,7 @@ interface SceneProps {
 const PICTURE_WIDTH = {
     page: "max-w-[min(100%,30dvh)] short:max-w-[min(100%,27dvh)] lg:max-w-[min(100%,40dvh)]",
     cover: "max-w-[min(100%,42dvh)] short:max-w-[min(100%,34dvh)]",
+    thumb: "",
 };
 
 /** Slika jedne stranice: crtež situacije (ili nebo, tlo i nekoliko velikih emodžija), kao ilustracija u slikovnici. */
@@ -735,6 +747,10 @@ function Scene({ emojis, tone, size = "page", label, picture, female }: ScenePro
     const mainAt = sides.length >= 2 ? 1 : 0;
     const colors = SCENE_TONES[tone];
     const sizes = SCENE_SIZES[size];
+
+    if (picture && size === "thumb") {
+        return <SceneArt spec={picture} hero={storyHero(female)} className="block h-auto w-full" />;
+    }
 
     if (picture) {
         return (
