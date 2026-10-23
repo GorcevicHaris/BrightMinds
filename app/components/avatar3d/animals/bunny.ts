@@ -9,7 +9,8 @@ import { ANIMAL_SKINS } from "./skins.data";
 export const BUNNY: AnimalSpec = {
     kind: "bunny",
     skins: ANIMAL_SKINS.bunny,
-    shape: { kind: "bunny", girth: 0.98, belly: 1.05, leg: 0.19, head: { w: 0.42, h: 0.41, d: 0.39 }, foot: { len: 0.17, w: 0.094, h: 0.064, back: 0.04 } },
+    shape: { kind: "bunny", girth: 0.97, belly: 1.04, head: { w: 0.357, h: 0.349, d: 0.332 }, foot: { len: 0.178, w: 0.084, h: 0.066, back: 0.042 } },
+    ref: 0.42,
     head: {
         flat: 0.12,
         flatTop: 0.05,
@@ -20,7 +21,7 @@ export const BUNNY: AnimalSpec = {
             { dir: [0, -0.66, 0.75], sigma: 0.13, amp: 0.006, muzzle: true },
             { dir: [0.38, -0.02, 0.92], sigma: 0.13, amp: -0.006, mirror: true },
         ],
-        eye: { u: 0.092, v: 0.5, r: 0.058, inset: 0.55, yaw: 0.16 },
+        eye: { u: 0.094, v: 0.5, r: 0.062, inset: 0.68, yaw: 0.16 },
         noseV: 0.61,
         mouthV: 0.665,
     },
@@ -28,7 +29,7 @@ export const BUNNY: AnimalSpec = {
         eye: { upper: 0.86, lower: -0.86, lashes: 3, iris: 0.96, pupil: 0.46 },
         brow: { dv: 0.12, len: 0.044, thick: 0.007 },
         nose: { kind: "button", w: 0.017, h: 0.012, d: 0.011, lift: 0.3 },
-        mouth: { w: 0.024, h: 0.036, curve: "w", teeth: "buck", wrap: 0.055, philtrum: 0.012, line: 0.0022 },
+        mouth: { w: 0.026, h: 0.05, curve: "w", teeth: "buck", wrap: 0.055, philtrum: 0.012, line: 0.0022 },
         whiskers: { count: 2, len: 0.075, v: 0.64, u: 0.06, color: coat.fur === "#F8F6FB" || coat.pattern === "dutch" ? "#C9C2D6" : "#FFFFFF" },
     }),
     ears: {

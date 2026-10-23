@@ -61,6 +61,11 @@ export interface AnimalSpec {
     extras?: (b: AnimalBuild) => void;
     /** Uši se mrdaju (šiljate) ili njišu (klempave) */
     earMotion?: "twitch" | "swing" | "none";
+    /**
+     * Širina glave za koju su zadate mere glave, lica, ušiju i repa (m). Kad se glava u `shape`
+     * promeni, sve te mere se srazmerno prilagode (jedan broj umesto desetina).
+     */
+    ref?: number;
     /** Sopstvena šara vrste (posle ugrađenih šara, pre senke) */
     paint?: (pp: PaintPoint, ctx: PaintContext, out: THREE.Color) => void;
     /** Sopstvena šaka/stopalo umesto ugrađenih (anchors.hands/feet.kind i dalje iz `hands`/`feet`) */
@@ -136,6 +141,47 @@ function along2(p: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3, c: THREE.V
     return (l1 + along(p, b, c) * l2) / (l1 + l2);
 }
 
+// ── Srazmerno prilagođavanje mera (AnimalSpec.ref) ──
+
+function scaleHead(h: HeadSpec, k: number): HeadSpec {
+    if (k === 1) return h;
+    return {
+        ...h,
+        blobs: h.blobs?.map((b) => ({ ...b, c: b.c.map((x) => x * k) as [number, number, number], r: b.r.map((x) => x * k) as [number, number, number], k: b.k * k })),
+        bumps: h.bumps?.map((b) => ({ ...b, amp: b.amp * k })),
+        eye: { ...h.eye, r: h.eye.r * k },
+    };
+}
+
+function scaleFace(f: FaceSpec, k: number): FaceSpec {
+    if (k === 1) return f;
+    return {
+        ...f,
+        brow: { ...f.brow, thick: f.brow.thick * k },
+        nose: { ...f.nose, w: f.nose.w * k, h: f.nose.h * k, d: f.nose.d * k },
+        mouth: { ...f.mouth, w: f.mouth.w * k, h: f.mouth.h * k, wrap: f.mouth.wrap * k, philtrum: f.mouth.philtrum * k, line: f.mouth.line * k },
+        whiskers: f.whiskers ? { ...f.whiskers, len: f.whiskers.len * k } : undefined,
+    };
+}
+
+function scaleEar(e: EarSpec | undefined, k: number): EarSpec | undefined {
+    if (!e || k === 1) return e;
+    return { ...e, sink: (e.sink ?? 0.01) * k, shape: { ...e.shape, len: e.shape.len * k, width: e.shape.width * k, depth: e.shape.depth * k, bend: (e.shape.bend ?? 0) * k } };
+}
+
+function scaleTail(t: AnimalSpec["tail"], k: number): AnimalSpec["tail"] {
+    if (!t || k === 1) return t;
+    const radius = t.radius;
+    return {
+        ...t,
+        points: t.points.map((p) => p.map((x) => x * k) as [number, number, number]),
+        radius: (s) => radius(s) * k,
+        pom: t.pom ? t.pom * k : undefined,
+        tuft: t.tuft ? t.tuft * k : undefined,
+        height: t.height !== undefined ? t.height * k : undefined,
+    };
+}
+
 export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureContext): FigureBody {
     const quality = ctx.quality;
     const hi = quality === "high";
@@ -143,19 +189,21 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     const skin = coats[look.skin] ? look.skin : spec.skins[0].id;
     const coat = coats[skin];
     const shape = shapeFor(spec);
-    const head = animalHead(shape, spec.head);
-    const faceSpec = typeof spec.face === "function" ? spec.face(coat) : spec.face;
-    const earSpec = typeof spec.ears === "function" ? spec.ears(coat) : spec.ears;
+    const k = spec.ref ? shape.head.w / spec.ref : 1;
+    const head = animalHead(shape, scaleHead(spec.head, k));
+    const faceSpec = scaleFace(typeof spec.face === "function" ? spec.face(coat) : spec.face, k);
+    const earSpec = scaleEar(typeof spec.ears === "function" ? spec.ears(coat) : spec.ears, k);
+    const tailSpec = scaleTail(spec.tail, k);
     const headBone = new THREE.Vector3(0, shape.headBoneY, 0);
 
     // ── Kosti repa i ušiju ──
     const extras: ExtraBone[] = [];
     const tailBase = new THREE.Vector3();
     let tailPathPts: THREE.Vector3[] = [];
-    if (spec.tail) {
-        const y = shape.crotchY + (spec.tail.height ?? 0.06);
+    if (tailSpec) {
+        const y = shape.crotchY + (tailSpec.height ?? 0.06);
         tailBase.set(0, y, -shape.torsoBack(y) + 0.014);
-        tailPathPts = spec.tail.points.map(([x, yy, z]) => new THREE.Vector3(x, yy, z).add(tailBase));
+        tailPathPts = tailSpec.points.map(([x, yy, z]) => new THREE.Vector3(x, yy, z).add(tailBase));
         const path = polyPath(tailPathPts);
         extras.push({ name: "tail1", parent: "hips", at: tailBase.clone() });
         extras.push({ name: "tail2", parent: "tail1", at: path(0.35, new THREE.Vector3()) });
@@ -278,7 +326,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     }
 
     // ── Šake ──
-    const pawR = spec.pawR ?? shape.armR(1) * 1.22;
+    const pawR = spec.pawR ? spec.pawR * k : shape.armR(1) * 1.3;
     let grip = new THREE.Vector3();
     let handRadius = pawR;
     for (const side of [1, -1] as const) {
@@ -389,7 +437,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
             const q = tmp.clone().sub(head.center).divide(R);
             // Senka: nabori, ispod brade, oko očiju, koren uha
             let ao = s.crease * 0.55;
-            ao += smoothstep(-0.6, -0.98, q.y) * 0.4 * smoothstep(-0.6, 0.2, q.z);
+            ao += smoothstep(-0.65, -0.98, q.y) * 0.3 * smoothstep(-0.4, 0.3, q.z);
             const body = tmp.clone().add(headBone);
             for (const e of eyeCenters) {
                 const d = body.distanceTo(e) / head.spec.eye.r;
@@ -414,7 +462,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
 
     spec.extras?.(build);
 
-    const browHex = mix(coat.fur, coat.brow, 0.7);
+    const browHex = mix(coat.fur, coat.brow, 0.92);
     const face = buildFace(head, faceSpec, {
         nose: coat.nose,
         brow: browHex,
@@ -472,8 +520,8 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     }
 
     // ── Rep ──
-    if (spec.tail) {
-        const t = tailGeometry(rig, tailBase, spec.tail, paint, quality, coat.mane ?? []);
+    if (tailSpec) {
+        const t = tailGeometry(rig, tailBase, tailSpec, paint, quality, coat.mane ?? []);
         for (const g of t.fur) addPart("tail", addSkinned(g, fur, "rep"));
         for (const lock of t.locks) {
             const n = lock.geometry.getAttribute("position").count;
@@ -494,7 +542,8 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
     }
 
     for (const mesh of skinned) {
-        mesh.bind(rig.skeleton);
+        // Jedinična matrica vezivanja (kao motor): ne preračunava kosti iz trenutne poze
+        mesh.bind(rig.skeleton, new THREE.Matrix4());
         mesh.frustumCulled = false;
         root.add(mesh);
     }
