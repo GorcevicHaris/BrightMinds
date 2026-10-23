@@ -189,6 +189,8 @@ export function liveRenderer(): LiveRenderer | null {
     if (!instance) {
         try {
             instance = new LiveRenderer();
+            // Za probne skripte u razvoju (snimci ekrana, merenje)
+            if (process.env.NODE_ENV !== "production") (window as unknown as { __bmLive?: LiveRenderer }).__bmLive = instance;
         } catch {
             return null;
         }
