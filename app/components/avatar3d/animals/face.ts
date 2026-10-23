@@ -8,6 +8,7 @@ import type { FaceControl, FaceExpression } from "../contract";
 import { buildSurface, clamp01, lerp, polyPath, smoothstep, taperedTube } from "../engine/surface";
 import type { AnimalHead } from "./head";
 import { eyeMaterial, lineMaterial, mouthMaterial, noseMaterial, shineMaterial } from "./materials";
+import { FACE_POSES } from "../engine/expressions";
 import { col } from "./paint";
 
 export interface FaceSpec {
@@ -20,6 +21,10 @@ export interface FaceSpec {
         /** Veličina dužice i zenice (ugao, rad) */
         iris?: number;
         pupil?: number;
+        /** Bademast oblik: odnos širine i visine oka (1 = okruglo) */
+        almond?: number;
+        /** Debljina linije gornjeg kapka (umnožak) */
+        liner?: number;
     };
     brow: { dv: number; du?: number; len: number; thick: number };
     nose: { kind: "button" | "oval" | "none" | "nostrils"; w: number; h: number; d: number; v?: number; lift?: number; tilt?: number };
@@ -62,6 +67,8 @@ interface FaceParams {
     open: number;
     wide: number;
     round: number;
+    /** Širina usta (1 = uobičajeno) */
+    width: number;
     upper: number;
     lower: number;
     lidTilt: number;
@@ -70,22 +77,28 @@ interface FaceParams {
     browAsym: number;
 }
 
-const ZERO_PARAMS: FaceParams = { smile: 0, frown: 0, open: 0, wide: 0, round: 0, upper: 0, lower: 0, lidTilt: 0, browRaise: 0, browTilt: 0, browAsym: 0 };
-
-const EXPRESSIONS: Record<FaceExpression, Partial<FaceParams>> = {
-    neutral: { smile: 0.4 },
-    happy: { smile: 0.85, wide: 0.6, lower: 0.28, browRaise: 0.45 },
-    proud: { smile: 0.75, upper: -0.12, lower: 0.12, browRaise: 0.25 },
-    gentle: { smile: 0.55, upper: -0.14, lower: 0.14, browTilt: 0.3 },
-    curious: { round: 0.28, browAsym: 0.9, upper: 0.06 },
-    sad: { frown: 0.75, browTilt: 0.85, upper: -0.16, lidTilt: 0.3 },
-    serious: { frown: 0.2, browTilt: -0.7, browRaise: -0.35, upper: -0.08 },
-    worried: { frown: 0.45, open: 0.12, browTilt: 1, browRaise: 0.15, lidTilt: 0.18 },
-    surprised: { round: 1, browRaise: 1, upper: 0.2, lower: -0.06 },
-};
-
+/**
+ * Izrazi iz motora (engine/expressions.ts FACE_POSES — isti brojevi kao kod ljudi), prevedeni
+ * na lice životinje: osmeh i tuga, „o” usta, široki osmeh sa zubima, kapci i obrve.
+ */
 function paramsOf(e: FaceExpression): FaceParams {
-    return { ...ZERO_PARAMS, ...(EXPRESSIONS[e] ?? EXPRESSIONS.neutral) };
+    const p = FACE_POSES[e] ?? FACE_POSES.neutral;
+    const grin = p.smile > 0.6;
+    const pucker = p.width < 0.76;
+    return {
+        smile: Math.max(0, p.smile) * 0.85,
+        frown: Math.max(0, -p.smile) * 1.1,
+        open: grin || pucker ? 0 : p.open * 1.2,
+        wide: grin ? Math.min(1, p.open * 1.5 + 0.15) : 0,
+        round: pucker ? Math.min(1, p.open * 1.5 + 0.1) : 0,
+        width: p.width,
+        upper: (p.eye - 1) * 1.3,
+        lower: p.lid * 0.5,
+        lidTilt: Math.max(0, p.browTilt) * 1.3,
+        browRaise: p.browY / 0.007,
+        browTilt: p.browTilt * 1.6,
+        browAsym: p.browLeft / 0.005,
+    };
 }
 
 // ── Oko ───────────────────────────────────────────────────────────────────────
@@ -126,6 +139,9 @@ function buildEye(head: AnimalHead, spec: FaceSpec, colors: FaceColors, side: 1 
     group.position.copy(surface).addScaledVector(n, -r * e.inset);
     // Oči gledaju napred, malo jedna ka drugoj (pogled u dete); blago napolje prema obliku glave
     group.rotation.set(0, side * (e.yaw ?? 0.1), side * 0.05, "YXZ");
+    // Bademast oblik (kao kod ljudi): oko malo šire nego više
+    const almond = spec.eye.almond ?? 1.1;
+    group.scale.set(almond, 1 / Math.sqrt(almond) * 1.02, 1);
     const iris = spec.eye.iris ?? 0.72;
     const ball = new THREE.Mesh(eyeballGeometry(r, iris, quality), eyeMaterial(colors.iris[0], colors.iris[1], iris, spec.eye.pupil ?? 0.36));
     ball.name = "zenica";
@@ -170,7 +186,7 @@ function buildEye(head: AnimalHead, spec: FaceSpec, colors: FaceColors, side: 1 
         return out.set(Math.cos(t) * lidR * 1.02, 0, Math.sin(t) * lidR * 1.02);
     }, (s) => {
         const outer = side === 1 ? s : 1 - s;
-        return r * (0.032 + 0.04 * Math.pow(outer, 2));
+        return r * (0.038 + 0.05 * Math.pow(outer, 2)) * (spec.eye.liner ?? 1.25);
     }, 28, 6), lashMat);
     upper.add(lash);
     const flicks = spec.eye.lashes ?? 0;
@@ -299,7 +315,13 @@ interface MouthFrame {
     up: THREE.Vector3;
     left: THREE.Vector3;
     wrap: number;
+    /** Površina glave: usta se spuštaju tačno na nju (prate njušku), pa tonu za `depth` */
+    head?: AnimalHead;
+    lift?: number;
 }
+
+const projN = new THREE.Vector3();
+const projD = new THREE.Vector3();
 
 function mouthCurves(ms: FaceSpec["mouth"], s: MouthState) {
     const W = ms.w * (1 + 0.18 * s.wide - 0.42 * s.round);
@@ -326,6 +348,13 @@ function mouthCurves(ms: FaceSpec["mouth"], s: MouthState) {
 }
 
 function placeOnFrame(f: MouthFrame, x: number, y: number, depth: number, out: THREE.Vector3): THREE.Vector3 {
+    if (f.head) {
+        projD.copy(f.p).addScaledVector(f.left, x).addScaledVector(f.up, y).sub(f.head.center);
+        const [u, v] = f.head.uvOf(projD);
+        f.head.point(u, v, out);
+        f.head.normal(u, v, projN);
+        return out.addScaledVector(projN, (f.lift ?? 0.0012) - depth);
+    }
     const a = x / f.wrap;
     out.copy(f.p)
         .addScaledVector(f.left, Math.sin(a) * f.wrap)
@@ -351,7 +380,8 @@ function interiorPositions(ms: FaceSpec["mouth"], f: MouthFrame, s: MouthState):
             const yU = upper(x);
             const yL = lower(x);
             const y = lerp(yU, yL, t);
-            const depth = 0.0015 + (gap(x) / maxGap) * Math.min(ms.h, maxGap) * 0.55 * Math.sin(Math.PI * t) * (1 - x * x * 0.6);
+            // Na površini (malo udubljeno u sredini — ne sme ispod kože glave)
+            const depth = f.head ? (f.lift ?? 0.0012) * 0.5 * Math.sin(Math.PI * t) * (1 - x * x) : 0.0015 + (gap(x) / maxGap) * Math.min(ms.h, maxGap) * 0.55 * Math.sin(Math.PI * t) * (1 - x * x * 0.6);
             placeOnFrame(f, x * W, y, depth, p);
             out.set([p.x, p.y, p.z], (j * (NU + 1) + i) * 3);
         }
@@ -361,8 +391,8 @@ function interiorPositions(ms: FaceSpec["mouth"], f: MouthFrame, s: MouthState):
 
 function interiorColors(ms: FaceSpec["mouth"]): Float32Array {
     const out = new Float32Array((NU + 1) * (NV + 1) * 3);
-    const dark = col("#4A1520");
-    const deep = col("#2A0A10");
+    const dark = col("#5A1A26");
+    const deep = col("#250810");
     const tongue = col("#E8707E");
     const tooth = col("#FFFDF8");
     const c = new THREE.Color();
@@ -496,7 +526,7 @@ function buildMouth(head: AnimalHead, spec: FaceSpec, colors: FaceColors): Mouth
     const p = head.offsetPoint(0.5, v, ms.lift ?? 0.0012);
     const up = new THREE.Vector3(0, 1, 0).addScaledVector(n, -n.y).normalize();
     const left = new THREE.Vector3().crossVectors(up, n).normalize();
-    const frame: MouthFrame = { p, n, up, left, wrap: ms.wrap };
+    const frame: MouthFrame = { p, n, up, left, wrap: ms.wrap, head, lift: ms.lift ?? 0.0012 };
     const neutral: MouthState = { smile: 0, open: 0, wide: 0, round: 0 };
     const states: MouthState[] = [
         { ...neutral, smile: 1 },
@@ -606,6 +636,8 @@ export function buildFace(head: AnimalHead, spec: FaceSpec, colors: FaceColors, 
     const whiskers = buildWhiskers(head, spec);
     if (whiskers) group.add(whiskers);
 
+    // Pomeraji obrva su zadati za ljudsku glavu (≈ 27 cm); životinjska je krupnija
+    const headK = head.shape.head.w / 0.27;
     let from = paramsOf("neutral");
     let target = paramsOf("neutral");
     let current = { ...from };
@@ -634,6 +666,7 @@ export function buildFace(head: AnimalHead, spec: FaceSpec, colors: FaceColors, 
                 mouth.teeth.position.copy(mouth.center).addScaledVector(mouth.frame.up, shift - spec.mouth.line * 0.6 + mouthCurves(spec.mouth, { smile: 0, open: 0, wide: 0, round: 0 }).upper(0));
             }
         }
+        if (mouth) mouth.group.scale.x = lerp(1, c.width, 0.8);
         extra?.jaw?.(Math.max(open, wide * 0.7, round * 0.8), smile);
         // Kapci
         const upperEdge = spec.eye.upper + c.upper * 0.7;
@@ -647,9 +680,9 @@ export function buildFace(head: AnimalHead, spec: FaceSpec, colors: FaceColors, 
         // Obrve: podignute, unutrašnji kraj gore (tuga) ili dole (ljutnja), jedna gore (radoznalo)
         for (const [i, brow] of brows.entries()) {
             const side = i === 0 ? 1 : -1;
-            const raise = c.browRaise * 0.016 + (side === 1 ? c.browAsym * 0.014 : -c.browAsym * 0.004);
+            const raise = (c.browRaise * 0.009 + (side === 1 ? c.browAsym * 0.011 : -c.browAsym * 0.002)) * headK;
             brow.group.position.copy(brow.base).add(new THREE.Vector3(0, raise, 0));
-            brow.group.rotation.z = side * c.browTilt * 0.32;
+            brow.group.rotation.z = side * c.browTilt;
         }
     };
 

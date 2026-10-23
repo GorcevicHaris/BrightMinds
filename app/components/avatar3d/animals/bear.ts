@@ -9,7 +9,8 @@ import { ANIMAL_SKINS } from "./skins.data";
 export const BEAR: AnimalSpec = {
     kind: "bear",
     skins: ANIMAL_SKINS.bear,
-    shape: { kind: "bear", girth: 1.12, belly: 1.12, leg: 0.19, limb: 1.08, head: { w: 0.45, h: 0.42, d: 0.41 } },
+    shape: { kind: "bear", girth: 1.14, belly: 1.14, limb: 1.1, legK: 0.95, head: { w: 0.39, h: 0.364, d: 0.355 } },
+    ref: 0.45,
     head: {
         flat: 0.12,
         flatTop: 0.1,
@@ -19,7 +20,7 @@ export const BEAR: AnimalSpec = {
             { c: [0, -0.075, 0.06], r: [0.112, 0.085, 0.19], k: 0.045, muzzle: true },
         ],
         bumps: [{ dir: [0.38, -0.02, 0.92], sigma: 0.13, amp: -0.006, mirror: true }],
-        eye: { u: 0.088, v: 0.47, r: 0.05, inset: 0.55, yaw: 0.15 },
+        eye: { u: 0.09, v: 0.475, r: 0.054, inset: 0.68, yaw: 0.15 },
         noseV: 0.575,
         mouthV: 0.665,
     },
@@ -29,7 +30,7 @@ export const BEAR: AnimalSpec = {
         nose: coat.bigNose
             ? { kind: "oval", w: 0.036, h: 0.04, d: 0.026, lift: 0.2, v: 0.56 }
             : { kind: "oval", w: 0.032, h: 0.022, d: 0.02, lift: 0.28, tilt: -0.15 },
-        mouth: { w: 0.034, h: 0.05, curve: "smile", teeth: "none", wrap: 0.065, philtrum: 0.018, line: 0.0026 },
+        mouth: { w: 0.036, h: 0.068, curve: "smile", teeth: "none", wrap: 0.065, philtrum: 0.018, line: 0.0026 },
     }),
     ears: (coat) => coat.earShape === "fluffy"
         ? { kind: "round", shape: { len: 0.13, width: 0.16, depth: 0.05, profile: EAR_PROFILES.round, cup: 0.7, inner: 0.72, tufts: 5 }, u: 0.68, v: 0.2, sink: 0.014, tilt: [0, -0.15, 0.62], inner: "fur" }

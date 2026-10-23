@@ -10,7 +10,8 @@ import { ANIMAL_SKINS } from "./skins.data";
 export const CAT: AnimalSpec = {
     kind: "cat",
     skins: ANIMAL_SKINS.cat,
-    shape: { kind: "cat", girth: 1, belly: 1.05, leg: 0.19, head: { w: 0.44, h: 0.415, d: 0.4 } },
+    shape: { kind: "cat", girth: 0.98, belly: 1.04, head: { w: 0.375, h: 0.354, d: 0.341 } },
+    ref: 0.44,
     head: {
         flat: 0.16,
         flatTop: 0.18,
@@ -21,7 +22,7 @@ export const CAT: AnimalSpec = {
             { dir: [0, -0.72, 0.69], sigma: 0.15, amp: 0.007, muzzle: true },
             { dir: [0.37, -0.03, 0.93], sigma: 0.13, amp: -0.006, mirror: true },
         ],
-        eye: { u: 0.086, v: 0.515, r: 0.058, inset: 0.55, yaw: 0.14 },
+        eye: { u: 0.088, v: 0.515, r: 0.062, inset: 0.68, yaw: 0.14 },
         noseV: 0.628,
         mouthV: 0.69,
     },
@@ -29,7 +30,7 @@ export const CAT: AnimalSpec = {
         eye: { upper: 0.86, lower: -0.86, lashes: 2, iris: 0.96, pupil: 0.46 },
         brow: { dv: 0.122, len: 0.046, thick: 0.0075 },
         nose: { kind: "button", w: 0.021, h: 0.014, d: 0.012, lift: 0.3 },
-        mouth: { w: 0.03, h: 0.042, curve: "w", teeth: "fangs", wrap: 0.06, philtrum: 0.014, line: 0.0024 },
+        mouth: { w: 0.032, h: 0.062, curve: "w", teeth: "fangs", wrap: 0.06, philtrum: 0.014, line: 0.0024 },
         whiskers: { count: 3, len: 0.1, v: 0.665, u: 0.072, color: coat.pattern === "tuxedo" || coat.fur === "#34303C" ? "#F4F0F6" : "#FFFFFF" },
     }),
     ears: {
