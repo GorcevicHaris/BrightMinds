@@ -35,9 +35,9 @@ export function ItemThumb({ item, className }: { item: WearItem; className?: str
     return <WearThumb item={item} className={className} />;
 }
 
-/** Sličica kompleta: izabrani drugar (u svom izgledu) u celom kompletu */
+/** Sličica kompleta: izabrani drugar (u svom izgledu) u celom kompletu; miruje (mreža sličica se ne mrda) */
 export function SetThumb({ set, kind, skin, className }: { set: WearSet; kind: string; skin?: string; className?: string }) {
-    return <Companion kind={kind as CompanionKindId} wear={set.items} skin={skin} variant="full" className={className} />;
+    return <Companion kind={kind as CompanionKindId} wear={set.items} skin={skin} variant="full" still className={className} />;
 }
 
 /** Kolika je cena kompleta za ovo dete: zbir cena predmeta koji mu još nedostaju */

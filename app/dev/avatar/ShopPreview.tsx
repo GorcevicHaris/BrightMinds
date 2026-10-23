@@ -2,6 +2,7 @@
 
 // Pregled prodavnice (samo u razvoju): ceo lik sa kompletima, sličice svih predmeta sa
 // cenom i provera svakog predmeta na svakom drugaru (po mestu, na celom liku ili poprsju).
+// Likovi ovde miruju (`still`), da se crteži porede bez pokreta; pokreti su u MotionPreview.
 
 import { useState } from "react";
 import Companion, { COMPANIONS } from "@/app/components/avatar/Companion";
@@ -30,14 +31,14 @@ export default function ShopPreview() {
                 <div className="grid grid-cols-6 gap-2" data-set-row={chosen.id}>
                     {COMPANIONS.map(({ kind, label }) => (
                         <figure key={kind} className="text-center">
-                            <Companion kind={kind} variant="full" emotion="happy" wear={chosen.items} className="mx-auto h-72 w-full rounded-xl bg-brand-50" />
+                            <Companion kind={kind} variant="full" emotion="happy" wear={chosen.items} still className="mx-auto h-72 w-full rounded-xl bg-brand-50" />
                             <figcaption className="text-xs font-extrabold text-ink-soft">{label}</figcaption>
                         </figure>
                     ))}
                 </div>
                 <div className="mt-4 grid grid-cols-6 gap-2">
                     {COMPANIONS.map(({ kind }) => (
-                        <Companion key={kind} kind={kind} variant="full" emotion="neutral" className="mx-auto h-56 w-full rounded-xl bg-brand-50" />
+                        <Companion key={kind} kind={kind} variant="full" emotion="neutral" still className="mx-auto h-56 w-full rounded-xl bg-brand-50" />
                     ))}
                 </div>
             </section>
@@ -94,6 +95,7 @@ export default function ShopPreview() {
                                         variant={variant}
                                         emotion="happy"
                                         wear={{ [item.slot]: item.id }}
+                                        still
                                         className={variant === "full" ? "mx-auto h-80 w-full" : "mx-auto h-28 w-24"}
                                     />
                                 ))}

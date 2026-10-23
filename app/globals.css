@@ -171,6 +171,260 @@ button:not(:disabled), [role="button"] {
   text-transform: none;
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+   Drugar: mirni pokreti celog lika i portreta (app/components/avatar/motion.ts)
+   Deca osetljiva na pokret: sve je sporo, glatko i malo (disanje ≈ 2–3 px, petlje 3–22 s),
+   bez bleskanja i bez naglih velikih pokreta. Stalni pokreti rade samo ispod `.cm-live`
+   (nema je kad je kretanje smanjeno). Pokreću se samo SVG grupe (transform, opacity);
+   tačka okretanja je u koordinatama crteža (geometry.ts).
+   ────────────────────────────────────────────────────────────────────────── */
+.cm-act,
+.cm-talk,
+.cm-breathe {
+  transform-origin: 120px 410px;
+}
+.cm-shadow { transform-origin: 120px 411px; }
+.cm-nod { transform-origin: 120px 186px; }
+.cm-arm-l { transform-origin: 70px 220px; }
+.cm-arm-r { transform-origin: 170px 220px; }
+.cm-hair { transform-origin: 120px 60px; }
+.cm-cape { transform-origin: 120px 212px; }
+.cm-wings { transform-origin: 120px 240px; }
+/* Balon i ljubimac imaju svoje koordinate: (0, 0) je šaka, odnosno tačka na tlu */
+.cm-float,
+.cm-pet-hop,
+.cm-pet-lean {
+  transform-origin: 0 0;
+}
+
+/* Mirovanje: disanje, rep, uši, kosa, plašt, krila, balon, ljubimac */
+.cm-live .cm-breathe { animation: cm-breathe 4.2s ease-in-out infinite; }
+.cm-live .cm-tail { animation: cm-sway-5 3.8s ease-in-out infinite alternate; }
+.cm-live .cm-ear-l { animation: cm-twitch-l 9s ease-in-out 2s infinite; }
+.cm-live .cm-ear-r { animation: cm-twitch-r 11s ease-in-out 6s infinite; }
+.cm-live .cm-hair { animation: cm-sway-1 5s ease-in-out infinite alternate; }
+.cm-live .cm-cape { animation: cm-sway-1 5.4s ease-in-out infinite alternate; }
+.cm-live .cm-wings { animation: cm-wings 3.6s ease-in-out infinite; }
+/* Balon se njiše samo ka drugaru (udesno bi izašao iz okvira) */
+.cm-live .cm-float { animation: cm-float 4.6s ease-in-out infinite alternate; }
+.cm-live .cm-pet-hop { animation: cm-pet-hop 6.5s ease-in-out 1.5s infinite; }
+.cm-live .cm-pet-lean { animation: cm-sway-2 5.5s ease-in-out infinite alternate; }
+/* Pozadina: vrlo sporo */
+.cm-live .cm-drift { animation: cm-drift 22s ease-in-out infinite alternate; }
+.cm-live .cm-glow { animation: cm-glow 6s ease-in-out infinite alternate; }
+.cm-live .cm-twinkle { animation: cm-twinkle 4.5s ease-in-out infinite alternate; }
+.cm-live .cm-rise { animation: cm-rise 7s linear infinite; }
+.cm-live .cm-fall { animation: cm-fall 10s linear infinite; }
+.cm-live .cm-swim { animation: cm-swim 9s ease-in-out infinite alternate; }
+.cm-live .cm-flutter { animation: cm-flutter 6s ease-in-out infinite alternate; }
+.cm-live .cm-bob { animation: cm-bob 5s ease-in-out infinite alternate; }
+
+/* Uz govor (data-say): jednom na početku rečenice. Maše levom rukom — desna drži predmet. */
+.cm-live[data-say="wave"] .cm-arm-l { animation: cm-wave 2.8s ease-in-out; }
+.cm-live[data-say="bounce"] .cm-talk { animation: cm-bounce 1.4s ease-in-out; }
+.cm-live[data-say="cheer"] .cm-talk { animation: cm-bounce 1.4s ease-in-out; }
+.cm-live[data-say="cheer"] .cm-arm-l { animation: cm-arms-out-l 1.6s ease-in-out; }
+.cm-live[data-say="cheer"] .cm-arm-r { animation: cm-arms-out-r 1.6s ease-in-out; }
+.cm-live[data-say="nod"] .cm-nod { animation: cm-nod 1.8s ease-in-out; }
+
+/* Jednokratni pokreti (data-act): trajanje je i u motion.ts (ACTION_MS) */
+.cm-live[data-act="hop"] .cm-act { animation: cm-hop 0.6s ease-out; }
+.cm-live[data-act="hop"] .cm-shadow { animation: cm-shadow-hop 0.6s ease-out; }
+.cm-live[data-act="joy"] .cm-act { animation: cm-joy 1s ease-in-out; }
+.cm-live[data-act="joy"] .cm-shadow { animation: cm-shadow-joy 1s ease-in-out; }
+.cm-live[data-act="joy"] .cm-arm-l { animation: cm-arms-up-l 1s ease-in-out; }
+.cm-live[data-act="joy"] .cm-arm-r { animation: cm-arms-up-r 1s ease-in-out; }
+.cm-live[data-act="cheer"] .cm-act { animation: cm-cheer 1.4s ease-in-out 0.35s both; }
+.cm-live[data-act="cheer"] .cm-shadow { animation: cm-shadow-joy 1.4s ease-in-out 0.35s both; }
+.cm-live[data-act="cheer"] .cm-arm-l { animation: cm-clap-l 1.4s ease-in-out 0.35s both; }
+.cm-live[data-act="cheer"] .cm-arm-r { animation: cm-clap-r 1.4s ease-in-out 0.35s both; }
+.cm-live[data-act="appear"] .cm-act { animation: cm-appear 0.5s ease-out; }
+/* Ruka koja drži predmet ostaje dole (predmet se ne prevrće) */
+.cm-live[data-holding][data-act] .cm-arm-r,
+.cm-live[data-holding][data-say] .cm-arm-r {
+  animation: none;
+}
+/* Nov predmet kratko iskoči; pozadina se samo blago pojavi */
+.cm-live [data-popping] {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: cm-pop-item 0.45s ease-out;
+}
+.cm-live [data-pop="background"][data-popping] { animation: cm-fade-in 0.45s ease-out; }
+
+@keyframes cm-breathe {
+  0%, 100% { transform: none; }
+  50% { transform: scale(1.003, 1.007); }
+}
+@keyframes cm-sway-1 {
+  from { transform: rotate(-0.9deg); }
+  to { transform: rotate(0.9deg); }
+}
+@keyframes cm-sway-2 {
+  from { transform: rotate(-2deg); }
+  to { transform: rotate(2deg); }
+}
+@keyframes cm-float {
+  from { transform: rotate(-3.5deg); }
+  to { transform: rotate(0.5deg); }
+}
+@keyframes cm-sway-5 {
+  from { transform: rotate(-5deg); }
+  to { transform: rotate(5deg); }
+}
+/* Uho se retko i kratko pomeri (≈ 0,5 s), pa dugo miruje */
+@keyframes cm-twitch-l {
+  0%, 91%, 97%, 100% { transform: none; }
+  94% { transform: rotate(-7deg); }
+}
+@keyframes cm-twitch-r {
+  0%, 91%, 97%, 100% { transform: none; }
+  94% { transform: rotate(7deg); }
+}
+@keyframes cm-wings {
+  0%, 100% { transform: none; }
+  50% { transform: scale(0.95, 1); }
+}
+@keyframes cm-pet-hop {
+  0%, 85%, 95%, 100% { transform: none; }
+  90% { transform: translateY(-4px); }
+}
+@keyframes cm-drift {
+  from { transform: translateX(-5px); }
+  to { transform: translateX(5px); }
+}
+@keyframes cm-glow {
+  from { opacity: 0.45; }
+  to { opacity: 0.25; }
+}
+@keyframes cm-twinkle {
+  from { opacity: 1; }
+  to { opacity: 0.45; }
+}
+@keyframes cm-rise {
+  0% { transform: translateY(6px); opacity: 0; }
+  25% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { transform: translateY(-30px); opacity: 0; }
+}
+@keyframes cm-fall {
+  0% { transform: translateY(-8px); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(16px); opacity: 0; }
+}
+@keyframes cm-swim {
+  from { transform: translateX(-6px); }
+  to { transform: translateX(6px); }
+}
+@keyframes cm-flutter {
+  from { transform: translate(0, 0); }
+  to { transform: translate(5px, -6px); }
+}
+@keyframes cm-bob {
+  from { transform: translateY(-3px); }
+  to { transform: translateY(3px); }
+}
+/* Mahanje: ruka se podigne pored glave, mahne dva puta (≈ 1,3 puta u sekundi) i spusti se */
+@keyframes cm-wave {
+  0%, 100% { transform: none; }
+  16% { transform: rotate(124deg); }
+  30% { transform: rotate(110deg); }
+  44% { transform: rotate(126deg); }
+  58% { transform: rotate(110deg); }
+  72%, 82% { transform: rotate(122deg); }
+}
+@keyframes cm-bounce {
+  0%, 50%, 100% { transform: none; }
+  25%, 75% { transform: translateY(-4px); }
+}
+@keyframes cm-arms-out-l {
+  0%, 100% { transform: none; }
+  25%, 70% { transform: rotate(55deg); }
+}
+@keyframes cm-arms-out-r {
+  0%, 100% { transform: none; }
+  25%, 70% { transform: rotate(-55deg); }
+}
+@keyframes cm-nod {
+  0%, 50%, 100% { transform: none; }
+  25%, 75% { transform: translateY(3px) scale(1, 0.985); }
+}
+@keyframes cm-hop {
+  0%, 100% { transform: none; }
+  18% { transform: scale(1.02, 0.97); }
+  48% { transform: translateY(-9px) scale(0.99, 1.02); }
+  78% { transform: scale(1.015, 0.985); }
+}
+@keyframes cm-shadow-hop {
+  0%, 100% { transform: none; }
+  48% { transform: scale(0.85); }
+}
+/* Radost posle kupovine: dva mala skoka sa blagim nagibom, ruke gore */
+@keyframes cm-joy {
+  0%, 100% { transform: none; }
+  12% { transform: scale(1.02, 0.97); }
+  30% { transform: translateY(-11px) rotate(-2deg); }
+  48% { transform: scale(1.015, 0.985); }
+  56% { transform: scale(1.02, 0.97); }
+  74% { transform: translateY(-7px) rotate(2deg); }
+  90% { transform: scale(1.01, 0.99); }
+}
+@keyframes cm-shadow-joy {
+  0%, 48%, 56%, 100% { transform: none; }
+  30%, 74% { transform: scale(0.85); }
+}
+@keyframes cm-arms-up-l {
+  0%, 100% { transform: none; }
+  25%, 75% { transform: rotate(105deg); }
+}
+@keyframes cm-arms-up-r {
+  0%, 100% { transform: none; }
+  25%, 75% { transform: rotate(-105deg); }
+}
+/* Kraj nivoa: dva mala skoka i dva pljeska ispred stomaka */
+@keyframes cm-cheer {
+  0%, 100% { transform: none; }
+  10% { transform: scale(1.02, 0.97); }
+  28% { transform: translateY(-8px); }
+  44% { transform: scale(1.015, 0.985); }
+  54% { transform: scale(1.02, 0.97); }
+  72% { transform: translateY(-8px); }
+  88% { transform: none; }
+}
+@keyframes cm-clap-l {
+  0%, 100% { transform: none; }
+  18%, 46% { transform: rotate(-48deg); }
+  32%, 62% { transform: rotate(-30deg); }
+}
+@keyframes cm-clap-r {
+  0%, 100% { transform: none; }
+  18%, 46% { transform: rotate(48deg); }
+  32%, 62% { transform: rotate(30deg); }
+}
+@keyframes cm-appear {
+  0% { transform: translateY(6px) scale(0.92); opacity: 0; }
+  60% { transform: scale(1.02); opacity: 1; }
+  100% { transform: none; opacity: 1; }
+}
+@keyframes cm-pop-item {
+  0%, 100% { transform: none; }
+  40% { transform: scale(1.12); }
+  70% { transform: scale(0.98); }
+}
+@keyframes cm-fade-in {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+/* Sistemsko „smanji pokrete”: drugar miruje (i kad dete nema „Manje animacija”) */
+@media (prefers-reduced-motion: reduce) {
+  .cm-live,
+  .cm-live * {
+    animation: none !important;
+  }
+}
+
 /* Smanjeno kretanje koje je izabrao roditelj — isto što i sistemsko podešavanje ispod */
 [data-motion="reduced"] *,
 [data-motion="reduced"] *::before,

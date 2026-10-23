@@ -258,15 +258,15 @@ const pet = itemsFor("pet");
 export const PETS = [
     pet("pile", "Pile", 18, chick("#FFD15C", "#FF8A3D")),
     pet("patkica", "Patkica", 18, chick("#FFE08A", "#FF8A3D", true)),
-    pet("ribica", "Ribica u činiji", 20, fishBowl),
+    pet("ribica", "Ribica u činiji", 20, fishBowl, { motion: "pet-lean" }),
     pet("zabica", "Žabica", 20, frog),
     pet("pticica", "Ptičica", 22, bird("#7ED6F2", "#fff", "#FFC83D")),
-    pet("kornjaca", "Kornjača", 25, turtle),
+    pet("kornjaca", "Kornjača", 25, turtle, { motion: "pet-lean" }),
     pet("jezic", "Ježić", 26, hedgehog),
     pet("zecic", "Zečić", 28, bunny),
     pet("mace", "Mače", 30, kitten),
     pet("kuce", "Kuče", 30, puppy),
     pet("pingvin", "Pingvin", 32, penguin),
     pet("papagaj", "Papagaj", 35, parrot),
-    pet("poni", "Poni", 60, pony),
+    pet("poni", "Poni", 60, pony, { motion: "pet-lean" }),
 ];

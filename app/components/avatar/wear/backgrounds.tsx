@@ -1,6 +1,13 @@
 // Pozadine: samo na celom liku, iza svega. Pokrivaju ceo okvir (geometry.ts FULL_BOX:
 // x −60 … 300, y −24 … 426); tlo počinje oko y 330, a drugar stoji na y 410.
 // Boje su meke i mirne, sa malo detalja, da pozadina ne odvlači pažnju od drugara.
+//
+// Na celom liku pozadina živi vrlo sporo (globals.css „Drugar”, samo ispod `cm-live`):
+// oblaci plove, zvezde blago trepere (bez bleskanja), mehurići se dižu, pahulje padaju,
+// ribice plivaju. Kašnjenja su izvedena iz položaja, da se ne pomeraju sve u isti mah.
+
+/** Kašnjenje animacije iz položaja (stalno, isto na serveru i u pregledaču) */
+const stagger = (x: number, y: number, period: number) => ({ animationDelay: `-${r1((Math.abs(x * 7 + y * 3) % (period * 10)) / 10)}s` });
 
 import type { ReactNode } from "react";
 import { FULL_BOX } from "../geometry";
@@ -16,11 +23,13 @@ const ground = (y: number, color: string, curve = 0) => <path d={`M${X0} ${y + c
 
 function cloud(x: number, y: number, s = 1, fill = "#fff"): ReactNode {
     return (
-        <g key={`c${x}-${y}`} transform={`translate(${x} ${y}) scale(${s})`} fill={fill}>
-            <ellipse cx="0" cy="6" rx="30" ry="10" />
-            <circle cx="-12" cy="0" r="12" />
-            <circle cx="6" cy="-4" r="15" />
-            <circle cx="20" cy="2" r="10" />
+        <g key={`c${x}-${y}`} className="cm-drift" style={stagger(x, y, 22)}>
+            <g transform={`translate(${x} ${y}) scale(${s})`} fill={fill}>
+                <ellipse cx="0" cy="6" rx="30" ry="10" />
+                <circle cx="-12" cy="0" r="12" />
+                <circle cx="6" cy="-4" r="15" />
+                <circle cx="20" cy="2" r="10" />
+            </g>
         </g>
     );
 }
@@ -49,7 +58,7 @@ function pine(x: number, y: number, s = 1, snow = false): ReactNode {
 function sunDisc(x: number, y: number, r = 24): ReactNode {
     return (
         <g>
-            <circle cx={x} cy={y} r={r + 10} fill="#FFE08A" opacity="0.45" />
+            <circle className="cm-glow" cx={x} cy={y} r={r + 10} fill="#FFE08A" opacity="0.45" />
             <circle cx={x} cy={y} r={r} fill="#FFD15C" />
         </g>
     );
@@ -128,7 +137,11 @@ function space(): ReactNode {
     return (
         <>
             {sky("#232457")}
-            {stars.map(([x, y, s]) => sparkle(x, y, s * 1.6, "#FFF6CC"))}
+            {stars.map(([x, y, s]) => (
+                <g key={`${x}-${y}`} className="cm-twinkle" style={stagger(x, y, 9)}>
+                    {sparkle(x, y, s * 1.6, "#FFF6CC")}
+                </g>
+            ))}
             <circle cx="250" cy="56" r="30" fill="#F7A8C8" />
             <ellipse cx="250" cy="56" rx="52" ry="12" fill="none" stroke="#FFD15C" strokeWidth="5" transform="rotate(-16 250 56)" />
             <circle cx="240" cy="46" r="8" fill="#fff" opacity="0.25" />
@@ -158,17 +171,21 @@ function underwater(): ReactNode {
                 [220, 90, 5],
                 [-20, 200, 6],
             ].map(([x, y, r]) => (
-                <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill="none" stroke="#fff" strokeOpacity="0.7" strokeWidth="2.5" />
+                <circle key={`${x}-${y}`} className="cm-rise" style={stagger(x, y, 7)} cx={x} cy={y} r={r} fill="none" stroke="#fff" strokeOpacity="0.7" strokeWidth="2.5" />
             ))}
-            <g transform="translate(250 180)">
-                <ellipse rx="16" ry="10" fill="#FFD15C" />
-                <path d="M14 0L26 -8V8Z" fill="#FFD15C" />
-                <circle cx="-7" cy="-2" r="2.4" fill="#2A1D18" />
+            <g className="cm-swim">
+                <g transform="translate(250 180)">
+                    <ellipse rx="16" ry="10" fill="#FFD15C" />
+                    <path d="M14 0L26 -8V8Z" fill="#FFD15C" />
+                    <circle cx="-7" cy="-2" r="2.4" fill="#2A1D18" />
+                </g>
             </g>
-            <g transform="translate(-10 140) scale(-1 1)">
-                <ellipse rx="12" ry="8" fill="#FF8A3D" />
-                <path d="M10 0L20 -6V6Z" fill="#FF8A3D" />
-                <circle cx="-5" cy="-1" r="2" fill="#2A1D18" />
+            <g className="cm-swim" style={{ animationDelay: "-4s" }}>
+                <g transform="translate(-10 140) scale(-1 1)">
+                    <ellipse rx="12" ry="8" fill="#FF8A3D" />
+                    <path d="M10 0L20 -6V6Z" fill="#FF8A3D" />
+                    <circle cx="-5" cy="-1" r="2" fill="#2A1D18" />
+                </g>
             </g>
         </>
     );
@@ -256,7 +273,7 @@ function snow(): ReactNode {
                 [250, 280],
                 [-10, 280],
             ].map(([x, y]) => (
-                <circle key={`${x}-${y}`} cx={x} cy={y} r="3.5" fill="#fff" />
+                <circle key={`${x}-${y}`} className="cm-fall" style={stagger(x, y, 10)} cx={x} cy={y} r="3.5" fill="#fff" />
             ))}
         </>
     );
@@ -290,7 +307,7 @@ function fair(): ReactNode {
                 [-30, 360],
                 [260, 372],
             ].map(([x, y]) => (
-                <g key={x}>
+                <g key={x} className="cm-bob" style={stagger(x, y, 5)}>
                     <path d={`M${x} ${y}V${y + 50}`} stroke="#8C98AB" strokeWidth="2" />
                     <ellipse cx={x} cy={y - 18} rx="14" ry="18" fill="#3D9BE9" />
                 </g>
@@ -362,9 +379,11 @@ function meadow(): ReactNode {
             {cloud(220, 40, 0.8)}
             {ground(310, "#A8DE8F", 14)}
             {spots.map(([x, y], i) => flower(x, y, colors[i % colors.length], 0.9))}
-            <g transform="translate(240 230)">
-                <path d="M0 0Q-14 -14 -16 0Q-14 12 0 0ZM0 0Q14 -14 16 0Q14 12 0 0Z" fill="#F78FB3" />
-                <path d="M0 -6V6" stroke="#3A3546" strokeWidth="2.5" strokeLinecap="round" />
+            <g className="cm-flutter">
+                <g transform="translate(240 230)">
+                    <path d="M0 0Q-14 -14 -16 0Q-14 12 0 0ZM0 0Q14 -14 16 0Q14 12 0 0Z" fill="#F78FB3" />
+                    <path d="M0 -6V6" stroke="#3A3546" strokeWidth="2.5" strokeLinecap="round" />
+                </g>
             </g>
         </>
     );

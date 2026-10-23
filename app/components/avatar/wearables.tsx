@@ -75,7 +75,19 @@ export interface WearItem {
     lower?: boolean;
     /** Okvir sličice u prodavnici (viewBox), ako se razlikuje od izračunatog */
     thumb?: string;
+    /** Miran stalni pokret na celom liku (globals.css „Drugar”); ljubimci bez njega poskoče */
+    motion?: WearMotion;
 }
+
+/**
+ * Stalni pokreti predmeta na celom liku: `float` balon (ili zmaj) se njiše oko šake, `cape`
+ * plašt se blago leluja, `wings` krila polako mašu, `pet-hop` ljubimac povremeno poskoči,
+ * `pet-lean` krupniji ljubimac (poni, kornjača, činija) se samo blago nagne.
+ */
+export type WearMotion = "float" | "cape" | "wings" | "pet-hop" | "pet-lean";
+
+/** Pokret predmeta koji ga nema zadatog */
+const DEFAULT_MOTION: Partial<Record<WearSlot, WearMotion>> = { pet: "pet-hop" };
 
 /** Oprema po mestu: id predmeta koji je obučen */
 export type Wear = Partial<Record<WearSlot, string>>;
@@ -113,15 +125,30 @@ interface RenderOptions {
     tone?: string;
 }
 
-/** Crtež predmeta na tom mestu, ili ništa (i kada se to mesto u tom obliku lika ne vidi) */
+/**
+ * Crtež predmeta na tom mestu, ili ništa (i kada se to mesto u tom obliku lika ne vidi).
+ * Na celom liku je predmet u grupi `data-pop` (kratko iskoči kad se obuče) i, ako ga ima,
+ * u grupi svog stalnog pokreta; pokreti rade samo ispod `cm-live` (motion.ts).
+ */
 export function renderWorn(wear: Wear | undefined, slot: WearSlot, { variant = "bust", kind, front = false, tone }: RenderOptions = {}): ReactNode {
     const item = wornItem(wear, slot);
     if (!item || !slotVisible(slot, variant)) return null;
     const art = front ? item.front?.(variant, kind) : item.render(variant, kind, tone);
     if (!art) return null;
+    if (variant !== "full") {
+        return (
+            <g data-wear={item.id} transform={PLACE[slot]}>
+                {art}
+            </g>
+        );
+    }
+    // Pokret je u koordinatama predmeta (balon se njiše oko šake, ljubimac oko tačke na tlu)
+    const motion = front ? undefined : (item.motion ?? DEFAULT_MOTION[slot]);
     return (
-        <g data-wear={item.id} transform={PLACE[slot]}>
-            {art}
+        <g data-pop={front ? undefined : slot}>
+            <g data-wear={item.id} transform={PLACE[slot]}>
+                {motion ? <g className={`cm-${motion}`}>{art}</g> : art}
+            </g>
         </g>
     );
 }

@@ -5,6 +5,11 @@
 //   pozadina → senka → leđa → (kosa iza glave, rep) → noge → pantalone → trup → odeća →
 //   obuća → vrat → leđa spreda (kaiševi) → oko vrata → ruke → u ruci → pesnica → glava
 //   (naočare, kosa, kapa) → ljubimac
+//
+// Mirni pokreti (motion.ts, globals.css „Drugar”): sve od leđa do glave je u tri ugnježđene
+// grupe — `cm-act` (jednokratni pokreti: skok, radost, aplauz, pojava), `cm-talk` (pokret
+// uz govor) i `cm-breathe` (disanje). Pozadina, senka i ljubimac stoje van njih, pa tlo
+// i ljubimac ne skaču zajedno sa drugarom. Ruke su svaka u svojoj grupi (mahanje, aplauz).
 
 import type { ReactNode } from "react";
 import type { CompanionKind } from "./companions";
@@ -12,14 +17,29 @@ import { ARM_L, ARM_R, FIST_LX, FIST_RX, FIST_Y, GROUND_Y, LEG_LX, LEG_RX, LEG_T
 import { lowerPart } from "./wear/art";
 import { renderWorn, wornItem, type Wear } from "./wearables";
 
-/** Pozadina, senka na tlu i predmet na leđima (sve iza lika) */
-export function fullBehind(wear: Wear | undefined, kind: CompanionKind): ReactNode {
+/** Pozadina i senka na tlu (ne pomeraju se sa drugarom; senka se smanji kad skoči) */
+export function fullScene(wear: Wear | undefined, kind: CompanionKind): ReactNode {
     return (
         <>
             {renderWorn(wear, "background", { variant: "full", kind })}
-            <ellipse cx="120" cy={GROUND_Y + 1} rx="62" ry="7" fill="#1D1030" opacity="0.13" />
-            {renderWorn(wear, "back", { variant: "full", kind })}
+            <ellipse className="cm-shadow" cx="120" cy={GROUND_Y + 1} rx="62" ry="7" fill="#1D1030" opacity="0.13" />
         </>
+    );
+}
+
+/** Predmet na leđima (iza lika) */
+export function fullBack(wear: Wear | undefined, kind: CompanionKind): ReactNode {
+    return renderWorn(wear, "back", { variant: "full", kind });
+}
+
+/** Sve što se pomera sa drugarom: jednokratni pokret → pokret uz govor → disanje */
+export function fullMotion(body: ReactNode): ReactNode {
+    return (
+        <g className="cm-act">
+            <g className="cm-talk">
+                <g className="cm-breathe">{body}</g>
+            </g>
+        </g>
     );
 }
 
@@ -43,33 +63,41 @@ export function fullFeet(wear: Wear | undefined, kind: CompanionKind, bare: Reac
     return <g transform={FEET_ZOOM}>{renderWorn(wear, "feet", { variant: "full", kind, tone }) ?? bare}</g>;
 }
 
-/** Ruke koje vise pored tela: podlaktica u boji kože, rukav do lakta, šake */
-export function fullArms(sleeve: string, skin: string, fist: (x: number, y: number) => ReactNode): ReactNode {
-    const elbow = (arm: { x1: number; y1: number; x2: number; y2: number }) => ({ x: arm.x1 + (arm.x2 - arm.x1) * 0.72, y: arm.y1 + (arm.y2 - arm.y1) * 0.72 });
-    const l = elbow(ARM_L);
-    const r = elbow(ARM_R);
-    return (
-        <>
-            <line x1={ARM_L.x1} y1={ARM_L.y1} x2={ARM_L.x2} y2={ARM_L.y2} stroke={skin} strokeWidth="21" strokeLinecap="round" />
-            <line x1={ARM_R.x1} y1={ARM_R.y1} x2={ARM_R.x2} y2={ARM_R.y2} stroke={skin} strokeWidth="21" strokeLinecap="round" />
-            {/* Tanak obris rukava: i bela odeća se jasno vidi na svetloj pozadini */}
-            <path d={`M${ARM_L.x1} ${ARM_L.y1}L${l.x} ${l.y}M${ARM_R.x1} ${ARM_R.y1}L${r.x} ${r.y}`} stroke="#1D1030" strokeOpacity="0.14" strokeWidth="29" strokeLinecap="round" />
-            <line x1={ARM_L.x1} y1={ARM_L.y1} x2={l.x} y2={l.y} stroke={sleeve} strokeWidth="26" strokeLinecap="round" />
-            <line x1={ARM_R.x1} y1={ARM_R.y1} x2={r.x} y2={r.y} stroke={sleeve} strokeWidth="26" strokeLinecap="round" />
-            {fist(FIST_LX, FIST_Y)}
-            {fist(FIST_RX, FIST_Y)}
-        </>
-    );
-}
-
-/** Predmet u desnoj šaci i pesnica preko njegove drške */
-export function fullHand(wear: Wear | undefined, kind: CompanionKind, fist: (x: number, y: number) => ReactNode): ReactNode {
+/**
+ * Ruke koje vise pored tela: podlaktica u boji kože, rukav do lakta, šake. Desna (na slici)
+ * drži predmet iz prodavnice, a pesnica se crta preko njegove drške. Svaka ruka je u svojoj
+ * grupi koja se okreće oko ramena (mahanje, aplauz).
+ */
+export function fullArms(wear: Wear | undefined, kind: CompanionKind, sleeve: string, skin: string, fist: (x: number, y: number) => ReactNode): ReactNode {
     const held = renderWorn(wear, "hand", { variant: "full", kind });
-    if (!held) return null;
+    const arm = (side: { x1: number; y1: number; x2: number; y2: number }, fistX: number, extra?: ReactNode) => {
+        const elbow = { x: side.x1 + (side.x2 - side.x1) * 0.72, y: side.y1 + (side.y2 - side.y1) * 0.72 };
+        return (
+            <>
+                <line x1={side.x1} y1={side.y1} x2={side.x2} y2={side.y2} stroke={skin} strokeWidth="21" strokeLinecap="round" />
+                {/* Tanak obris rukava: i bela odeća se jasno vidi na svetloj pozadini */}
+                <path d={`M${side.x1} ${side.y1}L${elbow.x} ${elbow.y}`} stroke="#1D1030" strokeOpacity="0.14" strokeWidth="29" strokeLinecap="round" />
+                <line x1={side.x1} y1={side.y1} x2={elbow.x} y2={elbow.y} stroke={sleeve} strokeWidth="26" strokeLinecap="round" />
+                {fist(fistX, FIST_Y)}
+                {extra}
+            </>
+        );
+    };
     return (
         <>
-            {held}
-            {fist(FIST_RX, FIST_Y)}
+            <g className="cm-arm-l">{arm(ARM_L, FIST_LX)}</g>
+            <g className="cm-arm-r">
+                {arm(
+                    ARM_R,
+                    FIST_RX,
+                    held && (
+                        <>
+                            {held}
+                            {fist(FIST_RX, FIST_Y)}
+                        </>
+                    )
+                )}
+            </g>
         </>
     );
 }

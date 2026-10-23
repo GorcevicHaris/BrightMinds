@@ -9,6 +9,7 @@ import { OwlPicture, WindPicture } from "@/app/components/games/SoundPictures";
 import { VOICE_EMOTIONS, type VoiceEmotion } from "@/lib/emotion";
 import { speak } from "@/lib/speech";
 import { mimeVoice, playVoice } from "@/lib/voice";
+import MotionPreview from "./MotionPreview";
 import ShopPreview from "./ShopPreview";
 import SkinsPreview from "./SkinsPreview";
 
@@ -92,6 +93,7 @@ function CompanionPreview() {
 export default function AvatarPreview() {
     return (
         <main className="min-h-screen bg-canvas p-6">
+            <MotionPreview />
             <SkinsPreview />
             <ShopPreview />
             <CompanionPreview />

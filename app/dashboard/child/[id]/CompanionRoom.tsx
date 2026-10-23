@@ -35,7 +35,7 @@ import {
     X,
     type LucideIcon,
 } from "lucide-react";
-import Companion, { COMPANIONS } from "@/app/components/avatar/Companion";
+import Companion, { COMPANIONS, type CompanionAction as CompanionMove } from "@/app/components/avatar/Companion";
 import {
     ANIMAL_SKINS,
     HAIR_COLORS,
@@ -116,6 +116,16 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
     const [selected, setSelected] = useState<Selection | null>(null);
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
+    // Jednokratni pokret velikog drugara: skok pri probi, radost posle kupovine, pojava novog izgleda
+    const [move, setMove] = useState<{ action?: CompanionMove; key: number }>({ key: 0 });
+    const play = (action: CompanionMove) => setMove((current) => ({ action, key: current.key + 1 }));
+    // Nov drugar ili izgled (i proba krzna) se pojavi; ne pri prvom učitavanju prodavnice
+    const look = companion ? `${companion.kind}:${selected?.type === "skin" && selected.kind === companion.kind ? selected.skin.id : (companion.skin[companion.kind] ?? "")}` : null;
+    const [shownLook, setShownLook] = useState(look);
+    if (look !== shownLook) {
+        setShownLook(look);
+        if (shownLook !== null && look !== null) play("appear");
+    }
 
     // Probno obučen predmet (ili ceo komplet, tačno kao na sličici) se vidi na velikom pratiocu
     const previewWear = useMemo(() => {
@@ -167,12 +177,16 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
             playSfx("tap");
             setSelected(null);
             const worn = wear[item.slot] === item.id;
-            if (await run({ action: "wear", slot: item.slot, item: worn ? null : item.id })) say(worn ? `${item.label}. Skinuto.` : `${item.label}.`);
+            if (await run({ action: "wear", slot: item.slot, item: worn ? null : item.id })) {
+                play("hop");
+                say(worn ? `${item.label}. Skinuto.` : `${item.label}.`);
+            }
             return;
         }
-        // Nije kupljen: samo proba (ponovljen dodir ostavlja probu i ponovi naziv)
+        // Nije kupljen: samo proba (ponovljen dodir ostavlja probu i ponovi naziv); predmet iskoči, drugar skoči
         playSfx("tap");
         setSelected({ type: "item", item });
+        play("hop");
         const missing = item.price - coins;
         const text = `${item.label}. Košta ${item.price} ${coinWord(item.price)}.`;
         say(missing > 0 ? `${text} Treba još ${missing}.` : text, undefined, missing > 0 ? "gentle" : undefined);
@@ -182,6 +196,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
         setMessage(null);
         playSfx("tap");
         setSelected({ type: "set", set });
+        play("hop");
         const { have, total, price } = setProgress(set, owned);
         if (have >= total) {
             say(`${set.label}. Sve imaš.`);
@@ -193,6 +208,8 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
 
     const celebrate = (text: string) => {
         playSfx("correct");
+        // Kratak skok radosti (bez dugog plesa)
+        play("joy");
         if (!reduceMotion) celebrateBig();
         setSelected(null);
         say(text, undefined, "proud");
@@ -213,6 +230,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
         playSfx("tap");
         if (await run({ action: "outfit", wear: set.items })) {
             setSelected(null);
+            play("hop");
             say(`${set.label}.`);
         }
     };
@@ -283,7 +301,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
             >
                 <div className="flex items-center gap-3 lg:flex-col lg:items-stretch">
                     <div className="relative flex shrink-0 justify-center">
-                        <Companion kind={kind as CompanionKindId} wear={previewWear} skin={previewSkin} variant="full" className="h-40 w-32 sm:h-48 sm:w-40 lg:h-80 lg:w-64 xl:h-96 xl:w-80" />
+                        <Companion kind={kind as CompanionKindId} wear={previewWear} skin={previewSkin} variant="full" action={move.action} actionKey={move.key} className="h-40 w-32 sm:h-48 sm:w-40 lg:h-80 lg:w-64 xl:h-96 xl:w-80" />
                         {selected && (
                             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-0.5 text-xs font-extrabold text-brand-700 shadow-soft ring-1 ring-brand-200">
                                 Probaš

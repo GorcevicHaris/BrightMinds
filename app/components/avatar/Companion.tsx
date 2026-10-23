@@ -5,10 +5,12 @@
 import type { VoiceEmotion } from "@/lib/emotion";
 import AnimalAvatar from "./AnimalAvatar";
 import type { CompanionKind } from "./companions";
+import type { CompanionAction } from "./motion";
 import TeacherAvatar from "./TeacherAvatar";
 import type { Wear } from "./wearables";
 
 export { COMPANIONS, isCompanionKind, type CompanionKind } from "./companions";
+export { COMPANION_ACTIONS, type CompanionAction } from "./motion";
 
 interface CompanionProps {
     kind: CompanionKind;
@@ -22,12 +24,27 @@ interface CompanionProps {
     wear?: Wear;
     /** Izgled iz skins.ts (krzno, ili koža, kosa i frizura); bez njega dosadašnji crtež */
     skin?: string;
+    /**
+     * Jednokratni pokret celog lika (ceo lik i portret): `hop` mali skok (proba predmeta),
+     * `joy` radost posle kupovine, `cheer` skok i aplauz na kraju nivoa, `appear` pojava novog
+     * drugara ili izgleda. Igra se kad se lik pojavi i svaki put kad se promeni `actionKey`
+     * (npr. brojač). Uz „Manje animacija” ili sistemsko „smanji pokrete” lik miruje.
+     */
+    action?: CompanionAction;
+    actionKey?: number | string;
+    /** Bez ikakvih pokreta: sličice (kompleti u prodavnici), da se mreža sličica ne mrda */
+    still?: boolean;
     className?: string;
 }
 
-export default function Companion({ kind, variant = "bust", emotion, wear, skin, className }: CompanionProps) {
+/**
+ * Ceo lik i portret se i sami mirno kreću (disanje, rep, uši, kosa, plašt, balon, ljubimac,
+ * pozadina), a dok govore mahnu, poskoče ili klimnu; nov predmet kratko iskoči (motion.ts).
+ */
+export default function Companion({ kind, variant = "bust", emotion, wear, skin, action, actionKey, still, className }: CompanionProps) {
+    const motion = { action, actionKey, still };
     if (kind === "woman" || kind === "man") {
-        return <TeacherAvatar gender={kind === "woman" ? "female" : "male"} variant={variant} emotion={emotion} wear={wear} skin={skin} className={className} />;
+        return <TeacherAvatar gender={kind === "woman" ? "female" : "male"} variant={variant} emotion={emotion} wear={wear} skin={skin} {...motion} className={className} />;
     }
-    return <AnimalAvatar kind={kind} variant={variant} emotion={emotion} wear={wear} skin={skin} className={className} />;
+    return <AnimalAvatar kind={kind} variant={variant} emotion={emotion} wear={wear} skin={skin} {...motion} className={className} />;
 }
