@@ -21,4 +21,7 @@ export const ITEMS: readonly ItemData[] = [
     { id: "krila-duge", slot: "back", label: "Krila od duge", price: 28 },
     { id: "krila-zmaja", slot: "back", label: "Krila zmaja", price: 30 },
     { id: "raketa-ranac", slot: "back", label: "Raketa-ranac", price: 70 },
+    // Novo u 3D katalogu
+    { id: "skolska-torba", slot: "back", label: "Školska torba", price: 9 },
+    { id: "ranac-zeka", slot: "back", label: "Ranac zeka", price: 10 },
 ];
