@@ -14,6 +14,8 @@ interface SpeakingTeacherProps {
     /** Pratilac koga je dete izabralo (bez njega: učitelj prema polu deteta) */
     kind?: string;
     wear?: Wear;
+    /** Izgled izabranog drugara (skins.ts) */
+    skin?: string;
     className?: string;
 }
 
@@ -22,7 +24,7 @@ interface SpeakingTeacherProps {
  * oko portreta svetli prsten — jasno je ko se obraća detetu. Ne crta se kada je učitelj
  * isključen u podešavanjima deteta.
  */
-export default function SpeakingTeacher({ gender, kind, wear, className }: SpeakingTeacherProps) {
+export default function SpeakingTeacher({ gender, kind, wear, skin, className }: SpeakingTeacherProps) {
     const settings = useChildSettings();
     const { speaking } = useVoiceState();
     if (!settings.avatar) return null;
@@ -35,7 +37,7 @@ export default function SpeakingTeacher({ gender, kind, wear, className }: Speak
             )}
         >
             {isCompanionKind(kind) ? (
-                <Companion kind={kind} wear={wear} variant="face" className="h-full w-full" />
+                <Companion kind={kind} wear={wear} skin={skin} variant="face" className="h-full w-full" />
             ) : (
                 <TeacherAvatar gender={gender} variant="face" className="h-full w-full" />
             )}

@@ -15,7 +15,7 @@ import Companion from "@/app/components/avatar/Companion";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import type { VoiceEmotion as TeacherEmotion } from "@/lib/emotion";
 import type { CompanionKindId } from "@/lib/companion";
-import { useCompanion } from "./companionState";
+import { chosenSkin, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
 import { cn } from "@/lib/cn";
@@ -764,7 +764,11 @@ function GameSlot({ gameId, ...props }: { gameId: GameId } & GameProps) {
     const companion = useCompanion();
     const companionKind = companion?.kind;
     const companionWear = companion?.wear;
-    const teacher = useMemo(() => ({ gender: props.gender, kind: companionKind, wear: companionWear }), [props.gender, companionKind, companionWear]);
+    const companionSkin = chosenSkin(companion);
+    const teacher = useMemo(
+        () => ({ gender: props.gender, kind: companionKind, wear: companionWear, skin: companionSkin }),
+        [props.gender, companionKind, companionWear, companionSkin]
+    );
     return (
         <GameTeacherContext value={teacher}>
             <Game {...props} />
@@ -1408,9 +1412,9 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
 
 // ── Pratilac ──────────────────────────────────────────────────────────────────
 
-/** Lik koji govori: pratilac koga je dete izabralo (sa odećom), a bez njega dosadašnji učitelj */
+/** Lik koji govori: pratilac koga je dete izabralo (sa odećom i izgledom), a bez njega dosadašnji učitelj */
 function Teacher({ gender, variant, emotion, className }: { gender?: string; variant?: "bust" | "face"; emotion?: TeacherEmotion; className?: string }) {
     const companion = useCompanion();
-    if (companion) return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} variant={variant} emotion={emotion} className={className} />;
+    if (companion) return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} skin={chosenSkin(companion)} variant={variant} emotion={emotion} className={className} />;
     return <TeacherAvatar gender={gender} variant={variant} emotion={emotion} className={className} />;
 }

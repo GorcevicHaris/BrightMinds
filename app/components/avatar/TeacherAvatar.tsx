@@ -7,8 +7,9 @@
 // Sve se crta u SVG-u, ali sa svetlom i senkom kao kod 3D lika (oblina lica, sjaj u očima,
 // odsjaj na kosi, senka ispod brade) — u istom duhu kao 3D slike životinja u igrama.
 // Nema učitavanja modela, pa radi i na starijim tabletima.
+// Boja kože, boja kose i frizura dolaze iz skins.ts (uvek besplatno); bez izbora — dosadašnji izgled.
 
-import { useId, useRef } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { FACE_FOR_EMOTION, type VoiceEmotion } from "@/lib/emotion";
 import { useVoiceState } from "@/lib/voice";
@@ -16,6 +17,7 @@ import { useChildSettings } from "../ChildSettingsProvider";
 import { POSES, REST_MOUTH, useFaceRig } from "./faceRig";
 import { fullArms, fullBackFront, fullBehind, fullFeet, fullHand, fullLegs, fullPet } from "./fullBody";
 import { EYE_LX, EYE_RX, EYE_Y, FULL_TORSO_PATH, HAND_DOWN_Y, HAND_LX, HAND_RX, LID_REST, MOUTH_X, MOUTH_Y, TORSO_PATH, VIEWBOX, BROW_Y } from "./geometry";
+import { hairColors, humanLook, toneColors } from "./skins";
 import { mirror } from "./wear/art";
 import { renderWorn, wornItem, type Wear } from "./wearables";
 
@@ -28,10 +30,6 @@ const EYE_RADIUS_Y = 15.5;
 // ── Izgled likova ─────────────────────────────────────────────────────────────
 
 interface Look {
-    /** Koža: osvetljeni deo, osnovna boja i senka */
-    skin: [string, string, string];
-    /** Kosa: odsjaj, osnovna boja i senka */
-    hair: [string, string, string];
     /** Odeća: svetlo i senka */
     top: [string, string];
     /** Dužica oka: svetlo i tamno */
@@ -42,8 +40,8 @@ interface Look {
 }
 
 const LOOKS: Record<"male" | "female", Look> = {
-    male: { skin: ["#FFE3C8", "#F4C39C", "#D99870"], hair: ["#8A5B3C", "#5C3A25", "#3A2316"], top: ["#FFD15C", "#EE9A06"], iris: ["#9A6A3A", "#3F2410"], pants: ["#4B5E8E", "#3A4A75"], shoes: "#5C3A25" },
-    female: { skin: ["#FFE8D4", "#F8CEAC", "#E0A481"], hair: ["#B86B3C", "#8A4A26", "#5E2E15"], top: ["#FFA097", "#EC5B52"], iris: ["#7A9A4A", "#2F4016"], pants: ["#6A5AA8", "#54478A"], shoes: "#B5446E" },
+    male: { top: ["#FFD15C", "#EE9A06"], iris: ["#9A6A3A", "#3F2410"], pants: ["#4B5E8E", "#3A4A75"], shoes: "#5C3A25" },
+    female: { top: ["#FFA097", "#EC5B52"], iris: ["#7A9A4A", "#2F4016"], pants: ["#6A5AA8", "#54478A"], shoes: "#B5446E" },
 };
 
 const MOUTH_STROKE = "#6E2B2B";
@@ -65,13 +63,16 @@ interface TeacherAvatarProps {
     emotion?: VoiceEmotion;
     /** Predmeti iz prodavnice (na poprsju i licu: kapa, naočare, oko vrata, odeća; na celom liku sve) */
     wear?: Wear;
+    /** Izgled iz skins.ts: `<koža>.<kosa>.<frizura>` (bez njega ili nepoznat: dosadašnji) */
+    skin?: string;
     className?: string;
 }
 
-export default function TeacherAvatar({ gender, variant = "bust", emotion: fixedEmotion, wear, className }: TeacherAvatarProps) {
+export default function TeacherAvatar({ gender, variant = "bust", emotion: fixedEmotion, wear, skin, className }: TeacherAvatarProps) {
     const female = gender?.toLowerCase() === "female";
     const look = LOOKS[female ? "female" : "male"];
     const kind = female ? "woman" : "man";
+    const human = humanLook(kind, skin);
     const full = variant === "full";
     const voice = useVoiceState();
     const settings = useChildSettings();
@@ -91,8 +92,9 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
     // deli isto svetlo, pa se kapak koji prekriva oko ne vidi kao zakrpa.
     const id = (name: string) => `${uid}-${name}`;
     const fill = (name: string) => `url(#${id(name)})`;
-    const [skinLight, skinMid, skinDark] = look.skin;
-    const [hairLight, hairMid, hairDark] = look.hair;
+    const [skinLight, skinMid, skinDark] = toneColors(human.tone);
+    const [hairLight, hairMid, hairDark] = hairColors(human.hair);
+    const hair = hairArt(human.style, fill("hair"), hairDark);
 
     const eye = (x: number, part: string) => (
         <g data-part={part} transform={`translate(${x} ${EYE_Y})`}>
@@ -180,10 +182,8 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
 
             {full && fullBehind(wear, kind)}
 
-            {/* Kosa iza glave (učiteljica) */}
-            {female && (
-                <path d="M38 122C34 56 76 20 120 20s86 36 82 102v56c0 21-15 29-28 25l-3-80H69l-3 80c-13 4-28-4-28-25z" fill={fill("hair")} />
-            )}
+            {/* Kosa iza glave (do ramena, duga kosa, rep, pletenice) */}
+            {hair.back}
 
             {full && fullLegs(wear, skinMid, look.pants)}
 
@@ -210,7 +210,8 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                         <path d={SHOE} fill={look.shoes} />
                         <path d={mirror(SHOE)} fill={look.shoes} />
                         <path d="M84 392Q90 389 98 389M142 389Q150 389 156 392" stroke="#fff" strokeOpacity="0.35" strokeWidth="3" strokeLinecap="round" fill="none" />
-                    </>
+                    </>,
+                    skinMid
                 )}
             <rect x="103" y="164" width="34" height="50" rx="14" fill={fill("neck")} />
             <ellipse cx="120" cy="178" rx="24" ry="13" fill={fill("shade")} />
@@ -301,17 +302,7 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                 {renderWorn(wear, "glasses", { variant, kind })}
 
                 {/* Kosa sa odsjajem */}
-                {female ? (
-                    <>
-                        <path d="M50 112C44 58 82 28 122 28c44 0 74 30 68 82-6-23-18-35-34-41-22 23-72 23-106 43z" fill={fill("hair")} />
-                        <path d="M70 66c14-18 36-27 58-26" stroke="#fff" strokeOpacity="0.28" strokeWidth="9" strokeLinecap="round" fill="none" />
-                    </>
-                ) : (
-                    <>
-                        <path d="M49 108C43 52 80 24 122 24c46 0 78 28 70 84-4-21-18-37-38-41-24-5-48 6-69-2-18 10-32 24-36 43z" fill={fill("hair")} />
-                        <path d="M72 60c14-16 34-23 56-22" stroke="#fff" strokeOpacity="0.25" strokeWidth="9" strokeLinecap="round" fill="none" />
-                    </>
-                )}
+                {hair.front}
 
                 {/* Kapa: poslednja, preko kose */}
                 {renderWorn(wear, "hat", { variant, kind })}
@@ -320,4 +311,159 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
             {full && fullPet(wear, kind)}
         </svg>
     );
+}
+
+// ── Frizure ───────────────────────────────────────────────────────────────────
+// Kosa je u istom okviru kao dosadašnja (teme do y ≈ 18, strane x ≈ 36–204), pa kape iz
+// prodavnice i dalje sede kako treba. Duga kosa pada iza ramena (trup je preko nje).
+
+/** Kosa iza glave (dosadašnja učiteljica: do ramena) */
+const BACK_SHOULDER = "M38 122C34 56 76 20 120 20s86 36 82 102v56c0 21-15 29-28 25l-3-80H69l-3 80c-13 4-28-4-28-25z";
+const BACK_LONG = "M36 120C32 54 76 18 120 18s88 36 84 102v118c0 14-12 20-24 18l-6-128H66l-6 128c-12 2-24-4-24-18z";
+const BACK_JAW = "M44 124C40 60 78 24 120 24s80 34 76 98v42c0 12-8 18-18 16l-4-58H66l-4 58c-10 2-18-4-18-16z";
+const BACK_CAP = "M40 124C36 58 78 22 120 22s84 36 80 102z";
+/** Šiške (dosadašnja učiteljica) */
+const FRONT_FRINGE = "M50 112C44 58 82 28 122 28c44 0 74 30 68 82-6-23-18-35-34-41-22 23-72 23-106 43z";
+/** Kratka kosa (dosadašnji učitelj) */
+const FRONT_SHORT = "M49 108C43 52 80 24 122 24c46 0 78 28 70 84-4-21-18-37-38-41-24-5-48 6-69-2-18 10-32 24-36 43z";
+/** Razdeljak po sredini */
+const FRONT_PART = "M50 120C42 60 80 28 120 28c40 0 78 32 70 92-4-30-20-48-44-56-12-4-22-2-26 6-4-8-14-10-26-6-24 8-40 26-44 56z";
+/** Kosa začešljana unazad (rep) */
+const FRONT_BACK = "M52 104C48 54 84 28 122 28c42 0 72 28 68 76-8-22-26-36-50-38-30-2-62 12-88 38z";
+const PONYTAIL = "M150 40C196 30 222 60 216 108c-4 30-14 52-30 66 8-26 10-50 2-70-6-18-20-28-40-32z";
+const CURLY_CAP_W = "M54 100C50 56 84 30 120 30s70 26 66 70c-20-24-44-32-66-30-24-2-46 6-66 30z";
+const CURLY_CAP_M = "M52 104C48 56 82 30 120 30s72 26 68 74c-18-26-42-36-68-34-26-2-50 8-68 34z";
+const BUZZ = "M54 98C52 56 84 34 120 34s68 22 66 64c-14-20-38-28-66-28s-52 8-66 28z";
+
+const CURLS_W: [number, number, number][] = [
+    [58, 98, 13],
+    [60, 74, 16],
+    [78, 50, 18],
+    [104, 36, 18],
+    [136, 36, 18],
+    [162, 50, 18],
+    [180, 74, 16],
+    [182, 98, 13],
+];
+const CURLS_W_BACK: [number, number, number][] = [
+    [46, 118, 14],
+    [48, 142, 12],
+    [194, 118, 14],
+    [192, 142, 12],
+];
+const CURLS_M: [number, number, number][] = [
+    [62, 84, 14],
+    [68, 60, 16],
+    [88, 42, 17],
+    [114, 34, 17],
+    [140, 35, 17],
+    [164, 46, 16],
+    [178, 68, 14],
+    [184, 90, 12],
+];
+
+/** Odsjaj na kosi */
+function shine(d: string, opacity = 0.26): ReactNode {
+    return <path d={d} stroke="#fff" strokeOpacity={opacity} strokeWidth="9" strokeLinecap="round" fill="none" />;
+}
+
+/** Kovrdže: krugovi sa tankim obrisom, da se vidi svaka */
+function curls(points: [number, number, number][], hair: string, edge: string): ReactNode {
+    return points.map(([x, y, r]) => <circle key={`${x}-${y}`} cx={x} cy={y} r={r} fill={hair} stroke={edge} strokeOpacity="0.35" strokeWidth="2" />);
+}
+
+/** Pletenica: niz uvijenih delova, gumica i čuperak na kraju */
+function braid(x: number, hair: string, edge: string): ReactNode {
+    return (
+        <g key={x}>
+            {[138, 158, 178, 198].map((y) => (
+                <ellipse key={y} cx={x} cy={y} rx="11" ry="12" fill={hair} stroke={edge} strokeOpacity="0.45" strokeWidth="2" />
+            ))}
+            <rect x={x - 7} y="208" width="14" height="7" rx="3.5" fill="#F45B8D" />
+            <path d={`M${x - 7} 216Q${x} 236 ${x + 7} 216Z`} fill={hair} />
+        </g>
+    );
+}
+
+/** Kosa iza glave i kosa preko čela, za frizuru iz skins.ts */
+function hairArt(style: string, hair: string, edge: string): { back: ReactNode; front: ReactNode } {
+    const part = (
+        <>
+            <path d={FRONT_PART} fill={hair} />
+            {shine("M78 50c10-9 22-14 34-15")}
+        </>
+    );
+    const short = (
+        <>
+            <path d={FRONT_SHORT} fill={hair} />
+            {shine("M72 60c14-16 34-23 56-22", 0.25)}
+        </>
+    );
+    switch (style) {
+        case "do-ramena":
+            return {
+                back: <path d={BACK_SHOULDER} fill={hair} />,
+                front: (
+                    <>
+                        <path d={FRONT_FRINGE} fill={hair} />
+                        {shine("M70 66c14-18 36-27 58-26", 0.28)}
+                    </>
+                ),
+            };
+        case "duga":
+            return { back: <path d={BACK_LONG} fill={hair} />, front: part };
+        case "rep":
+            return {
+                back: <path d={PONYTAIL} fill={hair} />,
+                front: (
+                    <>
+                        <path d={FRONT_BACK} fill={hair} />
+                        {shine("M74 58c14-16 34-23 56-22")}
+                        <circle cx="178" cy="52" r="7" fill="#F45B8D" />
+                    </>
+                ),
+            };
+        case "pletenice":
+            return {
+                back: (
+                    <>
+                        <path d={BACK_CAP} fill={hair} />
+                        {braid(46, hair, edge)}
+                        {braid(194, hair, edge)}
+                    </>
+                ),
+                front: part,
+            };
+        case "kratka-kovrdzava":
+            return {
+                back: curls(CURLS_W_BACK, hair, edge),
+                front: (
+                    <>
+                        <path d={CURLY_CAP_W} fill={hair} />
+                        {curls(CURLS_W, hair, edge)}
+                        {shine("M84 46c8-6 16-9 24-10", 0.3)}
+                    </>
+                ),
+            };
+        case "kovrdzava":
+            return {
+                back: null,
+                front: (
+                    <>
+                        <path d={CURLY_CAP_M} fill={hair} />
+                        {curls(CURLS_M, hair, edge)}
+                        {shine("M92 38c8-5 16-7 24-7", 0.3)}
+                    </>
+                ),
+            };
+        case "duza":
+            return { back: <path d={BACK_JAW} fill={hair} />, front: short };
+        case "osisana":
+            return { back: null, front: <path d={BUZZ} fill={hair} opacity="0.7" /> };
+        case "bez-kose":
+            return { back: null, front: null };
+        // „kratka” i sve nepoznato: dosadašnji učitelj
+        default:
+            return { back: null, front: short };
+    }
 }

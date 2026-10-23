@@ -38,9 +38,9 @@ export function fullLegs(wear: Wear | undefined, legFill: string, pants?: [strin
 /** Obuća je malo krupnija od stvarne mere, da se na malom liku vidi šta dete nosi */
 const FEET_ZOOM = `translate(120 ${GROUND_Y + 2}) scale(1.2) translate(-120 -${GROUND_Y + 2})`;
 
-/** Obuća iz prodavnice, ili podrazumevana stopala lika */
-export function fullFeet(wear: Wear | undefined, kind: CompanionKind, bare: ReactNode): ReactNode {
-    return <g transform={FEET_ZOOM}>{renderWorn(wear, "feet", { variant: "full", kind }) ?? bare}</g>;
+/** Obuća iz prodavnice, ili podrazumevana stopala lika; `tone` je boja kože ili krzna (sandale) */
+export function fullFeet(wear: Wear | undefined, kind: CompanionKind, bare: ReactNode, tone?: string): ReactNode {
+    return <g transform={FEET_ZOOM}>{renderWorn(wear, "feet", { variant: "full", kind, tone }) ?? bare}</g>;
 }
 
 /** Ruke koje vise pored tela: podlaktica u boji kože, rukav do lakta, šake */
