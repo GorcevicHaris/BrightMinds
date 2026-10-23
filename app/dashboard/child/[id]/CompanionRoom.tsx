@@ -35,6 +35,7 @@ import {
     X,
     type LucideIcon,
 } from "lucide-react";
+import BackgroundArt, { SHARP } from "@/app/components/avatar/BackgroundArt";
 import Companion, { COMPANIONS, type CompanionAction as CompanionMove } from "@/app/components/avatar/Companion";
 import {
     ANIMAL_SKINS,
@@ -132,6 +133,12 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
         if (!companion || !selected || selected.type === "skin") return companion?.wear ?? {};
         return selected.type === "set" ? selected.set.items : { ...companion.wear, [selected.item.slot]: selected.item.id };
     }, [companion, selected]);
+    // Pozadinu crta panel preko cele širine; drugar se crta bez nje, da ne stoji u kvadratu
+    const sceneBackground = previewWear.background;
+    const figureWear = useMemo(() => {
+        const { background: _background, ...rest } = previewWear;
+        return rest;
+    }, [previewWear]);
 
     if (!companion) return null;
     const { kind, owned, wear, coins, goal, skins } = companion;
@@ -297,11 +304,14 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
             {/* Pratilac, novčići, proba i cilj. Na telefonu ostaje gore dok dete lista predmete. */}
             <section
                 aria-label="Moj drugar"
-                className="sticky top-[4.5rem] z-30 rounded-card bg-gradient-to-b from-brand-100 to-brand-50 p-3 shadow-soft ring-1 ring-brand-200 sm:top-20 sm:p-4 lg:top-24 lg:p-5"
+                className="sticky top-[4.5rem] z-30 overflow-hidden rounded-card bg-gradient-to-b from-brand-100 to-brand-50 p-3 shadow-soft ring-1 ring-brand-200 sm:top-20 sm:p-4 lg:top-24 lg:p-5"
             >
-                <div className="flex items-center gap-3 lg:flex-col lg:items-stretch">
-                    <div className="relative flex shrink-0 justify-center">
-                        <Companion kind={kind as CompanionKindId} wear={previewWear} skin={previewSkin} variant="full" action={move.action} actionKey={move.key} className="h-40 w-32 sm:h-48 sm:w-40 lg:h-80 lg:w-64 xl:h-96 xl:w-80" />
+                {/* Pozadina drugara preko celog panela (telefon), a na većem ekranu iza drugara do ivica */}
+                {sceneBackground && <BackgroundArt id={sceneBackground} sharp={SHARP.left} className="lg:hidden" />}
+                <div className="relative flex items-center gap-3 lg:flex-col lg:items-stretch">
+                    <div className="relative flex shrink-0 justify-center lg:-mx-5 lg:-mt-5 lg:pt-5">
+                        {sceneBackground && <BackgroundArt id={sceneBackground} sharp={SHARP.center} className="hidden lg:block" />}
+                        <Companion kind={kind as CompanionKindId} wear={figureWear} skin={previewSkin} variant="full" action={move.action} actionKey={move.key} className="relative h-40 w-32 sm:h-48 sm:w-40 lg:h-80 lg:w-64 xl:h-96 xl:w-80" />
                         {selected && (
                             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-0.5 text-xs font-extrabold text-brand-700 shadow-soft ring-1 ring-brand-200">
                                 Probaš

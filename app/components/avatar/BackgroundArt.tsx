@@ -1,8 +1,9 @@
 "use client";
 
-// Kupljena pozadina drugara preko celog banera (početna strana). Crtež pozadine je uspravan
-// (okvir celog lika), a baner je širok: oštar crtež stoji desno, iza drugara, a ostatak banera
-// popunjava isti crtež razvučen i zamućen — iste boje neba i tla, pa se sve uklapa.
+// Kupljena pozadina drugara preko celog banera ili panela (početna, prodavnica, kraj nivoa).
+// Crtež pozadine je uspravan (okvir celog lika), a mesta su često široka: oštar crtež stoji
+// iza drugara, a ostatak popunjava isti crtež razvučen i zamućen — iste boje neba i tla,
+// pa se drugar uklapa u scenu umesto da stoji u kvadratu.
 
 import { cn } from "@/lib/cn";
 import { FULL_BOX } from "./geometry";
@@ -11,7 +12,14 @@ import { getWearItem, renderWorn } from "./wearables";
 
 const VIEW = `${FULL_BOX.x} ${FULL_BOX.y} ${FULL_BOX.w} ${FULL_BOX.h}`;
 
-export default function BackgroundArt({ id, className }: { id: string; className?: string }) {
+/** Gde stoji oštar crtež (iza drugara) i kako se gubi u zamućenim bojama */
+export const SHARP = {
+    right: "inset-y-0 right-0 w-[85%] sm:w-[60%] lg:w-[45%] [mask-image:linear-gradient(to_right,transparent,black_35%)]",
+    left: "inset-y-0 left-0 w-[60%] [mask-image:linear-gradient(to_left,transparent,black_35%)]",
+    center: "inset-y-0 left-1/2 w-full max-w-sm -translate-x-1/2 [mask-image:linear-gradient(to_right,transparent,black_25%,black_75%,transparent)]",
+} as const;
+
+export default function BackgroundArt({ id, sharp = SHARP.right, className }: { id: string; sharp?: string; className?: string }) {
     const calm = useCalmMotion();
     const item = getWearItem(id);
     if (!item || item.slot !== "background") return null;
@@ -22,13 +30,7 @@ export default function BackgroundArt({ id, className }: { id: string; className
             <svg viewBox={VIEW} preserveAspectRatio="none" className="absolute inset-0 h-full w-full scale-110 blur-2xl">
                 {art}
             </svg>
-            {/* Oštar crtež desno; ka tekstu se postepeno gubi u zamućenim bojama */}
-            <svg
-                viewBox={VIEW}
-                preserveAspectRatio="xMidYMax slice"
-                className={cn("absolute inset-y-0 right-0 h-full w-[85%] sm:w-[60%] lg:w-[45%]", liveClass(true, calm))}
-                style={{ maskImage: "linear-gradient(to right, transparent, black 35%)", WebkitMaskImage: "linear-gradient(to right, transparent, black 35%)" }}
-            >
+            <svg viewBox={VIEW} preserveAspectRatio="xMidYMax slice" className={cn("absolute h-full", sharp, liveClass(true, calm))}>
                 {art}
             </svg>
         </div>
