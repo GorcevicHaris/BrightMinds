@@ -334,9 +334,26 @@ export class Figure {
         return this.worn.get(slot)?.objects ?? [];
     }
 
-    /** Sakriva telo i ostale predmete (sličica jednog predmeta) */
+    /** Vidljivost delova pre sličice predmeta; posle sličice se vraća tačno takva */
+    private hiddenForThumb: Map<THREE.Object3D, boolean> | null = null;
+
+    /** Sakriva telo i ostale predmete (sličica jednog predmeta); null vraća lik kakav je bio */
     isolate(slot: Slot | null) {
-        const keep = new Set(slot ? this.slotObjects(slot) : []);
+        if (slot === null) {
+            // Isti lik crta i portrete: bez vraćanja bi na portretu ostala samo kosa
+            if (this.hiddenForThumb) for (const [object, was] of this.hiddenForThumb) object.visible = was;
+            this.hiddenForThumb = null;
+            this.applyCovers();
+            return;
+        }
+        if (!this.hiddenForThumb) {
+            const saved = new Map<THREE.Object3D, boolean>();
+            this.root.traverse((o) => {
+                if ((o as THREE.Mesh).isMesh) saved.set(o, o.visible);
+            });
+            this.hiddenForThumb = saved;
+        }
+        const keep = new Set(this.slotObjects(slot));
         const visible = (o: THREE.Object3D) => {
             let p: THREE.Object3D | null = o;
             while (p) {
@@ -346,9 +363,8 @@ export class Figure {
             return false;
         };
         this.root.traverse((o) => {
-            if ((o as THREE.Mesh).isMesh) o.visible = slot === null ? o.visible : visible(o);
+            if ((o as THREE.Mesh).isMesh) o.visible = visible(o);
         });
-        if (slot === null) this.applyCovers();
     }
 
     // ── Lice i glas ──────────────────────────────────────────────────────────────
