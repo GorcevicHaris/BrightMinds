@@ -6,6 +6,7 @@
 // Tu je i cilj deteta: predmet za koji skuplja novčiće (vidi se u sobi, na početnoj i posle nivoa).
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { skinPrice } from "@/app/components/avatar/skins";
 import { getWearItem, getWearSet } from "@/app/components/avatar/wearables";
 import {
     applyCompanionAction,
@@ -24,6 +25,10 @@ export interface CompanionView {
     wear: CompanionState["wear"];
     /** Predmet za koji dete skuplja novčiće (id iz kataloga), ili undefined */
     goal?: string;
+    /** Izabrani izgled po drugaru (skins.ts) */
+    skin: Partial<Record<string, string>>;
+    /** Kupljeni posebni izgledi, kao `<drugar>:<izgled>` */
+    skins: string[];
     coins: number;
     /** Stanje je stiglo sa servera (do tada se crta podrazumevani pratilac) */
     loaded: boolean;
@@ -38,6 +43,10 @@ interface CompanionContextValue extends CompanionView {
 
 const CompanionContext = createContext<CompanionContextValue | null>(null);
 
+/** Stalne prazne vrednosti (isti objekat pri svakom crtanju) */
+const NO_SKIN: Partial<Record<string, string>> = {};
+const NO_SKINS: string[] = [];
+
 /** Katalog za proveru na ekranu (probni prikaz, cena kompleta); server proverava isto */
 export const LOCAL_CATALOG: CompanionCatalog = {
     isKind: isCompanionKindId,
@@ -46,6 +55,10 @@ export const LOCAL_CATALOG: CompanionCatalog = {
         return item ? { slot: item.slot, price: item.price } : undefined;
     },
     set: getWearSet,
+    skin: (kind, id) => {
+        const price = skinPrice(kind, id);
+        return price === undefined ? undefined : { price };
+    },
 };
 
 /** Odgovor servera → izmena stanja (server šalje `goal: null` kad cilja nema) */
@@ -55,6 +68,8 @@ function fromServer(companion: Record<string, unknown>): Partial<CompanionState>
     if (Array.isArray(companion.owned)) next.owned = companion.owned.filter((id): id is string => typeof id === "string");
     if (typeof companion.wear === "object" && companion.wear !== null) next.wear = companion.wear as CompanionState["wear"];
     next.goal = typeof companion.goal === "string" ? companion.goal : undefined;
+    if (typeof companion.skin === "object" && companion.skin !== null) next.skin = companion.skin as CompanionState["skin"];
+    if (Array.isArray(companion.skins)) next.skins = companion.skins.filter((key): key is string => typeof key === "string");
     return next;
 }
 
@@ -118,8 +133,8 @@ export function CompanionProvider({ childId, gender, preview = false, previewPoi
     const refresh = useCallback(() => setTick((value) => value + 1), []);
 
     const value = useMemo<CompanionContextValue>(
-        () => ({ kind: state.kind, owned: state.owned, wear: state.wear, goal: state.goal, coins, loaded, act, refresh }),
-        [state.kind, state.owned, state.wear, state.goal, coins, loaded, act, refresh]
+        () => ({ kind: state.kind, owned: state.owned, wear: state.wear, goal: state.goal, skin: state.skin ?? NO_SKIN, skins: state.skins ?? NO_SKINS, coins, loaded, act, refresh }),
+        [state.kind, state.owned, state.wear, state.goal, state.skin, state.skins, coins, loaded, act, refresh]
     );
     return <CompanionContext value={value}>{children}</CompanionContext>;
 }
@@ -127,4 +142,9 @@ export function CompanionProvider({ childId, gender, preview = false, previewPoi
 /** Stanje pratioca; izvan ekrana deteta (npr. prijava) vraća null */
 export function useCompanion(): CompanionContextValue | null {
     return useContext(CompanionContext);
+}
+
+/** Izgled izabranog drugara (undefined = dosadašnji crtež) */
+export function chosenSkin(companion: Pick<CompanionView, "kind" | "skin"> | null | undefined): string | undefined {
+    return companion?.skin[companion.kind];
 }

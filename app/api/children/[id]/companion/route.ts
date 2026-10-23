@@ -1,11 +1,13 @@
 // app/api/children/[id]/companion/route.ts
 // Pratilac deteta i novčići (model: lib/companion.ts).
 // GET — roditelj ili dečja sesija tog deteta: izabrani pratilac, odeća i novčići.
-// PUT — isto: dete samo bira pratioca, kupuje predmete i komplete, oblači i skida odeću
-//       i bira cilj (predmet ili komplet za koji skuplja novčiće). Radnje: lib/companion.ts. Cenu i stanje novčića
+// PUT — isto: dete samo bira pratioca, kupuje predmete i komplete, oblači i skida odeću,
+//       bira izgled (boju) drugara i kupuje posebna krzna, i bira cilj (predmet, komplet ili
+//       poseban izgled za koji skuplja novčiće). Radnje: lib/companion.ts. Cenu i stanje novčića
 //       uvek proverava server; upis uspeva samo ako se stanje u međuvremenu nije
 //       promenilo (dva brza dodira ne mogu dvaput da potroše iste novčiće).
 import { NextResponse } from "next/server";
+import { skinPrice } from "@/app/components/avatar/skins";
 import { getWearItem, getWearSet } from "@/app/components/avatar/wearables";
 import { requireChildAccess } from "@/lib/auth";
 import { applyCompanionAction, coinsAvailable, isCompanionKindId, parseCompanionAction, sanitizeCompanion, type CompanionCatalog } from "@/lib/companion";
@@ -25,12 +27,16 @@ const CATALOG: CompanionCatalog = {
         return item ? { slot: item.slot, price: item.price } : undefined;
     },
     set: getWearSet,
+    skin: (kind, id) => {
+        const price = skinPrice(kind, id);
+        return price === undefined ? undefined : { price };
+    },
 };
 
 const MESSAGES = {
     unknown: "Nepoznat izbor",
-    "not-owned": "Taj predmet još nije kupljen",
-    owned: "Taj predmet je već kupljen",
+    "not-owned": "To još nije kupljeno",
+    owned: "To je već kupljeno",
     coins: "Nema dovoljno novčića",
 } as const;
 
@@ -58,7 +64,7 @@ function stateOf(row: ChildCompanionRow) {
 function response(row: ChildCompanionRow, state = stateOf(row)) {
     return NextResponse.json(
         {
-            companion: { kind: state.kind, owned: state.owned, wear: state.wear, goal: state.goal ?? null },
+            companion: { kind: state.kind, owned: state.owned, wear: state.wear, goal: state.goal ?? null, skin: state.skin ?? {}, skins: state.skins ?? [] },
             coins: coinsAvailable(row.experience_points, state.spent),
         },
         { headers: { "Cache-Control": "no-store" } }

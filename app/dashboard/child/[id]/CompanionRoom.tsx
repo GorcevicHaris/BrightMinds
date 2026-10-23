@@ -8,11 +8,14 @@
 //  • stalne cene, nema nasumičnih nagrada, popusta, odbrojavanja ni „Kupi sad!”; novčići se ne gube;
 //  • cilj („Radim za”): za skup predmet ili komplet dete bira da skuplja novčiće i vidi koliko je ostalo;
 //  • kategorije su uvek istim redom, predmeti od najjeftinijeg — prvo ono što može da kupi;
-//  • glas nikad ne kaže gde da dodirne; veliki dodirni ciljevi, sličica + reč.
+//  • glas nikad ne kaže gde da dodirne; veliki dodirni ciljevi, sličica + reč;
+//  • izgled drugara („Izgled”): izgled čoveka (koža, kosa, frizura) je uvek besplatan i bira se
+//    jednim dodirom; životinje imaju nekoliko prirodnih boja besplatno, a posebno krzno se, kao
+//    predmet, prvo proba pa kupuje dugmetom „Kupi”. Svaki drugar pamti svoj izgled.
 // Predmeta ima i više od 200: prikazuje se samo jedna kategorija, a pločice van ekrana
 // preglednik ne iscrtava (content-visibility), pa listanje ostaje glatko i na telefonu.
 
-import { useMemo, useState, type MouseEvent } from "react";
+import { useMemo, useState, type MouseEvent, type ReactNode } from "react";
 import {
     Backpack,
     Check,
@@ -33,13 +36,26 @@ import {
     type LucideIcon,
 } from "lucide-react";
 import Companion, { COMPANIONS } from "@/app/components/avatar/Companion";
+import {
+    ANIMAL_SKINS,
+    HAIR_COLORS,
+    HAIRSTYLES,
+    SKIN_TONES,
+    humanLook,
+    humanSkinId,
+    isHumanKind,
+    type AnimalKind,
+    type AnimalSkin,
+    type HumanKind,
+    type HumanLook,
+} from "@/app/components/avatar/skins";
 import { WEAR_ITEMS, WEAR_SETS, type WearItem, type WearSet } from "@/app/components/avatar/wearables";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { playSfx, celebrateBig } from "@/app/components/games/kit";
 import { CoinIcon } from "@/app/components/ui/CoinIcon";
 import { Button } from "@/app/components/ui/Button";
 import { cn } from "@/lib/cn";
-import { WEAR_SLOT_IDS, setGoalId, type CompanionAction, type CompanionKindId, type CompanionWear, type WearSlotId } from "@/lib/companion";
+import { WEAR_SLOT_IDS, setGoalId, skinGoalId, skinKey, type CompanionAction, type CompanionKindId, type CompanionWear, type WearSlotId } from "@/lib/companion";
 import { useSpeech } from "@/lib/speech";
 import { useCompanion } from "./companionState";
 import { Coins, GoalBar, GoalStatus, GoalThumb, ItemThumb, SetThumb, coinWord, goalProgress, setProgress, type GoalProgress } from "./companionUi";
@@ -61,8 +77,8 @@ const WARDROBE = { label: "Moj ormar", Icon: DoorClosed, tint: "bg-sun-100 text-
 
 type TabId = WearSlotId | "sets" | "wardrobe";
 
-/** Šta dete upravo proba: jedan predmet ili ceo komplet */
-type Selection = { type: "item"; item: WearItem } | { type: "set"; set: WearSet };
+/** Šta dete upravo proba: jedan predmet, ceo komplet ili posebno krzno */
+type Selection = { type: "item"; item: WearItem } | { type: "set"; set: WearSet } | { type: "skin"; kind: AnimalKind; skin: AnimalSkin };
 
 /** Predmeti po mestu, od najjeftinijeg; isti redosled pri svakom ulasku */
 function itemsBySlot(): Map<WearSlotId, WearItem[]> {
@@ -103,13 +119,16 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
 
     // Probno obučen predmet (ili ceo komplet, tačno kao na sličici) se vidi na velikom pratiocu
     const previewWear = useMemo(() => {
-        if (!companion || !selected) return companion?.wear ?? {};
+        if (!companion || !selected || selected.type === "skin") return companion?.wear ?? {};
         return selected.type === "set" ? selected.set.items : { ...companion.wear, [selected.item.slot]: selected.item.id };
     }, [companion, selected]);
 
     if (!companion) return null;
-    const { kind, owned, wear, coins, goal } = companion;
-    const goalNow = goalProgress(goal, owned, coins);
+    const { kind, owned, wear, coins, goal, skins } = companion;
+    const skin = companion.skin[kind];
+    // Probno krzno se vidi na velikom drugaru; inače njegov izgled
+    const previewSkin = selected?.type === "skin" && selected.kind === kind ? selected.skin.id : skin;
+    const goalNow = goalProgress(goal, owned, coins, skins);
     const anythingWorn = Object.keys(wear).length > 0;
     const tabInfo = TABS.find((entry) => entry.id === tab) ?? TABS[0];
     const items = tab === "wardrobe" ? SHOP_SLOTS.flatMap((slot) => (BY_SLOT.get(slot) ?? []).filter((item) => owned.includes(item.id))) : tab === "sets" ? [] : (BY_SLOT.get(tab) ?? []);
@@ -125,7 +144,11 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
     const choose = async (next: CompanionKindId, label: string) => {
         if (busy || next === kind) return;
         playSfx("tap");
-        if (await run({ action: "choose", kind: next })) say(`${label}. Ovo je tvoj drugar.`, undefined, "happy");
+        if (await run({ action: "choose", kind: next })) {
+            // Proba krzna pripada prethodnom drugaru
+            if (selected?.type === "skin") setSelected(null);
+            say(`${label}. Ovo je tvoj drugar.`, undefined, "happy");
+        }
     };
 
     const openTab = (next: TabId, label: string, event: MouseEvent<HTMLButtonElement>) => {
@@ -206,6 +229,44 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
         await run({ action: "goal", item: null });
     };
 
+    /** Besplatan ili kupljen izgled: jedan dodir ga obuče (ništa se ne troši) */
+    const putOnSkin = async (next: string, label: string) => {
+        if (busy) return;
+        playSfx("tap");
+        setSelected(null);
+        setMessage(null);
+        if (next === skin) {
+            say(`${label}.`);
+            return;
+        }
+        if (await run({ action: "skin", kind, skin: next })) say(`${label}.`);
+    };
+
+    /** Krzno životinje: kupljeno ili besplatno se obuče, posebno se prvo proba */
+    const pickSkin = (animal: AnimalKind, entry: AnimalSkin) => {
+        if (entry.price === 0 || skins.includes(skinKey(animal, entry.id))) {
+            void putOnSkin(entry.id, entry.label);
+            return;
+        }
+        setMessage(null);
+        playSfx("tap");
+        setSelected({ type: "skin", kind: animal, skin: entry });
+        const missing = entry.price - coins;
+        const text = `${entry.label}. Košta ${entry.price} ${coinWord(entry.price)}.`;
+        say(missing > 0 ? `${text} Treba još ${missing}.` : text, undefined, missing > 0 ? "gentle" : undefined);
+    };
+
+    const buySkin = async (animal: AnimalKind, entry: AnimalSkin) => {
+        if (busy) return;
+        if (await run({ action: "buySkin", kind: animal, skin: entry.id })) celebrate(`Bravo! ${entry.label}. Drugar sada ima novu boju.`);
+    };
+
+    /** Cilj koji je posebno krzno: drugar mora biti izabran da bi se krzno probalo na njemu */
+    const skinOfGoal = (target: { kind: string; id: string }) => {
+        const animal = target.kind as AnimalKind;
+        return ANIMAL_SKINS[animal]?.find((entry) => entry.id === target.id);
+    };
+
     const undress = async () => {
         if (busy || !anythingWorn) return;
         playSfx("tap");
@@ -222,7 +283,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
             >
                 <div className="flex items-center gap-3 lg:flex-col lg:items-stretch">
                     <div className="relative flex shrink-0 justify-center">
-                        <Companion kind={kind as CompanionKindId} wear={previewWear} variant="full" className="h-40 w-32 sm:h-48 sm:w-40 lg:h-80 lg:w-64 xl:h-96 xl:w-80" />
+                        <Companion kind={kind as CompanionKindId} wear={previewWear} skin={previewSkin} variant="full" className="h-40 w-32 sm:h-48 sm:w-40 lg:h-80 lg:w-64 xl:h-96 xl:w-80" />
                         {selected && (
                             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-0.5 text-xs font-extrabold text-brand-700 shadow-soft ring-1 ring-brand-200">
                                 Probaš
@@ -246,6 +307,20 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                                 onClose={() => setSelected(null)}
                             />
                         )}
+                        {selected?.type === "skin" && (
+                            <TryOn
+                                label={selected.skin.label}
+                                price={selected.skin.price}
+                                coins={coins}
+                                isGoal={goal === skinGoalId(selected.kind, selected.skin.id)}
+                                busy={busy}
+                                buyLabel="Kupi"
+                                workLabel="Radim za ovo"
+                                onBuy={() => buySkin(selected.kind, selected.skin)}
+                                onWorkFor={() => workFor(skinGoalId(selected.kind, selected.skin.id), selected.skin.label)}
+                                onClose={() => setSelected(null)}
+                            />
+                        )}
                         {selected?.type === "set" && (
                             <SetTryOn
                                 set={selected.set}
@@ -264,9 +339,28 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                             <GoalCard
                                 goal={goalNow}
                                 kind={kind}
+                                skin={skin}
                                 busy={busy}
-                                onTry={() => (goalNow.set ? pickSet(goalNow.set) : goalNow.item && pick(goalNow.item))}
-                                onBuy={() => (goalNow.set ? buySet(goalNow.set) : goalNow.item && buy(goalNow.item))}
+                                onTry={() => {
+                                    if (goalNow.skin) {
+                                        const entry = skinOfGoal(goalNow.skin);
+                                        // Krzno drugog drugara: prvo se izabere taj drugar, pa proba
+                                        if (entry && goalNow.skin.kind === kind) pickSkin(goalNow.skin.kind as AnimalKind, entry);
+                                        else if (entry) void choose(goalNow.skin.kind as CompanionKindId, COMPANIONS.find((option) => option.kind === goalNow.skin?.kind)?.label ?? "");
+                                        return;
+                                    }
+                                    if (goalNow.set) pickSet(goalNow.set);
+                                    else if (goalNow.item) pick(goalNow.item);
+                                }}
+                                onBuy={() => {
+                                    if (goalNow.skin) {
+                                        const entry = skinOfGoal(goalNow.skin);
+                                        if (entry) void buySkin(goalNow.skin.kind as AnimalKind, entry);
+                                        return;
+                                    }
+                                    if (goalNow.set) void buySet(goalNow.set);
+                                    else if (goalNow.item) void buy(goalNow.item);
+                                }}
                                 onClear={clearGoal}
                                 // Na telefonu je mesto malo: dok traje proba, cilj se ne vidi
                                 className={selected ? "hidden lg:flex" : undefined}
@@ -332,6 +426,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                                         key={set.id}
                                         set={set}
                                         kind={kind}
+                                        skin={skin}
                                         owned={owned}
                                         worn={sameLook(wear, set.items)}
                                         coins={coins}
@@ -382,7 +477,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                                             active ? "border-brand-500 bg-brand-50" : "border-line hover:border-brand-300"
                                         )}
                                     >
-                                        <Companion kind={option.kind as CompanionKindId} variant="face" emotion="happy" className="h-16 w-16 sm:h-20 sm:w-20" />
+                                        <Companion kind={option.kind as CompanionKindId} skin={companion.skin[option.kind]} variant="face" emotion="happy" className="h-16 w-16 sm:h-20 sm:w-20" />
                                         <span className="text-sm sm:text-base">{option.label}</span>
                                         {active && (
                                             <span aria-hidden="true" className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-brand-600 text-white shadow-soft ring-2 ring-white">
@@ -395,8 +490,132 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                         })}
                     </ul>
                 </section>
+
+                {/* Izgled izabranog drugara: boja krzna, ili koža, kosa i frizura */}
+                <section aria-labelledby="companion-look" className="space-y-3">
+                    <h2 id="companion-look" className="text-xl font-extrabold text-ink sm:text-2xl">
+                        Izgled
+                    </h2>
+                    {isHumanKind(kind) ? (
+                        <HumanLooks kind={kind} skin={skin} busy={busy} onPick={putOnSkin} />
+                    ) : (
+                        <SkinRow title="Boja krzna">
+                            {ANIMAL_SKINS[kind as AnimalKind].map((entry) => (
+                                <SkinTile
+                                    key={entry.id}
+                                    kind={kind}
+                                    skin={entry.id}
+                                    label={entry.label}
+                                    price={entry.price}
+                                    owned={entry.price === 0 || skins.includes(skinKey(kind, entry.id))}
+                                    worn={(skin ?? ANIMAL_SKINS[kind as AnimalKind][0].id) === entry.id}
+                                    affordable={coins >= entry.price}
+                                    active={selected?.type === "skin" && selected.skin.id === entry.id}
+                                    isGoal={goal === skinGoalId(kind, entry.id)}
+                                    disabled={busy}
+                                    onPick={() => pickSkin(kind as AnimalKind, entry)}
+                                />
+                            ))}
+                        </SkinRow>
+                    )}
+                </section>
             </div>
         </div>
+    );
+}
+
+// ── Izgled ────────────────────────────────────────────────────────────────────
+
+function SkinRow({ title, children }: { title: string; children: ReactNode }) {
+    return (
+        <div className="space-y-2">
+            <h3 className="text-base font-extrabold text-ink-soft sm:text-lg">{title}</h3>
+            <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5 sm:gap-3 lg:grid-cols-7 xl:grid-cols-8">{children}</ul>
+        </div>
+    );
+}
+
+interface SkinTileProps {
+    kind: string;
+    skin: string;
+    label: string;
+    /** Kraći natpis na pločici (glas i čitač ekrana kažu ceo naziv) */
+    caption?: string;
+    price: number;
+    /** Besplatno ili kupljeno: dodir odmah obuče */
+    owned: boolean;
+    worn: boolean;
+    affordable: boolean;
+    active: boolean;
+    isGoal: boolean;
+    disabled: boolean;
+    onPick: () => void;
+}
+
+/** Lice drugara u tom izgledu; posebno krzno pokazuje cenu (i katanac dok nema dosta novčića) */
+function SkinTile({ kind, skin, label, caption, price, owned, worn, affordable, active, isGoal, disabled, onPick }: SkinTileProps) {
+    const status = worn ? ", nosi" : owned ? "" : `, ${price} ${coinWord(price)}${isGoal ? ", radim za ovo" : ""}`;
+    return (
+        <li>
+            <button
+                type="button"
+                onClick={onPick}
+                disabled={disabled && owned}
+                aria-pressed={owned ? worn : active}
+                aria-label={`${label}${status}`}
+                className={cn(TILE, "px-1 pb-1.5 pt-1.5", tileBorder(active, worn))}
+            >
+                <Companion kind={kind as CompanionKindId} skin={skin} variant="face" emotion="happy" className={cn("h-16 w-16 sm:h-[4.5rem] sm:w-[4.5rem]", !owned && !affordable && "opacity-70")} />
+                <span className="line-clamp-2 min-h-8 text-xs font-extrabold leading-tight text-ink">{caption ?? label}</span>
+                {!owned && (
+                    <span className={cn("inline-flex items-center gap-1 text-xs font-extrabold sm:text-sm", affordable ? "text-sun-700" : "text-ink-soft")}>
+                        {!affordable && <Lock className="h-3.5 w-3.5" aria-hidden="true" />}
+                        <CoinIcon /> {price}
+                    </span>
+                )}
+                {worn && <WornBadge />}
+                {isGoal && <GoalBadge />}
+            </button>
+        </li>
+    );
+}
+
+/** Učitelj i učiteljica: boja kože, boja kose i frizura — sve besplatno, jedan dodir */
+function HumanLooks({ kind, skin, busy, onPick }: { kind: HumanKind; skin?: string; busy: boolean; onPick: (skin: string, label: string) => void }) {
+    const look = humanLook(kind, skin);
+    const rows: { title: string; part: keyof HumanLook; options: readonly { id: string; label: string }[] }[] = [
+        { title: "Boja kože", part: "tone", options: SKIN_TONES },
+        { title: "Boja kose", part: "hair", options: HAIR_COLORS },
+        { title: "Frizura", part: "style", options: HAIRSTYLES[kind] },
+    ];
+    return (
+        <>
+            {rows.map(({ title, part, options }) => (
+                <SkinRow key={part} title={title}>
+                    {options.map((option) => {
+                        const next = humanSkinId({ ...look, [part]: option.id });
+                        return (
+                            <SkinTile
+                                key={option.id}
+                                kind={kind}
+                                skin={next}
+                                label={option.label}
+                                // U redu „Boja kože” je dovoljno „Tamna” (glas kaže „Tamna koža”)
+                                caption={part === "style" ? undefined : option.label.replace(/ (koža|kosa)$/, "")}
+                                price={0}
+                                owned
+                                worn={look[part] === option.id}
+                                affordable
+                                active={false}
+                                isGoal={false}
+                                disabled={busy}
+                                onPick={() => onPick(next, option.label)}
+                            />
+                        );
+                    })}
+                </SkinRow>
+            ))}
+        </>
     );
 }
 
@@ -459,6 +678,7 @@ function ItemTile({ item, owned, worn, affordable, active, isGoal, onPick }: Ite
 interface SetTileProps {
     set: WearSet;
     kind: string;
+    skin?: string;
     owned: readonly string[];
     worn: boolean;
     coins: number;
@@ -468,7 +688,7 @@ interface SetTileProps {
 }
 
 /** Komplet: drugar u celom kompletu, koliko predmeta dete već ima i cena ostatka */
-function SetTile({ set, kind, owned, worn, coins, active, isGoal, onPick }: SetTileProps) {
+function SetTile({ set, kind, skin, owned, worn, coins, active, isGoal, onPick }: SetTileProps) {
     const { have, total, price } = setProgress(set, owned);
     const complete = have >= total;
     const affordable = coins >= price;
@@ -476,7 +696,7 @@ function SetTile({ set, kind, owned, worn, coins, active, isGoal, onPick }: SetT
     return (
         <li className={cn(OFFSCREEN, "[contain-intrinsic-size:auto_14rem]")}>
             <button type="button" onClick={() => onPick(set)} aria-pressed={active} aria-label={`${set.label}${status}`} className={cn(TILE, tileBorder(active, worn))}>
-                <SetThumb set={set} kind={kind} className={cn("h-28 w-24 sm:h-32 sm:w-28", !complete && !affordable && "opacity-70")} />
+                <SetThumb set={set} kind={kind} skin={skin} className={cn("h-28 w-24 sm:h-32 sm:w-28", !complete && !affordable && "opacity-70")} />
                 <span className="line-clamp-2 min-h-8 text-sm font-extrabold leading-tight text-ink">{set.label}</span>
                 <span className="text-xs font-bold text-ink-soft">
                     Imaš {have} od {total}
@@ -635,6 +855,7 @@ function SetTryOn({ set, owned, worn, coins, isGoal, busy, onBuy, onWear, onWork
 interface GoalCardProps {
     goal: GoalProgress;
     kind: string;
+    skin?: string;
     busy: boolean;
     onTry: () => void;
     onBuy: () => void;
@@ -643,7 +864,7 @@ interface GoalCardProps {
 }
 
 /** „Radim za”: sličica cilja, traka napretka i, kad je dosta novčića, dugme za kupovinu */
-function GoalCard({ goal, kind, busy, onTry, onBuy, onClear, className }: GoalCardProps) {
+function GoalCard({ goal, kind, skin, busy, onTry, onBuy, onClear, className }: GoalCardProps) {
     return (
         <div className={cn("flex flex-col gap-2 rounded-2xl bg-surface p-2.5 shadow-soft ring-2 ring-sun-300 sm:p-3", className)}>
             <div className="flex items-center gap-2.5">
@@ -653,7 +874,7 @@ function GoalCard({ goal, kind, busy, onTry, onBuy, onClear, className }: GoalCa
                     aria-label={`Probaj: ${goal.label}`}
                     className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-sun-50 ring-1 ring-sun-200 hover:bg-sun-100 sm:h-14 sm:w-14"
                 >
-                    <GoalThumb goal={goal} kind={kind} itemClassName="h-9 w-10 sm:h-11 sm:w-12" setClassName="h-14 w-12 translate-y-1 sm:h-16 sm:w-14" />
+                    <GoalThumb goal={goal} kind={kind} skin={skin} itemClassName="h-9 w-10 sm:h-11 sm:w-12" setClassName="h-14 w-12 translate-y-1 sm:h-16 sm:w-14" />
                 </button>
                 <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-ink-soft sm:text-sm">Radim za:</p>

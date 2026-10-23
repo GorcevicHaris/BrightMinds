@@ -11,8 +11,8 @@ import { useChildSettings } from "../../ChildSettingsProvider";
  * Ko čita zadatke detetu. Postavlja ga strana na kojoj dete igra; bez njega
  * (npr. roditeljski prikaz uživo, gde niko ne govori) lice učitelja se ne crta.
  */
-/** Ko govori u igri: pol deteta (glas) i pratilac koga je dete izabralo, sa odećom */
-export const GameTeacherContext = React.createContext<{ gender?: string; kind?: string; wear?: Partial<Record<string, string>> } | null>(null);
+/** Ko govori u igri: pol deteta (glas) i pratilac koga je dete izabralo, sa odećom i izgledom (boja, frizura) */
+export const GameTeacherContext = React.createContext<{ gender?: string; kind?: string; wear?: Partial<Record<string, string>>; skin?: string } | null>(null);
 
 // ── GameStage ─────────────────────────────────────────────────────────────────
 // Okvir igre: centrira sadržaj, drži istu širinu i razmake u svim igrama.
@@ -117,7 +117,7 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
 function HudTeacher() {
     const teacher = React.useContext(GameTeacherContext);
     if (!teacher) return null;
-    return <SpeakingTeacher gender={teacher.gender} kind={teacher.kind} wear={teacher.wear} className="-my-1 h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem] short:sm:h-16 short:sm:w-16" />;
+    return <SpeakingTeacher gender={teacher.gender} kind={teacher.kind} wear={teacher.wear} skin={teacher.skin} className="-my-1 h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem] short:sm:h-16 short:sm:w-16" />;
 }
 
 // ── SpeakButton ───────────────────────────────────────────────────────────────

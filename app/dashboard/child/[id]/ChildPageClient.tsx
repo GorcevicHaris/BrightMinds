@@ -19,7 +19,7 @@ import { speak, stopSpeaking } from "@/lib/speech";
 import Companion from "@/app/components/avatar/Companion";
 import type { CompanionKindId } from "@/lib/companion";
 import CompanionRoom from "./CompanionRoom";
-import { CompanionProvider, useCompanion } from "./companionState";
+import { chosenSkin, CompanionProvider, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
 import type { ChildProfile } from "./page";
 
@@ -58,11 +58,11 @@ export default function ChildPageClient({ realtimeTopic = null, ...props }: Prop
     );
 }
 
-/** Izabrani pratilac deteta sa svojom odećom (do učitavanja: dosadašnji učitelj) */
+/** Izabrani pratilac deteta sa svojom odećom i izgledom (do učitavanja: dosadašnji učitelj) */
 function ChosenCompanion({ className }: { className: string }) {
     const companion = useCompanion();
     if (!companion) return null;
-    return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} className={className} />;
+    return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} skin={chosenSkin(companion)} className={className} />;
 }
 
 function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }: Omit<Props, "realtimeTopic">) {
