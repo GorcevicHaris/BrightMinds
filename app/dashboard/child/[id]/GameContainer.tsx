@@ -16,6 +16,7 @@ import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import type { VoiceEmotion as TeacherEmotion } from "@/lib/emotion";
 import type { CompanionKindId } from "@/lib/companion";
 import { useCompanion } from "./companionState";
+import { GoalChip } from "./companionUi";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
 import { cn } from "@/lib/cn";
 import {
@@ -1350,6 +1351,8 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                     + {outcome.stars} <CoinIcon className="h-6 w-6" />
                     <span className="sr-only">{outcome.stars === 1 ? "novčić" : "novčića"}</span>
                 </p>
+                {/* Cilj deteta: koliko je još do predmeta za koji skuplja (samo kad je izabran) */}
+                <GoalChip className="mx-auto mt-2 flex w-fit bg-sun-50 ring-1 ring-sun-200" />
                 {showNumbers && !limitReached && game.graded && !outcome.practice && (
                     <p className="mt-1 text-base font-bold text-ink-soft">
                         Iz prvog pokušaja: {outcome.correct} od {outcome.total}

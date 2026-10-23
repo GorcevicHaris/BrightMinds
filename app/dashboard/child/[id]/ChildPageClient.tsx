@@ -20,6 +20,7 @@ import Companion from "@/app/components/avatar/Companion";
 import type { CompanionKindId } from "@/lib/companion";
 import CompanionRoom from "./CompanionRoom";
 import { CompanionProvider, useCompanion } from "./companionState";
+import { GoalChip } from "./companionUi";
 import type { ChildProfile } from "./page";
 
 type View = "games" | "companion" | "progress";
@@ -189,6 +190,8 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                                 <div className="flex-1 p-5 pr-2 sm:p-8">
                                     <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl">Zdravo, {firstName}!</h1>
                                     <p className="mt-1 text-base font-semibold text-brand-100 sm:text-lg">Izaberi igru.</p>
+                                    {/* Cilj deteta („Radim za”) — samo kad je izabran */}
+                                    <GoalChip onClick={() => setView("companion")} className="mt-3" />
                                 </div>
                                 {showAvatar && (
                                     <button
