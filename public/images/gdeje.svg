@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1380 752" width="1380" height="752">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e0f7fb"/>
+      <stop offset="0.55" stop-color="#d3f1f6"/>
+      <stop offset="1" stop-color="#e6eefe"/>
+    </linearGradient>
+    <linearGradient id="banner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3cc6dc"/>
+      <stop offset="1" stop-color="#0e9bb4"/>
+    </linearGradient>
+    <linearGradient id="kraft" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ecbd85"/>
+      <stop offset="1" stop-color="#d9a066"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="0.35" cy="0.3" r="0.7">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#0b5566" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <rect width="1380" height="752" fill="url(#sky)"/>
+  <circle cx="150" cy="130" r="95" fill="#fff" opacity="0.5"/>
+  <circle cx="1250" cy="120" r="120" fill="#fff" opacity="0.45"/>
+  <ellipse cx="690" cy="770" rx="820" ry="170" fill="#b9e6ee" opacity="0.6"/>
+
+  <!-- Natpis -->
+  <g filter="url(#soft)">
+    <rect x="490" y="46" width="400" height="104" rx="52" fill="url(#banner)"/>
+  </g>
+  <text x="690" y="118" text-anchor="middle" font-family="Arial Rounded MT Bold, Arial, Helvetica, sans-serif" font-size="58" font-weight="800" fill="#fff" letter-spacing="3">GDE JE?</text>
+
+  <g filter="url(#soft)">
+    <!-- Mače U kutiji -->
+    <g transform="translate(270 470)">
+      <path d="M-130 -20 L-180 -80 L-80 -80 L-50 -20 Z" fill="#d49a58" stroke="#b07a3f" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M130 -20 L180 -80 L80 -80 L50 -20 Z" fill="#d49a58" stroke="#b07a3f" stroke-width="6" stroke-linejoin="round"/>
+      <rect x="-124" y="-44" width="248" height="40" rx="10" fill="#8a5a2b"/>
+      <!-- glava mačeta -->
+      <path d="M-62 -70 L-50 -140 L-14 -96 Z M62 -70 L50 -140 L14 -96 Z" fill="#f7a541" stroke="#d9801f" stroke-width="5" stroke-linejoin="round"/>
+      <circle cx="0" cy="-50" r="70" fill="#f7a541" stroke="#d9801f" stroke-width="5"/>
+      <circle cx="0" cy="-50" r="70" fill="url(#shine)"/>
+      <circle cx="-24" cy="-62" r="9" fill="#3a2a1a"/>
+      <circle cx="24" cy="-62" r="9" fill="#3a2a1a"/>
+      <path d="M-8 -40 Q0 -32 8 -40" stroke="#3a2a1a" stroke-width="5" fill="none" stroke-linecap="round"/>
+      <rect x="-130" y="-20" width="260" height="190" rx="12" fill="url(#kraft)" stroke="#b07a3f" stroke-width="6"/>
+      <rect x="-18" y="-20" width="36" height="70" fill="#f3d19c"/>
+    </g>
+
+    <!-- Lopta ISPOD stola -->
+    <g transform="translate(700 470)">
+      <rect x="-150" y="-60" width="300" height="34" rx="12" fill="#b07a4a" stroke="#8f5d34" stroke-width="6"/>
+      <rect x="-134" y="-28" width="22" height="198" rx="6" fill="#8f5d34"/>
+      <rect x="112" y="-28" width="22" height="198" rx="6" fill="#8f5d34"/>
+      <circle cx="0" cy="112" r="58" fill="#e5484d"/>
+      <path d="M-58 112 H58" stroke="#fff" stroke-width="12"/>
+      <circle cx="0" cy="112" r="58" fill="url(#shine)"/>
+    </g>
+
+    <!-- Pile IZNAD korpe -->
+    <g transform="translate(1110 470)">
+      <path d="M-100 0 Q0 -150 100 0" fill="none" stroke="#a8682c" stroke-width="16" stroke-linecap="round"/>
+      <path d="M-130 0 H130 L105 170 H-105 Z" fill="#d39a55" stroke="#a8682c" stroke-width="6" stroke-linejoin="round"/>
+      <path d="M-122 55 H122 M-114 110 H114" stroke="#a8682c" stroke-width="8" opacity="0.6"/>
+      <rect x="-138" y="-12" width="276" height="24" rx="12" fill="#b97a3a"/>
+      <g transform="translate(0 -230)">
+        <ellipse cx="0" cy="0" rx="62" ry="54" fill="#ffd34d"/>
+        <ellipse cx="0" cy="0" rx="62" ry="54" fill="url(#shine)"/>
+        <path d="M-40 -4 q-34 -14 -46 10 q24 10 46 0z" fill="#f5b81f"/>
+        <circle cx="20" cy="-14" r="8" fill="#3a2a1a"/>
+        <path d="M54 -4 l30 10 l-30 10z" fill="#f28c28"/>
+      </g>
+      <path d="M-40 -120 v-30 M0 -112 v-38 M40 -120 v-30" stroke="#0e9bb4" stroke-width="8" stroke-linecap="round" stroke-dasharray="4 14" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

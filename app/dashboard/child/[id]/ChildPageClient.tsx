@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Gamepad2, LogOut, Play, Trophy } from "lucide-react";
+import { ArrowLeft, Gamepad2, LogOut, Play, Shirt, Trophy } from "lucide-react";
 import GameContainer, { WatchedBadge } from "./GameContainer";
 import { ChildSettingsProvider } from "@/app/components/ChildSettingsProvider";
 import ProgressDashboard from "@/app/components/ProgressDashboard";
@@ -16,10 +16,13 @@ import type { ResolvedSettings } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
 import { RealtimeTopicProvider, useWatcherPresence } from "@/lib/realtime";
 import { speak, stopSpeaking } from "@/lib/speech";
-import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
+import Companion from "@/app/components/avatar/Companion";
+import type { CompanionKindId } from "@/lib/companion";
+import CompanionRoom from "./CompanionRoom";
+import { CompanionProvider, useCompanion } from "./companionState";
 import type { ChildProfile } from "./page";
 
-type View = "games" | "progress";
+type View = "games" | "companion" | "progress";
 
 interface Props {
     child: ChildProfile;
@@ -35,15 +38,30 @@ interface Props {
 
 const TABS: { id: View; label: string; Icon: typeof Gamepad2 }[] = [
     { id: "games", label: "Igre", Icon: Gamepad2 },
+    { id: "companion", label: "Moj drugar", Icon: Shirt },
     { id: "progress", label: "Napredak", Icon: Trophy },
 ];
 
 export default function ChildPageClient({ realtimeTopic = null, ...props }: Props) {
     return (
         <RealtimeTopicProvider value={realtimeTopic}>
-            <ChildPage {...props} />
+            <CompanionProvider
+                childId={props.child.id}
+                gender={props.child.gender ?? undefined}
+                preview={props.preview}
+                previewPoints={props.child.experience_points ?? 0}
+            >
+                <ChildPage {...props} />
+            </CompanionProvider>
         </RealtimeTopicProvider>
     );
+}
+
+/** Izabrani pratilac deteta sa svojom odećom (do učitavanja: dosadašnji učitelj) */
+function ChosenCompanion({ className }: { className: string }) {
+    const companion = useCompanion();
+    if (!companion) return null;
+    return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} className={className} />;
 }
 
 function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }: Omit<Props, "realtimeTopic">) {
@@ -172,7 +190,16 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                                     <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl">Zdravo, {firstName}!</h1>
                                     <p className="mt-1 text-base font-semibold text-brand-100 sm:text-lg">Izaberi igru.</p>
                                 </div>
-                                {showAvatar && <TeacherAvatar gender={gender} className="mr-2 h-32 w-28 shrink-0 self-end sm:mr-6 sm:h-44 sm:w-40" />}
+                                {showAvatar && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setView("companion")}
+                                        aria-label="Moj drugar"
+                                        className="mr-2 shrink-0 self-end rounded-2xl sm:mr-6"
+                                    >
+                                        <ChosenCompanion className="h-32 w-28 sm:h-44 sm:w-40" />
+                                    </button>
+                                )}
                             </div>
                         </section>
 
@@ -190,6 +217,11 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                         {/* Priče koje je odrasli napisao baš za ovo dete (ne prikazuje se ako ih nema) */}
                         <CustomStoryShelf childId={child.id} gender={gender} offline={preview} />
                     </div>
+                ) : view === "companion" ? (
+                    <div className="space-y-5 sm:space-y-6">
+                        <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">Moj drugar</h1>
+                        <CompanionRoom gender={gender} />
+                    </div>
                 ) : (
                     <div className="space-y-5 sm:space-y-6">
                         <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">{viewer === "parent" ? `Napredak: ${firstName}` : "Tvoj napredak"}</h1>
@@ -200,7 +232,7 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
 
             {/* Donja navigacija — telefon. Dugmad su iznad same ivice ekrana, gde deca često naslanjaju dlan. */}
             <nav inert={gameOpen} className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[max(env(safe-area-inset-bottom),0.5rem)] backdrop-blur md:hidden" aria-label="Glavna navigacija">
-                <div className="mx-auto grid max-w-md grid-cols-2">
+                <div className="mx-auto grid max-w-md grid-cols-3">
                     {TABS.map(({ id, label, Icon }) => (
                         <button
                             key={id}

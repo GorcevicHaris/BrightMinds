@@ -29,6 +29,14 @@ describe("PUT /api/children/[id]/settings", () => {
         assert.deepEqual(childRow()?.settings, { script: "cyrillic", volume: 1, plan: ["shapes", "emotions"] });
     });
 
+    it("keeps the child's companion and bought clothes when the parent saves settings", async () => {
+        const companion = { kind: "cat", owned: ["crown"], wear: { hat: "crown" }, spent: 10, v: 3 };
+        db.rows("children")[0].settings = { volume: 0.5, companion };
+        const response = await put({ settings: { script: "cyrillic" } });
+        assert.equal(response.status, 200);
+        assert.deepEqual(childRow()?.settings, { script: "cyrillic", companion });
+    });
+
     it("stores nothing for invalid values, so the child's age defaults apply", async () => {
         db.rows("children")[0].date_of_birth = "2022-06-01";
         const body = await readJson(await put({ settings: { sessionMinutes: 999, moodCheck: "always" } }));

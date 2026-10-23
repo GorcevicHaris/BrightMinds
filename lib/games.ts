@@ -11,7 +11,9 @@ export type GameId =
     | "social-story"
     | "emotions"
     | "sorting"
-    | "sequence";
+    | "sequence"
+    | "where"
+    | "uses";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -23,7 +25,9 @@ export type GameType =
     | "social-story"
     | "emotions"
     | "sorting"
-    | "sequence";
+    | "sequence"
+    | "where"
+    | "uses";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -251,6 +255,48 @@ export const GAMES: GameDefinition[] = [
             gradient: "from-lime-400 to-green-500",
         },
         offscreenTip: "Pre nove aktivnosti recite korake redom: „Prvo obučemo jaknu, zatim obujemo cipele, na kraju idemo napolje.”",
+        graded: true,
+    },
+    {
+        id: "where",
+        gameType: "where",
+        activityId: 11,
+        title: "Gde je?",
+        description: "U, na, ispod ili pored?",
+        skill: "Prostorni pojmovi",
+        icon: "📦",
+        image: "/images/gdeje.svg",
+        accent: {
+            solid: "bg-cyan-500",
+            edge: "border-cyan-700",
+            soft: "bg-cyan-50",
+            text: "text-cyan-700",
+            border: "border-cyan-200",
+            ring: "ring-cyan-200",
+            gradient: "from-cyan-400 to-sky-500",
+        },
+        offscreenTip: "U igri sa igračkama recite gde su i neka dete pokaže ili sakrije: „Meda je ispod stola.”, „Stavi loptu u kutiju.”",
+        graded: true,
+    },
+    {
+        id: "uses",
+        gameType: "uses",
+        activityId: 12,
+        title: "Čemu služi?",
+        description: "Čuj pitanje i pronađi predmet",
+        skill: "Razumevanje govora",
+        icon: "✂️",
+        image: "/images/cemusluzi.svg",
+        accent: {
+            solid: "bg-fuchsia-500",
+            edge: "border-fuchsia-700",
+            soft: "bg-fuchsia-50",
+            text: "text-fuchsia-700",
+            border: "border-fuchsia-200",
+            ring: "ring-fuchsia-200",
+            gradient: "from-fuchsia-400 to-purple-500",
+        },
+        offscreenTip: "Dok spremate doručak ili se kupate, pitajte: „Čime jedemo supu?”, „Čime peremo kosu?” — neka dete pokaže ili donese predmet.",
         graded: true,
     },
 ];
