@@ -381,7 +381,7 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
 
     // ── Gornji deo: živ drugar ───────────────────────────────────────────────────
     const stage = (
-        <section aria-label="Moj drugar" className="relative h-[46svh] min-h-[18rem] overflow-hidden rounded-card bg-[#E4E6EB] shadow-soft ring-1 ring-line lg:h-[min(44rem,calc(100svh-8rem))]">
+        <section aria-label="Moj drugar" className="relative h-[46svh] min-h-[18rem] overflow-hidden rounded-card bg-[#E4E6EB] shadow-soft ring-1 ring-line lg:h-[min(44rem,calc(100svh-11rem))]">
             <CompanionStage
                 kind={kind}
                 skin={previewSkin}
