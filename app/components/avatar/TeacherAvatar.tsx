@@ -14,7 +14,9 @@ import { FACE_FOR_EMOTION, type VoiceEmotion } from "@/lib/emotion";
 import { useVoiceState } from "@/lib/voice";
 import { useChildSettings } from "../ChildSettingsProvider";
 import { POSES, REST_MOUTH, useFaceRig } from "./faceRig";
-import { EYE_LX, EYE_RX, EYE_Y, HAND_DOWN_Y, HAND_LX, HAND_RX, LID_REST, MOUTH_X, MOUTH_Y, TORSO_PATH, VIEWBOX, BROW_Y } from "./geometry";
+import { fullArms, fullBackFront, fullBehind, fullFeet, fullHand, fullLegs, fullPet } from "./fullBody";
+import { EYE_LX, EYE_RX, EYE_Y, FULL_TORSO_PATH, HAND_DOWN_Y, HAND_LX, HAND_RX, LID_REST, MOUTH_X, MOUTH_Y, TORSO_PATH, VIEWBOX, BROW_Y } from "./geometry";
+import { mirror } from "./wear/art";
 import { renderWorn, wornItem, type Wear } from "./wearables";
 
 // Izrazi lica, geometrija i petlja crtanja su zajednički za sve likove: faceRig.ts, geometry.ts
@@ -34,11 +36,14 @@ interface Look {
     top: [string, string];
     /** Dužica oka: svetlo i tamno */
     iris: [string, string];
+    /** Ceo lik: pantalone (boja i senka) i cipele */
+    pants: [string, string];
+    shoes: string;
 }
 
 const LOOKS: Record<"male" | "female", Look> = {
-    male: { skin: ["#FFE3C8", "#F4C39C", "#D99870"], hair: ["#8A5B3C", "#5C3A25", "#3A2316"], top: ["#FFD15C", "#EE9A06"], iris: ["#9A6A3A", "#3F2410"] },
-    female: { skin: ["#FFE8D4", "#F8CEAC", "#E0A481"], hair: ["#B86B3C", "#8A4A26", "#5E2E15"], top: ["#FFA097", "#EC5B52"], iris: ["#7A9A4A", "#2F4016"] },
+    male: { skin: ["#FFE3C8", "#F4C39C", "#D99870"], hair: ["#8A5B3C", "#5C3A25", "#3A2316"], top: ["#FFD15C", "#EE9A06"], iris: ["#9A6A3A", "#3F2410"], pants: ["#4B5E8E", "#3A4A75"], shoes: "#5C3A25" },
+    female: { skin: ["#FFE8D4", "#F8CEAC", "#E0A481"], hair: ["#B86B3C", "#8A4A26", "#5E2E15"], top: ["#FFA097", "#EC5B52"], iris: ["#7A9A4A", "#2F4016"], pants: ["#6A5AA8", "#54478A"], shoes: "#B5446E" },
 };
 
 const MOUTH_STROKE = "#6E2B2B";
@@ -46,16 +51,19 @@ const MOUTH_FILL = "#8F3333";
 const TONGUE = "#F27C92";
 const BLUSH = "#F58F8F";
 
+/** Podrazumevane cipele celog lika (kad dete nije izabralo obuću) */
+const SHOE = "M77 404Q75 388 92 386H102Q117 388 117 400V404Q117 410 109 410H83Q77 410 77 404Z";
+
 // ── Komponenta ────────────────────────────────────────────────────────────────
 
 interface TeacherAvatarProps {
     /** Pol deteta: dečak dobija učitelja, devojčica učiteljicu (isti izbor kao za glas) */
     gender?: string;
-    /** `bust` = glava i ramena (može da maše); `face` = samo lice, za mala mesta */
-    variant?: "bust" | "face";
+    /** `bust` = glava i ramena (može da maše); `face` = samo lice, za mala mesta; `full` = ceo lik */
+    variant?: "bust" | "face" | "full";
     /** Stalna emocija, umesto one iz govora (pregled i primeri) */
     emotion?: VoiceEmotion;
-    /** Predmeti iz prodavnice (kapa, naočare, oko vrata, odeća) */
+    /** Predmeti iz prodavnice (na poprsju i licu: kapa, naočare, oko vrata, odeća; na celom liku sve) */
     wear?: Wear;
     className?: string;
 }
@@ -63,6 +71,8 @@ interface TeacherAvatarProps {
 export default function TeacherAvatar({ gender, variant = "bust", emotion: fixedEmotion, wear, className }: TeacherAvatarProps) {
     const female = gender?.toLowerCase() === "female";
     const look = LOOKS[female ? "female" : "male"];
+    const kind = female ? "woman" : "man";
+    const full = variant === "full";
     const voice = useVoiceState();
     const settings = useChildSettings();
     const uid = useId();
@@ -94,6 +104,14 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
             {/* Senka gornjeg kapka na oku i linija trepavica */}
             <path d={`M${-EYE_RADIUS_X} -2A${EYE_RADIUS_X} ${EYE_RADIUS_Y} 0 0 1 ${EYE_RADIUS_X} -2A${EYE_RADIUS_X} 11 0 0 0 ${-EYE_RADIUS_X} -2Z`} fill="#2B1F1A" opacity="0.14" />
             <path d={`M${-EYE_RADIUS_X - 1} -3A${EYE_RADIUS_X + 1} ${EYE_RADIUS_Y + 0.5} 0 0 1 ${EYE_RADIUS_X + 1} -3`} fill="none" stroke="#2B1F1A" strokeWidth="3" strokeLinecap="round" />
+        </g>
+    );
+
+    /** Šaka celog lika (pesnica sa palcem) */
+    const fist = (x: number, y: number) => (
+        <g key={`${x}-${y}`}>
+            <circle cx={x} cy={y} r="13" fill={fill("hand")} />
+            <circle cx={x + (x < 120 ? 9 : -9)} cy={y - 7} r="5.5" fill={fill("hand")} />
         </g>
     );
 
@@ -160,24 +178,54 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                 </linearGradient>
             </defs>
 
+            {full && fullBehind(wear, kind)}
+
             {/* Kosa iza glave (učiteljica) */}
             {female && (
                 <path d="M38 122C34 56 76 20 120 20s86 36 82 102v56c0 21-15 29-28 25l-3-80H69l-3 80c-13 4-28-4-28-25z" fill={fill("hair")} />
             )}
 
+            {full && fullLegs(wear, skinMid, look.pants)}
+
             {/* Telo: svetlo pada sleva odozgo, ramena su zaobljena */}
-            <path d={TORSO_PATH} fill={fill("top")} />
-            <ellipse cx="78" cy="232" rx="46" ry="20" fill={fill("glow")} opacity="0.5" />
-            <ellipse cx="120" cy="214" rx="62" ry="20" fill={fill("shade")} opacity="0.75" />
-            {renderWorn(wear, "outfit")}
+            {full ? (
+                <>
+                    <path d={FULL_TORSO_PATH} fill={fill("top")} />
+                    <ellipse cx="88" cy="238" rx="26" ry="24" fill={fill("glow")} opacity="0.5" />
+                    <ellipse cx="120" cy="214" rx="52" ry="18" fill={fill("shade")} opacity="0.75" />
+                </>
+            ) : (
+                <>
+                    <path d={TORSO_PATH} fill={fill("top")} />
+                    <ellipse cx="78" cy="232" rx="46" ry="20" fill={fill("glow")} opacity="0.5" />
+                    <ellipse cx="120" cy="214" rx="62" ry="20" fill={fill("shade")} opacity="0.75" />
+                </>
+            )}
+            {renderWorn(wear, "outfit", { variant, kind })}
+            {full &&
+                fullFeet(
+                    wear,
+                    kind,
+                    <>
+                        <path d={SHOE} fill={look.shoes} />
+                        <path d={mirror(SHOE)} fill={look.shoes} />
+                        <path d="M84 392Q90 389 98 389M142 389Q150 389 156 392" stroke="#fff" strokeOpacity="0.35" strokeWidth="3" strokeLinecap="round" fill="none" />
+                    </>
+                )}
             <rect x="103" y="164" width="34" height="50" rx="14" fill={fill("neck")} />
             <ellipse cx="120" cy="178" rx="24" ry="13" fill={fill("shade")} />
             <path d="M95 204q25 36 50 0-25 14-50 0z" fill="#fff" />
             <path d="M95 204q25 14 50 0-25 9-50 0z" fill="#C9D2E0" opacity="0.7" />
-            {renderWorn(wear, "neck")}
+            {full && fullBackFront(wear, kind)}
+            {renderWorn(wear, "neck", { variant, kind })}
+
+            {/* Ceo lik: ruke vise pored tela, desna drži predmet iz prodavnice */}
+            {full && fullArms(sleeve, skinMid, fist)}
+            {full && fullHand(wear, kind, fist)}
 
             {/* Ruke (vide se samo kad su podignute). Isečene su na okvir crteža: kad je mesto za
                 lik uže od crteža, spuštene šake ne smeju da provire ispod ramena. */}
+            {!full && (
             <g clipPath={`url(#${id("frame")})`}>
                 <line data-part="sleeve-l" x1="50" y1="262" x2={HAND_LX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
                 <line data-part="sleeve-r" x1="190" y1="262" x2={HAND_RX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
@@ -190,6 +238,7 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                     <circle cx="-13" cy="-9" r="7" fill={fill("hand")} />
                 </g>
             </g>
+            )}
 
             {/* Glava */}
             <g data-part="head">
@@ -249,7 +298,7 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                 </g>
 
                 {/* Naočare: preko očiju, ispod kose (drške nestaju pod kosom) */}
-                {renderWorn(wear, "glasses")}
+                {renderWorn(wear, "glasses", { variant, kind })}
 
                 {/* Kosa sa odsjajem */}
                 {female ? (
@@ -265,8 +314,10 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                 )}
 
                 {/* Kapa: poslednja, preko kose */}
-                {renderWorn(wear, "hat")}
+                {renderWorn(wear, "hat", { variant, kind })}
             </g>
+
+            {full && fullPet(wear, kind)}
         </svg>
     );
 }

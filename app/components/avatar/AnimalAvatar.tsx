@@ -26,9 +26,11 @@ import {
     LID_REST,
     MOUTH_X,
     MOUTH_Y,
+    FULL_TORSO_PATH,
     TORSO_PATH,
     VIEWBOX,
 } from "./geometry";
+import { fullArms, fullBackFront, fullBehind, fullFeet, fullHand, fullLegs, fullPet } from "./fullBody";
 import { renderWorn, wornItem, type Wear } from "./wearables";
 
 export type AnimalKind = "cat" | "dog" | "bunny" | "bear";
@@ -99,17 +101,18 @@ const mirrorX = (d: string) => d.replace(/(-?\d+(?:\.\d+)?) (-?\d+(?:\.\d+)?)/g,
 
 interface AnimalAvatarProps {
     kind: AnimalKind;
-    /** `bust` = glava i ramena (može da maše); `face` = samo lice, za mala mesta */
-    variant?: "bust" | "face";
+    /** `bust` = glava i ramena (može da maše); `face` = samo lice, za mala mesta; `full` = ceo lik */
+    variant?: "bust" | "face" | "full";
     /** Stalna emocija, umesto one iz govora (pregled i primeri) */
     emotion?: VoiceEmotion;
-    /** Predmeti iz prodavnice (kapa, naočare, oko vrata, odeća) */
+    /** Predmeti iz prodavnice (na poprsju i licu: kapa, naočare, oko vrata, odeća; na celom liku sve) */
     wear?: Wear;
     className?: string;
 }
 
 export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmotion, wear, className }: AnimalAvatarProps) {
     const look = LOOKS[kind];
+    const full = variant === "full";
     const voice = useVoiceState();
     const settings = useChildSettings();
     const uid = useId();
@@ -144,6 +147,28 @@ export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmo
             <circle cx="7" cy="-8" r="3.6" fill={look.inner} />
             <ellipse cy="3" rx="7" ry="5.5" fill={look.inner} />
         </g>
+    );
+
+    /** Šapa celog lika (spuštena ruka) */
+    const fist = (x: number, y: number) => (
+        <g key={`${x}-${y}`}>
+            <circle cx={x} cy={y} r="13.5" fill={fill("paw")} />
+            <circle cx={x - 5} cy={y + 4} r="2.6" fill={look.inner} />
+            <circle cx={x} cy={y + 6} r="2.6" fill={look.inner} />
+            <circle cx={x + 5} cy={y + 4} r="2.6" fill={look.inner} />
+        </g>
+    );
+
+    /** Stopala (šape) celog lika, kad dete nije izabralo obuću */
+    const bareFeet = (
+        <>
+            {[97, 143].map((x) => (
+                <g key={x}>
+                    <ellipse cx={x} cy="402" rx="19" ry="10" fill={fill("paw")} />
+                    <path d={`M${x - 6} 400V407M${x} 399V408M${x + 6} 400V407`} stroke={look.fur[2]} strokeOpacity="0.5" strokeWidth="2" strokeLinecap="round" />
+                </g>
+            ))}
+        </>
     );
 
     return (
@@ -201,23 +226,49 @@ export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmo
                 </linearGradient>
             </defs>
 
+            {full && (
+                <>
+                    {fullBehind(wear, kind)}
+                    {tail(kind, look, fill("fur"))}
+                    {fullLegs(wear, fill("paw"))}
+                </>
+            )}
+
             {/* Telo: majica u boji lika, svetlo sleva odozgo */}
-            <path d={TORSO_PATH} fill={fill("top")} />
-            <ellipse cx="78" cy="232" rx="46" ry="20" fill={fill("glow")} opacity="0.5" />
-            <ellipse cx="120" cy="214" rx="62" ry="20" fill={fill("shade")} opacity="0.75" />
+            {full ? (
+                <>
+                    <path d={FULL_TORSO_PATH} fill={fill("top")} />
+                    <ellipse cx="88" cy="238" rx="26" ry="24" fill={fill("glow")} opacity="0.5" />
+                    <ellipse cx="120" cy="214" rx="52" ry="18" fill={fill("shade")} opacity="0.75" />
+                </>
+            ) : (
+                <>
+                    <path d={TORSO_PATH} fill={fill("top")} />
+                    <ellipse cx="78" cy="232" rx="46" ry="20" fill={fill("glow")} opacity="0.5" />
+                    <ellipse cx="120" cy="214" rx="62" ry="20" fill={fill("shade")} opacity="0.75" />
+                </>
+            )}
             <path d="M94 206Q120 226 146 206" stroke={look.top[1]} strokeWidth="6" strokeLinecap="round" fill="none" />
-            {renderWorn(wear, "outfit")}
+            {renderWorn(wear, "outfit", { variant, kind })}
+            {full && fullFeet(wear, kind, bareFeet)}
             <rect x="97" y="160" width="46" height="54" rx="18" fill={fill("neck")} />
             <ellipse cx="120" cy="176" rx="26" ry="13" fill={fill("shade")} />
-            {renderWorn(wear, "neck")}
+            {full && fullBackFront(wear, kind)}
+            {renderWorn(wear, "neck", { variant, kind })}
+
+            {/* Ceo lik: šape vise pored tela, desna drži predmet iz prodavnice */}
+            {full && fullArms(sleeve, look.fur[1], fist)}
+            {full && fullHand(wear, kind, fist)}
 
             {/* Šape (vide se samo kad su podignute), isečene na okvir crteža */}
-            <g clipPath={`url(#${id("frame")})`}>
-                <line data-part="sleeve-l" x1="50" y1="262" x2={HAND_LX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
-                <line data-part="sleeve-r" x1="190" y1="262" x2={HAND_RX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
-                {paw("arm-l", HAND_LX)}
-                {paw("arm-r", HAND_RX)}
-            </g>
+            {!full && (
+                <g clipPath={`url(#${id("frame")})`}>
+                    <line data-part="sleeve-l" x1="50" y1="262" x2={HAND_LX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
+                    <line data-part="sleeve-r" x1="190" y1="262" x2={HAND_RX} y2={HAND_DOWN_Y + 14} stroke={sleeve} strokeWidth="27" strokeLinecap="round" opacity="0" />
+                    {paw("arm-l", HAND_LX)}
+                    {paw("arm-r", HAND_RX)}
+                </g>
+            )}
 
             {/* Glava */}
             <g data-part="head">
@@ -265,9 +316,11 @@ export default function AnimalAvatar({ kind, variant = "bust", emotion: fixedEmo
                     <ellipse data-part="tongue" cx={MOUTH_X} cy={MOUTH_Y + 10} rx="11" ry="0" fill={TONGUE} />
                 </g>
 
-                {renderWorn(wear, "glasses")}
-                {renderWorn(wear, "hat")}
+                {renderWorn(wear, "glasses", { variant, kind })}
+                {renderWorn(wear, "hat", { variant, kind })}
             </g>
+
+            {full && fullPet(wear, kind)}
         </svg>
     );
 }
@@ -334,6 +387,19 @@ function markings(kind: AnimalKind, look: Look): ReactNode {
         }
         default:
             return null;
+    }
+}
+
+/** Rep celog lika: iza leve noge, ne smeta ljubimcu ni predmetu u ruci */
+function tail(kind: AnimalKind, look: Look, fur: string): ReactNode {
+    switch (kind) {
+        case "cat":
+            return <path d="M92 318Q58 336 44 312Q36 296 46 284" stroke={fur} strokeWidth="13" strokeLinecap="round" fill="none" />;
+        case "dog":
+            return <path d="M90 316Q66 318 58 296" stroke={DOG_EAR[0]} strokeWidth="13" strokeLinecap="round" fill="none" />;
+        case "bunny":
+        case "bear":
+            return <circle cx="78" cy="320" r="11" fill={kind === "bunny" ? "#fff" : look.fur[1]} />;
     }
 }
 
