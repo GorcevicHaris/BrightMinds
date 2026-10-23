@@ -1,8 +1,11 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { hasBackground } from "@/app/components/games/scene/backgrounds";
 import { cameraFor, MAX_ZOOM } from "@/app/components/games/scene/camera";
-import { isAdult, LOOKS } from "@/app/components/games/scene/figures";
+import { eyesPoint, Figure, gazeToward, headCenter, isAdult, LOOKS } from "@/app/components/games/scene/figures";
+import { SceneArt } from "@/app/components/games/scene/SceneArt";
 import { emotionHero } from "@/app/components/games/scene/heroes";
 import { hasProp } from "@/app/components/games/scene/props";
 import { allScenarios } from "@/app/components/games/data/emotionScenarios";
@@ -14,7 +17,7 @@ import { STORY_SCENES, storyScene } from "@/app/components/games/data/storyScene
 import { USE_ITEMS } from "@/app/components/games/data/usesItems";
 import { USES_SCENES, usesScene } from "@/app/components/games/data/usesScenes";
 import type { PropId, ViewId } from "@/app/components/games/scene/types";
-import { BACKGROUND_IDS, hero, inBed, PROP_IDS, scene, sceneParts, thing, think, type SceneSpec } from "@/app/components/games/scene/types";
+import { BACKGROUND_IDS, hero, inBed, isFigure, PROP_IDS, scene, sceneParts, thing, think, who, type SceneSpec } from "@/app/components/games/scene/types";
 
 /** Svaki deo slike postoji u kompletu: pozadine, predmeti i likovi */
 function assertDrawable(spec: SceneSpec, where: string) {
@@ -274,5 +277,72 @@ describe("uses scenes", () => {
                 if (item.group === "world") assert.notEqual(sky, other.id, `pitanje ${item.id}: nebo pokazuje ${other.name}`);
             }
         }
+    });
+});
+
+describe("figure gaze", () => {
+    const figure = (props: Parameters<typeof Figure>[0]) => renderToStaticMarkup(createElement("svg", null, createElement(Figure, props)));
+    const art = (spec: SceneSpec) => renderToStaticMarkup(createElement(SceneArt, { spec }));
+    /** Beonjače očiju koje gledaju (crtaju se samo uz pogled) */
+    const SCLERA = /<ellipse cx="(35|65)" cy="47" rx="8" ry="9" fill="#ffffff"/g;
+    /** Zenice očiju koje gledaju: x koordinate */
+    const pupils = (markup: string) => [...markup.matchAll(/<circle cx="([\d.-]+)" cy="[\d.-]+" r="4.6"/g)].map((m) => Number(m[1]));
+    const ears = (markup: string) => [...markup.matchAll(/<circle cx="([\d.-]+)" cy="2" r="4"/g)].map((m) => Number(m[1]));
+
+    it("looks straight ahead by default: existing pictures are drawn as before", () => {
+        const plain = figure({ id: "amina" });
+        assert.equal(plain.match(SCLERA), null);
+        assert.deepEqual(ears(plain), [-16.5, 16.5]);
+        assert.doesNotMatch(plain, /r="4.6"/);
+        // Nijedna postojeća slika ne zadaje pogled, pa nijedna ne crta oči koje gledaju
+        const all: SceneSpec[] = [...Object.values(EMOTION_SCENES), ...Object.values(USES_SCENES)];
+        for (let level = 1; level <= 15; level += 1) {
+            for (const situation of getSituationsForLevel(level)) all.push(socialScene(situation.id)!.scene);
+            const cover = storyScene(level, "cover");
+            if (cover) all.push(cover);
+        }
+        for (const spec of all) {
+            assert.ok(spec.items.filter(isFigure).every((item) => item.gaze === undefined));
+            assert.equal(art(spec).match(SCLERA), null);
+        }
+    });
+
+    it("turns the eyes and the head toward the point, or only the eyes", () => {
+        const right = gazeToward("amina", "stand", 80, -60);
+        assert.ok(Math.abs(right.dx - 1) < 1e-9 && Math.abs(right.dy) < 1e-9 && right.head === 1);
+        const down = gazeToward("amina", "stand", 0, 0, 0);
+        assert.ok(down.dy > 0.99 && down.head === 0);
+        assert.deepEqual(gazeToward("amina", "stand", ...headCenter("amina")), { dx: 0, dy: 0, head: 1 });
+        assert.equal(gazeToward("amina", "stand", 10, 10, 7).head, 1);
+
+        const turned = figure({ id: "amina", gaze: right });
+        assert.equal(turned.match(SCLERA)?.length, 2);
+        assert.ok(pupils(turned).every((x) => x === 35 + 3.6 || x === 65 + 3.6), `zenice: ${pupils(turned)}`);
+        // Glava okrenuta udesno: obe uši klize ulevo
+        assert.deepEqual(ears(turned), [-19.5, 13.5]);
+
+        const eyesOnly = figure({ id: "amina", gaze: { ...right, head: 0 } });
+        assert.deepEqual(ears(eyesOnly), [-16.5, 16.5]);
+        assert.deepEqual(pupils(eyesOnly), pupils(turned));
+
+        // Okrenut leđima: lice se ne vidi, pa ni pogled
+        assert.equal(figure({ id: "amina", back: true, gaze: right }), figure({ id: "amina", back: true }));
+    });
+
+    it("takes the point in picture coordinates, also for a mirrored figure, and draws dots only when asked", () => {
+        // Preokrenut lik (flip) koji gleda ulevo na slici, u svojim koordinatama gleda „napred” (udesno)
+        const mirrored = art(scene("plain", [who("haris", 120, { flip: true, gaze: { x: 20, y: 88 } })]));
+        assert.ok(pupils(mirrored).every((x) => x > 35 && x !== 65), `zenice: ${pupils(mirrored)}`);
+        const straight = art(scene("plain", [who("haris", 120, { gaze: { x: 20, y: 88 } })]));
+        assert.ok(pupils(straight).every((x) => x < 65 && x !== 35), `zenice: ${pupils(straight)}`);
+
+        const dots = (markup: string) => (markup.match(/r="2.7"/g) ?? []).length;
+        assert.equal(dots(straight), 0);
+        const hinted = art(scene("plain", [who("haris", 120, { gaze: { x: 20, y: 88, line: true, ring: 12 } })]));
+        assert.ok(dots(hinted) >= 5, `tačkica: ${dots(hinted)}`);
+        assert.match(hinted, /r="12"/);
+        // Tačkice kreću od očiju: tačka između očiju je u glavi lika
+        const [ex, ey] = eyesPoint("haris", "stand", gazeToward("haris", "stand", -100, -60));
+        assert.ok(ex < 0 && ex > -17 && ey < -50 && ey > -70, `${ex}, ${ey}`);
     });
 });

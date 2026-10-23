@@ -5,7 +5,7 @@ import { useId, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Background, BackgroundOverlay } from "./backgrounds";
 import { cameraFor, cameraTransform } from "./camera";
-import { Figure, heldPoint, isAdult } from "./figures";
+import { eyesPoint, Figure, gazeToward, heldPoint, isAdult, type GazeDir } from "./figures";
 import { Prop } from "./props";
 import { isBubble, isFigure, isInset, VIEW_H, VIEW_W, type BubbleItem, type FigureItem, type HeroLook, type PropItem, type SceneItem, type SceneSpec } from "./types";
 
@@ -24,9 +24,23 @@ function PropNode({ item }: { item: PropItem }) {
     );
 }
 
+/** Ko je stvarno nacrtan na mestu lika (glavni lik dobija izgled od igre) */
+function figureId(item: FigureItem, hero?: HeroLook) {
+    return item.fig === "hero" ? (hero?.look ?? "meGirl") : item.fig;
+}
+
+/** Pogled lika u njegovim koordinatama: tačka sa slike se prenosi u razmeru i smer lika */
+function figureGaze(item: FigureItem, hero?: HeroLook): GazeDir | undefined {
+    if (!item.gaze) return undefined;
+    const s = item.s ?? 1;
+    const tx = ((item.gaze.x - item.x) / s) * (item.flip ? -1 : 1);
+    const ty = (item.gaze.y - (item.y ?? GROUND_Y)) / s;
+    return gazeToward(figureId(item, hero), item.pose ?? "stand", tx, ty, item.gaze.head ?? 1);
+}
+
 function FigureNode({ item, hero }: { item: FigureItem; hero?: HeroLook }) {
     const isHero = item.fig === "hero";
-    const id = item.fig === "hero" ? (hero?.look ?? "meGirl") : item.fig;
+    const id = figureId(item, hero);
     const face = (isHero ? hero?.face : undefined) ?? item.face ?? "calm";
     const back = (isHero ? hero?.back : undefined) ?? item.back ?? false;
     const pose = item.pose ?? "stand";
@@ -50,7 +64,40 @@ function FigureNode({ item, hero }: { item: FigureItem; hero?: HeroLook }) {
     return (
         <g transform={transforms.join(" ")}>
             <ellipse cx={0} cy={0} rx={adult ? 15 : 12} ry={2.6} fill="#000" opacity={pose === "swim" || pose === "lie" ? 0 : 0.08} />
-            <Figure id={id} pose={pose} face={face} back={back} wear={item.wear} held={held} />
+            <Figure id={id} pose={pose} face={face} back={back} wear={item.wear} held={held} gaze={figureGaze(item, hero)} />
+        </g>
+    );
+}
+
+/** Razmak između tačkica pogleda i koliko prazno ostaje kod očiju */
+const GAZE_DOT_STEP = 8;
+const GAZE_GAP = 9;
+
+/**
+ * Pomoć „prati pogled”: tačkice od očiju lika do mesta u koje gleda i blag krug oko tog mesta.
+ * Crta se preko cele slike, da je ništa ne zakloni.
+ */
+function GazeLine({ item, hero }: { item: FigureItem; hero?: HeroLook }) {
+    const gaze = item.gaze;
+    const dir = figureGaze(item, hero);
+    if (!gaze || !dir || (item.back ?? false) || (item.fig === "hero" && hero?.back)) return null;
+    const s = item.s ?? 1;
+    const [ex, ey] = eyesPoint(figureId(item, hero), item.pose ?? "stand", dir);
+    const x0 = item.x + ex * s * (item.flip ? -1 : 1);
+    const y0 = (item.y ?? GROUND_Y) + ey * s;
+    const length = Math.hypot(gaze.x - x0, gaze.y - y0);
+    const ring = gaze.ring ?? 0;
+    const end = length - Math.max(ring, 4);
+    const dots: [number, number][] = [];
+    for (let d = GAZE_GAP; d <= end; d += GAZE_DOT_STEP) dots.push([x0 + ((gaze.x - x0) * d) / length, y0 + ((gaze.y - y0) * d) / length]);
+    return (
+        <g>
+            {ring > 0 && <circle cx={gaze.x} cy={gaze.y} r={ring} fill="#fff3b0" fillOpacity={0.16} stroke="#e8930c" strokeWidth={2.4} strokeDasharray="6 4" />}
+            <g fill="#f5a524" stroke="#9a5a06" strokeWidth={0.9}>
+                {dots.map(([x, y], i) => (
+                    <circle key={i} cx={x} cy={y} r={2.7} />
+                ))}
+            </g>
         </g>
     );
 }
@@ -142,6 +189,7 @@ export function SceneArt({ spec, hero, className }: SceneArtProps) {
                     {/* Mrak pada na sobu, a likovi ostaju svetli: lice mora da se vidi */}
                     <BackgroundOverlay id={spec.bg} view={spec.view} />
                     <Items items={spec.items} hero={hero} idPrefix={uid} />
+                    {spec.items.map((item, i) => (isFigure(item) && item.gaze?.line ? <GazeLine key={`${uid}-gaze-${i}`} item={item} hero={hero} /> : null))}
                 </g>
             </g>
         </svg>

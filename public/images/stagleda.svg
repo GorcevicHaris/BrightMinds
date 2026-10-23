@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1380 752" width="1380" height="752">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e6f0ff"/>
+      <stop offset="0.55" stop-color="#dde9ff"/>
+      <stop offset="1" stop-color="#e8e6ff"/>
+    </linearGradient>
+    <linearGradient id="banner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f8ff7"/>
+      <stop offset="1" stop-color="#2f63d8"/>
+    </linearGradient>
+    <radialGradient id="shine" cx="0.35" cy="0.3" r="0.7">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#14306a" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+
+  <rect width="1380" height="752" fill="url(#sky)"/>
+  <circle cx="150" cy="120" r="95" fill="#fff" opacity="0.5"/>
+  <circle cx="1250" cy="640" r="130" fill="#fff" opacity="0.4"/>
+  <ellipse cx="690" cy="770" rx="820" ry="170" fill="#c9dbfb" opacity="0.5"/>
+
+  <!-- Natpis -->
+  <g filter="url(#soft)">
+    <rect x="410" y="46" width="560" height="104" rx="52" fill="url(#banner)"/>
+  </g>
+  <text x="690" y="118" text-anchor="middle" font-family="Arial Rounded MT Bold, Arial, Helvetica, sans-serif" font-size="56" font-weight="800" fill="#fff" letter-spacing="2">ŠTA GLEDA?</text>
+
+  <!-- Polica levo: meda (ne gleda u nju) -->
+  <g filter="url(#soft)">
+    <rect x="90" y="402" width="250" height="22" rx="8" fill="#b07a4a" stroke="#8f5d34" stroke-width="5"/>
+    <path d="M140 424 v40 l34 -40 M290 424 v40 l-34 -40" fill="none" stroke="#8f5d34" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <g fill="#c98e5a" transform="translate(215 400)">
+      <circle cx="-52" cy="-182" r="30"/>
+      <circle cx="52" cy="-182" r="30"/>
+      <ellipse cx="0" cy="-62" rx="66" ry="64"/>
+      <circle cx="0" cy="-148" r="58"/>
+      <ellipse cx="0" cy="-126" rx="25" ry="19" fill="#f0d2b0"/>
+      <circle cx="-22" cy="-160" r="8" fill="#5a4a3a"/>
+      <circle cx="22" cy="-160" r="8" fill="#5a4a3a"/>
+      <ellipse cx="0" cy="-48" rx="36" ry="36" fill="#f0d2b0"/>
+    </g>
+  </g>
+
+  <!-- Dete u sredini: glava okrenuta udesno, oči gledaju u loptu -->
+  <g filter="url(#soft)" transform="translate(640 470)">
+    <path d="M-150 290 Q-150 150 -60 130 H60 Q150 150 150 290 Z" fill="#3fbf8a" stroke="#2f9a6e" stroke-width="6"/>
+    <rect x="-24" y="96" width="48" height="44" fill="#f4c7a1"/>
+    <circle cx="-138" cy="20" r="30" fill="#f4c7a1" stroke="#c99a7a" stroke-width="6"/>
+    <circle cx="112" cy="20" r="30" fill="#f4c7a1" stroke="#c99a7a" stroke-width="6"/>
+    <circle cx="0" cy="0" r="135" fill="#f4c7a1" stroke="#c99a7a" stroke-width="7"/>
+    <path d="M-141 -10 C-158 -200 158 -200 141 -10 C120 -70 90 -92 40 -88 C0 -106 -64 -100 -96 -80 C-120 -64 -136 -40 -141 -10Z" fill="#4a2f1f"/>
+    <g transform="translate(36 6)">
+      <g fill="#ff9e80" opacity="0.55">
+        <circle cx="-82" cy="46" r="20"/>
+        <circle cx="82" cy="46" r="20"/>
+      </g>
+      <ellipse cx="-48" cy="-6" rx="30" ry="34" fill="#fff" stroke="#3b2a1a" stroke-width="8"/>
+      <ellipse cx="48" cy="-6" rx="30" ry="34" fill="#fff" stroke="#3b2a1a" stroke-width="8"/>
+      <circle cx="-36" cy="-12" r="17" fill="#3b2a1a"/>
+      <circle cx="60" cy="-12" r="17" fill="#3b2a1a"/>
+      <circle cx="-42" cy="-19" r="5" fill="#fff"/>
+      <circle cx="54" cy="-19" r="5" fill="#fff"/>
+      <path d="M-40 62 Q0 92 40 62" fill="none" stroke="#3b2a1a" stroke-width="12" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  <!-- Tačkice pogleda do lopte -->
+  <g fill="#f5a524" stroke="#9a5a06" stroke-width="3">
+    <circle cx="790" cy="440" r="11"/>
+    <circle cx="840" cy="424" r="11"/>
+    <circle cx="890" cy="408" r="11"/>
+    <circle cx="940" cy="392" r="11"/>
+  </g>
+
+  <!-- Lopta u krugu (u nju gleda) -->
+  <g filter="url(#soft)">
+    <circle cx="1100" cy="350" r="150" fill="#fff3b0" fill-opacity="0.7" stroke="#e8930c" stroke-width="9" stroke-dasharray="26 16"/>
+    <circle cx="1100" cy="350" r="104" fill="#f4b73f" stroke="#c98a12" stroke-width="8"/>
+    <path d="M996 350 Q1100 428 1204 350 M1100 246 Q1048 350 1100 454" fill="none" stroke="#fff" stroke-width="16"/>
+    <ellipse cx="1062" cy="306" rx="38" ry="24" fill="url(#shine)"/>
+  </g>
+</svg>

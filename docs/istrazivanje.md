@@ -35,6 +35,7 @@ Važno: Bright Minds je vežbanka uz podršku odraslih. **Nije terapija ni dijag
 | **Dete vidi znak kada ga odrasli gleda uživo.** Prenosi se samo stanje igre — bez kamere, mikrofona i snimanja. | Dete ima pravo da zna da je posmatrano. | Regulatorna smernica — ICO Children's Code (standard 11) |
 | **Predlog za vežbu van ekrana** posle svakog nivoa i u statistici. | Veštine iz aplikacija se slabo prenose same; zajednička upotreba sa odraslim pomaže. | Jaki da samostalna upotreba malo daje — Sandbank i sar. 2020; AAP |
 | **Veliki ciljevi za dodir, samo dodir** (bez prevlačenja, štipanja, dugog pritiska), kratka pauza unosa posle promene zadatka. | Većina autistične dece ima motoričke teškoće; mala deca dodiruju više puta i drže prst. | Jaki — Bhat 2020; Sesame Workshop; WCAG 2.5.8 |
+| **„Šta gleda?”: dete prati pogled lika na crtežu,** od pokazivanja rukom i okreta glave do samih očiju; na vrhu „Šta Amina želi?” (pogled = želja) i „Ko zna šta je u kutiji?” (ko je video, taj zna). Pomoć su tačkice od očiju do predmeta. **Nikad se ne traži da dete nekoga gleda u oči.** | Praćenje pogleda i „videti znači znati” su prvi koraci programa za učenje razumevanja misli kod autizma (slike, od lakšeg ka težem); deca sa autizmom lakše prate okret glave nego same oči. Prisilan kontakt očima mnogim autističnim osobama je neprijatan. Prenos sa slika na stvarne situacije je slab, pa uz igru ide predlog za vežbu sa odraslim. | Umereni za učenje na zadacima, slabi za prenos — Howlin, Baron-Cohen i Hadwin 1999; Baron-Cohen i sar. 1995; Leekam i sar. 1997, 1998; Baron-Cohen i Goodhart 1994; NCAEP 2020 (zajednička pažnja u okviru NDBI); Trevisan i sar. 2017 |
 | **Izvoz i brisanje podataka**, bez analitike trećih strana u dečjem delu. | Podaci o deci i zdravlju su posebna kategorija. Ovo nije pravni savet. | Zakon — ZZPL čl. 5, 16, 17, 54 |
 
 ## Šta je urađeno posle prve verzije
@@ -66,6 +67,10 @@ Važno: Bright Minds je vežbanka uz podršku odraslih. **Nije terapija ni dijag
 - Richling i sar. (2019), kriterijumi savladanosti — <https://link.springer.com/article/10.1007/s40617-019-00365-2>
 - Carol Gray, *Social Stories 10.4 Criteria* — <https://carolgraysocialstories.com/wp-content/uploads/2023/11/2023-Social-Stories-10.4-Criteria.pdf>
 - Kokina i Kern (2010), meta-analiza socijalnih priča — <https://apps.asha.org/EvidenceMaps/Articles/ArticleSummary/b8a776ce-b372-40f9-8f48-7659cbe61c75>
+- Howlin, Baron-Cohen i Hadwin (1999), *Teaching Children with Autism to Mind-Read*, Wiley (ISBN 9780471976233)
+- Baron-Cohen i Goodhart (1994), „videti znači znati” kod autizma — <https://neuroscience.cam.ac.uk/publications/the-seeingleadstoknowing-deficit-in-autism-the-pratt-and-bryant-probe>
+- Leekam i sar. (1997), praćenje pogleda kod autizma — <https://orca.cardiff.ac.uk/id/eprint/35525/>
+- Trevisan i sar. (2017), kako autistične osobe doživljavaju kontakt očima — <https://pmc.ncbi.nlm.nih.gov/articles/PMC5705114>
 - Fletcher-Watson i sar. (2016), randomizovana studija aplikacije FindMe — <https://pmc.ncbi.nlm.nih.gov/articles/PMC5015758>
 - Sandbank i sar. (2020), Project AIM — <https://par.nsf.gov/servlets/purl/10286307>
 - Radesky i sar. (2022), manipulativni dizajn u aplikacijama za decu 3–5 godina — <https://pmc.ncbi.nlm.nih.gov/articles/PMC9206186/>

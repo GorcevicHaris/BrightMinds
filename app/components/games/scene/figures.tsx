@@ -259,9 +259,79 @@ const CALM_FACES: Record<OtherFace, ReactNode> = {
 const FACE_SCALE = 17 / 43;
 const FACE_TRANSFORM = `translate(${-50 * FACE_SCALE} ${-52 * FACE_SCALE}) scale(${FACE_SCALE})`;
 
-function FaceFeatures({ face }: { face: Face }) {
+function FaceFeatures({ face, gaze }: { face: Face; gaze?: GazeDir }) {
+    if (gaze) {
+        return (
+            <g transform={FACE_TRANSFORM}>
+                <GazeEyes dx={gaze.dx} dy={gaze.dy} />
+                {Object.hasOwn(GAZE_FACES, face) ? GAZE_FACES[face as keyof typeof GAZE_FACES] : GAZE_FACES.calm}
+            </g>
+        );
+    }
     const node = Object.hasOwn(CALM_FACES, face) ? CALM_FACES[face as OtherFace] : <EmotionFeatures emotion={face as EmotionId} />;
     return <g transform={FACE_TRANSFORM}>{node}</g>;
+}
+
+// ── Pogled ────────────────────────────────────────────────────────────────────
+// Lik koji gleda u nešto: oči imaju beonjaču i zenicu okrenutu ka tom mestu, a glava se
+// okreće (crte lica se pomere u tu stranu, uši na suprotnu). Bez pogleda lik gleda pravo.
+
+/** Smer pogleda u koordinatama lika (jedinični vektor) i koliko se okreće glava (0–1) */
+export interface GazeDir {
+    dx: number;
+    dy: number;
+    head: number;
+}
+
+/** Najveći pomak crta lica pri okretu glave (u jedinicama glave, poluprečnik 17) */
+const TURN_X = 5;
+const TURN_Y = 3.5;
+/** Najveći pomak zenice u beonjači (koordinate lica 100 × 100) */
+const PUPIL_X = 3.6;
+const PUPIL_Y = 3.8;
+
+function GazeEyes({ dx, dy }: { dx: number; dy: number }) {
+    return (
+        <>
+            {[35, 65].map((x) => (
+                <g key={x}>
+                    <ellipse cx={x} cy={47} rx={8} ry={9} fill="#ffffff" stroke={INK} strokeWidth={2.6} />
+                    <circle cx={x + dx * PUPIL_X} cy={47 + dy * PUPIL_Y} r={4.6} fill={INK} />
+                    <circle cx={x + dx * PUPIL_X - 1.6} cy={47 + dy * PUPIL_Y - 1.8} r={1.3} fill="#ffffff" />
+                </g>
+            ))}
+        </>
+    );
+}
+
+/** Obrve i usta uz oči koje gledaju; ostali izrazi se uz pogled crtaju kao „calm” */
+const GAZE_FACES = {
+    calm: (
+        <>
+            <Cheeks />
+            <path d="M39 67 Q50 74 61 67" {...LINE} />
+        </>
+    ),
+    happy: (
+        <>
+            <Cheeks />
+            <path d="M26 33 Q34 28 42 32 M58 32 Q66 28 74 33" {...LINE} strokeWidth={3.5} />
+            <path d="M32 62 Q50 82 68 62 Z" fill={MOUTH} stroke={INK} strokeWidth={3} strokeLinejoin="round" />
+        </>
+    ),
+    neutral: <path d="M41 68 H59" {...LINE} />,
+    talk: (
+        <>
+            <Cheeks />
+            <path d="M40 64 Q50 63 60 64 Q58 77 50 77 Q42 77 40 64Z" fill={MOUTH} stroke={INK} strokeWidth={3} strokeLinejoin="round" />
+        </>
+    ),
+} satisfies Partial<Record<Face, ReactNode>>;
+
+/** Pomak crta lica za dati pogled (u jedinicama glave) */
+function faceShift(gaze: GazeDir | undefined): Point {
+    if (!gaze) return [0, 0];
+    return [gaze.dx * gaze.head * TURN_X, gaze.dy * gaze.head * TURN_Y];
 }
 
 interface HeadProps {
@@ -270,30 +340,39 @@ interface HeadProps {
     back: boolean;
     glasses?: boolean;
     beard?: boolean;
+    gaze?: GazeDir;
 }
 
-function Head({ look, face, back, glasses, beard }: HeadProps) {
+function Head({ look, face, back, glasses, beard, gaze }: HeadProps) {
     const skinLine = shade(look.skin);
+    // Okrenut leđima: pogled se ne vidi
+    const looking = back ? undefined : gaze;
+    const [fx, fy] = faceShift(looking);
+    // Pri okretu glave obe uši klize na suprotnu stranu: dalje uvo se više vidi, bliže se sakrije
+    const ear = looking ? -looking.dx * looking.head * 3 : 0;
+    const shifted = fx !== 0 || fy !== 0 ? `translate(${fx} ${fy})` : undefined;
     return (
         <g>
             {hairBack(look, back)}
-            <circle cx={-16.5} cy={2} r={4} fill={look.skin} stroke={skinLine} strokeWidth={1.2} />
-            <circle cx={16.5} cy={2} r={4} fill={look.skin} stroke={skinLine} strokeWidth={1.2} />
+            <circle cx={-16.5 + ear} cy={2} r={4} fill={look.skin} stroke={skinLine} strokeWidth={1.2} />
+            <circle cx={16.5 + ear} cy={2} r={4} fill={look.skin} stroke={skinLine} strokeWidth={1.2} />
             <circle r={17} fill={look.skin} stroke={skinLine} strokeWidth={1.4} />
             {back ? (
                 hairOnBackOfHead(look)
             ) : (
                 <>
-                    {beard && <path d="M-15 2 C-14 18 14 18 15 2 C10 10 -10 10 -15 2Z" fill={look.hairColor} opacity={0.9} />}
-                    {hairFront(look)}
-                    <FaceFeatures face={face} />
-                    {glasses && (
-                        <g fill="none" stroke="#4a4a5a" strokeWidth={1.3}>
-                            <circle cx={-6} cy={-1} r={5} />
-                            <circle cx={6} cy={-1} r={5} />
-                            <path d="M-1 -1 H1" />
-                        </g>
-                    )}
+                    <g transform={shifted}>{beard && <path d="M-15 2 C-14 18 14 18 15 2 C10 10 -10 10 -15 2Z" fill={look.hairColor} opacity={0.9} />}</g>
+                    <g transform={fx !== 0 ? `translate(${fx * 0.3} 0)` : undefined}>{hairFront(look)}</g>
+                    <g transform={shifted}>
+                        <FaceFeatures face={face} gaze={looking} />
+                        {glasses && (
+                            <g fill="none" stroke="#4a4a5a" strokeWidth={1.3}>
+                                <circle cx={-6} cy={-1} r={5} />
+                                <circle cx={6} cy={-1} r={5} />
+                                <path d="M-1 -1 H1" />
+                            </g>
+                        )}
+                    </g>
                 </>
             )}
         </g>
@@ -380,6 +459,8 @@ interface FigureProps {
     wear?: readonly WearId[];
     /** Predmet u ruci (već nacrtan, u koordinatama lika) */
     held?: ReactNode;
+    /** Kuda lik gleda, u koordinatama lika (vidi `gazeToward`) */
+    gaze?: GazeDir;
 }
 
 const SIT_POSES: readonly PoseId[] = ["sit", "sitHold", "sitReach", "ride"];
@@ -394,12 +475,52 @@ function Arm({ from, to, sleeve, skin, width }: { from: Point; to: Point; sleeve
     );
 }
 
-export function Figure({ id, pose = "stand", face = "calm", back = false, wear = [], held }: FigureProps) {
+export function Figure({ id, pose = "stand", face = "calm", back = false, wear = [], held, gaze }: FigureProps) {
     return isAdult(id) ? (
-        <AdultFigure look={ADULTS[id]} pose={pose} face={face} back={back} wear={wear} held={held} />
+        <AdultFigure look={ADULTS[id]} pose={pose} face={face} back={back} wear={wear} held={held} gaze={gaze} />
     ) : (
-        <ChildFigure look={LOOKS[id]} small={id === "baby"} pose={pose} face={face} back={back} wear={wear} held={held} />
+        <ChildFigure look={LOOKS[id]} small={id === "baby"} pose={pose} face={face} back={back} wear={wear} held={held} gaze={gaze} />
     );
+}
+
+/** Središte glave u koordinatama lika (stopala su u 0, 0), za dati položaj */
+export function headCenter(id: LookId | AdultId, pose: PoseId = "stand"): Point {
+    if (isAdult(id)) {
+        if (pose === "lie") return [0, -10];
+        return [0, -104 + (SIT_POSES.includes(pose) ? 30 : 0)];
+    }
+    const k = id === "baby" ? 0.62 : 1;
+    if (pose === "lie") return [0, -10 * k];
+    if (pose === "swim") return [0, -20 * k];
+    return [0, (-60 + (SIT_POSES.includes(pose) ? 9 : 0)) * k];
+}
+
+/** Koliko je glava uvećana u odnosu na osnovnu (poluprečnik 17) */
+function headScale(id: LookId | AdultId, pose: PoseId): number {
+    const k = isAdult(id) ? 0.95 : id === "baby" ? 0.62 : 1;
+    return pose === "lie" ? 0.74 * (id === "baby" ? 0.62 : 1) : k;
+}
+
+/**
+ * Smer pogleda ka tački (tx, ty) u koordinatama lika. `head` = koliko se okreće i glava (0–1).
+ * Tačka u samoj glavi daje pogled pravo napred.
+ */
+export function gazeToward(id: LookId | AdultId, pose: PoseId, tx: number, ty: number, head = 1): GazeDir {
+    const [hx, hy] = headCenter(id, pose);
+    const vx = tx - hx;
+    const vy = ty - hy;
+    const length = Math.hypot(vx, vy);
+    const turn = Math.min(Math.max(Number.isFinite(head) ? head : 1, 0), 1);
+    if (!Number.isFinite(length) || length < 1) return { dx: 0, dy: 0, head: turn };
+    return { dx: vx / length, dy: vy / length, head: turn };
+}
+
+/** Tačka između očiju (odakle kreću tačkice pogleda), u koordinatama lika */
+export function eyesPoint(id: LookId | AdultId, pose: PoseId, gaze?: GazeDir): Point {
+    const [hx, hy] = headCenter(id, pose);
+    const [fx, fy] = faceShift(gaze);
+    const k = headScale(id, pose);
+    return [hx + fx * k, hy + (fy - 2) * k];
 }
 
 interface BodyProps {
@@ -408,9 +529,10 @@ interface BodyProps {
     back: boolean;
     wear: readonly WearId[];
     held?: ReactNode;
+    gaze?: GazeDir;
 }
 
-function ChildFigure({ look, small, pose, face, back, wear, held }: BodyProps & { look: Look; small: boolean }) {
+function ChildFigure({ look, small, pose, face, back, wear, held, gaze }: BodyProps & { look: Look; small: boolean }) {
     const has = (item: WearId) => wear.includes(item);
     const top = has("jacket") ? "#2f8f6f" : look.shirt;
     const swim = has("swim");
@@ -433,7 +555,7 @@ function ChildFigure({ look, small, pose, face, back, wear, held }: BodyProps & 
         return (
             <g>
                 <g transform="translate(0 -10) rotate(-8) scale(0.74)">
-                    <Head look={look} face={face} back={back} glasses={has("glasses")} />
+                    <Head look={look} face={face} back={back} glasses={has("glasses")} gaze={gaze} />
                 </g>
                 <path d="M14 -18 Q42 -24 70 -18 L70 6 L14 6 Z" fill="#8ab8f0" stroke="#5f8fcf" strokeWidth={1.5} />
                 <path d="M12 -20 Q40 -26 66 -20" fill="none" stroke="#ffffff" strokeWidth={3} opacity={0.7} />
@@ -447,7 +569,7 @@ function ChildFigure({ look, small, pose, face, back, wear, held }: BodyProps & 
                 <Arm from={[-9, -6]} to={l} sleeve={look.skin} skin={look.skin} width={6} />
                 <Arm from={[9, -6]} to={r} sleeve={look.skin} skin={look.skin} width={6} />
                 <g transform="translate(0 -20)">
-                    <Head look={look} face={face} back={back} />
+                    <Head look={look} face={face} back={back} gaze={gaze} />
                 </g>
                 <path d="M-34 -4 Q-25 -9 -17 -4 T0 -4 T17 -4 T34 -4 V4 H-34Z" fill="#5fb8e8" opacity={0.9} />
             </g>
@@ -481,7 +603,7 @@ function ChildFigure({ look, small, pose, face, back, wear, held }: BodyProps & 
             <rect x={-3} y={-44} width={6} height={5} fill={look.skin} />
             {!armsOverHead && arms}
             <g transform="translate(0 -60)">
-                <Head look={look} face={face} back={back} glasses={has("glasses")} />
+                <Head look={look} face={face} back={back} glasses={has("glasses")} gaze={gaze} />
                 {has("partyHat") && <path d="M-8 -15 L0 -36 L8 -15 Z" fill="#f4b73f" stroke="#d97f06" strokeWidth={1.2} />}
                 {has("beanie") && <path d="M-18.5 -9 C-19 -29 19 -29 18.5 -9 Q0 -12 -18.5 -9Z M-3.5 -25 a4 4 0 1 1 7 0" fill="#e0574f" />}
             </g>
@@ -517,7 +639,7 @@ function ChildFigure({ look, small, pose, face, back, wear, held }: BodyProps & 
     );
 }
 
-function AdultFigure({ look, pose, face, back, wear, held }: BodyProps & { look: AdultLook }) {
+function AdultFigure({ look, pose, face, back, wear, held, gaze }: BodyProps & { look: AdultLook }) {
     const [l, r] = ADULT_HANDS[pose];
     const sitting = SIT_POSES.includes(pose);
     const drop = sitting ? 30 : 0;
@@ -538,7 +660,7 @@ function AdultFigure({ look, pose, face, back, wear, held }: BodyProps & { look:
             <g>
                 {/* Glava na jastuku (ne preko uzglavlja), ćebe do kraja kreveta (inBed: dušek je od -13 do 71) */}
                 <g transform="translate(0 -10) rotate(-8) scale(0.74)">
-                    <Head look={look} face={face} back={back} glasses={look.glasses} beard={look.beard && !has("shaved")} />
+                    <Head look={look} face={face} back={back} glasses={look.glasses} beard={look.beard && !has("shaved")} gaze={gaze} />
                 </g>
                 <path d="M14 -18 Q42 -24 70 -18 L70 6 L14 6 Z" fill="#8ab8f0" stroke="#5f8fcf" strokeWidth={1.5} />
             </g>
@@ -587,7 +709,7 @@ function AdultFigure({ look, pose, face, back, wear, held }: BodyProps & { look:
                 <rect x={-4} y={-92} width={8} height={7} fill={look.skin} />
                 {!armsOverHead && arms}
                 <g transform="translate(0 -104) scale(0.95)">
-                    <Head look={look} face={face} back={back} glasses={look.glasses} beard={look.beard && !has("shaved")} />
+                    <Head look={look} face={face} back={back} glasses={look.glasses} beard={look.beard && !has("shaved")} gaze={gaze} />
                     {look.hat === "helmet" && <path d="M-20 -4 C-20 -28 20 -28 20 -4 H25 V0 H-25 V-4Z" fill="#e8463f" stroke="#a82a24" strokeWidth={1.4} />}
                     {look.hat === "topHat" && (
                         <g>

@@ -6,6 +6,8 @@ import { emotionScene } from "@/app/components/games/data/emotionScenes";
 import { socialScene } from "@/app/components/games/data/socialScenes";
 import { storyForLevel } from "@/app/components/games/data/socialStories";
 import { storyScene } from "@/app/components/games/data/storyScenes";
+import { buildGazeLevel, gazeAnswer, gazeQuestion } from "@/app/components/games/data/gazeRounds";
+import { gazeScene } from "@/app/components/games/data/gazeScenes";
 import { USE_ITEMS } from "@/app/components/games/data/usesItems";
 import { usesScene } from "@/app/components/games/data/usesScenes";
 import { getSituationsForLevel, type SocialSituation } from "@/app/components/games/data/socialSituations";
@@ -31,6 +33,7 @@ export const GALLERY_PARTS = [
     { id: "social", label: "Šta reći?" },
     { id: "stories", label: "Socijalne priče" },
     { id: "uses", label: "Čemu služi?" },
+    { id: "gaze", label: "Šta gleda?" },
     { id: "kit", label: "Delovi" },
 ] as const;
 export type GalleryPartId = (typeof GALLERY_PARTS)[number]["id"];
@@ -77,6 +80,22 @@ function kitPart(): Part {
             picture: <SceneArt spec={scene("plain", [who(adult, 60, { face: "calm" }), who(adult, 130, { pose: "wave", face: "talk" }), who(adult, 195, { back: true })])} />,
         });
     }
+    // Pogled: pravo (podrazumevano), glava i oči, samo oči, i tačkice pomoći
+    cards.push({
+        key: "gaze",
+        label: "Pogled",
+        text: "pravo, glava i oči levo-gore, samo oči desno-dole, tačkice",
+        picture: (
+            <SceneArt
+                spec={scene("plain", [
+                    who("amina", 40, { face: "calm" }),
+                    who("haris", 100, { gaze: { x: 60, y: 40 } }),
+                    who("selma", 160, { gaze: { x: 230, y: 150, head: 0 } }),
+                    who("emir", 215, { gaze: { x: 180, y: 20, line: true, ring: 10 } }),
+                ])}
+            />
+        ),
+    });
     cards.push({
         key: "faces",
         label: "Lica",
@@ -186,8 +205,39 @@ function usesPart(): Part {
     return { title: "Čemu služi?", note: "Slika pokazuje situaciju iz pitanja, ne odgovor; nema ni drugih predmeta iz iste grupe.", cards };
 }
 
+/** Stalan niz „slučajnih” brojeva, da galerija uvek pokazuje iste zadatke */
+function seeded(seed: number) {
+    let x = seed;
+    return () => {
+        x = (x * 1103515245 + 12345) % 2 ** 31;
+        return x / 2 ** 31;
+    };
+}
+
+function gazePart(): Part {
+    const cards: Card[] = [];
+    for (let level = 1; level <= 15; level += 1) {
+        const rounds = buildGazeLevel(level, { maxChoices: 4, maxRounds: 8, random: seeded(level * 7) }).slice(0, level === 15 ? 3 : 1);
+        rounds.forEach((round, i) => {
+            const spec = gazeScene(round, false);
+            const hinted = gazeScene(round, true);
+            cards.push({
+                key: `gaze-${level}-${i}`,
+                label: `Nivo ${level} · ${round.kind} · ${round.cue} · ${round.objects.length} predm.`,
+                text: gazeQuestion(round),
+                sub: `Odgovor: ${gazeAnswer(round)} Desno: pomoć (tačkice).`,
+                picture: spec ? <SceneArt spec={spec} /> : <Missing text="?" />,
+                extra: hinted ? <SceneArt spec={hinted} /> : undefined,
+            });
+        });
+    }
+    return { title: "Šta gleda?", note: "Po jedan zadatak sa svakog nivoa (sa 15. po jedan od svake vrste). Levo kako ga dete vidi, desno sa pomoći.", cards };
+}
+
 export function galleryPart(id: GalleryPartId): Part {
     switch (id) {
+        case "gaze":
+            return gazePart();
         case "uses":
             return usesPart();
         case "stories":
