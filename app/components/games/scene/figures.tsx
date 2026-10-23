@@ -432,10 +432,10 @@ function ChildFigure({ look, small, pose, face, back, wear, held }: BodyProps & 
     if (pose === "lie") {
         return (
             <g>
-                <g transform="translate(0 -12) rotate(-8)">
+                <g transform="translate(0 -10) rotate(-8) scale(0.74)">
                     <Head look={look} face={face} back={back} glasses={has("glasses")} />
                 </g>
-                <path d="M12 -20 Q40 -26 66 -20 L68 2 L12 2 Z" fill="#8ab8f0" stroke="#5f8fcf" strokeWidth={1.5} />
+                <path d="M14 -18 Q42 -24 70 -18 L70 6 L14 6 Z" fill="#8ab8f0" stroke="#5f8fcf" strokeWidth={1.5} />
                 <path d="M12 -20 Q40 -26 66 -20" fill="none" stroke="#ffffff" strokeWidth={3} opacity={0.7} />
             </g>
         );
@@ -536,10 +536,11 @@ function AdultFigure({ look, pose, face, back, wear, held }: BodyProps & { look:
     if (pose === "lie") {
         return (
             <g>
-                <g transform="translate(0 -12) rotate(-8)">
+                {/* Glava na jastuku (ne preko uzglavlja), ćebe do kraja kreveta (inBed: dušek je od -13 do 71) */}
+                <g transform="translate(0 -10) rotate(-8) scale(0.74)">
                     <Head look={look} face={face} back={back} glasses={look.glasses} beard={look.beard && !has("shaved")} />
                 </g>
-                <path d="M12 -22 Q50 -28 86 -22 L88 2 L12 2 Z" fill="#8ab8f0" stroke="#5f8fcf" strokeWidth={1.5} />
+                <path d="M14 -18 Q42 -24 70 -18 L70 6 L14 6 Z" fill="#8ab8f0" stroke="#5f8fcf" strokeWidth={1.5} />
             </g>
         );
     }
