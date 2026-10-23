@@ -38,6 +38,9 @@ import {
     type EmotionScenario,
 } from "./data/emotionScenarios";
 import { EmotionFace } from "./EmotionFace";
+import { emotionScene } from "./data/emotionScenes";
+import { emotionHero } from "./scene/heroes";
+import { SceneArt } from "./scene/SceneArt";
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
 // Sve što utiče na prikaz je u jednom JSON objektu koji se šalje live monitoru.
@@ -246,6 +249,8 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
     const prompt = scenario ? `${scenario.text} ${question}` : "";
     const lines = scenario && shown.picked ? explanation(scenario, shown.picked, shown.round >= shown.totalRounds) : [];
     const lastTried = shown.picked === null && shown.tried.length > 0 ? shown.tried[shown.tried.length - 1] : null;
+    // Slika situacije (emodži ostaje samo kao rezerva ako slika ne postoji)
+    const picture = scenario ? emotionScene(scenario.id) : undefined;
 
     const commit = useCallback(
         (next: EmotionsView, log?: string) => {
@@ -375,7 +380,15 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                     <GamePrompt
                         key={scenario.id}
                         className="animate-fade-up"
+                        compact={shown.options.length >= 4}
                         visual={<span aria-hidden="true">{scenario.scene}</span>}
+                        illustration={
+                            picture && (
+                                // Na lakim nivoima lik pokazuje tačno osećanje; na težim je okrenut leđima,
+                                // a lice se vidi tek uz pomoć ili posle tačnog odgovora
+                                <SceneArt spec={picture} hero={emotionHero(scenario, shown.hint || shown.picked !== null)} className="h-auto w-full" />
+                            )
+                        }
                         title={scenario.text}
                         subtitle={<span className="text-ink">{question}</span>}
                     />

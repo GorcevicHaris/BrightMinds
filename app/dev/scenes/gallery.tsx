@@ -1,6 +1,9 @@
 // Kartice za pregled slika (/dev/scenes): po jedna kartica za svaki zadatak, i deo „kit” sa
 // svim pozadinama, likovima i predmetima.
 import type { ReactNode } from "react";
+import { allScenarios, EMOTIONS } from "@/app/components/games/data/emotionScenarios";
+import { emotionScene } from "@/app/components/games/data/emotionScenes";
+import { emotionHero } from "@/app/components/games/scene/heroes";
 import { SceneArt } from "@/app/components/games/scene/SceneArt";
 import {
     ADULT_IDS,
@@ -94,8 +97,30 @@ function kitPart(): Part {
     return { title: "Delovi slika", note: "Sve pozadine, likovi, izrazi, položaji i predmeti iz kompleta.", cards };
 }
 
+function Missing({ text }: { text: string }) {
+    return <div className="grid aspect-[3/2] place-items-center rounded-xl bg-rose-50 text-4xl">{text}</div>;
+}
+
+function emotionsPart(): Part {
+    const cards = allScenarios().map((scenario): Card => {
+        const spec = emotionScene(scenario.id);
+        const hidden = emotionHero(scenario, false);
+        return {
+            key: `emotion-${scenario.id}`,
+            label: `${scenario.id} · nivo ${scenario.tier === 1 ? "1–5" : scenario.tier === 2 ? "6–10" : "11–15"} · ${scenario.common.map((e) => EMOTIONS[e].label).join(", ")}`,
+            text: scenario.text,
+            sub: hidden.back ? "Levo: kako dete vidi sliku. Desno: lice uz pomoć ili posle tačnog odgovora." : "Lice pokazuje tačno osećanje.",
+            picture: spec ? <SceneArt spec={spec} hero={hidden} /> : <Missing text={scenario.scene} />,
+            extra: spec && hidden.back ? <SceneArt spec={spec} hero={emotionHero(scenario, true)} /> : undefined,
+        };
+    });
+    return { title: "Emocije", note: "Na lakim nivoima lik pokazuje tačno osećanje; na srednjim i teškim je okrenut leđima dok dete ne dobije pomoć.", cards };
+}
+
 export function galleryPart(id: GalleryPartId): Part {
     switch (id) {
+        case "emotions":
+            return emotionsPart();
         default:
             return kitPart();
     }
