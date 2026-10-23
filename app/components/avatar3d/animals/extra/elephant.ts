@@ -174,7 +174,8 @@ export const ELEPHANT: AnimalSpec = {
         trunk.frustumCulled = false;
         const root = b.rig.root.parent ?? b.headGroup;
         root.add(trunk);
-        trunk.bind(b.rig.skeleton);
+        // Jedinična matrica: kosti se ne preračunavaju iz trenutne poze
+        trunk.bind(b.rig.skeleton, new THREE.Matrix4());
         b.part("head", trunk);
         // Nozdrve na vrhu surle
         const tip = path(1, new THREE.Vector3());

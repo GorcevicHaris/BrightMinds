@@ -14,6 +14,26 @@ export function scaleOf(b: AnimalBuild): number {
     return b.spec.ref ? b.shape.head.w / b.spec.ref : 1;
 }
 
+/** Poluprečnik obima glave na visini y (prostor tela) — gde kapa naleže */
+export function brimRadiusAt(b: AnimalBuild, y: number): number {
+    const headBoneY = b.shape.headBoneY;
+    const head = b.head;
+    let sum = 0;
+    for (let i = 0; i < 32; i++) {
+        const u = i / 32;
+        let lo = 0;
+        let hi = 0.6;
+        for (let k = 0; k < 24; k++) {
+            const mid = (lo + hi) / 2;
+            if (head.point(u, mid).y + headBoneY > y) lo = mid;
+            else hi = mid;
+        }
+        const p = head.point(u, (lo + hi) / 2);
+        sum += Math.hypot(p.x - head.center.x, p.z - head.center.z);
+    }
+    return sum / 32;
+}
+
 /** Okvir (shape.ts, paint.ts) za sada tipizuje vrstu kao AnimalKind; dodatne vrste prolaze kroz ovo */
 export function asKind(kind: ExtraAnimalKind): AnimalKind {
     return kind as unknown as AnimalKind;
