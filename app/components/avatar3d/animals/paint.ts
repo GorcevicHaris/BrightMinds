@@ -391,8 +391,8 @@ export function coatColor(ctx: PaintContext, pp: PaintPoint, out: THREE.Color): 
             if (pp.region === "head" || pp.region === "lid") {
                 headLocal(ctx, p, q);
                 // Belo lice: srce oko očiju i donji deo
-                const lobes = ctx.eyes.reduce((m, e) => Math.max(m, 1 - smoothstep(ctx.eyeR * 1.7, ctx.eyeR * 2.2, Math.hypot(p.x - e.x, (p.y - e.y) * 0.9, (p.z - e.z) * 0.6))), 0);
-                const lower = (1 - smoothstep(-0.05, 0.12, q.y + Math.abs(q.x) * 0.15)) * smoothstep(-0.05, 0.35, q.z);
+                const lobes = ctx.eyes.reduce((m, e) => Math.max(m, 1 - smoothstep(ctx.eyeR * 1.45, ctx.eyeR * 1.8, Math.hypot(p.x - e.x, (p.y - e.y) * 0.85, (p.z - e.z) * 0.5))), 0);
+                const lower = (1 - smoothstep(-0.3, -0.16, q.y + Math.abs(q.x) * 0.35)) * smoothstep(0.1, 0.45, q.z);
                 out.copy(fur).lerp(light, Math.max(lobes * smoothstep(0, 0.4, q.z), lower));
                 if (coat.pattern === "emperor") {
                     const patch = Math.exp(-(((Math.abs(q.x) - 0.85) / 0.2) ** 2 + ((q.y + 0.2) / 0.35) ** 2));

@@ -728,7 +728,7 @@ function computeAnchors(
             capeTop: new THREE.Vector3(0, shape.neckBaseY, -shape.torsoBack(shape.neckBaseY)),
         },
         tail,
-        petSpot: new THREE.Vector3(-(shape.torsoW(shape.waistY) + 0.3), 0, 0.12),
+        petSpot: new THREE.Vector3(-(shape.torsoW(shape.waistY) + 0.24), 0, 0.14),
         petScale,
     };
 }

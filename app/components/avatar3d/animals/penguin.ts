@@ -65,10 +65,10 @@ export const PENGUIN: AnimalSpec = {
         beak.name = "kljun";
         beak.position.copy(base);
         beak.lookAt(base.clone().add(n.clone().add(new THREE.Vector3(0, -0.25, 0)).normalize()));
-        const len = 0.068 * b.k;
-        const upper = new THREE.Mesh(beakHalf(len, 0.03 * b.k, 0.02 * b.k, true, b.quality), mat);
+        const len = 0.085 * b.k;
+        const upper = new THREE.Mesh(beakHalf(len, 0.036 * b.k, 0.024 * b.k, true, b.quality), mat);
         const jaw = new THREE.Group();
-        const lower = new THREE.Mesh(beakHalf(len * 0.86, 0.027 * b.k, 0.014 * b.k, false, b.quality), mat);
+        const lower = new THREE.Mesh(beakHalf(len * 0.86, 0.032 * b.k, 0.017 * b.k, false, b.quality), mat);
         lower.position.y = -0.002;
         jaw.add(lower);
         // Tamna unutrašnjost kljuna (vidi se kad je otvoren)

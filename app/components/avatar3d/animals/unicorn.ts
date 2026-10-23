@@ -78,7 +78,7 @@ export const UNICORN: AnimalSpec = {
         for (let i = 0; i < 3; i++) {
             const u = 0.5 + 0.018 * (i - 1) - 0.02;
             const v = 0.2 + i * 0.012;
-            forelock.push({ base: head.offsetPoint(u, v, -0.006), dir: new THREE.Vector3(-0.55, -0.55, 0.62).normalize(), len: (0.085 - i * 0.008) * b.k, r: 0.021 * b.k, flat: 0.55, taper: 0.45, color: colors[i % colors.length], curl: new THREE.Vector3(0.3, -0.3, 0.1) });
+            forelock.push({ base: head.offsetPoint(u, v, -0.006), dir: new THREE.Vector3(-0.55, -0.55, 0.62).normalize(), len: (0.1 - i * 0.01) * b.k, r: 0.028 * b.k, flat: 0.5, taper: 0.5, color: colors[i % colors.length], curl: new THREE.Vector3(0.3, -0.3, 0.1) });
         }
         // Niz sredinu temena i potiljka, naizmenično u levu i desnu stranu
         const steps = b.quality === "high" ? 16 : 10;
@@ -88,10 +88,11 @@ export const UNICORN: AnimalSpec = {
             const front = t < 0.25;
             const u = front ? 0.5 : 0.0;
             const v = front ? 0.16 * (1 - t / 0.25) : 0.02 + ((t - 0.25) / 0.75) * 0.55;
-            const side = i % 2 === 0 ? 1 : -1;
+            // Griva pada uglavnom na jednu stranu (kao kod ponija), poneki pramen na drugu
+            const side = i % 4 === 3 ? 1 : -1;
             const nn = head.normal(u, Math.max(0.01, v));
-            const dir = nn.clone().multiplyScalar(0.5).add(new THREE.Vector3(side * 0.7, -0.6, -0.35)).normalize();
-            const clump: Clump = { base: head.offsetPoint(u, Math.max(0.01, v), -0.006), dir, len: (0.1 + 0.06 * Math.sin(Math.PI * t)) * b.k, r: 0.026 * b.k, flat: 0.55, taper: 0.4, color: colors[i % colors.length], curl: new THREE.Vector3(-side * 0.4, -0.5, 0) };
+            const dir = nn.clone().multiplyScalar(0.55).add(new THREE.Vector3(side * 0.75, -0.7, -0.3)).normalize();
+            const clump: Clump = { base: head.offsetPoint(u, Math.max(0.01, v), -0.006), dir, len: (0.13 + 0.07 * Math.sin(Math.PI * t)) * b.k, r: 0.034 * b.k, flat: 0.45, taper: 0.5, color: colors[i % colors.length], curl: new THREE.Vector3(-side * 0.4, -0.5, 0) };
             (t < 0.5 ? crown : back).push(clump);
         }
         const mat = furMaterial({ sheen: colors[0], shimmer: b.coat.shimmer });
