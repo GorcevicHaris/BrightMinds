@@ -25,6 +25,9 @@ export interface ShapeParams {
     limb?: number;
     /** Kruška: širi kukovi, uža ramena (pingvin) */
     pear?: number;
+    /** Duži vrat (m, žirafa) i poluprečnik vrata */
+    neck?: number;
+    neckR?: number;
 }
 
 /** Ugao ruke od tela tako da lakat i zglob ne ulaze u stomak */
@@ -38,14 +41,14 @@ function armAngleFor(torsoW: (y: number) => number, shoulderX: number, shoulderY
 }
 
 export function animalShape(p: ShapeParams): BodyShape {
-    const leg = p.leg ?? 0.3;
-    const T = p.torso ?? 0.32;
+    const leg = p.leg ?? 0.22;
+    const T = p.torso ?? 0.3;
     const g = p.girth ?? 1;
     const belly = p.belly ?? 1;
     const pear = p.pear ?? 0;
     const limb = p.limb ?? 1;
     const head = p.head ?? { w: 0.44, h: 0.4, d: 0.4 };
-    const foot = p.foot ?? { len: 0.135, w: 0.082, h: 0.062, back: 0.036 };
+    const foot = p.foot ?? { len: 0.15, w: 0.096, h: 0.066, back: 0.04 };
     const ankleY = 0.06;
     const thigh = leg * 0.5;
     const shin = leg - thigh;
@@ -55,53 +58,58 @@ export function animalShape(p: ShapeParams): BodyShape {
     const waistY = y(0.36);
     const chestY = y(0.62);
     const shoulderY = y(0.82);
-    const neckBaseY = y(0.93);
+    const neck = p.neck ?? 0;
+    const neckBaseY = y(0.93) + neck;
     const headBoneY = neckBaseY + 0.03;
-    const neckR = 0.056 * Math.max(1, g * 0.92);
+    const neckR = p.neckR ?? 0.062 * Math.max(1, g * 0.92);
+    // Vrat iznad ramena: od ≈ 1,25 × poluprečnika kod ramena do poluprečnika kod glave
+    const neckPts = (r: number): [number, number][] => neck > 0
+        ? [[y(0.97) + neck * 0.35, r * 1.18], [neckBaseY + 0.02, r], [neckBaseY + 0.25, r]]
+        : [[y(1.2), r]];
     const lower = 1 + pear * 0.22;
     const upperK = 1 - pear * 0.12;
     const torsoW = profile([
-        [y(-0.06), 0.07 * g * lower],
-        [y(0.03), 0.112 * g * lower],
-        [y(0.15), 0.128 * g * lower],
-        [y(0.35), 0.132 * g * (1 + pear * 0.14)],
-        [y(0.55), 0.124 * g * upperK],
-        [y(0.72), 0.115 * g * upperK],
-        [y(0.82), 0.108 * g * upperK],
-        [y(0.88), 0.09 * Math.max(1, g * upperK * 0.96)],
+        [y(-0.06), 0.08 * g * lower],
+        [y(0.03), 0.125 * g * lower],
+        [y(0.15), 0.143 * g * lower],
+        [y(0.35), 0.147 * g * (1 + pear * 0.14)],
+        [y(0.55), 0.138 * g * upperK],
+        [y(0.72), 0.126 * g * upperK],
+        [y(0.82), 0.116 * g * upperK],
+        [y(0.88), 0.098 * Math.max(1, g * upperK * 0.96)],
         [y(0.95), neckR + 0.006],
-        [y(1.2), neckR],
+        ...neckPts(neckR),
     ]);
     const torsoFront = profile([
-        [y(-0.06), 0.05 * g],
-        [y(0.05), 0.085 * g],
-        [y(0.25), 0.104 * g * belly],
-        [y(0.45), 0.104 * g * belly],
-        [y(0.62), 0.09 * g],
-        [y(0.8), 0.072 * g],
-        [y(0.9), 0.06],
+        [y(-0.06), 0.056 * g],
+        [y(0.05), 0.095 * g],
+        [y(0.25), 0.118 * g * belly],
+        [y(0.45), 0.118 * g * belly],
+        [y(0.62), 0.1 * g],
+        [y(0.8), 0.08 * g],
+        [y(0.9), 0.066],
         [y(0.97), neckR],
-        [y(1.2), neckR - 0.002],
+        ...neckPts(neckR - 0.002),
     ]);
     const torsoBack = profile([
-        [y(-0.06), 0.055 * g],
-        [y(0.06), 0.092 * g * lower],
-        [y(0.25), 0.084 * g],
-        [y(0.5), 0.074 * g],
-        [y(0.7), 0.074 * g],
-        [y(0.82), 0.07 * g],
-        [y(0.9), 0.06],
+        [y(-0.06), 0.06 * g],
+        [y(0.06), 0.1 * g * lower],
+        [y(0.25), 0.094 * g],
+        [y(0.5), 0.083 * g],
+        [y(0.7), 0.082 * g],
+        [y(0.82), 0.078 * g],
+        [y(0.9), 0.066],
         [y(0.97), neckR],
-        [y(1.2), neckR - 0.002],
+        ...neckPts(neckR - 0.002),
     ]);
-    const armLen = p.arm ?? 0.235;
+    const armLen = p.arm ?? 0.2;
     const upperArm = armLen * 0.52;
     const forearm = armLen - upperArm;
-    const armR = profile([[0, 0.043 * limb], [0.2, 0.041 * limb], [0.5, 0.037 * limb], [0.8, 0.035 * limb], [1, 0.032 * limb]]);
-    const shoulderX = torsoW(shoulderY) * 0.98 + 0.004;
+    const armR = profile([[0, 0.05 * limb], [0.2, 0.048 * limb], [0.5, 0.044 * limb], [0.8, 0.042 * limb], [1, 0.039 * limb]]);
+    const shoulderX = torsoW(shoulderY) - armR(0) * 0.5;
     const armAngle = armAngleFor(torsoW, shoulderX, shoulderY - 0.012, upperArm, armR(0.5));
-    const hipX = 0.066 * g * lower;
-    const legR = profile([[0, 0.064 * limb * g], [0.3, 0.057 * limb], [0.55, 0.05 * limb], [0.8, 0.046 * limb], [1, 0.042 * limb]]);
+    const hipX = 0.072 * g * lower;
+    const legR = profile([[0, 0.074 * limb * g], [0.3, 0.068 * limb], [0.55, 0.062 * limb], [0.8, 0.058 * limb], [1, 0.054 * limb]]);
     const up = head.h / 2 - 0.028;
     return {
         kind: p.kind,

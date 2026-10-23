@@ -21,7 +21,9 @@ export class FigurePreview implements Animated {
 
     constructor(readonly body: FigureBody) {
         this.root = body.root;
-        this.height = body.anchors.height;
+        // Kadar obuhvata i uši i rog (visina u sidrima ih ne računa)
+        const a = body.anchors;
+        this.height = Math.max(a.height, a.ears.tipL.y + 0.02, a.horn ? a.horn.tip.y + 0.02 : 0);
     }
 
     setExpression(e: FaceExpression) {
