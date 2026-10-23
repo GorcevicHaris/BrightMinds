@@ -31,9 +31,10 @@
 //  engine/garments.ts i engine/accessories.ts su odeća iz prototipa: #3 ih prenosi u items/
 //  (kopira, prilagodi), a #1 ih briše iz motora posle spajanja.
 //
-// ── Budžet (srednji Android tablet) ────────────────────────────────────────────────────
-//  predmet ≤ 8k trouglova, ljubimac ≤ 15k, pozadina ≤ 40k (+ ≤ 6 svetlećih objekata),
-//  teksture ≤ 512 px (printTexture sa ključem, keš), bez senki koje se računaju po kadru.
+// ── Budžet (srednji Android tablet; kvalitet „kao Bitmoji” — bez vidljivih ivica) ────────
+//  gornji/donji deo ≤ 16k trouglova, kostim/haljina/kaput ≤ 24k, obuća (par), kapa, naočare,
+//  oko vrata ≤ 10k, u ruci/na leđima ≤ 12k, ljubimac ≤ 15k, pozadina ≤ 60k; ceo obučen lik
+//  ≤ ~150k. Uz quality "low" (sličice) upola manje podela. Teksture ≤ 512 px (keš).
 //  Motor sam oslobađa geometrije (traverse → dispose) kad se predmet skine; materijali i
 //  teksture iz fabrika su u kešu i dele se — ne oslobađaj ih u predmetu.
 
@@ -57,7 +58,7 @@ export const BONES = [
 export type BoneName = (typeof BONES)[number];
 
 /** Dodatne kosti koje životinja SME da ima (posle 18 obaveznih, istim redom); predmeti ih ne koriste */
-export const EXTRA_BONES = ["tail1", "tail2", "tail3", "earL", "earR"] as const;
+export const EXTRA_BONES = ["tail1", "tail2", "tail3", "earL", "earR", "trunk1", "trunk2", "wingL", "wingR"] as const;
 export type ExtraBoneName = (typeof EXTRA_BONES)[number];
 
 /**
@@ -120,6 +121,8 @@ export interface Rig {
     /** Leva (+x) i desna (−x) strana */
     left: Joints;
     right: Joints;
+    /** Položaj svake kosti u mirovanju (prostor tela); kosti u mirovanju nemaju rotaciju */
+    rest: Record<string, THREE.Vector3>;
 }
 
 // ── Sidra za predmete ─────────────────────────────────────────────────────────────────
@@ -242,11 +245,13 @@ export interface ItemContext {
     hijab: string | null;
     /** Koliko kosa (ili hidžab) diže kapu iznad temena, u metrima */
     hairCrown: number;
+    /** "low" u sličicama i na slabijem uređaju: sme upola manje podela (Kit … res = 0,5) */
+    quality: "high" | "low";
     /** Krojenje odeće po ovom telu (skinned delovi se sami dodaju u lik i prate) */
     kit: Kit;
     /** Rigidan deo koji prati kost (kapa → head, sat → handL…); motor ga prati i skida */
     attach: (bone: BoneName, object: THREE.Object3D) => THREE.Object3D;
-    /** Tačka iz prostora tela (mirovanje) u lokalne koordinate kosti */
+    /** Tačka iz prostora tela (mirovanje) u lokalne koordinate kosti — ne zavisi od trenutne poze */
     toBone: (bone: BoneName, p: THREE.Vector3) => THREE.Vector3;
 }
 

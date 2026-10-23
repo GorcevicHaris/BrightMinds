@@ -23,6 +23,8 @@ interface CapSpec {
     /** Talas na liniji kose (šiške, zalisci) */
     wave?: (th: number) => number;
     soft?: number;
+    /** Pramenovi (oblikovani žlebovi od temena ka liniji kose): 0 = glatko (ošišano) */
+    clumps?: number;
 }
 
 /** Mesto gde kapa kose nosi kapu/šešir: kosa je tanja na temenu */
@@ -38,6 +40,13 @@ function capSurface(head: HeadInfo, spec: CapSpec, underHat: boolean): { fn: Sur
         const hl = line(a) + (spec.wave ? spec.wave(th) : 0);
         const cover = 1 - smoothstep(hl - soft, hl + soft, v);
         let t = spec.thickness(th, v);
+        // Oblikovani pramenovi: blagi žlebovi koji teku od temena, pa kosa nije „kaciga”
+        const k = spec.clumps ?? 1;
+        if (k > 0) {
+            const flow = th * 11 + Math.sin(th * 3) * 0.8 + v * 2.2;
+            t += k * 0.0042 * (Math.pow(Math.abs(Math.sin(flow)), 0.55) - 0.55) * smoothstep(0.06, 0.28, v);
+            t += k * 0.0025 * Math.sin(th * 5 + 1.3) * smoothstep(0.1, 0.4, v);
+        }
         if (underHat && v < 0.42) t = Math.min(t, UNDER_HAT_TOP + (v / 0.42) * 0.004);
         // Debljina se tanji ka liniji kose, pa se kosa „utapa” u kožu (−5 mm = ispod kože)
         const edge = smoothstep(hl + soft, hl - soft * 3, v);
@@ -269,7 +278,7 @@ export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: strin
             break;
         }
         case "buzz": {
-            const spec: CapSpec = { hairline: LINE_SHORT, thickness: () => 0.0035, soft: 0.01 };
+            const spec: CapSpec = { hairline: LINE_SHORT, thickness: () => 0.0035, soft: 0.01, clumps: 0 };
             const buzz = hairMaterial(hex).clone();
             buzz.anisotropy = 0;
             buzz.roughness = 0.85;

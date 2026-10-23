@@ -23,6 +23,8 @@ export interface GarmentContext extends KitContext {
     skin: string;
 }
 
+const IDENTITY = new THREE.Matrix4();
+
 export type Side = 1 | -1;
 export const SIDES: readonly Side[] = [1, -1];
 
@@ -38,7 +40,9 @@ export class Kit<C extends KitContext = KitContext> {
     skinned(geometry: THREE.BufferGeometry, material: THREE.Material, name = "odeca"): THREE.SkinnedMesh {
         const mesh = new THREE.SkinnedMesh(geometry, material);
         mesh.name = name;
-        mesh.bind(this.ctx.rig.skeleton);
+        // Jedinična matrica vezivanja: bez nje bi three.js preračunao kosti iz TRENUTNE poze
+        // (lik se okreće i diše dok se predmet pravi), pa bi se odeća pomerila
+        mesh.bind(this.ctx.rig.skeleton, IDENTITY);
         mesh.frustumCulled = false;
         this.ctx.root.add(mesh);
         this.objects.push(mesh);
@@ -51,20 +55,19 @@ export class Kit<C extends KitContext = KitContext> {
         return object;
     }
 
-    /** Svetski položaj kosti u mirovanju → lokalne koordinate te kosti */
+    /** Tačka u koordinatama mirovanja → lokalne koordinate kosti (ne zavisi od trenutne poze) */
     toBone(bone: BoneName, p: THREE.Vector3): THREE.Vector3 {
-        const b = this.ctx.rig.bone(bone);
-        return b.worldToLocal(p.clone());
+        return p.clone().sub(this.ctx.rig.rest[bone]);
     }
 
     private torsoW = (_u: number, _v: number, p: THREE.Vector3) => torsoWeights(this.shape, p);
 
     /** Ljuska trupa od y0 do y1 (granice mogu zavisiti od ugla: izrez, porub) */
-    torso(y0: number | ((a: number) => number), y1: number | ((a: number) => number), offset: number, material: THREE.Material, extra?: TorsoExtra, nv = 56): THREE.SkinnedMesh {
+    torso(y0: number | ((a: number) => number), y1: number | ((a: number) => number), offset: number, material: THREE.Material, extra?: TorsoExtra, nv = 56, res = 1): THREE.SkinnedMesh {
         const fn = torsoSurface(this.shape, y0, y1, offset, extra);
         const geometry = buildSurface(fn, {
-            nu: 64,
-            nv,
+            nu: Math.max(4, Math.round(64 * res)),
+            nv: Math.max(4, Math.round(nv * res)),
             closedU: true,
             inside: (u, v, out) => {
                 fn(u, v, out);
@@ -81,7 +84,7 @@ export class Kit<C extends KitContext = KitContext> {
     }
 
     /** Porub/okovratnik po ivici trupa na visini y(a); r1 = debljina napolje, r2 = visina */
-    torsoRing(y: number | ((a: number) => number), offset: number, r1: number, r2: number, material: THREE.Material, extra?: TorsoExtra): THREE.SkinnedMesh {
+    torsoRing(y: number | ((a: number) => number), offset: number, r1: number, r2: number, material: THREE.Material, extra?: TorsoExtra, res = 1): THREE.SkinnedMesh {
         const shape = this.shape;
         const p = new THREE.Vector3();
         const loop = (q: number, out: THREE.Vector3) => {
@@ -89,7 +92,7 @@ export class Kit<C extends KitContext = KitContext> {
             const yy = typeof y === "number" ? y : y(a);
             return out.copy(torsoPoint(shape, a, yy, offset + r1 * 0.4, p, extra));
         };
-        return this.skinned(ringTube(loop, () => [r1, r2], 72, 10, this.torsoW), material, "porub");
+        return this.skinned(ringTube(loop, () => [r1, r2], Math.max(4, Math.round(72 * res)), Math.max(4, Math.round(10 * res)), this.torsoW), material, "porub");
     }
 
     /** Zakrpa na trupu (džep, natpis, lajsna): a ∈ [a0, a1], y ∈ [y0, y1]; ivice se meko spuštaju */
@@ -118,13 +121,13 @@ export class Kit<C extends KitContext = KitContext> {
     }
 
     /** Rukav od t0 do t1 (0 = rame, 1 = zglob šake) */
-    sleeve(side: Side, t0: number, t1: number, offset: number, material: THREE.Material, extra?: LimbExtra): THREE.SkinnedMesh {
+    sleeve(side: Side, t0: number, t1: number, offset: number, material: THREE.Material, extra?: LimbExtra, res = 1): THREE.SkinnedMesh {
         const rig = this.ctx.rig;
         const arm = armPath(rig, side, offset, extra);
         const fn = limbSurface(arm, t0, t1);
         const geometry = buildSurface(fn, {
-            nu: 32,
-            nv: Math.max(8, Math.round(40 * (t1 - Math.max(0, t0) + 0.15))),
+            nu: Math.max(4, Math.round(32 * res)),
+            nv: Math.max(6, Math.round(40 * (t1 - Math.max(0, t0) + 0.15) * res)),
             closedU: true,
             inside: (_u, v, out) => arm.spec.path(t0 <= 0 ? v * arm.sAt(t1) : arm.sAt(t0 + (t1 - t0) * v), out),
             weights: (_u, _v, p) => armWeights(rig, side, p),
@@ -134,23 +137,23 @@ export class Kit<C extends KitContext = KitContext> {
     }
 
     /** Prsten oko ruke na udelu t (rub rukava, manžetna) */
-    armRing(side: Side, t: number, offset: number, r1: number, r2: number, material: THREE.Material, extra?: LimbExtra): THREE.SkinnedMesh {
+    armRing(side: Side, t: number, offset: number, r1: number, r2: number, material: THREE.Material, extra?: LimbExtra, res = 1): THREE.SkinnedMesh {
         const rig = this.ctx.rig;
         const arm = armPath(rig, side, offset + r1 * 0.4, extra);
         const fn = sweepFn(arm.spec);
         const s = arm.sAt(t);
-        return this.skinned(ringTube((q, out) => fn(q, s, out), () => [r1, r2], 40, 8, (_u, _v, p) => armWeights(rig, side, p)), material, "manzetna");
+        return this.skinned(ringTube((q, out) => fn(q, s, out), () => [r1, r2], Math.max(4, Math.round(40 * res)), Math.max(4, Math.round(8 * res)), (_u, _v, p) => armWeights(rig, side, p)), material, "manzetna");
     }
 
     /** Nogavica od t0 do t1 (0 = kuk, 1 = članak) */
-    leg(side: Side, t0: number, t1: number, offset: number, material: THREE.Material, extra?: LimbExtra, uRange?: [number, number]): THREE.SkinnedMesh {
+    leg(side: Side, t0: number, t1: number, offset: number, material: THREE.Material, extra?: LimbExtra, uRange?: [number, number], res = 1): THREE.SkinnedMesh {
         const rig = this.ctx.rig;
         const leg = legPath(rig, side, offset, extra);
         const base = limbSurface(leg, t0, t1);
         const fn: SurfaceFn = uRange ? (u, v, out) => base(uRange[0] + (uRange[1] - uRange[0]) * u, v, out) : base;
         const geometry = buildSurface(fn, {
-            nu: uRange ? 4 : 40,
-            nv: Math.max(8, Math.round(56 * (t1 - Math.max(0, t0) + 0.1))),
+            nu: uRange ? 4 : Math.max(4, Math.round(40 * res)),
+            nv: Math.max(6, Math.round(56 * (t1 - Math.max(0, t0) + 0.1) * res)),
             closedU: !uRange,
             inside: (_u, v, out) => leg.spec.path(t0 <= 0 ? v * leg.sAt(t1) : leg.sAt(t0 + (t1 - t0) * v), out),
             weights: (_u, _v, p) => legWeights(rig, side, p),
@@ -159,19 +162,19 @@ export class Kit<C extends KitContext = KitContext> {
         return this.skinned(geometry, material, "nogavica");
     }
 
-    legRing(side: Side, t: number, offset: number, r1: number, r2: number, material: THREE.Material, extra?: LimbExtra): THREE.SkinnedMesh {
+    legRing(side: Side, t: number, offset: number, r1: number, r2: number, material: THREE.Material, extra?: LimbExtra, res = 1): THREE.SkinnedMesh {
         const rig = this.ctx.rig;
         const leg = legPath(rig, side, offset + r1 * 0.4, extra);
         const fn = sweepFn(leg.spec);
         const s = leg.sAt(t);
-        return this.skinned(ringTube((q, out) => fn(q, s, out), () => [r1, r2], 44, 8, (_u, _v, p) => legWeights(rig, side, p)), material, "porub-nogavice");
+        return this.skinned(ringTube((q, out) => fn(q, s, out), () => [r1, r2], Math.max(4, Math.round(44 * res)), Math.max(4, Math.round(8 * res)), (_u, _v, p) => legWeights(rig, side, p)), material, "porub-nogavice");
     }
 
     /**
      * Suknja (zvono) od struka do poruba: gore prati trup, dole je elipsa (rx, rz);
      * `folds` dodaje nabore (plise, talasi). Nikad ne ulazi u kukove ni u noge.
      */
-    skirt(yTop: number, yBot: number | ((a: number) => number), offset: number, hem: { rx: number; rz: number }, material: THREE.Material, folds?: (a: number, v: number) => number, nv = 40, flare = 1.6): { mesh: THREE.SkinnedMesh; edge: (q: number, out: THREE.Vector3) => THREE.Vector3; fn: SurfaceFn } {
+    skirt(yTop: number, yBot: number | ((a: number) => number), offset: number, hem: { rx: number; rz: number }, material: THREE.Material, folds?: (a: number, v: number) => number, nv = 40, flare = 1.6, res = 1): { mesh: THREE.SkinnedMesh; edge: (q: number, out: THREE.Vector3) => THREE.Vector3; fn: SurfaceFn } {
         const shape = this.shape;
         const top = new THREE.Vector3();
         const env = new THREE.Vector3();
@@ -199,8 +202,8 @@ export class Kit<C extends KitContext = KitContext> {
             return out.set(x, y, z);
         };
         const geometry = buildSurface(fn, {
-            nu: 96,
-            nv,
+            nu: Math.max(4, Math.round(96 * res)),
+            nv: Math.max(4, Math.round(nv * res)),
             closedU: true,
             inside: (_u, v, out) => out.set(0, yTop + ((typeof yBot === "number" ? yBot : yBot(0)) - yTop) * v, 0),
             weights: this.torsoW,

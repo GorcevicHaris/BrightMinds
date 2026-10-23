@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WEAR_ITEMS, WEAR_SETS } from "@/app/components/avatar/wearables";
 import { ANIMAL_SKINS as SKINS_2D } from "@/app/components/avatar/skins";
-import { ANIMAL_KINDS, HUMAN_KINDS, SLOTS, SLOT_LABELS } from "@/app/components/avatar3d/data";
+import { ANIMAL_KINDS, EXTRA_ANIMAL_KINDS, HUMAN_KINDS, SLOTS, SLOT_LABELS } from "@/app/components/avatar3d/data";
 import { ANIMAL_SKINS } from "@/app/components/avatar3d/animals/skins.data";
 import { COMPANION_CATALOG, ITEMS, SETS, getItem, getSet, skinPrice } from "@/app/components/avatar3d/manifest";
 import { HAIRSTYLES, HUMAN_DEFAULT, NO_HIJAB, humanLook, humanLookId, parseHumanLook } from "@/app/components/avatar3d/looks";
@@ -14,7 +14,7 @@ import { COMPANION_KINDS, WEAR_SLOT_IDS } from "@/lib/companion";
 describe("3D manifest", () => {
     it("mesta i drugari su konačan spisak iz ugovora", () => {
         assert.deepEqual([...WEAR_SLOT_IDS], ["hat", "glasses", "neck", "outfit", "bottom", "feet", "hand", "back", "pet", "background"]);
-        assert.deepEqual([...COMPANION_KINDS], [...HUMAN_KINDS, ...ANIMAL_KINDS]);
+        assert.deepEqual([...COMPANION_KINDS], [...HUMAN_KINDS, ...ANIMAL_KINDS, ...EXTRA_ANIMAL_KINDS]);
         for (const slot of SLOTS) assert.ok(SLOT_LABELS[slot]);
     });
 

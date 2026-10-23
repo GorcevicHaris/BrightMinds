@@ -5,14 +5,33 @@ import * as THREE from "three";
 import { fabricNormal, type FabricKind } from "./textures";
 
 const cache = new Map<string, THREE.Material>();
+/** Materijali iz keša se dele među likovima — ne oslobađaju se pri skidanju predmeta */
+const shared = new WeakSet<THREE.Material>();
 
 function cached<T extends THREE.Material>(key: string, make: () => T): T {
     let material = cache.get(key) as T | undefined;
     if (!material) {
         material = make();
         cache.set(key, material);
+        shared.add(material);
     }
     return material;
+}
+
+export function isSharedMaterial(material: THREE.Material): boolean {
+    return shared.has(material);
+}
+
+/** Oslobađa geometrije (i materijale koji nisu iz keša) svega ispod objekta */
+export function disposeObject(root: THREE.Object3D) {
+    root.traverse((o) => {
+        const mesh = o as THREE.Mesh;
+        if (!mesh.isMesh && !(o as THREE.Points).isPoints && !(o as THREE.Line).isLine) return;
+        mesh.geometry?.dispose();
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const material of materials) if (material && !shared.has(material)) material.dispose();
+        if ((mesh as unknown as THREE.InstancedMesh).isInstancedMesh) (mesh as unknown as THREE.InstancedMesh).dispose();
+    });
 }
 
 /** Koža: mat, sa toplim sheen-om na ivicama (utisak meke, „dečje” kože) */
@@ -83,17 +102,17 @@ export function hairMaterial(hex: string): THREE.MeshPhysicalMaterial {
         const color = new THREE.Color(hex);
         return new THREE.MeshPhysicalMaterial({
             color,
-            roughness: 0.46,
+            roughness: 0.56,
             metalness: 0,
-            specularIntensity: 0.5,
+            specularIntensity: 0.36,
             specularColor: color.clone().lerp(new THREE.Color("#FFFFFF"), 0.6),
-            anisotropy: 0.45,
+            anisotropy: 0.3,
             anisotropyRotation: Math.PI / 2,
             sheen: 0.35,
             sheenColor: color.clone().lerp(new THREE.Color("#FFFFFF"), 0.3),
             sheenRoughness: 0.5,
             normalMap: fabricNormal("hair"),
-            normalScale: new THREE.Vector2(0.3, 0.3),
+            normalScale: new THREE.Vector2(0.14, 0.14),
         });
     });
 }

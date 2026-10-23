@@ -275,7 +275,8 @@ export function buildBody(rig: Rig, skin: THREE.Material, options: { feet: boole
     }
 
     for (const mesh of skinned) {
-        mesh.bind(rig.skeleton);
+        // Jedinična matrica: bind() bez nje bi preračunao kosti iz TRENUTNE poze
+        mesh.bind(rig.skeleton, new THREE.Matrix4());
         mesh.frustumCulled = false;
     }
     return { skinned, rigid };
