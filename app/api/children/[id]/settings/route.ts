@@ -97,10 +97,15 @@ export async function PUT(request: Request, { params }: RouteContext) {
         const ageBand = bandForAge(ageInYears(child.date_of_birth));
         const settings: ChildSettings = sanitizeSettings(raw, ageBand);
 
-        // U bazu ide samo ono što odstupa od preporuke za uzrast; ostalo nastavlja da prati uzrast
+        // U bazu ide samo ono što odstupa od preporuke za uzrast; ostalo nastavlja da prati uzrast.
+        // Pratilac deteta i kupljena odeća (ključ `companion`, lib/companion.ts) nisu podešavanja
+        // roditelja — ostaju netaknuti.
+        const stored = storedSettings(child);
+        const next: Record<string, unknown> = { ...settingsOverrides(settings, ageBand) };
+        if (stored.companion !== undefined) next.companion = stored.companion;
         const { data, error } = await supabaseAdmin
             .from("children")
-            .update({ settings: settingsOverrides(settings, ageBand) })
+            .update({ settings: next })
             .eq("id", childId)
             .select("id");
         if (error) {

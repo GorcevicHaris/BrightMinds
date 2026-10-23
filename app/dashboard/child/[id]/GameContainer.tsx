@@ -10,7 +10,11 @@ import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import { CelebrationLayer, celebrateBig, GamePauseContext, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
 import { useSpeakingLock } from "@/lib/voice";
+import Companion from "@/app/components/avatar/Companion";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
+import type { VoiceEmotion as TeacherEmotion } from "@/lib/emotion";
+import type { CompanionKindId } from "@/lib/companion";
+import { useCompanion } from "./companionState";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
 import { cn } from "@/lib/cn";
 import {
@@ -450,6 +454,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
     // ── Kraj nivoa ─────────────────────────────────────────────────────────────
 
+    const companionRefresh = useCompanion()?.refresh;
     const handleComplete = useCallback(
         async (result: GameResult) => {
             if (completingRef.current || !game) return;
@@ -508,6 +513,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 if (typeof data.logId === "number") sessionLogIds.current.push(data.logId);
                 if (typeof data.sessionId === "number") sessionIdRef.current = data.sessionId;
                 if (typeof data.experiencePoints === "number") onExperienceChange?.(data.experiencePoints);
+                // Zvezdice su novčići za drugara: novo stanje za ekran „Moj drugar”
+                companionRefresh?.();
                 setOutcome((prev) => (prev ? { ...prev, saved: "ok" } : prev));
             } catch {
                 setOutcome((prev) => (prev ? { ...prev, saved: "failed" } : prev));
@@ -515,7 +522,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 pendingSaves.current -= 1;
             }
         },
-        [game, level, childId, moodBefore, onExperienceChange, preview, say, plan, markPlanDone]
+        [game, level, childId, moodBefore, onExperienceChange, preview, say, plan, markPlanDone, companionRefresh]
     );
 
     // ── Ekrani ─────────────────────────────────────────────────────────────────
@@ -748,7 +755,10 @@ function GameBackdrop({ game }: { game: GameDefinition }) {
 function GameSlot({ gameId, ...props }: { gameId: GameId } & GameProps) {
     const Game = GAME_COMPONENTS[gameId];
     // Učitelj istog pola kao glas koji čita zadatke
-    const teacher = useMemo(() => ({ gender: props.gender }), [props.gender]);
+    const companion = useCompanion();
+    const companionKind = companion?.kind;
+    const companionWear = companion?.wear;
+    const teacher = useMemo(() => ({ gender: props.gender, kind: companionKind, wear: companionWear }), [props.gender, companionKind, companionWear]);
     return (
         <GameTeacherContext value={teacher}>
             <Game {...props} />
@@ -1017,7 +1027,7 @@ function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
         >
             {teacher !== null && (
                 <span className="grid h-20 w-20 place-items-end overflow-hidden rounded-3xl bg-white/70 ring-2 ring-white">
-                    <TeacherAvatar gender={teacher ?? undefined} variant="face" emotion="gentle" className="h-full w-full" />
+                    <Teacher gender={teacher ?? undefined} variant="face" emotion="gentle" className="h-full w-full" />
                 </span>
             )}
             <h2 className="font-display text-3xl font-extrabold text-ink sm:text-4xl">Pauza</h2>
@@ -1078,7 +1088,7 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
                         <div className="flex items-center gap-3">
                             {teacher !== null && (
                                 <span className={cn("grid h-16 w-16 shrink-0 place-items-end overflow-hidden rounded-2xl ring-1 sm:h-20 sm:w-20", game.accent.soft, game.accent.ring)}>
-                                    <TeacherAvatar gender={teacher} variant="face" className="h-full w-full" />
+                                    <Teacher gender={teacher} variant="face" className="h-full w-full" />
                                 </span>
                             )}
                             <div className="min-w-0">
@@ -1223,7 +1233,7 @@ function MoodPicker({ title, teacher = null, onSelect }: MoodPickerProps) {
         <div className="mx-auto flex w-full max-w-2xl flex-1 animate-fade-up flex-col items-center justify-center text-center xl:max-w-4xl">
             {teacher !== null && (
                 <span className="mb-3 grid h-20 w-20 place-items-end overflow-hidden rounded-3xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-24 sm:w-24">
-                    <TeacherAvatar gender={teacher ?? undefined} variant="face" emotion="curious" className="h-full w-full" />
+                    <Teacher gender={teacher ?? undefined} variant="face" emotion="curious" className="h-full w-full" />
                 </span>
             )}
             <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">{title}</h2>
@@ -1311,7 +1321,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                 tabIndex={-1}
                 className="max-h-full w-full max-w-md animate-fade-up overflow-y-auto rounded-t-[2rem] bg-surface p-6 text-center shadow-pop outline-none sm:rounded-[2rem] sm:p-9"
             >
-                {teacher !== null && <TeacherAvatar gender={teacher} className="mx-auto -mt-1 mb-1 h-24 w-20 sm:h-28 sm:w-24" />}
+                {teacher !== null && <Teacher gender={teacher} className="mx-auto -mt-1 mb-1 h-24 w-20 sm:h-28 sm:w-24" />}
                 {outcome.practice ? (
                     // Pročitana priča nije „rezultat”: bez zvezdica koje bi izgledale kao slaba ocena
                     <p className="mb-4 text-6xl animate-pop" aria-hidden="true">
@@ -1330,6 +1340,11 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                     {champion ? "🏆 " : ""}
                     {title}
                 </h2>
+                {/* Svaka zvezdica je novčić za drugara */}
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sun-100 px-4 py-1.5 text-lg font-extrabold text-sun-700 ring-1 ring-sun-300">
+                    + {outcome.stars} <span aria-hidden="true">🪙</span>
+                    <span className="sr-only">{outcome.stars === 1 ? "novčić" : "novčića"}</span>
+                </p>
                 {showNumbers && !limitReached && game.graded && !outcome.practice && (
                     <p className="mt-1 text-base font-bold text-ink-soft">
                         Iz prvog pokušaja: {outcome.correct} od {outcome.total}
@@ -1381,4 +1396,13 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
             </div>
         </div>
     );
+}
+
+// ── Pratilac ──────────────────────────────────────────────────────────────────
+
+/** Lik koji govori: pratilac koga je dete izabralo (sa odećom), a bez njega dosadašnji učitelj */
+function Teacher({ gender, variant, emotion, className }: { gender?: string; variant?: "bust" | "face"; emotion?: TeacherEmotion; className?: string }) {
+    const companion = useCompanion();
+    if (companion) return <Companion kind={companion.kind as CompanionKindId} wear={companion.wear} variant={variant} emotion={emotion} className={className} />;
+    return <TeacherAvatar gender={gender} variant={variant} emotion={emotion} className={className} />;
 }
