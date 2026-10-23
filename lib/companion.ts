@@ -28,7 +28,12 @@ export const COINS_PER_STAR = 2;
  * Pratioci koje dete može da izabere: ljudi (devojčica, dečak, učiteljica, učitelj) i životinje.
  * 3D crteži: app/components/avatar3d; 2D (kad WebGL ne radi): app/components/avatar/Companion.
  */
-export const COMPANION_KINDS = ["girl", "boy", "woman", "man", "cat", "dog", "bunny", "bear", "fox", "lion", "penguin", "unicorn"] as const;
+export const COMPANION_KINDS = [
+    "girl", "boy", "woman", "man",
+    "cat", "dog", "bunny", "bear", "fox", "lion", "penguin", "unicorn",
+    "panda", "koala", "elephant", "monkey", "owl", "tiger", "dinosaur", "giraffe",
+    "pony", "frog", "hedgehog", "raccoon", "deer", "sheep", "hamster", "squirrel",
+] as const;
 export type CompanionKindId = (typeof COMPANION_KINDS)[number];
 
 export function isCompanionKindId(value: unknown): value is CompanionKindId {

@@ -62,11 +62,9 @@ export class Mouth {
         this.group.name = "usta";
         const lipMat = new THREE.MeshPhysicalMaterial({
             color: new THREE.Color(lipColor),
-            roughness: 0.42,
-            sheen: 0.4,
-            sheenColor: new THREE.Color(lipColor).lerp(new THREE.Color("#FFFFFF"), 0.4),
-            clearcoat: 0.25,
-            clearcoatRoughness: 0.4,
+            roughness: 0.48,
+            clearcoat: 0.3,
+            clearcoatRoughness: 0.35,
         });
         const innerMat = new THREE.MeshStandardMaterial({ color: "#4A1820", roughness: 0.9, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         const teethMat = new THREE.MeshPhysicalMaterial({ color: "#FBF8F2", roughness: 0.3, clearcoat: 0.5, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 });
@@ -150,10 +148,10 @@ export class Mouth {
                 const x = -w + (2 * w * i) / (N - 1);
                 const c = curves(shape, x);
                 // Usne su malo iznad ivice otvora (gornja iznad, donja ispod)
-                const y = lip === 0 ? c.top - 1.2 - gap * 0.6 : c.bottom + 1.4 + gap * 0.8;
+                const y = lip === 0 ? c.top - 1.1 - gap * 0.6 : c.bottom + 1.5 + gap * 0.8;
                 // Debljina: najdeblje u sredini, tanko u uglovima; donja usna punija
                 const mid = 1 - Math.pow(Math.abs(x) / w, 2.2);
-                const r = s.lip * (lip === 0 ? 0.75 : 1) * (0.28 + 0.72 * mid);
+                const r = s.lip * (lip === 0 ? 0.62 : 0.92) * (0.22 + 0.78 * mid);
                 this.at(x, y, r * 0.55, center);
                 this.at(Math.max(-w, x - 0.6), y, r * 0.55, prev);
                 this.at(Math.min(w, x + 0.6), y, r * 0.55, next);
@@ -173,18 +171,14 @@ export class Mouth {
         this.lips.geometry.computeVertexNormals();
         this.lips.geometry.computeBoundingSphere();
 
-        // Unutrašnjost: između krivih, tik iznad kože (kao naslikano, bez rupe u glavi)
-        const open = shape.open > 0.04;
-        this.inner.visible = open;
+        // Unutrašnjost: između krivih, tik iznad kože (kao naslikano, bez rupe u glavi). Zatvorena
+        // usta imaju tanku tamnu liniju između usana (linija osmeha)
+        this.inner.visible = true;
         this.teeth.visible = shape.open > 0.18;
         this.tongue.visible = shape.open > 0.28;
-        if (open) {
-            this.strip(this.inner, w, (c) => c.top, (c) => c.bottom, 0.0006);
-            // Gornji zubi: traka ispod gornje usne, visine do trećine otvora
-            this.strip(this.teeth, w * 0.78, (c) => c.top, (c) => c.top + Math.min(5, (c.bottom - c.top) * 0.32), 0.0011);
-            // Jezik: donji deo otvora
-            this.strip(this.tongue, w * 0.7, (c) => c.bottom - (c.bottom - c.top) * 0.38, (c) => c.bottom - 0.3, 0.001);
-        }
+        this.strip(this.inner, w * 0.96, (c) => c.top - 0.5, (c) => Math.max(c.bottom, c.top + 1.1), 0.0006);
+        if (this.teeth.visible) this.strip(this.teeth, w * 0.78, (c) => c.top, (c) => c.top + Math.min(5, (c.bottom - c.top) * 0.32), 0.0011);
+        if (this.tongue.visible) this.strip(this.tongue, w * 0.7, (c) => c.bottom - (c.bottom - c.top) * 0.38, (c) => c.bottom - 0.3, 0.001);
     }
 
     private strip(mesh: THREE.Mesh, w: number, top: (c: { top: number; bottom: number }) => number, bottom: (c: { top: number; bottom: number }) => number, lift: number) {
