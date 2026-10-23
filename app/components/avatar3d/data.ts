@@ -82,7 +82,54 @@ export interface ItemData {
      * ne menja): haljina i kostim do članaka → ["bottom"]; kombinezon astronauta → ["bottom"].
      */
     hides?: readonly Slot[];
+    /**
+     * Podvrsta za filter u prodavnici (jedan čip = samo ta vrsta), npr. obuća: "patike",
+     * "cizme", "sandale", "papuce"; odeća: "majice", "duksevi", "haljine", "kostimi". Id-jevi
+     * podvrsta i nazivi čipova: SUBGROUPS ispod. Bez ovoga prodavnica pogađa po id-ju predmeta.
+     */
+    group?: string;
 }
+
+/** Podvrste po mestu (redosled čipova u prodavnici); id → naziv čipa za dete */
+export const SUBGROUPS: Partial<Record<Slot, readonly { id: string; label: string }[]>> = {
+    hat: [
+        { id: "kape", label: "Kape" },
+        { id: "sesiri", label: "Šeširi" },
+        { id: "krune", label: "Krune" },
+        { id: "slemovi", label: "Šlemovi" },
+        { id: "za-kosu", label: "Za kosu" },
+    ],
+    glasses: [
+        { id: "naocare", label: "Naočare" },
+        { id: "maske", label: "Maske" },
+    ],
+    neck: [
+        { id: "ogrlice", label: "Ogrlice" },
+        { id: "marame", label: "Marame i šalovi" },
+        { id: "masne", label: "Masne i kravate" },
+    ],
+    outfit: [
+        { id: "majice", label: "Majice" },
+        { id: "duksevi", label: "Duksevi i džemperi" },
+        { id: "haljine", label: "Haljine" },
+        { id: "jakne", label: "Jakne" },
+        { id: "sport", label: "Sport" },
+        { id: "pidzame", label: "Pidžame" },
+        { id: "kostimi", label: "Kostimi" },
+    ],
+    bottom: [
+        { id: "pantalone", label: "Pantalone" },
+        { id: "suknje", label: "Suknje" },
+        { id: "sorcevi", label: "Šorcevi" },
+    ],
+    feet: [
+        { id: "patike", label: "Patike" },
+        { id: "cizme", label: "Čizme" },
+        { id: "cipele", label: "Cipele" },
+        { id: "sandale", label: "Sandale" },
+        { id: "papuce", label: "Papuče" },
+    ],
+};
 
 /** Gotov komplet (kupuje se odjednom po zbiru cena predmeta koji nedostaju) */
 export interface SetData {
