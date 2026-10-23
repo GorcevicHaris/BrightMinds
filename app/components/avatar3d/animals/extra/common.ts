@@ -6,7 +6,13 @@ import * as THREE from "three";
 import type { AnimalKind, ExtraAnimalKind } from "../../data";
 import { clamp01, smoothstep } from "../../engine/surface";
 import type { Coat } from "../coats";
+import type { AnimalBuild } from "../figure";
 import { col, type PaintContext, type PaintPoint } from "../paint";
+
+/** Razmera posebnih delova vrste (napisani u metrima za glavu širine `ref`) */
+export function scaleOf(b: AnimalBuild): number {
+    return b.spec.ref ? b.shape.head.w / b.spec.ref : 1;
+}
 
 /** Okvir (shape.ts, paint.ts) za sada tipizuje vrstu kao AnimalKind; dodatne vrste prolaze kroz ovo */
 export function asKind(kind: ExtraAnimalKind): AnimalKind {

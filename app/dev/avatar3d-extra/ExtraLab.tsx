@@ -15,7 +15,23 @@ import { EXTRA_SKINS } from "@/app/components/avatar3d/animals/extra/skins.data"
 import { Figure } from "@/app/components/avatar3d/engine/figure";
 import { Stage } from "@/app/components/avatar3d/engine/stage";
 import { itemsOf } from "@/app/components/avatar3d/manifest";
-import { dressProbe, type Probe } from "../avatar3d-animals/probes";
+import { getItem3D, type AvatarLook } from "@/app/components/avatar3d/catalog";
+import { buildGarment } from "@/app/components/avatar3d/engine/garments";
+import { headInfo } from "@/app/components/avatar3d/engine/head";
+
+/** Probni kroj iz prototipa motora (dok katalog nema 3D crtež za to mesto): [id, boja] */
+type Probe = [string, number];
+
+/** Probna odeća iz prototipa (isti alat Kit kao prava odeća) — pokazuje da telo i sidra pristaju */
+function dressProbe(figure: Figure, [id, color]: Probe) {
+    const body = figure.body;
+    const item = getItem3D(id);
+    if (!item) return;
+    const look: AvatarLook = { figure: "girl", skin: "", eyes: "", hair: "short", hairColor: "", expression: "neutral", wear: {} };
+    buildGarment({ rig: body.rig, root: body.root, head: headInfo(body.shape), look, skin: body.tone }, item, color);
+    if (item.slot === "shoes") for (const f of body.parts.feet ?? []) f.visible = false;
+    if (item.slot === "head") for (const f of body.parts.hair ?? []) f.visible = false;
+}
 
 const EXPRESSIONS: FaceExpression[] = ["neutral", "happy", "proud", "gentle", "curious", "sad", "serious", "worried", "surprised"];
 
@@ -49,7 +65,7 @@ function realItem(slot: "hat" | "outfit" | "bottom" | "feet", group: string): st
 function outfit(): { wear: Wear; probes: Probe[] } {
     const wear: Wear = {};
     const probes: Probe[] = [];
-    const pairs: ["hat" | "outfit" | "bottom" | "feet", string, Probe][] = [["hat", "kape", "beanie"], ["outfit", "duksevi", "hoodie"], ["bottom", "pantalone", "pants"], ["feet", "patike", "sneakers"]];
+    const pairs: ["hat" | "outfit" | "bottom" | "feet", string, Probe][] = [["hat", "kape", ["kapa", 2]], ["outfit", "duksevi", ["duks", 1]], ["bottom", "pantalone", ["farmerke", 1]], ["feet", "patike", ["patike", 0]]];
     for (const [slot, group, probe] of pairs) {
         const id = realItem(slot, group);
         if (id) wear[slot] = id;
@@ -85,7 +101,7 @@ export default function ExtraLab() {
             const figure = new Figure({ kind: v.kind, skin: v.skin }, dress.wear, { quality: v.quality });
             const ms = Math.round(performance.now() - t0);
             const tris = triangles(figure.body.root);
-            for (const probe of dress.probes) dressProbe(figure.body, probe);
+            for (const probe of dress.probes) dressProbe(figure, probe);
             figure.setExpressionNow(v.expression);
             figureRef.current = figure;
             stage.setFigure(figure);
@@ -103,6 +119,8 @@ export default function ExtraLab() {
             reframe: () => stage.setFraming("full"),
             snapshot: () => stage.snapshot(),
             anchors: () => figureRef.current?.body.anchors,
+            figure: () => figureRef.current,
+            THREE,
             registered: () => EXTRA_ANIMAL_KINDS.filter((k) => companionBuilder(k)),
         };
         (window as unknown as { __extra: typeof api }).__extra = api;

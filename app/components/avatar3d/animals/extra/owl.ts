@@ -11,7 +11,7 @@ import { companionFrom, type AnimalBuild, type AnimalSpec } from "../figure";
 import { hornyMaterial } from "../materials";
 import { paintGeometry, type PaintContext, type PaintPoint } from "../paint";
 import { EAR_PROFILES } from "../parts";
-import { asKind, bellyMask, col, goldCoat, headLocal, isHead, rainbowAt, smoothstep, torsoAngle } from "./common";
+import { asKind, bellyMask, col, goldCoat, headLocal, isHead, rainbowAt, scaleOf, smoothstep, torsoAngle } from "./common";
 import { toeFoot, wingHand } from "./hands";
 import { EXTRA_SKINS } from "./skins.data";
 
@@ -114,8 +114,10 @@ function buildBeak(b: AnimalBuild): { group: THREE.Group; setJaw: (open: number,
     const v = head.spec.noseV;
     const at = head.point(0.5, v);
     const n = head.normal(0.5, v);
+    const k = scaleOf(b);
     const group = new THREE.Group();
-    group.position.copy(at).addScaledVector(n, -0.004);
+    group.scale.setScalar(k);
+    group.position.copy(at).addScaledVector(n, -0.004 * k);
     group.lookAt(group.position.clone().add(n));
     const mat = hornyMaterial(b.coat.beak ?? "#F2B33A", 0.35);
     const hi = b.quality === "high";
@@ -151,7 +153,8 @@ export const OWL: AnimalSpec = {
     kind: "owl",
     skins: EXTRA_SKINS.owl,
     coats: OWL_COATS,
-    shape: { kind: asKind("owl"), girth: 1.14, belly: 1.12, pear: 0.45, leg: 0.17, arm: 0.21, limb: 1.04, head: { w: 0.5, h: 0.42, d: 0.42 } },
+    shape: { kind: asKind("owl"), girth: 1.14, belly: 1.12, pear: 0.45, legK: 0.62, armK: 0.95, limb: 1.04, head: { w: 0.43, h: 0.361, d: 0.361 } },
+    ref: 0.5,
     head: {
         flat: 0.3,
         flatTop: 0.25,
@@ -162,12 +165,12 @@ export const OWL: AnimalSpec = {
             { dir: [0.38, 0.0, 0.92], sigma: 0.24, amp: -0.012, mirror: true },
             { dir: [0, -0.15, 1], sigma: 0.1, amp: 0.008 },
         ],
-        eye: { u: 0.088, v: 0.5, r: 0.064, inset: 0.48, yaw: 0.16 },
+        eye: { u: 0.088, v: 0.5, r: 0.064, inset: 0.68, yaw: 0.16 },
         noseV: 0.58,
         mouthV: 0.66,
     },
     face: {
-        eye: { upper: 0.6, lower: -0.82, lashes: 2, iris: 0.86, pupil: 0.46 },
+        eye: { upper: 0.86, lower: -0.86, lashes: 2, iris: 0.86, pupil: 0.46 },
         brow: { dv: 0.13, len: 0.07, thick: 0.009 },
         nose: { kind: "none", w: 0, h: 0, d: 0 },
         mouth: { w: 0.02, h: 0.02, curve: "smile", teeth: "none", wrap: 0.06, philtrum: 0, line: 0.002 },
@@ -196,13 +199,14 @@ export const OWL: AnimalSpec = {
         const hips = b.bone("hips")!;
         const shape = b.shape;
         const y = shape.crotchY + 0.03;
-        const base = new THREE.Vector3(0, y, -shape.torsoBack(y) + 0.02);
+        const k = scaleOf(b);
+        const base = new THREE.Vector3(0, y, -shape.torsoBack(y) + 0.02 * k);
         const parts: THREE.BufferGeometry[] = [];
-        for (let k = 0; k < 5; k++) {
-            const a = (k - 2) * 0.28;
+        for (let i = 0; i < 5; i++) {
+            const a = (i - 2) * 0.28;
             const f = new THREE.SphereGeometry(1, 14, 10);
-            f.scale(0.028, 0.008, 0.075);
-            f.translate(0, 0, -0.06);
+            f.scale(0.028 * k, 0.008 * k, 0.075 * k);
+            f.translate(0, 0, -0.06 * k);
             f.rotateX(0.55);
             f.rotateY(a);
             f.translate(base.x, base.y, base.z);

@@ -76,7 +76,8 @@ export const MONKEY: AnimalSpec = {
     kind: "monkey",
     skins: EXTRA_SKINS.monkey,
     coats: MONKEY_COATS,
-    shape: { kind: asKind("monkey"), girth: 0.96, belly: 1.05, limb: 0.98, arm: 0.23, head: { w: 0.44, h: 0.4, d: 0.39 } },
+    shape: { kind: asKind("monkey"), girth: 0.96, belly: 1.05, limb: 0.98, armK: 1.1, head: { w: 0.378, h: 0.344, d: 0.335 } },
+    ref: 0.44,
     head: {
         flat: 0.14,
         flatTop: 0.1,
@@ -90,12 +91,12 @@ export const MONKEY: AnimalSpec = {
             // Blag greben iznad očiju
             { dir: [0.3, 0.32, 0.9], sigma: 0.14, amp: 0.006, mirror: true },
         ],
-        eye: { u: 0.08, v: 0.49, r: 0.05, inset: 0.48, yaw: 0.14 },
+        eye: { u: 0.08, v: 0.49, r: 0.05, inset: 0.68, yaw: 0.14 },
         noseV: 0.6,
         mouthV: 0.7,
     },
     face: {
-        eye: { upper: 0.66, lower: -0.82, lashes: 1, iris: 0.84, pupil: 0.44 },
+        eye: { upper: 0.86, lower: -0.86, lashes: 1, iris: 0.84, pupil: 0.44 },
         brow: { dv: 0.1, len: 0.06, thick: 0.008 },
         nose: { kind: "nostrils", w: 0.006, h: 0.004, d: 0.004 },
         mouth: { w: 0.045, h: 0.05, curve: "smile", teeth: "row", wrap: 0.075, philtrum: 0.012, line: 0.0028 },

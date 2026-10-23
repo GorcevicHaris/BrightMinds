@@ -12,7 +12,7 @@ import type { AnimalHead } from "../head";
 import { hornyMaterial } from "../materials";
 import { paintGeometry, type PaintContext, type PaintPoint } from "../paint";
 import { EAR_PROFILES, pawFoot, weightedTube } from "../parts";
-import { asKind, col, goldCoat, headLocal, isHead, rainbowAt, smoothstep } from "./common";
+import { asKind, col, goldCoat, headLocal, isHead, rainbowAt, scaleOf, smoothstep } from "./common";
 import { EXTRA_SKINS } from "./skins.data";
 
 function elephant(fur: string, extra: Partial<Coat> = {}): Coat {
@@ -40,18 +40,15 @@ export const ELEPHANT_COATS: Record<string, Coat> = {
 };
 
 /** Putanja surle u prostoru kosti glave: visi, pa se vrh uvija napred i gore */
-function trunkPoints(head: AnimalHead): THREE.Vector3[] {
+function trunkPoints(head: AnimalHead, k: number): THREE.Vector3[] {
     const v = head.spec.noseV;
-    const root = head.point(0.5, v).addScaledVector(head.normal(0.5, v), -0.03);
-    return [
-        root,
-        root.clone().add(new THREE.Vector3(0, -0.05, 0.055)),
-        root.clone().add(new THREE.Vector3(0, -0.125, 0.082)),
-        root.clone().add(new THREE.Vector3(0, -0.19, 0.078)),
-        root.clone().add(new THREE.Vector3(0, -0.232, 0.105)),
-        root.clone().add(new THREE.Vector3(0, -0.226, 0.15)),
-    ];
+    const root = head.point(0.5, v).addScaledVector(head.normal(0.5, v), -0.03 * k);
+    const at = (x: number, y: number, z: number) => root.clone().add(new THREE.Vector3(x, y, z).multiplyScalar(k));
+    return [root, at(0, -0.05, 0.055), at(0, -0.125, 0.082), at(0, -0.19, 0.078), at(0, -0.232, 0.105), at(0, -0.226, 0.15)];
 }
+
+/** Glava je napisana za širinu 0,5 m */
+const REF = 0.5;
 
 const TRUNK_R = profile([[0, 0.058], [0.12, 0.046], [0.45, 0.034], [0.8, 0.028], [0.95, 0.029], [1, 0.026]]);
 
@@ -78,7 +75,8 @@ export const ELEPHANT: AnimalSpec = {
     kind: "elephant",
     skins: EXTRA_SKINS.elephant,
     coats: ELEPHANT_COATS,
-    shape: { kind: asKind("elephant"), girth: 1.18, belly: 1.15, limb: 1.22, leg: 0.22, foot: { len: 0.15, w: 0.11, h: 0.07, back: 0.05 }, head: { w: 0.5, h: 0.45, d: 0.44 } },
+    shape: { kind: asKind("elephant"), girth: 1.18, belly: 1.15, limb: 1.22, legK: 0.92, foot: { len: 0.17, w: 0.105, h: 0.072, back: 0.048 }, head: { w: 0.43, h: 0.387, d: 0.378 } },
+    ref: 0.5,
     head: {
         flat: 0.05,
         flatTop: 0.05,
@@ -89,12 +87,12 @@ export const ELEPHANT: AnimalSpec = {
             { c: [0, -0.08, 0.08], r: [0.14, 0.1, 0.15], k: 0.05, muzzle: true },
         ],
         bumps: [{ dir: [0.38, 0.05, 0.92], sigma: 0.12, amp: -0.006, mirror: true }],
-        eye: { u: 0.095, v: 0.5, r: 0.045, inset: 0.5, yaw: 0.18 },
+        eye: { u: 0.095, v: 0.5, r: 0.045, inset: 0.68, yaw: 0.18 },
         noseV: 0.6,
         mouthV: 0.735,
     },
     face: {
-        eye: { upper: 0.7, lower: -0.84, lashes: 2, iris: 0.86, pupil: 0.46 },
+        eye: { upper: 0.86, lower: -0.86, lashes: 2, iris: 0.86, pupil: 0.46 },
         brow: { dv: 0.105, len: 0.055, thick: 0.008 },
         nose: { kind: "none", w: 0, h: 0, d: 0 },
         mouth: { w: 0.05, h: 0.05, curve: "smile", teeth: "none", wrap: 0.08, philtrum: 0, line: 0.0028 },
@@ -121,8 +119,8 @@ export const ELEPHANT: AnimalSpec = {
     cheeks: 0,
     sleek: true,
     earMotion: "swing",
-    bones: (_shape, head, headBone): ExtraBone[] => {
-        const pts = trunkPoints(head);
+    bones: (shape, head, headBone): ExtraBone[] => {
+        const pts = trunkPoints(head, shape.head.w / REF);
         const path = polyPath(pts);
         return [
             { name: "trunk1", parent: "head", at: pts[0].clone().add(headBone) },
@@ -151,7 +149,8 @@ export const ELEPHANT: AnimalSpec = {
     extras: (b: AnimalBuild) => {
         // Surla: SkinnedMesh na kostima head → trunk1 → trunk2 (savija se glatko)
         const headBone = b.boneAt("head");
-        const pts = trunkPoints(b.head).map((p) => p.clone().add(headBone));
+        const k = scaleOf(b);
+        const pts = trunkPoints(b.head, k).map((p) => p.clone().add(headBone));
         const path = polyPath(pts);
         const i1 = b.rig.bones.findIndex((x) => x.name === "trunk1");
         const i2 = b.rig.bones.findIndex((x) => x.name === "trunk2");
@@ -161,7 +160,7 @@ export const ELEPHANT: AnimalSpec = {
             return [[B.head as number, 1 - a], [i1, a * (1 - c)], [i2, c]];
         };
         const hi = b.quality === "high";
-        const g = weightedTube(path, TRUNK_R, hi ? 44 : 22, hi ? 22 : 12, weights);
+        const g = weightedTube(path, (s) => TRUNK_R(s) * k, hi ? 44 : 22, hi ? 22 : 12, weights);
         const uv = g.getAttribute("uv");
         const n = g.getAttribute("position").count;
         const sAt = new Float32Array(n);
@@ -184,8 +183,8 @@ export const ELEPHANT: AnimalSpec = {
         const cap = new THREE.Group();
         for (const sx of [1, -1]) {
             const hole = new THREE.Mesh(new THREE.SphereGeometry(1, 14, 10), hornyMaterial(shade(b.coat.fur, -0.6), 0.6));
-            hole.scale.set(0.007, 0.0095, 0.004);
-            hole.position.set(sx * 0.0095, 0, 0);
+            hole.scale.set(0.007 * k, 0.0095 * k, 0.004 * k);
+            hole.position.set(sx * 0.0095 * k, 0, 0);
             cap.add(hole);
         }
         const tipLocal = b.bone("trunk2")!.worldToLocal(tip.clone().addScaledVector(dir, -0.002));
@@ -210,10 +209,10 @@ export const ELEPHANT: AnimalSpec = {
     },
     anchors: (a, b) => {
         // Vrh nosa = vrh surle (naočare i dalje sede na mostu između očiju)
-        const pts = trunkPoints(b.head);
+        const pts = trunkPoints(b.head, scaleOf(b));
         const headBone = b.boneAt("head");
         a.nose.tip = pts[pts.length - 1].clone().add(headBone);
-        a.nose.snout = Math.max(0, pts[pts.length - 1].z - pts[0].z) + 0.06;
+        a.nose.snout = Math.max(0, pts[pts.length - 1].z - pts[0].z) + 0.06 * scaleOf(b);
     },
     paint: paintElephant,
 };

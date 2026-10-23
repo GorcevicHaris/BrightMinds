@@ -9,7 +9,7 @@ import type { Coat } from "../coats";
 import { companionFrom, type AnimalBuild, type AnimalSpec } from "../figure";
 import { paintGeometry, type PaintContext, type PaintPoint } from "../paint";
 import { clumpGeometry, EAR_PROFILES, weightedTube, type Clump } from "../parts";
-import { asKind, col, goldCoat, headLocal, isHead, rainbowAt, smoothstep } from "./common";
+import { asKind, col, goldCoat, headLocal, isHead, rainbowAt, scaleOf, smoothstep } from "./common";
 import { cells3 } from "./kit/util";
 import { EXTRA_SKINS } from "./skins.data";
 
@@ -78,18 +78,19 @@ function addOssicones(b: AnimalBuild) {
     const head = b.head;
     const headBone = b.boneAt("head");
     const hi = b.quality === "high";
+    const k = scaleOf(b);
     let tipMid = new THREE.Vector3();
     let baseMid = new THREE.Vector3();
     for (const side of [1, -1]) {
         const u = 0.5 + side * 0.055;
-        const base = head.point(u, 0.11).addScaledVector(head.normal(u, 0.11), -0.01);
+        const base = head.point(u, 0.11).addScaledVector(head.normal(u, 0.11), -0.01 * k);
         const dir = head.normal(u, 0.11).add(new THREE.Vector3(side * 0.15, 0.6, -0.25)).normalize();
-        const tip = base.clone().addScaledVector(dir, 0.085);
+        const tip = base.clone().addScaledVector(dir, 0.085 * k);
         const path = (s: number, out: THREE.Vector3) => out.copy(base).lerp(tip, s);
-        const g = weightedTube(path, profile([[0, 0.019], [0.5, 0.014], [1, 0.013]]), hi ? 12 : 8, hi ? 14 : 8);
+        const g = weightedTube(path, (s) => profile([[0, 0.019], [0.5, 0.014], [1, 0.013]])(s) * k, hi ? 12 : 8, hi ? 14 : 8);
         paintGeometry(g, b.paint, (_i, p) => ({ p: p.clone().add(headBone), region: "head", muzzle: 0 }));
         const stem = new THREE.Mesh(g, b.fur);
-        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.02, hi ? 18 : 10, hi ? 12 : 7), b.fur);
+        const knob = new THREE.Mesh(new THREE.SphereGeometry(0.02 * k, hi ? 18 : 10, hi ? 12 : 7), b.fur);
         knob.position.copy(tip);
         const kc = new Float32Array(knob.geometry.getAttribute("position").count * 3);
         const c = col(b.coat.tailTip ?? "#5A3E2E");
@@ -101,7 +102,7 @@ function addOssicones(b: AnimalBuild) {
         tipMid = tipMid.add(tip.clone().multiplyScalar(0.5));
         baseMid = baseMid.add(base.clone().multiplyScalar(0.5));
     }
-    b.setHorn({ base: baseMid.add(headBone), tip: tipMid.add(headBone), radius: 0.075 });
+    b.setHorn({ base: baseMid.add(headBone), tip: tipMid.add(headBone), radius: 0.075 * k });
 }
 
 /** Kratka griva niz zadnju stranu vrata */
@@ -119,8 +120,8 @@ function addMane(b: AnimalBuild) {
         clumps.push({
             base: new THREE.Vector3(0, y, back),
             dir: new THREE.Vector3(0, 0.55, -1).normalize(),
-            len: 0.032,
-            r: 0.012,
+            len: 0.032 * scaleOf(b),
+            r: 0.012 * scaleOf(b),
             color: colors[i % colors.length],
             flat: 0.45,
         });
@@ -136,7 +137,8 @@ export const GIRAFFE: AnimalSpec = {
     kind: "giraffe",
     skins: EXTRA_SKINS.giraffe,
     coats: GIRAFFE_COATS,
-    shape: { kind: asKind("giraffe"), girth: 0.94, belly: 1.0, limb: 0.92, leg: 0.25, neck: 0.17, neckR: 0.046, head: { w: 0.38, h: 0.36, d: 0.4 } },
+    shape: { kind: asKind("giraffe"), girth: 0.94, belly: 1.0, limb: 0.92, legK: 1.08, neck: 0.2, neckR: 0.044, head: { w: 0.327, h: 0.31, d: 0.344 } },
+    ref: 0.38,
     head: {
         flat: 0.05,
         flatTop: 0.1,
@@ -149,12 +151,12 @@ export const GIRAFFE: AnimalSpec = {
             { dir: [0.4, 0.05, 0.9], sigma: 0.12, amp: -0.005, mirror: true },
             { dir: [0, 0.3, 0.95], sigma: 0.14, amp: 0.006 },
         ],
-        eye: { u: 0.1, v: 0.43, r: 0.046, inset: 0.45, yaw: 0.24 },
+        eye: { u: 0.1, v: 0.43, r: 0.046, inset: 0.68, yaw: 0.24 },
         noseV: 0.6,
         mouthV: 0.7,
     },
     face: {
-        eye: { upper: 0.55, lower: -0.82, lashes: 3, iris: 0.86, pupil: 0.46 },
+        eye: { upper: 0.86, lower: -0.86, lashes: 3, iris: 0.86, pupil: 0.46 },
         brow: { dv: 0.1, len: 0.05, thick: 0.007 },
         nose: { kind: "nostrils", w: 0.008, h: 0.005, d: 0.005, v: 0.6 },
         mouth: { w: 0.04, h: 0.04, curve: "smile", teeth: "none", wrap: 0.07, philtrum: 0, line: 0.0026 },

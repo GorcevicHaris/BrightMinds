@@ -8,7 +8,7 @@ import { polyPath } from "../../engine/surface";
 import type { Coat } from "../coats";
 import { companionFrom, type AnimalBuild, type AnimalSpec } from "../figure";
 import type { PaintContext, PaintPoint } from "../paint";
-import { asKind, bellyMask, col, goldCoat, headLocal, isHead, rainbowAt, smoothstep } from "./common";
+import { asKind, bellyMask, col, goldCoat, headLocal, isHead, rainbowAt, scaleOf, smoothstep } from "./common";
 import { fingerHand, toeFoot } from "./hands";
 import { cells3 } from "./kit/util";
 import { EXTRA_SKINS } from "./skins.data";
@@ -99,10 +99,11 @@ function plateGeometry(h: number, l: number, quality: "high" | "low"): THREE.Buf
 
 function addSpikes(b: AnimalBuild) {
     const { shape } = b;
+    const k = scaleOf(b);
     const mat = b.fur;
     const spikes = new THREE.Color();
     const place = (bone: BoneName | string, at: THREE.Vector3, up: THREE.Vector3, h: number, back: THREE.Vector3) => {
-        const g = plateGeometry(h, h * 1.15, b.quality);
+        const g = plateGeometry(h * k, h * k * 1.15, b.quality);
         // Orijentacija: +y pločice → napolje, +z pločice → napred duž kičme (naspram `back`)
         const fwd = back.clone().negate();
         fwd.addScaledVector(up, -fwd.dot(up)).normalize();
@@ -168,7 +169,8 @@ export const DINOSAUR: AnimalSpec = {
     kind: "dinosaur",
     skins: EXTRA_SKINS.dinosaur,
     coats: DINO_COATS,
-    shape: { kind: asKind("dinosaur"), girth: 1.1, belly: 1.15, pear: 0.25, limb: 1.1, head: { w: 0.46, h: 0.41, d: 0.44 } },
+    shape: { kind: asKind("dinosaur"), girth: 1.1, belly: 1.15, pear: 0.25, limb: 1.1, head: { w: 0.396, h: 0.353, d: 0.378 } },
+    ref: 0.46,
     head: {
         flat: 0.0,
         flatTop: 0.12,
@@ -181,12 +183,12 @@ export const DINOSAUR: AnimalSpec = {
             { dir: [0.3, 0.12, 0.95], sigma: 0.12, amp: 0.008, mirror: true },
             { dir: [0.36, 0.0, 0.93], sigma: 0.11, amp: -0.005, mirror: true },
         ],
-        eye: { u: 0.09, v: 0.42, r: 0.055, inset: 0.45, yaw: 0.2 },
+        eye: { u: 0.09, v: 0.42, r: 0.055, inset: 0.68, yaw: 0.2 },
         noseV: 0.6,
         mouthV: 0.7,
     },
     face: {
-        eye: { upper: 0.62, lower: -0.8, lashes: 1, iris: 0.86, pupil: 0.46 },
+        eye: { upper: 0.86, lower: -0.86, lashes: 1, iris: 0.86, pupil: 0.46 },
         brow: { dv: 0.105, len: 0.065, thick: 0.009 },
         nose: { kind: "nostrils", w: 0.007, h: 0.005, d: 0.005, v: 0.585 },
         mouth: { w: 0.07, h: 0.05, curve: "smile", teeth: "row", wrap: 0.1, philtrum: 0, line: 0.003 },
