@@ -166,7 +166,7 @@ export default function CompanionStage({ kind, skin, wear = {}, framing = "full"
         );
     }
     // Platno je u unutrašnjem sloju preko celog prikaza (spoljni sloj nosi raspored stranice)
-    const positioned = /(absolute|fixed|sticky)/.test(className ?? "");
+    const positioned = /(^|\s)(absolute|fixed|sticky)(\s|$)/.test(className ?? "");
     return (
         <div className={cn(!positioned && "relative", "overflow-hidden", className)} role={label ? "img" : undefined} aria-label={label}>
             <div ref={hostRef} className="absolute inset-0" />
