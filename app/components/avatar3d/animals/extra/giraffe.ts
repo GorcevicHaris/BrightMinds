@@ -56,7 +56,7 @@ function paintGiraffe(pp: PaintPoint, ctx: PaintContext, out: THREE.Color) {
     if (isHead(pp)) {
         const q = headLocal(ctx, p);
         // Lice svetlije, mrlje sitnije i samo na temenu i obrazima
-        k = (1 - smoothstep(0.1, 0.5, pp.muzzle ?? 0)) * smoothstep(-0.3, 0.1, q.y + (1 - Math.abs(q.z)) * 0.2) * 0.85;
+        k = (1 - smoothstep(0.1, 0.5, pp.muzzle ?? 0)) * smoothstep(0.05, 0.3, q.y) * (1 - smoothstep(0.35, 0.75, q.z)) * 0.85;
         out.lerp(col(coat.light), smoothstep(0.1, 0.6, pp.muzzle ?? 0));
     }
     if (pp.region === "torso") {
@@ -66,7 +66,7 @@ function paintGiraffe(pp: PaintPoint, ctx: PaintContext, out: THREE.Color) {
         k *= 1 - front * 0.6;
     }
     if (k <= 0) return;
-    const scale = isHead(pp) ? 30 : 17;
+    const scale = isHead(pp) ? 22 : 15;
     const [d1, d2] = cells3(p.x * scale, p.y * scale, p.z * scale, 23, 0.8);
     // Mrlja = unutrašnjost ćelije; svetla linija između ćelija (mreža)
     const inside = smoothstep(0.07, 0.12, d2 - d1);
@@ -116,7 +116,7 @@ function addMane(b: AnimalBuild) {
     for (let i = 0; i < n; i++) {
         const t = i / (n - 1);
         const y = y0 + (y1 - y0) * t;
-        const back = -shape.torsoBack(Math.min(y, shape.neckBaseY)) + 0.006;
+        const back = -shape.torsoBack(y) + 0.006;
         clumps.push({
             base: new THREE.Vector3(0, y, back),
             dir: new THREE.Vector3(0, 0.55, -1).normalize(),
@@ -190,7 +190,7 @@ export const GIRAFFE: AnimalSpec = {
         // Dug vrat: prsten za šal/ogrlicu ide celom dužinom vrata (predmet bira visinu)
         const s = b.shape;
         a.neck.y0 = s.shoulderY - 0.005;
-        a.neck.y1 = s.neckBaseY + 0.02;
+        a.neck.y1 = s.headBoneY + 0.01;
         a.neck.center.set(0, (a.neck.y0 + a.neck.y1) / 2, 0);
         a.neck.radius = s.neckR + 0.006;
     },

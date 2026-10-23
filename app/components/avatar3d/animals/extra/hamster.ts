@@ -67,7 +67,12 @@ function paintHamster(pp: PaintPoint, ctx: PaintContext, out: THREE.Color) {
             if (!isHead(pp)) return;
     }
     const q = headLocal(ctx, p);
-    // Bela njuška i obrazi odozdo, svetla tačka iznad očiju
+    // Bela lisa od nosa preko čela, tamnije teme i pruga niz potiljak
+    const blaze = (1 - smoothstep(0.06, 0.1, Math.abs(q.x) - Math.max(0, 0.2 - q.y) * 0.25)) * smoothstep(0.25, 0.55, q.z) * (1 - smoothstep(0.55, 0.75, q.y));
+    out.lerp(light, blaze * 0.9);
+    const crown = smoothstep(0.35, 0.8, q.y) * (1 - smoothstep(0.06, 0.12, Math.abs(q.x))) * smoothstep(0.3, -0.5, q.z);
+    out.multiplyScalar(1 - crown * 0.25);
+    // Bela njuška i obrazi odozdo
     out.lerp(light, Math.max(muzzleOf(pp, 0.1, 0.5), (1 - smoothstep(-0.5, -0.25, q.y)) * smoothstep(-0.4, 0.2, q.z)));
     const cheek = Math.max(...ctx.eyes.map((e) => Math.exp(-(((p.x - e.x * 1.35) / 0.035) ** 2 + ((p.y - e.y + 0.05) / 0.025) ** 2))));
     out.lerp(col("#FF9AA8"), cheek * 0.3);
@@ -115,7 +120,7 @@ export const HAMSTER: AnimalSpec = {
     feet: "paw",
     belly: 0.7,
     cheeks: 0,
-    customHand: (b, side) => fingerHand(b, side, { fingers: 4, len: 0.5, thick: 0.17 }),
+    customHand: (b, side) => fingerHand(b, side, { fingers: 4, len: 0.5, thick: 0.17, palm: "#F49AAA" }),
     paint: paintHamster,
 };
 

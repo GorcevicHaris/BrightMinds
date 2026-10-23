@@ -134,7 +134,7 @@ function addSpikes(b: AnimalBuild) {
         const y = shape.neckBaseY - 0.02 - t * (shape.neckBaseY - shape.crotchY - 0.06);
         const at = new THREE.Vector3(0, y, -shape.torsoBack(y) + 0.01);
         const bone: BoneName = y > shape.chestY - 0.02 ? "chest" : y > shape.waistY - 0.02 ? "spine" : "hips";
-        const h = 0.034 + 0.016 * Math.sin(Math.PI * (0.25 + t * 0.6));
+        const h = 0.05 + 0.022 * Math.sin(Math.PI * (0.25 + t * 0.6));
         b.part("tail", place(bone, at, new THREE.Vector3(0, 0.25, -1).normalize(), h, new THREE.Vector3(0, -1, -0.15).normalize()));
     }
     // Rep: pločice duž putanje, sve manje ka vrhu
@@ -150,7 +150,7 @@ function addSpikes(b: AnimalBuild) {
         const up = new THREE.Vector3(0, 1, 0).addScaledVector(tangent, -tangent.y).normalize();
         at.addScaledVector(up, tail.radius(s) * 0.85);
         const bone = s < 0.35 ? "tail1" : s < 0.7 ? "tail2" : "tail3";
-        b.part("tail", place(bone, at, up, 0.032 - i * 0.005, tangent));
+        b.part("tail", place(bone, at, up, 0.045 - i * 0.007, tangent));
     }
     // Teme: tri male pločice (kapa ih sakriva kao kosu)
     const head = b.head;
@@ -160,7 +160,7 @@ function addSpikes(b: AnimalBuild) {
         const at = head.point(0, v).add(headBone);
         const up = head.normal(0, v);
         const back = new THREE.Vector3(0, -Math.sin(Math.PI * v), -Math.cos(Math.PI * v)).normalize();
-        const mesh = place("head", at.addScaledVector(up, -0.008), up, 0.026 + 0.006 * (1 - Math.abs(i - 1)), back);
+        const mesh = place("head", at.addScaledVector(up, -0.008), up, 0.034 + 0.008 * (1 - Math.abs(i - 1)), back);
         b.part("hair", mesh);
     }
 }

@@ -7,7 +7,9 @@ import type { AnimalKind, ExtraAnimalKind } from "../../data";
 import { clamp01, smoothstep } from "../../engine/surface";
 import type { Coat } from "../coats";
 import type { AnimalBuild } from "../figure";
+import { furMaterial } from "../materials";
 import { col, type PaintContext, type PaintPoint } from "../paint";
+import { clumpGeometry, type Clump } from "../parts";
 
 /** Razmera posebnih delova vrste (napisani u metrima za glavu širine `ref`) */
 export function scaleOf(b: AnimalBuild): number {
@@ -146,6 +148,33 @@ export function markColor(coat: Coat, p: THREE.Vector3, out: THREE.Color, index 
 /** Udeo njuške sa mekim pragom */
 export function muzzleOf(pp: PaintPoint, a = 0.1, b = 0.6): number {
     return smoothstep(a, b, pp.muzzle ?? 0);
+}
+
+/** Čuperci na vrhovima ušiju (veverica): pramenovi iz vrha uha, uz pravac uha */
+export function earTipTufts(b: AnimalBuild, o: { len: number; r: number; color: string; count?: number }): void {
+    const ears = typeof b.spec.ears === "function" ? b.spec.ears(b.coat) : b.spec.ears;
+    if (!ears || ears.kind === "none") return;
+    const k = scaleOf(b);
+    const len = ears.shape.len * k;
+    const bend = (ears.shape.bend ?? 0) * k;
+    for (const side of [1, -1] as const) {
+        const bone = b.bone(side === 1 ? "earL" : "earR");
+        if (!bone) continue;
+        const [tx, ty, tz] = ears.tilt;
+        const rot = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(tx, side * ty, -side * tz, "ZYX"));
+        const tip = new THREE.Vector3(0, len * 0.94, -bend * 0.88).applyMatrix4(rot);
+        const axis = new THREE.Vector3(0, 1, (-2 * bend) / Math.max(1e-6, len)).normalize().transformDirection(rot);
+        const clumps: Clump[] = [];
+        const n = o.count ?? 3;
+        for (let i = 0; i < n; i++) {
+            const spread = (i - (n - 1) / 2) * 0.35;
+            const dir = axis.clone().add(new THREE.Vector3(spread * side, 0, -0.1)).normalize();
+            clumps.push({ base: tip.clone(), dir, len: o.len * k * (1 - Math.abs(spread) * 0.4), r: o.r * k, curl: new THREE.Vector3(side * spread, 0, -1).normalize(), color: o.color, flat: 0.6 });
+        }
+        const mesh = new THREE.Mesh(clumpGeometry(clumps, b.quality), furMaterial({ sheen: b.coat.light }));
+        bone.add(mesh);
+        b.part("ears", mesh);
+    }
 }
 
 export { clamp01, smoothstep, col };

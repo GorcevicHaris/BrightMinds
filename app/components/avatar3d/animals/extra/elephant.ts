@@ -58,6 +58,11 @@ function paintElephant(pp: PaintPoint, ctx: PaintContext, out: THREE.Color) {
     const { coat } = ctx;
     const marks = coat.marks ?? [];
     if (marks.length > 2 && pp.region !== "foot") out.lerp(rainbowAt(marks, pp.p.y * 2.2 + pp.p.x, tmp), pp.region === "head" ? 0.4 : 0.6);
+    if (pp.region === "torso") {
+        // Svetliji stomak i grudi
+        const front = smoothstep(0.3, 0.95, pp.p.z / Math.max(0.01, ctx.shape.torsoFront(pp.p.y)));
+        out.lerp(col(coat.light), front * 0.45 * smoothstep(ctx.shape.crotchY, ctx.shape.waistY, pp.p.y));
+    }
     if (pp.region === "ear") {
         // Unutra roze, obod u boji kože
         if (pp.inner) out.lerp(col(coat.inner), 0.9);

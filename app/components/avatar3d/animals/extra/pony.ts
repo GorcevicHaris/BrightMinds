@@ -18,7 +18,7 @@ function pony(fur: string, mane: string[], extra: Partial<Coat> = {}): Coat {
     return {
         fur,
         light: shade(fur, 0.3),
-        muzzle: shade(fur, 0.22),
+        muzzle: shade(fur, 0.38),
         inner: "#F4C2C6",
         nose: shade(fur, -0.5),
         brow: shade(mane[0], -0.1),
@@ -72,13 +72,14 @@ function addMane(b: AnimalBuild) {
     const pick = (i: number, t: number) => (rainbow ? colors[i % colors.length] : colors[(i + (t > 0.5 ? 1 : 0)) % colors.length]);
     // Šiška: tri krupna pramena sa temena, savijena preko čela u stranu (+x), kao u crtanim ponijima
     const fore: Clump[] = [];
-    for (let i = 0; i < 3; i++) {
-        const u = 0.5 + (i - 1) * 0.04;
-        const v = 0.05 + i * 0.012;
+    for (let i = 0; i < 4; i++) {
+        const u = 0.5 + (i - 1.5) * 0.04;
+        const v = 0.13 + Math.abs(i - 1.5) * 0.012;
         const base = head.point(u, v);
         const n = head.normal(u, v);
-        const dir = n.clone().multiplyScalar(0.6).add(new THREE.Vector3(0.45 - i * 0.12, 0.25, 0.9)).normalize();
-        fore.push({ base, dir, len: (0.13 - i * 0.015) * k, r: (0.034 - i * 0.003) * k, curl: new THREE.Vector3(0.6, -1, 0.15).normalize(), color: pick(i, 0), flat: 0.55 });
+        // Pada napred i niz čelo, zabačeno u stranu (+x) — vidi se spreda kao šiška
+        const dir = n.clone().multiplyScalar(0.35).add(new THREE.Vector3(0.35 - i * 0.08, -0.75, 0.45)).normalize();
+        fore.push({ base: base.addScaledVector(n, -0.004 * k), dir, len: (0.1 - Math.abs(i - 1.5) * 0.015) * k, r: 0.03 * k, curl: new THREE.Vector3(0.5, -0.3, 0.8).normalize(), color: pick(i, 0), flat: 0.45 });
     }
     const forelock = new THREE.Mesh(clumpGeometry(fore, b.quality), furMaterial({ sheen: b.coat.light }));
     b.headGroup.add(forelock);
@@ -90,8 +91,8 @@ function addMane(b: AnimalBuild) {
         const u = 1 - 0.012;
         const base = head.point(u, Math.min(0.62, v));
         const n = head.normal(u, Math.min(0.62, v));
-        const dir = n.clone().multiplyScalar(0.45).add(new THREE.Vector3(1, -0.35 - i * 0.05, -0.25)).normalize();
-        crest.push({ base, dir, len: (0.12 + 0.03 * (i % 2)) * k, r: 0.034 * k, curl: new THREE.Vector3(0.05, -1, -0.1).normalize(), color: pick(i, i / 7), flat: 0.5 });
+        const dir = n.clone().multiplyScalar(0.35).add(new THREE.Vector3(1, -0.2 - i * 0.06, 0.1)).normalize();
+        crest.push({ base, dir, len: (0.15 + 0.03 * (i % 2)) * k, r: 0.036 * k, curl: new THREE.Vector3(0.05, -1, -0.1).normalize(), color: pick(i, i / 7), flat: 0.5 });
         // Drugi, kraći red sa druge strane (griva ne izgleda kao češalj)
         if (i % 2 === 0) crest.push({ base: base.clone(), dir: n.clone().multiplyScalar(0.5).add(new THREE.Vector3(-0.8, -0.4, -0.3)).normalize(), len: 0.07 * k, r: 0.026 * k, curl: new THREE.Vector3(-0.1, -1, 0).normalize(), color: pick(i + 1, i / 7), flat: 0.5 });
     }
@@ -104,7 +105,7 @@ function addMane(b: AnimalBuild) {
     const y1 = shape.headBoneY + 0.02;
     for (let i = 0; i < 4; i++) {
         const y = y0 + ((y1 - y0) * i) / 3;
-        const z = -shape.torsoBack(Math.min(y, shape.neckBaseY)) + 0.008;
+        const z = -shape.torsoBack(y) + 0.008;
         neck.push({ base: new THREE.Vector3(0.006 * k, y, z), dir: new THREE.Vector3(0.9, -0.5, -0.25).normalize(), len: 0.11 * k, r: 0.03 * k, curl: new THREE.Vector3(0.05, -1, 0).normalize(), color: pick(i + 1, 0.8), flat: 0.5 });
     }
     const neckMesh = new THREE.Mesh(clumpGeometry(neck, b.quality), furMaterial({ sheen: b.coat.light }));
@@ -129,27 +130,30 @@ export const PONY: AnimalSpec = {
         chin: 0.04,
         blobs: [
             // Izdužena, zaobljena njuška (konjska, ali kratka i slatka)
-            { c: [0, -0.085, 0.11], r: [0.125, 0.105, 0.16], k: 0.06, muzzle: true },
+            { c: [0, -0.1, 0.12], r: [0.105, 0.088, 0.19], k: 0.06, muzzle: true },
         ],
         bumps: [
             { dir: [0.4, 0.02, 0.9], sigma: 0.13, amp: -0.006, mirror: true },
-            { dir: [0.18, -0.55, 0.82], sigma: 0.12, amp: 0.006, muzzle: true, mirror: true },
+            // Mekane nozdrve: blago ispupčenje sa strane vrha njuške
+            { dir: [0.16, -0.5, 0.85], sigma: 0.1, amp: 0.008, muzzle: true, mirror: true },
+            // Obrazi (ganaša) pozadi njuške
+            { dir: [0.75, -0.5, 0.42], sigma: 0.2, amp: 0.008, mirror: true },
         ],
-        eye: { u: 0.102, v: 0.44, r: 0.06, inset: 0.68, yaw: 0.24 },
-        noseV: 0.6,
-        mouthV: 0.705,
+        eye: { u: 0.118, v: 0.42, r: 0.058, inset: 0.68, yaw: 0.36 },
+        noseV: 0.62,
+        mouthV: 0.72,
     },
     face: {
         eye: { upper: 0.84, lower: -0.86, lashes: 3, iris: 0.98, pupil: 0.5 },
         brow: { dv: 0.115, len: 0.05, thick: 0.008 },
-        nose: { kind: "nostrils", w: 0.011, h: 0.008, d: 0.006, v: 0.61 },
+        nose: { kind: "nostrils", w: 0.015, h: 0.01, d: 0.007, v: 0.625 },
         mouth: { w: 0.045, h: 0.06, curve: "smile", teeth: "row", wrap: 0.08, philtrum: 0, line: 0.0028 },
     },
     ears: {
         kind: "tall",
         shape: { len: 0.13, width: 0.075, depth: 0.035, profile: EAR_PROFILES.tall, cup: 0.6, inner: 0.66, bend: 0.012 },
-        u: 0.615,
-        v: 0.16,
+        u: 0.6,
+        v: 0.11,
         sink: 0.012,
         tilt: [-0.15, 0.25, 0.42],
         inner: "pad",

@@ -139,7 +139,7 @@ describe("dodatne 3D životinje", () => {
                 assert.ok(a.petSpot.x < 0 && a.petSpot.y === 0, `${label}: ljubimac gledaocu levo, na tlu`);
                 assert.ok(a.feet.toeL.z > a.feet.left.z, `${label}: prsti napred`);
                 assert.equal(a.ears.kind, EARS[kind], `${label}: vrsta uha`);
-                if (EARS[kind] !== "none") assert.equal(body.parts.ears?.length, 2, `${label}: uši`);
+                if (EARS[kind] !== "none") assert.ok((body.parts.ears?.length ?? 0) >= 2, `${label}: uši`);
                 assert.equal(a.hands.kind, HOOVES.has(kind) ? "hoof" : kind === "owl" ? "flipper" : ["monkey", "frog", "raccoon", "hamster", "squirrel"].includes(kind) ? "hand" : "paw", `${label}: šaka`);
                 assert.equal(a.feet.kind, HOOVES.has(kind) ? "hoof" : kind === "frog" ? "webbed" : "paw", `${label}: stopalo`);
                 assert.ok(body.parts.hands?.length, `${label}: šake`);

@@ -11,7 +11,7 @@ import * as THREE from "three";
 import { merge } from "../../engine/surface";
 import type { AnimalBuild } from "../figure";
 import { hornyMaterial } from "../materials";
-import { paintGeometry } from "../paint";
+import { col, paintGeometry } from "../paint";
 import { handFrame, pawFoot, type Side } from "../parts";
 
 interface HandOut {
@@ -63,6 +63,8 @@ export interface FingerOptions {
     bulbs?: boolean;
     /** Kandžice (rakun, veverica) */
     claws?: string;
+    /** Boja dlana (jastučić), npr. roze kod hrčka */
+    palm?: string;
 }
 
 /** Šaka sa prstima: dlan, prsti blago savijeni ka dlanu, palac spreda */
@@ -104,9 +106,27 @@ export function fingerHand(b: AnimalBuild, side: Side, o: FingerOptions = {}): H
     if (o.bulbs) parts.push(blob(fr * 1.5, fr * 1.2, fr * 1.5, te, 14));
     const q = handFrame(b.rig, side);
     const g = boxUv(merge(parts));
+    // Dlan (strana ka telu) i jastučići prstiju — pre okretanja šake, dok je −x·strana „ka telu”
+    const pos = g.getAttribute("position");
+    const palm = new Float32Array(pos.count);
+    for (let i = 0; i < pos.count; i++) {
+        const x = -pos.getX(i) * side;
+        const y = pos.getY(i);
+        palm[i] = Math.max(0, Math.min(1, (x - R * 0.22) / (R * 0.2))) * (y < -R * 0.35 ? 1 : 0);
+    }
     g.applyQuaternion(q);
     const at = b.boneAt(side === 1 ? "handL" : "handR");
     paintGeometry(g, b.paint, (_i, p) => ({ p: p.clone().add(at), region: "hand", side, t: 1 }));
+    if (o.palm) {
+        const colors = g.getAttribute("color");
+        const pc = col(o.palm);
+        const c = new THREE.Color();
+        for (let i = 0; i < colors.count; i++) {
+            if (!palm[i]) continue;
+            c.setRGB(colors.getX(i), colors.getY(i), colors.getZ(i)).lerp(pc, palm[i] * 0.85);
+            colors.setXYZ(i, c.r, c.g, c.b);
+        }
+    }
     const objects: THREE.Object3D[] = [new THREE.Mesh(g, b.fur)];
     if (claws.length) {
         const c = merge(claws);

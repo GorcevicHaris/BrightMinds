@@ -79,7 +79,7 @@ export const DEER: AnimalSpec = {
     kind: "deer",
     skins: EXTRA_SKINS.deer,
     coats: DEER_COATS,
-    shape: { kind: asKind("deer"), girth: 0.95, belly: 1.0, limb: 0.9, legK: 1.05, head: { w: 0.36, h: 0.34, d: 0.36 } },
+    shape: { kind: asKind("deer"), girth: 0.95, belly: 1.0, limb: 0.9, legK: 1.05, head: { w: 0.34, h: 0.33, d: 0.36 } },
     ref: 0.43,
     head: {
         flat: 0.05,
@@ -87,25 +87,26 @@ export const DEER: AnimalSpec = {
         chin: 0.12,
         blobs: [
             // Nežna izdužena njuška
-            { c: [0, -0.07, 0.12], r: [0.095, 0.08, 0.15], k: 0.06, muzzle: true },
+            // Duga, vitka njuška
+            { c: [0, -0.085, 0.15], r: [0.085, 0.075, 0.21], k: 0.065, muzzle: true },
         ],
         bumps: [
             { dir: [0.4, 0.02, 0.9], sigma: 0.13, amp: -0.006, mirror: true },
             { dir: [0, 0.35, 0.94], sigma: 0.16, amp: 0.006 },
         ],
-        eye: { u: 0.1, v: 0.45, r: 0.064, inset: 0.68, yaw: 0.22 },
-        noseV: 0.6,
-        mouthV: 0.69,
+        eye: { u: 0.112, v: 0.43, r: 0.062, inset: 0.68, yaw: 0.3 },
+        noseV: 0.625,
+        mouthV: 0.715,
     },
     face: {
         eye: { upper: 0.84, lower: -0.86, lashes: 3, iris: 1.0, pupil: 0.52 },
         brow: { dv: 0.115, len: 0.045, thick: 0.007 },
-        nose: { kind: "oval", w: 0.028, h: 0.02, d: 0.018, lift: 0.3, tilt: -0.2, v: 0.6 },
+        nose: { kind: "oval", w: 0.026, h: 0.019, d: 0.017, lift: 0.3, tilt: -0.3, v: 0.625 },
         mouth: { w: 0.032, h: 0.05, curve: "smile", teeth: "none", wrap: 0.06, philtrum: 0.012, line: 0.0024 },
     },
     ears: {
         kind: "tall",
-        shape: { len: 0.15, width: 0.1, depth: 0.035, profile: EAR_PROFILES.tall, cup: 0.65, inner: 0.72, bend: 0.01, tufts: 3 },
+        shape: { len: 0.19, width: 0.125, depth: 0.035, profile: EAR_PROFILES.tall, cup: 0.65, inner: 0.74, bend: 0.012, tufts: 3 },
         u: 0.68,
         v: 0.22,
         sink: 0.012,

@@ -35,6 +35,7 @@ function sheep(wool: string, face: string, extra: Partial<Coat> = {}): Coat {
 export const SHEEP_COATS: Record<string, Coat> = {
     bela: sheep("#FBF8F2", "#F2DCCB", { nose: "#C9909A" }),
     crna: sheep("#4A454E", "#2A262C", { light: "#6A646E", iris: ["#B08A5A", "#4A2A12"], nose: "#141014" }),
+    crnoglava: sheep("#FBF8F2", "#2E2A30", { light: "#FFFFFF", nose: "#141014", iris: ["#B08A5A", "#4A2A12"], inner: "#5A4E56" }),
     smedja: sheep("#C29670", "#6E4E3C"),
     roze: sheep("#FFD2E4", "#FFF0F4", { nose: "#D98AA4", iris: ["#B57A9A", "#5A1E3E"], hoof: "#C2537E" }),
     plava: sheep("#C6DCFF", "#FFFFFF", { nose: "#8AA6D6", iris: ["#6A8AC8", "#1E345E"], hoof: "#5E7EB6" }),
@@ -160,6 +161,14 @@ function addWool(b: AnimalBuild) {
         const base = head.point(u, v);
         const nn = head.normal(u, v);
         clumps.push({ base: base.addScaledVector(nn, -0.006 * k), dir: nn, len: 0.03 * k, r: 0.026 * k, curl: new THREE.Vector3(-d.z, 0, d.x).normalize(), color: b.coat.fur, flat: 0.9 });
+    }
+    // Vunena šiška: kovrdže sa temena preko čela
+    for (let i = 0; i < 5; i++) {
+        const u = 0.5 + (i - 2) * 0.03;
+        const v = 0.2 + Math.abs(i - 2) * 0.02;
+        const base = head.point(u, v);
+        const nn = head.normal(u, v);
+        clumps.push({ base: base.addScaledVector(nn, -0.004 * k), dir: nn.clone().add(new THREE.Vector3(0, -0.3, 0.3)).normalize(), len: 0.028 * k, r: 0.022 * k, curl: new THREE.Vector3(0, -1, 0.4).normalize(), color: b.coat.fur, flat: 0.9 });
     }
     const cap = new THREE.Mesh(clumpGeometry(clumps, b.quality), furMaterial({ sheen: b.coat.light }));
     b.headGroup.add(cap);

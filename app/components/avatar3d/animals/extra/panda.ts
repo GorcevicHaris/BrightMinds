@@ -10,6 +10,7 @@ import { companionFrom, type AnimalSpec } from "../figure";
 import type { PaintContext, PaintPoint } from "../paint";
 import { EAR_PROFILES } from "../parts";
 import { asKind, eyePatch, isHead, markColor, muzzleOf, smoothstep, torsoAngle } from "./common";
+import { headDecal, teardrop } from "./decal";
 import { EXTRA_SKINS } from "./skins.data";
 
 const INK = "#2A2A30";
@@ -68,8 +69,10 @@ function paintPanda(pp: PaintPoint, ctx: PaintContext, out: THREE.Color) {
         case "head":
         case "lid": {
             // Mrlja kao suza: veća ispod oka, nagnuta napolje-dole
+            // Oštre mrlje su posebna površina (extras); ovde samo kapci i blaga senka ispod mrlje
             const patch = eyePatch(ctx, p, { rx: 1.4, ry: 1.9, dx: 0.3, dy: -0.32, tilt: -0.5, soft: 0.28 });
-            out.lerp(mark, Math.min(1, patch * 1.35) * (1 - muzzleOf(pp, 0.25, 0.7)));
+            if (pp.region === "lid") out.lerp(mark, Math.min(1, patch * 1.5));
+            else out.lerp(mark, patch * 0.25 * (1 - muzzleOf(pp, 0.25, 0.7)));
             return;
         }
         default:
@@ -128,6 +131,16 @@ export const PANDA: AnimalSpec = {
     belly: 0,
     cheeks: 0,
     earMotion: "twitch",
+    extras: (b) => {
+        // Mrlje oko očiju: suze nagnute napolje-dole, oštre ivice
+        const e = b.head.spec.eye;
+        const r = e.r;
+        for (const side of [1, -1] as const) {
+            const at = b.head.point(0.5 + side * e.u, e.v).add(new THREE.Vector3(side * r * 0.35, -r * 0.4, 0));
+            const decal = headDecal(b, { center: at, side, radius: teardrop(r * 1.5, r * 2.0, 0.55, 0.22, -Math.PI / 2 + 0.55), color: markColor(b.coat, at.clone().add(b.boneAt("head")), new THREE.Color()) });
+            b.headGroup.add(decal);
+        }
+    },
     paint: paintPanda,
 };
 

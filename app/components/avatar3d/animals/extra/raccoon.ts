@@ -11,6 +11,7 @@ import type { PaintContext, PaintPoint } from "../paint";
 import { EAR_PROFILES } from "../parts";
 import { asKind, bellyMask, col, eyePatch, goldCoat, headLocal, isHead, muzzleOf, rainbowAt, smoothstep } from "./common";
 import { fingerHand } from "./hands";
+import { headDecal, teardrop } from "./decal";
 import { EXTRA_SKINS } from "./skins.data";
 
 function raccoon(fur: string, mask: string, extra: Partial<Coat> = {}): Coat {
@@ -83,8 +84,9 @@ function paintRaccoon(pp: PaintPoint, ctx: PaintContext, out: THREE.Color) {
         out.lerp(light, (1 - smoothstep(0.75, 1, d)) * 0.95);
     }
     // Maska: široka traka preko očiju, ka obrazima; tamna pruga niz čelo
+    // (oštra maska je posebna površina u extras; ovde kapci i mek prelaz oko nje)
     const m = eyePatch(ctx, p, { rx: 2.1, ry: 1.25, dx: 0.45, dy: -0.25, tilt: -0.3, soft: 0.2 });
-    out.lerp(mask, Math.min(1, m * 1.3) * (1 - muzzleOf(pp, 0.2, 0.6)));
+    out.lerp(mask, Math.min(1, m * (pp.region === "lid" ? 1.5 : 0.35)) * (1 - muzzleOf(pp, 0.2, 0.6)));
     const stripe = (1 - smoothstep(0.05, 0.09, Math.abs(q.x))) * smoothstep(0.0, 0.2, q.y) * smoothstep(0.1, 0.4, q.z);
     out.lerp(mask, stripe * 0.7);
 }
@@ -138,7 +140,18 @@ export const RACCOON: AnimalSpec = {
     feet: "paw",
     belly: 0.45,
     cheeks: 0,
-    customHand: (b, side) => fingerHand(b, side, { fingers: 4, len: 0.62, thick: 0.2 }),
+    customHand: (b, side) => fingerHand(b, side, { fingers: 4, len: 0.62, thick: 0.2, palm: "#4A3E44" }),
+    extras: (b) => {
+        // Maska: široka traka preko očiju, spoljni kraj spušten ka obrazu
+        const e = b.head.spec.eye;
+        const r = e.r;
+        const marks = b.coat.marks ?? [];
+        const color = marks.length > 2 ? "#6A5A98" : marks[0] ?? "#2C2A30";
+        for (const side of [1, -1] as const) {
+            const at = b.head.point(0.5 + side * e.u, e.v).add(new THREE.Vector3(side * r * 0.45, -r * 0.25, 0));
+            b.headGroup.add(headDecal(b, { center: at, side, radius: teardrop(r * 2.05, r * 1.3, -0.3, 0.25, -0.45), color }));
+        }
+    },
     paint: paintRaccoon,
 };
 

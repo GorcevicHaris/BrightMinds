@@ -8,7 +8,7 @@ import type { Coat } from "../coats";
 import { companionFrom, type AnimalSpec } from "../figure";
 import type { PaintContext, PaintPoint } from "../paint";
 import { EAR_PROFILES } from "../parts";
-import { asKind, bellyMask, col, goldCoat, headLocal, isHead, muzzleOf, rainbowAt, smoothstep } from "./common";
+import { asKind, earTipTufts, bellyMask, col, goldCoat, headLocal, isHead, muzzleOf, rainbowAt, smoothstep } from "./common";
 import { fingerHand } from "./hands";
 import { EXTRA_SKINS } from "./skins.data";
 
@@ -69,7 +69,7 @@ export const SQUIRREL: AnimalSpec = {
     kind: "squirrel",
     skins: EXTRA_SKINS.squirrel,
     coats: SQUIRREL_COATS,
-    shape: { kind: asKind("squirrel"), girth: 0.98, belly: 1.06, limb: 0.94, legK: 0.95, head: { w: 0.37, h: 0.34, d: 0.35 } },
+    shape: { kind: asKind("squirrel"), girth: 0.96, belly: 1.06, limb: 0.92, legK: 0.95, head: { w: 0.33, h: 0.32, d: 0.32 } },
     ref: 0.44,
     head: {
         flat: 0.1,
@@ -96,7 +96,7 @@ export const SQUIRREL: AnimalSpec = {
     },
     ears: {
         kind: "pointy",
-        shape: { len: 0.12, width: 0.085, depth: 0.035, profile: EAR_PROFILES.pointy, bend: 0.012, cup: 0.6, inner: 0.66, tufts: 6 },
+        shape: { len: 0.13, width: 0.085, depth: 0.035, profile: EAR_PROFILES.pointy, bend: 0.012, cup: 0.6, inner: 0.66, tufts: 6 },
         u: 0.625,
         v: 0.17,
         sink: 0.012,
@@ -105,16 +105,18 @@ export const SQUIRREL: AnimalSpec = {
     },
     tail: {
         // Veliki čupavi rep: diže se iza leđa u obliku slova S, vrh se povija unazad
-        points: [[0, 0, 0], [0, -0.01, -0.09], [0, 0.08, -0.17], [0, 0.22, -0.18], [0, 0.36, -0.13], [0, 0.46, -0.16], [0, 0.5, -0.24]],
-        radius: profile([[0, 0.035], [0.18, 0.06], [0.5, 0.075], [0.8, 0.07], [0.95, 0.05], [1, 0.02]]),
-        clumps: 10,
+        // Diže se iza leđa ukoso, viri preko ramena (vidi se i spreda), vrh se uvija napolje
+        points: [[0, 0, 0], [0.03, -0.01, -0.09], [0.09, 0.08, -0.15], [0.14, 0.22, -0.16], [0.18, 0.36, -0.12], [0.24, 0.46, -0.11], [0.31, 0.49, -0.16]],
+        radius: profile([[0, 0.026], [0.18, 0.05], [0.55, 0.074], [0.85, 0.068], [0.96, 0.045], [1, 0.02]]),
+        clumps: 7,
         motion: "sway",
     },
     hands: "hand",
     feet: "paw",
     belly: 0.5,
     cheeks: 0,
-    customHand: (b, side) => fingerHand(b, side, { fingers: 4, len: 0.55, thick: 0.17, claws: "#3A2A24" }),
+    customHand: (b, side) => fingerHand(b, side, { fingers: 4, len: 0.55, thick: 0.17, claws: "#3A2A24", palm: "#E8A898" }),
+    extras: (b) => earTipTufts(b, { len: 0.05, r: 0.011, color: b.coat.earTips ?? b.coat.fur, count: 3 }),
     paint: paintSquirrel,
 };
 

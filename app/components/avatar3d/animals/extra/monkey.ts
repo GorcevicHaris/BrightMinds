@@ -120,7 +120,7 @@ export const MONKEY: AnimalSpec = {
     feet: "paw",
     belly: 0.5,
     cheeks: 0,
-    customHand: (b, side) => fingerHand(b, side, { fingers: 4, len: 0.72, thick: 0.21 }),
+    customHand: (b, side) => fingerHand(b, side, { fingers: 4, len: 0.72, thick: 0.21, palm: "#C99A84" }),
     paint: paintMonkey,
 };
 

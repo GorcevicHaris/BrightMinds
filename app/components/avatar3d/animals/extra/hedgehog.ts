@@ -158,17 +158,17 @@ export const HEDGEHOG: AnimalSpec = {
         chin: 0.1,
         blobs: [
             // Šiljata njuška napred
-            { c: [0, -0.07, 0.14], r: [0.08, 0.07, 0.14], k: 0.06, muzzle: true },
+            { c: [0, -0.075, 0.16], r: [0.075, 0.065, 0.18], k: 0.06, muzzle: true },
         ],
         bumps: [{ dir: [0.38, 0.0, 0.93], sigma: 0.12, amp: -0.006, mirror: true }],
         eye: { u: 0.095, v: 0.46, r: 0.054, inset: 0.68, yaw: 0.2 },
-        noseV: 0.59,
+        noseV: 0.6,
         mouthV: 0.68,
     },
     face: {
         eye: { upper: 0.86, lower: -0.86, lashes: 1, iris: 0.98, pupil: 0.52 },
         brow: { dv: 0.11, len: 0.05, thick: 0.008 },
-        nose: { kind: "button", w: 0.02, h: 0.017, d: 0.016, lift: 0.3, v: 0.575 },
+        nose: { kind: "button", w: 0.021, h: 0.018, d: 0.018, lift: 0.35, v: 0.59 },
         mouth: { w: 0.036, h: 0.05, curve: "smile", teeth: "none", wrap: 0.06, philtrum: 0.01, line: 0.0024 },
     },
     ears: {

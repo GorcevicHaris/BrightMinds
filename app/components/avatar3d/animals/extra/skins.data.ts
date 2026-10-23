@@ -119,6 +119,7 @@ export const EXTRA_SKINS: Record<ExtraAnimalKind, readonly SkinData[]> = {
     sheep: [
         { id: "bela", label: "Bela", price: 0 },
         { id: "crna", label: "Crna", price: 0 },
+        { id: "crnoglava", label: "Crnoglava", price: 0 },
         { id: "smedja", label: "Smeđa", price: 0 },
         { id: "roze", label: "Roze", price: 10 },
         { id: "plava", label: "Plava", price: 12 },
