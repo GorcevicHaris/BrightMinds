@@ -16,9 +16,9 @@
 //    jer je živo). Pas „glođe” kost; pčela jede „polen iz cveta”.
 //  • Nema prikaza lova ni mesa: plen (muva, crv) je nacrtan bez lica.
 
-import type { BaseView } from "@/app/components/games/kit/types";
+import type { BaseView, GameResult } from "@/app/components/games/kit/types";
 import type { FeedbackKind } from "@/app/components/games/kit/ui";
-import { toCount } from "@/app/components/games/kit/utils";
+import { demoRounds, toCount } from "@/app/components/games/kit/utils";
 
 export const FOOD_IDS = ["carrot", "lettuce", "grass", "hay", "leaves", "banana", "apple", "bamboo", "nut", "flower", "honey", "seeds", "corn", "fish", "bone", "fly", "worm"] as const;
 export type FoodId = (typeof FOOD_IDS)[number];
@@ -491,6 +491,38 @@ export function emptyFoodView(totalRounds: number): FoodView {
 /** Polja zadatka u stanju igre */
 export function roundView(round: FoodRound): Pick<FoodView, "kind" | "animal" | "food" | "answer" | "choices" | "pairs"> {
     return { kind: round.kind, animal: round.animal, food: round.food, answer: round.answer, choices: [...round.choices], pairs: round.pairs.map((pair) => ({ ...pair })) };
+}
+
+// ── Bodovanje (isto kao u ostalim igrama) ────────────────────────────────────
+
+/**
+ * Zadatak je rešen. Prvi zadatak prvog nivoa pokazuje ruka (pokazni, ne ocenjuje se);
+ * „correct” = iz prvog pokušaja i bez pomoći, „prompted” = uz pomoć (osim pokaznog).
+ * U hranjenju je zadatak „iz prvog pokušaja” kad nijedna hrana nije data pogrešnoj životinji.
+ */
+export function solveFoodView(current: FoodView, level: number, solved: Partial<FoodView> = {}): { next: FoodView; firstTry: boolean; modeled: boolean } {
+    const modeled = demoRounds(level, current.totalRounds) > 0 && current.round === 1;
+    const firstTry = current.wrong.length === 0 && !current.hint && !modeled;
+    const next: FoodView = {
+        ...current,
+        ...solved,
+        feedback: "correct",
+        score: current.score + (firstTry ? 10 : 5),
+        correctCount: current.correctCount + (firstTry ? 1 : 0),
+        promptedCount: current.promptedCount + (current.hint && !modeled ? 1 : 0),
+    };
+    return { next, firstTry, modeled };
+}
+
+/** Rezultat nivoa: total = zadaci bez pokaznog; correct = iz prvog pokušaja; prompted = uz pomoć */
+export function foodResult(final: FoodView, level: number, durationSec: number): GameResult {
+    return {
+        score: final.score,
+        durationSec,
+        correct: final.correctCount,
+        total: Math.max(final.totalRounds - demoRounds(level, final.totalRounds), 1),
+        prompted: final.promptedCount,
+    };
 }
 
 const KINDS: readonly RoundKind[] = ["what", "who", "not", "also", "feed"];

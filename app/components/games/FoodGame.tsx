@@ -37,6 +37,7 @@ import {
     buildFoodLevel,
     eatsSentence,
     emptyFoodView,
+    foodResult,
     foodRule,
     getAnimal,
     getFood,
@@ -45,6 +46,7 @@ import {
     roundQuestion,
     roundView,
     solvedPair,
+    solveFoodView,
     wrongSentence,
     type AnimalId,
     type FeedPair,
@@ -150,14 +152,7 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
         finishedRef.current = true;
         const final = viewRef.current;
         sync.complete(final);
-        // total = zadaci bez pokaznog (prvi u prvom nivou); correct = iz prvog pokušaja; prompted = uz pomoć
-        onCompleteRef.current({
-            score: final.score,
-            durationSec: sync.elapsedSec(),
-            correct: final.correctCount,
-            total: Math.max(final.totalRounds - demoRounds(level, final.totalRounds), 1),
-            prompted: final.promptedCount,
-        });
+        onCompleteRef.current(foodResult(final, level, sync.elapsedSec()));
     };
 
     const startRound = (index: number) => {
@@ -172,16 +167,7 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
 
     /** Zadatak je rešen: poeni, pohvala sa doslovnom rečenicom, pa sledeći zadatak posle jedenja */
     const solve = (current: FoodView, solved: Partial<FoodView>, sentence: string, log: string) => {
-        const modeled = modeledRound(current);
-        const firstTry = current.wrong.length === 0 && !current.hint && !modeled;
-        const next: FoodView = {
-            ...current,
-            ...solved,
-            feedback: "correct",
-            score: current.score + (firstTry ? 10 : 5),
-            correctCount: current.correctCount + (firstTry ? 1 : 0),
-            promptedCount: current.promptedCount + (current.hint && !modeled ? 1 : 0),
-        };
+        const { next, firstTry, modeled } = solveFoodView(current, level, solved);
         const how = modeled ? "(pokazni zadatak)" : firstTry ? "iz prvog pokušaja" : current.hint ? "uz pomoć" : "posle više pokušaja";
         commit(next, `Tačno ${how}: ${log}`);
         playSfx("correct");
