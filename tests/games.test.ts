@@ -103,8 +103,8 @@ describe("isGradedActivity", () => {
 describe("game registry", () => {
     const unique = (values: readonly unknown[]) => new Set(values).size === values.length;
 
-    it("has eighteen games with unique ids, activity ids and game types", () => {
-        assert.equal(GAMES.length, 18);
+    it("has nineteen games with unique ids, activity ids and game types", () => {
+        assert.equal(GAMES.length, 19);
         assert.ok(unique(GAMES.map((game) => game.id)));
         assert.ok(unique(GAMES.map((game) => game.activityId)));
         assert.ok(unique(GAMES.map((game) => game.gameType)));
@@ -113,9 +113,9 @@ describe("game registry", () => {
     it("keeps the activity ids that are already stored in the database", () => {
         assert.deepEqual(
             Object.fromEntries(GAMES.map((game) => [game.id, game.activityId])),
-            { shapes: 1, memory: 3, coloring: 4, "sound-to-image": 5, social: 6, "social-story": 7, emotions: 8, sorting: 9, sequence: 10, where: 11, uses: 12, counting: 13, gaze: 14, letters: 15, numbers: 16, food: 17, clock: 18, inset: 19 }
+            { shapes: 1, memory: 3, coloring: 4, "sound-to-image": 5, social: 6, "social-story": 7, emotions: 8, sorting: 9, sequence: 10, where: 11, uses: 12, counting: 13, gaze: 14, letters: 15, numbers: 16, food: 17, puzzle: 22, clock: 18, inset: 19 }
         );
-        assert.deepEqual(ACTIVITY_IDS, [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]);
+        assert.deepEqual(ACTIVITY_IDS, [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 22, 18, 19]);
     });
 
     it("gives every game a title, a skill, an image and an off-screen tip for the adult", () => {

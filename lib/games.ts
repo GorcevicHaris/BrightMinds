@@ -19,6 +19,7 @@ export type GameId =
     | "letters"
     | "numbers"
     | "food"
+    | "puzzle"
     | "inset"
     | "clock";
 
@@ -40,6 +41,7 @@ export type GameType =
     | "letters"
     | "numbers"
     | "food"
+    | "puzzle"
     | "inset"
     | "clock";
 
@@ -278,10 +280,11 @@ export const GAMES: GameDefinition[] = [
             ring: "ring-amber-200",
             gradient: "from-amber-400 to-orange-500",
         },
-        offscreenTip: "Pri sklanjanju veša ili igračaka razvrstavajte zajedno: „Čarape ovde, majice tamo.” ili „Crvene kocke u ovu kutiju.”",
+        offscreenTip:
+            "Napravite kod kuće „čarobne kutije” i razvrstajte zajedno igračke ili pribor za jelo: „Crvene kocke ovde, plave tamo.” Sa starijim detetom uvedite pravilo: „U ovu kutiju stavljamo samo ono što koristimo za jelo.”",
         graded: true,
-        // 11. po redu: razvrstavanje po pravilu (kategorija, boja)
-        ages: { min: 4, max: 8 },
+        // 11. po redu: razvrstavanje — od iste slike (od treće godine) do boje, veličine, vrste i pravila (namena)
+        ages: { min: 3, max: 8 },
         order: 11,
     },
     {
@@ -479,6 +482,31 @@ export const GAMES: GameDefinition[] = [
         order: 7,
     },
     {
+        id: "puzzle",
+        gameType: "puzzle",
+        activityId: 22,
+        title: "Složi sliku",
+        description: "Spoji delove u celu sliku",
+        skill: "Vizuelno-prostorno opažanje",
+        icon: "🧩",
+        image: "/images/slozisliku.svg",
+        accent: {
+            solid: "bg-purple-500",
+            edge: "border-purple-700",
+            soft: "bg-purple-50",
+            text: "text-purple-700",
+            border: "border-purple-200",
+            ring: "ring-purple-200",
+            gradient: "from-fuchsia-400 to-purple-600",
+        },
+        offscreenTip:
+            "Isecite staru razglednicu ili crtež na dva dela, pa na tri-četiri, i slažite zajedno. Prvo vi pokažite gde ide jedan deo, pa neka dete doda ostale. Pričajte šta je na delu: „Ovde je nebo, ono ide gore.”",
+        graded: true,
+        // Slaganje slike od delova: od dve polovine do 16 delova, za sve uzraste
+        ages: { min: 3, max: 10 },
+        order: 17,
+    },
+    {
         id: "clock",
         gameType: "clock",
         activityId: 18,
@@ -499,9 +527,9 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Na pravom satu pokažite malu kazaljku: „Mala kazaljka je na sedmici — sedam sati, vreme za doručak.” Vežite sat za svakodnevne stvari (crtani u pet, spavanje u osam). Brojte stepenice ili dugmiće i stavite pored njih broj od papira.",
         graded: true,
-        // 18. po redu: brojevi redom na satu i čitanje vremena — posle brojanja i brojeva
+        // 19. po redu: brojevi redom na satu i čitanje vremena — posle brojanja i brojeva
         ages: { min: 4, max: 9 },
-        order: 18,
+        order: 19,
     },
     {
         id: "inset",
@@ -513,20 +541,20 @@ export const GAMES: GameDefinition[] = [
         icon: "🔶",
         image: "/images/umetaljka.svg",
         accent: {
-            solid: "bg-purple-500",
-            edge: "border-purple-700",
-            soft: "bg-purple-50",
-            text: "text-purple-700",
-            border: "border-purple-200",
-            ring: "ring-purple-200",
-            gradient: "from-purple-400 to-fuchsia-500",
+            solid: "bg-slate-500",
+            edge: "border-slate-700",
+            soft: "bg-slate-50",
+            text: "text-slate-700",
+            border: "border-slate-200",
+            ring: "ring-slate-200",
+            gradient: "from-sky-400 to-indigo-500",
         },
         offscreenTip:
             "Drvena umetaljka, kutija sa otvorima ili poklopci tegli: neka dete proba koji oblik gde ulazi. Imenujte oblik dok ga drži („To je trougao.”), a kad ne ulazi, recite mirno: „Okreni ga.” Kasnije tražite predmete po senci: šolja, ključ, jabuka.",
         graded: true,
-        // 17. po redu: uparivanje oblika sa rupom, rukom i okom — posle prvih igara sa oblicima
+        // 18. po redu: uparivanje oblika sa rupom, rukom i okom — posle slaganja slike
         ages: { min: 3, max: 7 },
-        order: 17,
+        order: 18,
     },
 ];
 

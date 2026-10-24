@@ -19,6 +19,7 @@ import { RealtimeTopicProvider, useWatcherPresence } from "@/lib/realtime";
 import { speak, stopSpeaking } from "@/lib/speech";
 import CompanionStage from "@/app/components/avatar3d/CompanionStage";
 import CompanionRoom from "./CompanionRoom";
+import CompanionWorld from "./CompanionWorld";
 import { chosenSkin, CompanionProvider, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
 import LockedGameHint from "./LockedGameHint";
@@ -84,8 +85,9 @@ function BannerGreeting({ firstName, onGoal }: { firstName: string; onGoal: () =
 }
 
 /**
- * Pozdrav na vrhu početne strane: 3D drugar u svom svetu preko celog banera (kupljena
- * pozadina ili mirni svetlosivi svet), široko kadriran — drugar desno, pozdrav levo.
+ * Pozdrav na vrhu početne strane: samo 3D drugar (bez sveta, koji bi se u širokom baneru
+ * razvukao), široko kadriran — drugar desno, pozdrav levo. Kupljena pozadina je iza cele
+ * strane (CompanionWorld), a baner je tada providan.
  * Dodir na drugara otvara „Moj drugar”.
  */
 function GreetingBanner({ showAvatar, children, onCompanion, sectionRef }: { showAvatar: boolean; children: ReactNode; onCompanion: () => void; sectionRef?: (el: HTMLElement | null) => void }) {
@@ -102,7 +104,11 @@ function GreetingBanner({ showAvatar, children, onCompanion, sectionRef }: { sho
     return (
         <section
             ref={sectionRef}
-            className="relative min-h-52 overflow-hidden rounded-card bg-[#E4E6EB] text-ink shadow-soft sm:min-h-64"
+            className={cn(
+                "relative min-h-52 overflow-hidden rounded-card text-ink shadow-soft sm:min-h-64",
+                // Sa kupljenom pozadinom baner je providan (svet je iza cele strane), inače mek svetao
+                companion.wear.background ? "bg-white/25 ring-1 ring-white/60" : "bg-gradient-to-br from-brand-50 via-white to-sky-50"
+            )}
             onPointerDown={(e) => {
                 pressAt.current = { x: e.clientX, y: e.clientY };
             }}
@@ -116,7 +122,7 @@ function GreetingBanner({ showAvatar, children, onCompanion, sectionRef }: { sho
                 if (e.clientX - box.left > box.width * 0.38) onCompanion();
             }}
         >
-            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="wide" align={0.4} background interactive className="absolute inset-0" />
+            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="wide" align={0.4} background={false} interactive className="absolute inset-0" />
             {/* Sloj sa pozdravom propušta dodire do drugara (platno ispod); hvata ih samo kartica pozdrava */}
             <div className="pointer-events-none relative flex min-h-52 items-center sm:min-h-64">
                 <div className="w-[54%] p-3 sm:w-1/2 sm:p-8">
@@ -142,9 +148,9 @@ function FloatingCompanion({ onOpen }: { onOpen: () => void }) {
             type="button"
             onClick={onOpen}
             aria-label="Moj drugar"
-            className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-3 z-30 h-28 w-24 animate-pop overflow-hidden rounded-3xl border-2 border-white bg-[#E4E6EB] shadow-lift focus-visible:ring-4 focus-visible:ring-brand-400 md:bottom-6 md:right-6 md:h-36 md:w-28"
+            className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-3 z-30 h-28 w-24 animate-pop overflow-hidden rounded-3xl border-2 border-white bg-gradient-to-b from-brand-50 to-sky-50 shadow-lift focus-visible:ring-4 focus-visible:ring-brand-400 md:bottom-6 md:right-6 md:h-36 md:w-28"
         >
-            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="portrait" background className="pointer-events-none absolute inset-0" />
+            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="portrait" background={false} className="pointer-events-none absolute inset-0" />
         </button>
     );
 }
@@ -235,7 +241,9 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, 
         );
 
     return (
-        <ChildSettingsProvider settings={settings} className="min-h-dvh bg-canvas pb-24 md:pb-10">
+        <ChildSettingsProvider settings={settings} className="relative isolate min-h-dvh bg-canvas pb-24 md:pb-10">
+            {/* Kupljena pozadina drugara iza cele strane (ispod svega, ništa ne hvata dodir) */}
+            {showAvatar && <CompanionWorld />}
             <header inert={gameOpen} className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
                 <div className="flex h-16 w-full items-center gap-2 px-4 sm:h-18 sm:gap-3 sm:px-6 lg:px-10 2xl:px-16">
                     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-brand-600 text-base font-extrabold text-white" aria-hidden="true">

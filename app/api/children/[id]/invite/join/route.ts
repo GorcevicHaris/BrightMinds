@@ -3,7 +3,7 @@
 // pristup traži sesiju baš tog deteta ili njegovog roditelja (requireChildAccess), pa se
 // ulazi samo u svoj profil, i to dok dečja sesija važi (promenjen tajni kod je gasi).
 //
-// POST { code } → { channel, friend: { firstName, companion }, game, level } — ništa više:
+// POST { code } → { channel, friend: { firstName, companion }, game, level[, mode: "versus"] } — ništa više:
 // bez ID-ja, prezimena, uzrasta i napretka domaćina. Kod je jednokratan (briše se pri ulasku),
 // važi 10 minuta, sopstveni poziv se ne prihvata, a pogađanje je ograničeno po adresi,
 // po detetu i ukupno. Svaki neuspeh (nepoznat, istekao, iskorišćen kod) ima isti odgovor.
@@ -95,6 +95,8 @@ export async function POST(request: Request, { params }: RouteContext) {
                 friend: { firstName: firstNameOf(result.row), companion: companionOf(result.row) },
                 game: joined.game,
                 level: joined.level,
+                // Bez polja je „zajedno” (stari klijenti i pozivi); takmičenje se šalje izričito
+                ...(joined.mode === "versus" ? { mode: joined.mode } : {}),
             },
             { headers: { "Cache-Control": "no-store" } }
         );

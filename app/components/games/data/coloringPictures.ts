@@ -179,6 +179,11 @@ export interface Picture {
     lines?: string;
     /** Redosled zadataka i predloga (id-jevi delova); bez njega važi redosled crtanja */
     order?: string[];
+    /**
+     * Simetrična slika („oboji drugu polovinu”): `axis` je x linije ogledala, a `pairs` vodi od
+     * dela na desnoj polovini do njegovog odraza na levoj (levi je obojen od početka).
+     */
+    mirror?: { axis: number; pairs: Record<string, string> };
 }
 
 function ellipse(cx: number, cy: number, rx: number, ry: number, rotation = 0): string {
@@ -220,6 +225,81 @@ function cloud(x: number, y: number, w: number): string {
 }
 
 const z = (id: string, name: string, acc: string, g: Gram, c: ColorId, d: string, hit?: number): Zone => (hit ? { id, name, acc, g, c, d, hit } : { id, name, acc, g, c, d });
+
+
+// ── Ogledalo ──────────────────────────────────────────────────────────────────
+
+/** Koliko brojeva uzima svaka SVG naredba putanje */
+const PATH_ARGS: Record<string, number> = { m: 2, l: 2, h: 1, v: 1, c: 6, s: 4, q: 4, t: 2, a: 7, z: 0 };
+/** Koji brojevi naredbe su x (preslikavaju se preko ose) */
+const X_ARGS: Record<string, number[]> = { m: [0], l: [0], h: [0], v: [], c: [0, 2, 4], s: [0, 2], q: [0, 2], t: [0], a: [5], z: [] };
+
+const fmt = (n: number) => String(Math.round(n * 100) / 100);
+
+/**
+ * Odraz putanje u ogledalu (vertikalna osa `axis`): x → 2·axis − x za apsolutne naredbe,
+ * x → −x za relativne; luk menja smer (sweep) i ugao. Tako se desna polovina simetrične
+ * slike dobija iz leve, tačno kao u ogledalu.
+ */
+export function mirrorPath(d: string, axis: number): string {
+    const tokens = d.match(/[MmLlHhVvCcSsQqTtAaZz]|-?\d*\.?\d+(?:e[-+]?\d+)?/g) ?? [];
+    const out: string[] = [];
+    let i = 0;
+    while (i < tokens.length) {
+        const command = tokens[i];
+        i += 1;
+        const lower = command.toLowerCase();
+        const count = PATH_ARGS[lower];
+        if (count === undefined) continue;
+        const absolute = command !== lower;
+        if (count === 0) {
+            out.push(command);
+            continue;
+        }
+        const groups: string[] = [];
+        do {
+            const args = tokens.slice(i, i + count).map(Number);
+            i += count;
+            for (const index of X_ARGS[lower]) args[index] = absolute ? 2 * axis - args[index] : -args[index];
+            if (lower === "a") {
+                args[2] = -args[2];
+                args[4] = args[4] ? 0 : 1;
+            }
+            const pairs = Array.from({ length: Math.ceil(args.length / 2) }, (_, k) => args.slice(2 * k, 2 * k + 2).map(fmt).join(","));
+            groups.push(lower === "a" ? `${fmt(args[0])},${fmt(args[1])} ${fmt(args[2])} ${args[3]},${args[4]} ${fmt(args[5])},${fmt(args[6])}` : pairs.join(" "));
+        } while (i < tokens.length && !/[A-Za-z]/.test(tokens[i]));
+        out.push(`${command}${groups.join(" ")}`);
+    }
+    return out.join(" ");
+}
+
+interface Half {
+    id: string;
+    name: string;
+    acc: string;
+    g: Gram;
+    c: ColorId;
+    /** Deo na levoj polovini; desni se dobija ogledalom */
+    d: string;
+    hit?: number;
+}
+
+/**
+ * Simetrična slika: svaki deo postoji na levoj (`-l`) i desnoj (`-d`) polovini, iste boje i istog
+ * imena. Leva polovina je obojena od početka; dete boji desne delove redom kojim su navedeni.
+ */
+function symmetric(base: Omit<Picture, "zones" | "order" | "mirror">, axis: number, halves: Half[]): Picture {
+    const zones: Zone[] = halves.flatMap((half) => [
+        z(`${half.id}-l`, half.name, half.acc, half.g, half.c, half.d, half.hit),
+        z(`${half.id}-d`, half.name, half.acc, half.g, half.c, mirrorPath(half.d, axis), half.hit),
+    ]);
+    return {
+        ...base,
+        zones,
+        order: halves.map((half) => `${half.id}-d`),
+        mirror: { axis, pairs: Object.fromEntries(halves.map((half) => [`${half.id}-d`, `${half.id}-l`])) },
+    };
+}
 
 export const PICTURES: Picture[] = [
     // ── Tri velika dela ──────────────────────────────────────────────────────
@@ -996,6 +1076,88 @@ export const PICTURES: Picture[] = [
         details: [{ d: `${circle(170, 102, 6)} ${circle(230, 102, 6)}`, fill: INK }],
         lines: "M200,44 L200,58",
         order: ["telo", "glava", "ruke", "noge", "ekran", "oci", "dugmad", "usta", "usi", "lampica"],
+    },
+    // ── Simetrične slike: leva polovina je obojena, dete boji drugu ─────────────
+    symmetric({ id: "pola-srce", name: "Srce", acc: "srce", emoji: "❤️", viewBox: "50 50 300 300" }, 200, [
+        { id: "srce", name: "srce", acc: "srce", g: "n", c: "red", d: "M200,118 C178,78 92,70 82,148 C74,212 150,262 200,322 Z" },
+        { id: "malo", name: "malo srce", acc: "malo srce", g: "n", c: "pink", d: "M200,178 C190,156 146,152 142,192 C140,226 174,250 200,274 Z" },
+        { id: "tacka", name: "tačka", acc: "tačku", g: "f", c: "yellow", d: circle(98, 84, 18), hit: 10 },
+    ]),
+    {
+        ...symmetric({ id: "pola-bubamara", name: "Bubamara", acc: "bubamaru", emoji: "🐞", viewBox: "40 20 320 360" }, 200, [
+            { id: "list", name: "list", acc: "list", g: "m", c: "green", d: "M200,30 C120,40 50,120 56,220 C62,310 130,360 200,372 Z" },
+            { id: "noge", name: "noge", acc: "noge", g: "fpl", c: "brown", d: `${ellipse(112, 198, 16, 6, -20)} ${ellipse(106, 250, 16, 6, 0)} ${ellipse(118, 300, 16, 6, 25)}`, hit: 8 },
+            { id: "krilo", name: "krilo", acc: "krilo", g: "n", c: "red", d: "M200,128 C140,126 106,186 110,240 C114,300 160,330 200,330 Z" },
+            { id: "tacke", name: "tačke", acc: "tačke", g: "fpl", c: "black", d: `${circle(160, 196, 15)} ${circle(150, 270, 13)}`, hit: 8 },
+        ]),
+        details: [
+            { d: circle(200, 118, 34), fill: INK },
+            { d: `${circle(186, 106, 7)} ${circle(214, 106, 7)}`, fill: PAPER },
+        ],
+        lines: "M200,152 L200,330 M186,88 Q176,60 158,54 M214,88 Q224,60 242,54",
+    },
+    {
+        ...symmetric({ id: "pola-cvet", name: "Cvet", acc: "cvet", emoji: "🌷", viewBox: "60 20 280 360" }, 200, [
+            { id: "list", name: "list", acc: "list", g: "m", c: "green", d: "M196,292 C166,296 120,282 104,246 C142,238 182,258 196,282 Z" },
+            { id: "saksija", name: "saksija", acc: "saksiju", g: "f", c: "orange", d: "M200,312 L128,312 L144,374 L200,374 Z" },
+            { id: "gornja", name: "gornja latica", acc: "gornju laticu", g: "f", c: "pink", d: ellipse(150, 108, 40, 26, -25) },
+            { id: "donja", name: "donja latica", acc: "donju laticu", g: "f", c: "purple", d: ellipse(156, 160, 38, 24, 30) },
+        ]),
+        details: [
+            { d: "M194,150 L206,150 L206,312 L194,312 Z", fill: "#16A34A" },
+            { d: ellipse(200, 72, 26, 38), fill: "#F472B6" },
+            { d: circle(200, 132, 28), fill: "#FACC15" },
+        ],
+    },
+    {
+        ...symmetric({ id: "pola-leptir", name: "Leptir", acc: "leptira", emoji: "🦋", viewBox: "40 40 320 330" }, 200, [
+            { id: "gornje", name: "gornje krilo", acc: "gornje krilo", g: "n", c: "purple", d: "M196,150 C150,70 60,70 62,140 C64,200 140,214 196,190 Z" },
+            { id: "donje", name: "donje krilo", acc: "donje krilo", g: "n", c: "pink", d: "M196,196 C140,200 92,250 112,300 C130,340 186,300 196,250 Z" },
+            { id: "velika", name: "velika tačka", acc: "veliku tačku", g: "f", c: "yellow", d: circle(118, 140, 20), hit: 8 },
+            { id: "mala", name: "mala tačka", acc: "malu tačku", g: "f", c: "blue", d: circle(148, 262, 14), hit: 10 },
+        ]),
+        details: [
+            { d: ellipse(200, 210, 11, 64), fill: "#92400E" },
+            { d: circle(200, 132, 17), fill: "#92400E" },
+        ],
+        lines: "M192,118 Q176,84 158,78 M208,118 Q224,84 242,78",
+    },
+    {
+        ...symmetric({ id: "pola-kuca", name: "Kuća", acc: "kuću", emoji: "🏠", viewBox: "40 50 320 320" }, 200, [
+            { id: "zid", name: "zid", acc: "zid", g: "m", c: "yellow", d: "M200,180 L92,180 L92,340 L200,340 Z" },
+            { id: "krov", name: "krov", acc: "krov", g: "m", c: "red", d: "M200,66 L58,192 L200,192 Z" },
+            { id: "prozor", name: "prozor", acc: "prozor", g: "m", c: "blue", d: rect(108, 214, 52, 46) },
+            { id: "zbun", name: "žbun", acc: "žbun", g: "m", c: "green", d: "M56,354 C44,326 66,302 90,310 C104,292 134,298 136,320 C152,326 150,356 134,358 Z" },
+        ]),
+        details: [
+            { d: "M174,340 L174,272 Q200,252 226,272 L226,340 Z", fill: "#92400E" },
+            { d: circle(200, 142, 18), fill: "#7DD3FC" },
+            { d: "M108,235 L160,235 L160,240 L108,240 Z M131,214 L137,214 L137,260 L131,260 Z M240,235 L292,235 L292,240 L240,240 Z M263,214 L269,214 L269,260 L263,260 Z", fill: PAPER },
+            { d: circle(216, 308, 5), fill: "#FACC15" },
+        ],
+    },
+    {
+        ...symmetric({ id: "pola-robot", name: "Robot", acc: "robota", emoji: "🤖", viewBox: "40 10 320 300" }, 200, [
+            { id: "glava", name: "glava", acc: "glavu", g: "f", c: "gray", d: "M200,80 L104,80 Q84,80 84,100 L84,240 Q84,260 104,260 L200,260 Z" },
+            { id: "uvo", name: "uvo", acc: "uvo", g: "n", c: "orange", d: "M84,130 L62,130 Q54,130 54,138 L54,190 Q54,198 62,198 L84,198 Z", hit: 8 },
+            { id: "oko", name: "oko", acc: "oko", g: "n", c: "sky", d: circle(150, 150, 26) },
+            { id: "obraz", name: "obraz", acc: "obraz", g: "m", c: "pink", d: ellipse(120, 212, 18, 11), hit: 8 },
+        ]),
+        details: [
+            { d: `${circle(150, 150, 9)} ${circle(250, 150, 9)}`, fill: INK },
+            { d: rrect(166, 206, 68, 20, 8), fill: "#FACC15" },
+            { d: circle(200, 42, 13), fill: "#EF4444" },
+        ],
+        lines: "M200,55 L200,80",
+    },
+    {
+        ...symmetric({ id: "pola-raketa", name: "Raketa", acc: "raketu", emoji: "🚀", viewBox: "60 20 280 370" }, 200, [
+            { id: "telo", name: "telo", acc: "telo", g: "n", c: "blue", d: "M200,40 C160,80 146,150 150,300 L200,300 Z" },
+            { id: "vrh", name: "vrh", acc: "vrh", g: "m", c: "red", d: "M200,40 C184,54 172,72 164,96 L200,96 Z" },
+            { id: "krilo", name: "krilo", acc: "krilo", g: "n", c: "orange", d: "M152,220 L102,290 L102,326 L152,300 Z" },
+            { id: "plamen", name: "plamen", acc: "plamen", g: "m", c: "yellow", d: "M200,300 L168,300 C164,330 180,362 200,384 Z" },
+        ]),
+        details: [{ d: circle(200, 170, 28), fill: "#7DD3FC" }],
     },
 ];
 
