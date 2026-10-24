@@ -63,6 +63,7 @@
   --animate-demo-tap: demo-tap 1.3s ease-in-out infinite;
   --animate-breathe: breathe 8s ease-in-out infinite;
   --animate-star-burst: star-burst 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  --animate-cheer: cheer 1.8s ease-out both;
 
   @keyframes pop {
     from { opacity: 0; transform: scale(0.92); }
@@ -100,6 +101,14 @@
     15% { opacity: 1; }
     70% { opacity: 1; }
     100% { transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--turn)); opacity: 0; }
+  }
+  /* Drug je tačno odgovorio: njegov drugar kratko „zatapše” (jednom, pa nestane) */
+  @keyframes cheer {
+    0% { opacity: 0; transform: translateY(6px) scale(0.7); }
+    15% { opacity: 1; transform: translateY(0) scale(1.1); }
+    30% { transform: scale(1); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
   }
   /* Disanje na ekranu za pauzu: 4 s udah (krug raste), 4 s izdah (krug se smanjuje) */
   @keyframes breathe {
