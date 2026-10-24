@@ -1,10 +1,10 @@
 "use client";
 
-// Spoji parove — dete okreće po dve kartice i traži iste životinje.
+// Spoji parove — dete okreće po dve kartice i traži iste slike (životinje, igračke, oblici u boji).
 // Nema vremena ni neuspeha: promašen par se sam vrati (bez komentara), a posle onoliko grešaka pamćenja
-// koliko je zadato u podešavanjima deteta par otvorene kartice blago svetli.
+// koliko je zadato u podešavanjima deteta par otvorene kartice blago svetli (na lakim nivoima već
+// posle prve). Nivoi 11–15 su „Zapamti gde je šta bilo” (MemoryScene.tsx). Nivoi: data/memoryLevels.ts.
 
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
@@ -30,63 +30,19 @@ import {
 } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
-import { ANIMAL_PICTURES, type AnimalId } from "@/lib/pictures";
+import { cardArt, DECKS, memoryLevel, PAIR_LEVELS, poolSize, type DeckId, type MemoryCardArt, type PairsLevel } from "@/app/components/games/data/memoryLevels";
+import MemoryScene, { CardFace } from "./MemoryScene";
 import { useSpeech } from "@/lib/speech";
 
 // ── Sličice ───────────────────────────────────────────────────────────────────
+// Male table koriste samo početak špila (najrazličitije slike), a slične slike stižu tek na
+// većim tablama, gde otežavaju pamćenje.
 
-interface Animal {
-    name: string;
-    src: string;
-}
-
-// Iste slike kao u ostatku aplikacije (lib/pictures.ts). Redosled je od životinja koje se jasno
-// razlikuju ka onima koje liče jedna na drugu (lav, tigar, mačka, puma): male table koriste
-// samo početak liste, a slične životinje stižu tek na većim tablama, gde otežavaju pamćenje.
-const MEMORY_ORDER: AnimalId[] = ["dog", "cow", "pig", "bird", "zebra", "crocodile", "monkey", "rooster", "bear", "horse", "lion", "tiger", "cat", "puma"];
-
-const ANIMALS: Record<string, Animal> = Object.fromEntries(
-    MEMORY_ORDER.map((id) => [id, { name: ANIMAL_PICTURES[id].name, src: ANIMAL_PICTURES[id].image }])
-);
-
-/** Koliko životinja sa početka liste ulazi u izbor za tablu sa `pairs` parova */
-function poolSize(pairs: number): number {
-    return Math.min(MEMORY_ORDER.length, Math.max(pairs + 3, 7));
-}
-
-const ANIMAL_IDS: string[] = MEMORY_ORDER;
-
-function animalOf(id: string | undefined): Animal | undefined {
-    return id !== undefined && Object.prototype.hasOwnProperty.call(ANIMALS, id) ? ANIMALS[id] : undefined;
-}
+const animalOf = cardArt;
 
 // ── Nivoi ─────────────────────────────────────────────────────────────────────
 // Raste broj parova; svaka nova veličina table se na lakšim nivoima prvo igra uz kratko "zavirivanje".
 // Stvarni broj parova dodatno ograničavaju podešavanja deteta (uzrast) i veličina ekrana.
-
-interface LevelConfig {
-    pairs: number;
-    /** Sve kartice su na početku nakratko otkrivene (mlađoj deci uvek, bez obzira na nivo) */
-    peek: boolean;
-}
-
-const LEVELS: LevelConfig[] = [
-    { pairs: 2, peek: true },
-    { pairs: 3, peek: true },
-    { pairs: 3, peek: false },
-    { pairs: 4, peek: true },
-    { pairs: 4, peek: false },
-    { pairs: 5, peek: true },
-    { pairs: 5, peek: false },
-    { pairs: 6, peek: true },
-    { pairs: 6, peek: false },
-    { pairs: 7, peek: false },
-    { pairs: 8, peek: true },
-    { pairs: 8, peek: false },
-    { pairs: 9, peek: false },
-    { pairs: 10, peek: true },
-    { pairs: 10, peek: false },
-];
 
 /**
  * Promašen par ostaje otkriven dovoljno dugo da se obe slike stvarno vide (okretanje traje pola
@@ -97,12 +53,14 @@ const FLIP_BACK_MS = 2000;
 /** Toliko posle promašaja dodir još ne vraća par (druga kartica se tek okreće) */
 const MISMATCH_MIN_MS = 800;
 
+/** Indeks među nivoima sa parovima (nivoi 1–10) */
 function levelIndex(level: number): number {
-    return Math.min(Math.max(Math.round(level) || 1, 1), LEVELS.length) - 1;
+    const cfg = memoryLevel(level);
+    return cfg.kind === "pairs" ? PAIR_LEVELS.indexOf(cfg) : PAIR_LEVELS.length - 1;
 }
 
-function configFor(level: number): LevelConfig {
-    return LEVELS[levelIndex(level)];
+function configFor(level: number): PairsLevel {
+    return PAIR_LEVELS[levelIndex(level)];
 }
 
 interface Deal {
@@ -121,13 +79,13 @@ interface Deal {
  */
 function dealFor(level: number, maxPairs: number, young: boolean): Deal {
     const index = levelIndex(level);
-    const pairs = Math.min(LEVELS[index].pairs, maxPairs);
+    const pairs = Math.min(PAIR_LEVELS[index].pairs, maxPairs);
     if (young) {
-        const first = LEVELS.findIndex((cfg) => Math.min(cfg.pairs, maxPairs) === pairs);
+        const first = PAIR_LEVELS.findIndex((cfg) => Math.min(cfg.pairs, maxPairs) === pairs);
         return { pairs, peek: true, peekScale: Math.max(0.4, 1 - 0.08 * (index - first)) };
     }
-    const capped = LEVELS[index].pairs > maxPairs;
-    return { pairs, peek: LEVELS[index].peek && !capped, peekScale: 1 };
+    const capped = PAIR_LEVELS[index].pairs > maxPairs;
+    return { pairs, peek: PAIR_LEVELS[index].peek && !capped, peekScale: 1 };
 }
 
 /** Koliko dugo traje zavirivanje: više kartica, više vremena */
@@ -160,11 +118,12 @@ const LAYOUT: Record<number, BoardLayout> = {
         cols: { portrait: 2, landscape: 3, short: 6 },
     },
     8: {
-        vars: "[--cols:4] [--rows:2] [@media(max-height:480px)]:[--cols:8] [@media(max-height:480px)]:[--rows:1]",
-        cols: { portrait: 4, landscape: 4, short: 8 },
+        // Uspravno dve kolone i četiri reda: na telefonu su kartice tako znatno veće
+        vars: "[--cols:2] [--rows:4] landscape:[--cols:4] landscape:[--rows:2] [@media(max-height:480px)]:[--cols:8] [@media(max-height:480px)]:[--rows:1]",
+        cols: { portrait: 2, landscape: 4, short: 8 },
     },
     10: { vars: "[--cols:4] [--rows:3] landscape:[--cols:5] landscape:[--rows:2]", cols: { portrait: 4, landscape: 5 }, centerTail: true },
-    12: { vars: "[--cols:4] [--rows:3] landscape:[--cols:6] landscape:[--rows:2]", cols: { portrait: 4, landscape: 6 } },
+    12: { vars: "[--cols:3] [--rows:4] landscape:[--cols:6] landscape:[--rows:2]", cols: { portrait: 3, landscape: 6 } },
     14: { vars: "[--cols:4] [--rows:4] landscape:[--cols:7] landscape:[--rows:2]", cols: { portrait: 4, landscape: 7 }, centerTail: true },
     16: { vars: "[--cols:4] [--rows:4] landscape:[--cols:8] landscape:[--rows:2]", cols: { portrait: 4, landscape: 8 } },
     18: { vars: "[--cols:4] [--rows:5] landscape:[--cols:6] landscape:[--rows:3]", cols: { portrait: 4, landscape: 6 }, centerTail: true },
@@ -173,8 +132,8 @@ const LAYOUT: Record<number, BoardLayout> = {
 const TAIL_START = "col-start-2 landscape:col-start-auto";
 
 const BOARD_STYLE = {
-    // ≈17rem zauzimaju zaglavlje, traka napretka i uputstvo
-    "--card": "clamp(4rem, calc((100dvh - 17rem) / var(--rows) - var(--gap)), 14rem)",
+    // ≈22rem zauzimaju zaglavlje, traka napretka (sa učiteljem) i uputstvo; na niskom ekranu (`short`) i razmaci oko table
+    "--card": "clamp(4rem, calc((100dvh - var(--chrome)) / var(--rows) - var(--gap)), 14rem)",
     gap: "var(--gap)",
     gridTemplateColumns: "repeat(var(--cols), minmax(0, 1fr))",
     maxWidth: "calc(var(--cols) * var(--card) + (var(--cols) - 1) * var(--gap))",
@@ -183,7 +142,10 @@ const BOARD_STYLE = {
 // Iste mere kao u BOARD_STYLE, u pikselima
 const MIN_CARD_PX = 64;
 const GAP_PX = 12;
-const CHROME_PX = 272;
+const CHROME_PX = 352;
+/** Na niskom ekranu (do 820 px, kao `short`) */
+const CHROME_SHORT_PX = 368;
+const SHORT_VARIANT_PX = 820;
 /** Telefon: kraća strana ekrana ispod ove širine */
 const PHONE_SHORT_SIDE_PX = 480;
 /** Na telefonu najviše 4 × 4 kartice */
@@ -196,7 +158,7 @@ function fitsScreen(pairs: number, width: number, height: number): boolean {
     const { cols } = LAYOUT[cards] ?? DEFAULT_LAYOUT;
     const columns = height <= SHORT_SCREEN_PX && cols.short ? cols.short : width > height ? cols.landscape : cols.portrait;
     const rows = Math.ceil(cards / columns);
-    return rows * (MIN_CARD_PX + GAP_PX) - GAP_PX <= height - CHROME_PX;
+    return rows * (MIN_CARD_PX + GAP_PX) - GAP_PX <= height - (height <= SHORT_VARIANT_PX ? CHROME_SHORT_PX : CHROME_PX);
 }
 
 /**
@@ -267,8 +229,9 @@ function emptyView(pairs: number): MemoryView {
     };
 }
 
-function dealCards(pairs: number, peek: boolean): MemoryView {
-    const chosen = shuffle(ANIMAL_IDS.slice(0, poolSize(pairs))).slice(0, pairs);
+function dealCards(pairs: number, peek: boolean, deckId: DeckId): MemoryView {
+    const deck = DECKS[deckId];
+    const chosen = shuffle(deck.slice(0, poolSize(deck, pairs)).map((card) => card.id)).slice(0, pairs);
     const cards = shuffle([...chosen, ...chosen]);
     // Posle zavirivanja dete je videlo sve kartice
     return { ...emptyView(pairs), cards, peek, seen: peek ? cards.map((_, index) => index) : [] };
@@ -302,7 +265,7 @@ const GAME = getGame("memory");
 interface MemoryCardProps {
     /** Redni broj na tabli, od 1 */
     position: number;
-    animal: Animal | undefined;
+    animal: MemoryCardArt | undefined;
     open: boolean;
     matched: boolean;
     hinted: boolean;
@@ -358,19 +321,7 @@ function MemoryCard({ position, animal, open, matched, hinted, disabled, classNa
                         matched ? "border-emerald-400" : "border-brand-300"
                     )}
                 >
-                    {animal && (
-                        <Image
-                            src={animal.src}
-                            alt={animal.name}
-                            fill
-                            sizes="(min-width: 640px) 224px, 45vw"
-                            loading="eager"
-                            draggable={false}
-                            onLoad={onImageSettled}
-                            onError={onImageSettled}
-                            className="select-none object-cover"
-                        />
-                    )}
+                    {animal && <CardFace art={animal} sizes="(min-width: 640px) 224px, 45vw" onSettled={onImageSettled} />}
                     {matched && (
                         <span
                             aria-hidden="true"
@@ -395,7 +346,13 @@ const TEXT_HINT = "Seti se gde je bila ista slika.";
 const PEEK_GRACE_MS = 5000;
 const MATCH_FEEDBACK_MS = 1600;
 
-export default function MemoryGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<MemoryView>) {
+export default function MemoryGame(props: GameProps<MemoryView>) {
+    // Nivoi 11–15: „Zapamti gde je šta bilo” — posebna igra sa policom
+    if (memoryLevel(props.level).kind === "scene") return <MemoryScene {...(props as GameProps)} />;
+    return <PairsGame {...props} />;
+}
+
+function PairsGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<MemoryView>) {
     const cfg = configFor(level);
     const settings = useChildSettings();
 
@@ -407,11 +364,13 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
     const guard = useInputGuard();
     const demo = useDemo(!isMonitor);
 
+    /** Na lakim nivoima par zasvetli već posle prve greške pamćenja (osim kad je roditelj isključio pomoć) */
+    const hintAfter = cfg.earlyHint && settings.hintAfter > 0 ? 1 : settings.hintAfter;
     const [deal] = useState<Deal>(() => dealFor(level, settings.preset.memoryMaxPairs, settings.activeBand === "young"));
     // Monitor nema podešavanja deteta ni njegov ekran: tabla stiže u `monitorState`
     const [view, setView] = useState<MemoryView>(() => {
         if (isMonitor) return emptyView(cfg.pairs);
-        return dealCards(pairsForScreen(deal.pairs), deal.peek);
+        return dealCards(pairsForScreen(deal.pairs), deal.peek, cfg.deck);
     });
 
     // Poslednje stanje za rukovaoce i tajmere (dva brza dodira ne vide zastarelo stanje)
@@ -546,7 +505,7 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
         if (current.flipped.length === 0) {
             const partner = partnerOf(current.cards, index);
             // Pomoć: posle zadatog broja grešaka pamćenja par otvorene kartice blago svetli (0 = nikad)
-            const hint = settings.hintAfter > 0 && current.streak >= settings.hintAfter && partner >= 0 ? partner : null;
+            const hint = settings.hintAfter > 0 && current.streak >= hintAfter && partner >= 0 ? partner : null;
             playSfx("flip");
             commit(
                 { ...current, flipped: [index], seen, feedback: null, hint },
@@ -698,7 +657,7 @@ export default function MemoryGame({ childId, level, gender, onComplete, isMonit
                 <div
                     role="group"
                     aria-label="Kartice"
-                    className={cn("mx-auto grid w-full [--gap:0.75rem]", layout.vars, isMonitor && "pointer-events-none")}
+                    className={cn("mx-auto grid w-full [--chrome:22rem] [--gap:0.75rem] short:[--chrome:23rem]", layout.vars, isMonitor && "pointer-events-none")}
                     style={BOARD_STYLE}
                 >
                     {shown.cards.map((id, index) => {

@@ -37,11 +37,23 @@ import {
 import type { ResolvedSettings } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
 import { getGame, LEVELS_PER_TIER } from "@/lib/games";
+import {
+    buildShapePlan,
+    POOL,
+    SHAPE_INFO,
+    SHAPE_LEVELS,
+    shapeLevelIndex,
+    type ColorId,
+    type Look,
+    type ShapeId,
+    type ShapeLevel,
+    type ShapeLimits,
+    type ShapeOption,
+    type ShapeRound,
+} from "@/app/components/games/data/shapeLevels";
 import { useSpeech } from "@/lib/speech";
 
 // ── Boje ──────────────────────────────────────────────────────────────────────
-
-type ColorId = "red" | "orange" | "yellow" | "green" | "teal" | "blue" | "purple" | "pink" | "gray";
 
 /** Ispuna i tamnija ivica iste nijanse (ivica drži kontrast i na beloj kartici). */
 const PALETTE: Record<ColorId, { fill: string; edge: string }> = {
@@ -50,42 +62,20 @@ const PALETTE: Record<ColorId, { fill: string; edge: string }> = {
     yellow: { fill: "#FBBF24", edge: "#B45309" },
     green: { fill: "#22C55E", edge: "#15803D" },
     teal: { fill: "#14B8A6", edge: "#0F766E" },
+    sky: { fill: "#38BDF8", edge: "#0369A1" },
     blue: { fill: "#3B82F6", edge: "#1D4ED8" },
     purple: { fill: "#A855F7", edge: "#7E22CE" },
     pink: { fill: "#F472B6", edge: "#BE185D" },
+    brown: { fill: "#B45309", edge: "#78350F" },
     gray: { fill: "#94A3B8", edge: "#475569" },
 };
-
-const COLOR_IDS = Object.keys(PALETTE) as ColorId[];
 
 // ── Oblici ────────────────────────────────────────────────────────────────────
 // Svaki oblik ima `body` (silueta: nasleđuje ispunu i ivicu od roditeljskog <g>)
 // i `details` (ukrasi koji se crtaju samo u punoj boji). Crtež je u okviru 100×100.
 
-type ShapeId =
-    | "heart"
-    | "star"
-    | "sun"
-    | "house"
-    | "flower"
-    | "apple"
-    | "car"
-    | "tree"
-    | "fish"
-    | "balloon"
-    | "moon"
-    | "cloud"
-    | "butterfly"
-    | "diamond"
-    | "lightning";
-
-interface ShapeDefinition {
-    name: string;
-    /** Akuzativ za rečenice "Pronađi …" i "Tražimo …" (zadat za svaki oblik posebno, ne izvodi se iz imena) */
-    acc: string;
-    color: ColorId;
-    /** Oblici slične siluete — koriste se kao teži ometači */
-    similar: ShapeId[];
+/** Crtež oblika; naziv, boja i slični oblici su u data/shapeLevels.ts */
+interface ShapeDrawing {
     body: ReactNode;
     details?: ReactNode;
 }
@@ -103,30 +93,18 @@ const STAR_POINTS = Array.from({ length: 10 }, (_, i) => {
 const APPLE_STEM = <rect x="48" y="12" width="5" height="22" rx="2.5" transform="rotate(8 50 23)" />;
 const APPLE_LEAF = <path d="M54,22 C58,10 72,8 80,12 C76,24 62,28 54,22 Z" />;
 
-const SHAPES: Record<ShapeId, ShapeDefinition> = {
+const ART: Record<ShapeId, ShapeDrawing> = {
     heart: {
-        name: "Srce",
-        acc: "srce",
-        color: "red",
-        similar: ["apple", "balloon", "diamond"],
         body: (
             <path d="M50,88 C50,88 10,61 10,36 C10,22 21,13 33,16 C40,18 46,23 50,29 C54,23 60,18 67,16 C79,13 90,22 90,36 C90,61 50,88 50,88 Z" />
         ),
         details: <ellipse cx="32" cy="34" rx="9" ry="5.5" fill="#fff" opacity="0.35" transform="rotate(-30 32 34)" />,
     },
     star: {
-        name: "Zvezda",
-        acc: "zvezdu",
-        color: "purple",
-        similar: ["sun", "flower", "diamond", "lightning"],
         body: <polygon points={STAR_POINTS} />,
         details: <ellipse cx="41" cy="40" rx="8" ry="4.5" fill="#fff" opacity="0.35" transform="rotate(-25 41 40)" />,
     },
     sun: {
-        name: "Sunce",
-        acc: "sunce",
-        color: "yellow",
-        similar: ["flower", "star", "apple"],
         body: (
             <>
                 <circle cx="50" cy="50" r="25" />
@@ -144,10 +122,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     house: {
-        name: "Kućica",
-        acc: "kućicu",
-        color: "orange",
-        similar: ["tree", "car", "diamond"],
         body: (
             <>
                 <polygon points="50,8 92,44 8,44" />
@@ -164,10 +138,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     flower: {
-        name: "Cvet",
-        acc: "cvet",
-        color: "pink",
-        similar: ["sun", "star", "butterfly"],
         body: (
             <>
                 {EIGHT_TURNS.map((turn) => (
@@ -184,10 +154,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     apple: {
-        name: "Jabuka",
-        acc: "jabuku",
-        color: "red",
-        similar: ["heart", "balloon", "sun"],
         body: (
             <>
                 <path d="M50,32 C42,22 14,24 14,52 C14,74 30,94 42,94 C46,94 48,92 50,92 C52,92 54,94 58,94 C70,94 86,74 86,52 C86,24 58,22 50,32 Z" />
@@ -204,10 +170,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     car: {
-        name: "Auto",
-        acc: "auto",
-        color: "blue",
-        similar: ["house", "fish", "cloud"],
         body: (
             <>
                 <rect x="6" y="46" width="88" height="26" rx="9" />
@@ -231,10 +193,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     tree: {
-        name: "Drvo",
-        acc: "drvo",
-        color: "green",
-        similar: ["house", "lightning", "diamond"],
         body: (
             <>
                 <polygon points="50,4 27,36 73,36" />
@@ -246,10 +204,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         details: <rect x="43.5" y="81" width="13" height="14.5" rx="2" fill="#92400E" />,
     },
     fish: {
-        name: "Riba",
-        acc: "ribu",
-        color: "teal",
-        similar: ["car", "cloud", "butterfly"],
         body: (
             <>
                 <ellipse cx="42" cy="50" rx="34" ry="22" />
@@ -266,10 +220,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     balloon: {
-        name: "Balon",
-        acc: "balon",
-        color: "pink",
-        similar: ["apple", "heart", "moon"],
         body: (
             <>
                 <ellipse cx="50" cy="42" rx="31" ry="36" />
@@ -284,10 +234,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     moon: {
-        name: "Mesec",
-        acc: "mesec",
-        color: "yellow",
-        similar: ["balloon", "sun", "apple"],
         body: <path d="M82,12 A42,42 0 1,0 82,88 A46,46 0 0,1 82,12 Z" />,
         details: (
             <g fill="#fff" opacity="0.35">
@@ -297,10 +243,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     cloud: {
-        name: "Oblak",
-        acc: "oblak",
-        color: "gray",
-        similar: ["car", "fish", "flower"],
         body: (
             <>
                 <circle cx="30" cy="60" r="17" />
@@ -312,10 +254,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         details: <ellipse cx="44" cy="36" rx="9" ry="4.5" fill="#fff" opacity="0.45" transform="rotate(-20 44 36)" />,
     },
     butterfly: {
-        name: "Leptir",
-        acc: "leptira",
-        color: "purple",
-        similar: ["flower", "fish", "heart"],
         body: (
             <>
                 <path d="M48,50 C42,22 14,12 10,32 C7,50 28,58 48,54 Z" />
@@ -339,10 +277,6 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     diamond: {
-        name: "Dijamant",
-        acc: "dijamant",
-        color: "teal",
-        similar: ["star", "lightning", "heart"],
         body: <polygon points="50,6 92,40 50,96 8,40" />,
         details: (
             <>
@@ -352,18 +286,106 @@ const SHAPES: Record<ShapeId, ShapeDefinition> = {
         ),
     },
     lightning: {
-        name: "Munja",
-        acc: "munju",
-        color: "orange",
-        similar: ["diamond", "star", "tree"],
         body: <polygon points="44,4 72,4 56,40 80,40 36,96 46,56 24,56" />,
+    },
+    circle: { body: <circle cx="50" cy="50" r="40" />, details: <ellipse cx="36" cy="34" rx="10" ry="6" fill="#fff" opacity="0.35" transform="rotate(-30 36 34)" /> },
+    square: { body: <rect x="12" y="12" width="76" height="76" rx="6" />, details: <rect x="20" y="20" width="22" height="10" rx="5" fill="#fff" opacity="0.35" /> },
+    triangle: { body: <polygon points="50,8 92,88 8,88" />, details: <polygon points="50,24 38,48 46,48" fill="#fff" opacity="0.35" /> },
+    umbrella: {
+        body: (
+            <>
+                <path d="M8,52 Q8,12 50,10 Q92,12 92,52 Q85,46 78,52 Q71,46 64,52 Q57,46 50,52 Q43,46 36,52 Q29,46 22,52 Q15,46 8,52 Z" />
+                <rect x="47" y="48" width="6" height="34" rx="2" />
+                <path d="M47,80 L53,80 L53,84 Q53,96 40,95 L40,89 Q47,89 47,84 Z" />
+            </>
+        ),
+        details: <path d="M50,12 L50,50 M30,16 Q26,34 29,50 M70,16 Q74,34 71,50" fill="none" stroke="#fff" strokeWidth="2" opacity="0.6" />,
+    },
+    mushroom: {
+        body: (
+            <>
+                <rect x="36" y="48" width="28" height="42" rx="7" />
+                <path d="M8,56 Q8,10 50,10 Q92,10 92,56 Z" />
+            </>
+        ),
+        details: (
+            <>
+                <rect x="38" y="58" width="24" height="31" rx="6" fill="#FEF3C7" />
+                <g fill="#fff">
+                    <circle cx="32" cy="34" r="7" />
+                    <circle cx="58" cy="24" r="6" />
+                    <circle cx="72" cy="42" r="6" />
+                </g>
+            </>
+        ),
+    },
+    icecream: {
+        body: (
+            <>
+                <polygon points="28,48 72,48 50,96" />
+                <circle cx="50" cy="34" r="25" />
+            </>
+        ),
+        details: (
+            <>
+                <polygon points="30,50 70,50 50,93" fill="#F59E0B" />
+                <path d="M36,58 L58,80 M48,52 L64,68 M64,58 L44,80 M52,52 L36,68" fill="none" stroke="#B45309" strokeWidth="2" />
+                <ellipse cx="40" cy="26" rx="7" ry="4" fill="#fff" opacity="0.4" transform="rotate(-25 40 26)" />
+            </>
+        ),
+    },
+    rocket: {
+        body: (
+            <>
+                <path d="M50,6 Q74,28 70,72 L30,72 Q26,28 50,6 Z" />
+                <path d="M31,50 L14,82 L31,72 Z" />
+                <path d="M69,50 L86,82 L69,72 Z" />
+                <path d="M40,72 L60,72 L50,94 Z" />
+            </>
+        ),
+        details: (
+            <>
+                <circle cx="50" cy="40" r="9" fill="#fff" />
+                <circle cx="50" cy="40" r="5" fill="#7DD3FC" />
+                <path d="M42,74 L58,74 L50,91 Z" fill="#F97316" />
+            </>
+        ),
+    },
+    egg: {
+        body: <path d="M50,8 C74,8 86,44 86,62 C86,82 70,94 50,94 C30,94 14,82 14,62 C14,44 26,8 50,8 Z" />,
+        details: <ellipse cx="38" cy="36" rx="7" ry="12" fill="#fff" opacity="0.35" transform="rotate(20 38 36)" />,
+    },
+    key: {
+        body: (
+            <>
+                <path fillRule="evenodd" d="M30,28 A22,22 0 1,0 30.1,28 Z M30,40 A10,10 0 1,1 29.9,40 Z" />
+                <rect x="48" y="45" width="44" height="10" rx="3" />
+                <rect x="72" y="53" width="8" height="14" rx="2" />
+                <rect x="84" y="53" width="8" height="18" rx="2" />
+            </>
+        ),
+    },
+    cat: {
+        body: (
+            <>
+                <polygon points="18,44 22,8 46,28" />
+                <polygon points="82,44 78,8 54,28" />
+                <ellipse cx="50" cy="58" rx="36" ry="32" />
+            </>
+        ),
+        details: (
+            <>
+                <g fill={DARK}>
+                    <ellipse cx="37" cy="54" rx="4" ry="6" />
+                    <ellipse cx="63" cy="54" rx="4" ry="6" />
+                    <path d="M45,66 L55,66 L50,72 Z" fill="#F472B6" />
+                </g>
+                <path d="M30,68 L14,64 M30,73 L14,76 M70,68 L86,64 M70,73 L86,76" stroke={DARK} strokeWidth="2" strokeLinecap="round" />
+            </>
+        ),
     },
 };
 
-/** Redosled uvođenja: prvo najpoznatiji i međusobno najrazličitiji oblici. */
-const POOL = Object.keys(SHAPES) as ShapeId[];
-
-type Look = "color" | "shadow" | "outline";
 
 interface ShapeArtProps {
     shape: ShapeId;
@@ -379,7 +401,7 @@ interface ShapeArtProps {
 }
 
 function ShapeArt({ shape, color, look = "color", rot = 0, scale = 1, label, className }: ShapeArtProps) {
-    const def = SHAPES[shape];
+    const def = ART[shape];
     const paint = PALETTE[color];
     // Dva sloja istog tela: širi daje ivicu oko celog oblika, uži ispunu — bez linija na spojevima delova.
     const outer = look === "color" ? paint.edge : "currentColor";
@@ -406,79 +428,16 @@ function ShapeArt({ shape, color, look = "color", rot = 0, scale = 1, label, cla
 
 // ── Nivoi ─────────────────────────────────────────────────────────────────────
 
-/** natural: svaki oblik u svojoj boji · uniform: svi u istoj boji · mixed: tačan oblik je u drugoj boji od uzorka */
-type Coloring = "natural" | "uniform" | "mixed";
-
-interface LevelConfig {
-    rounds: number;
-    options: 2 | 3 | 4 | 6;
-    /** Koliko oblika iz POOL-a učestvuje */
-    pool: number;
-    look: Look;
-    coloring: Coloring;
-    /** Koliko ometača se bira među sličnim oblicima */
-    similar: number;
-    rotate: boolean;
-}
-
-const LEVELS: LevelConfig[] = [
-    // Lako: uzorak i ponuđeni oblici izgledaju isto, raste broj ponuđenih
-    { rounds: 5, options: 2, pool: 6, look: "color", coloring: "natural", similar: 0, rotate: false },
-    { rounds: 5, options: 3, pool: 8, look: "color", coloring: "natural", similar: 0, rotate: false },
-    { rounds: 6, options: 3, pool: 10, look: "color", coloring: "natural", similar: 1, rotate: false },
-    { rounds: 6, options: 4, pool: 12, look: "color", coloring: "natural", similar: 1, rotate: false },
-    { rounds: 6, options: 4, pool: 15, look: "color", coloring: "uniform", similar: 1, rotate: false },
-    // Srednje: senke i obrisi, boja više ne pomaže, sličniji ometači
-    { rounds: 6, options: 4, pool: 15, look: "shadow", coloring: "natural", similar: 1, rotate: false },
-    { rounds: 7, options: 4, pool: 15, look: "shadow", coloring: "uniform", similar: 2, rotate: false },
-    { rounds: 7, options: 6, pool: 15, look: "shadow", coloring: "natural", similar: 2, rotate: false },
-    { rounds: 7, options: 6, pool: 15, look: "shadow", coloring: "uniform", similar: 3, rotate: false },
-    { rounds: 7, options: 6, pool: 15, look: "outline", coloring: "uniform", similar: 3, rotate: false },
-    // Teško: isti oblik u drugoj boji (uz mamac u boji uzorka) i okrenuti oblici.
-    // Svaki nivo menja nešto što se vidi i kad je broj ponuđenih oblika ograničen podešavanjima.
-    { rounds: 7, options: 4, pool: 15, look: "color", coloring: "mixed", similar: 2, rotate: false },
-    { rounds: 8, options: 6, pool: 15, look: "color", coloring: "mixed", similar: 3, rotate: true },
-    { rounds: 8, options: 6, pool: 15, look: "shadow", coloring: "uniform", similar: 3, rotate: true },
-    { rounds: 8, options: 6, pool: 15, look: "outline", coloring: "uniform", similar: 3, rotate: true },
-    { rounds: 8, options: 6, pool: 15, look: "outline", coloring: "mixed", similar: 4, rotate: true },
-];
-
-const TURNS = [-135, -90, -45, 45, 90, 135, 180];
-/** Veličine primerka u pločici: isti oblik nije uvek iste veličine, pa se traži oblik, a ne istovetna sličica */
-const SIZES = [1, 0.86, 0.72];
-/** Mlađa deca svaki laki nivo počinju zadatkom sa samo dva ponuđena oblika */
-const WARM_UP_OPTIONS = 2;
-
-function levelIndex(level: number): number {
-    return Math.min(Math.max(Math.round(level) || 1, 1), LEVELS.length) - 1;
-}
-
-/** Granice nivoa posle primene podešavanja deteta (uzrast i izbor roditelja). */
-interface PlanLimits {
-    rounds: number;
-    options: number;
-    /** Prvi zadatak nudi samo dva oblika */
-    warmUp: boolean;
-}
-
-function limitsFor(level: number, settings: ResolvedSettings): PlanLimits {
-    const index = levelIndex(level);
+function limitsFor(level: number, settings: ResolvedSettings): ShapeLimits {
+    const index = shapeLevelIndex(level);
     return {
-        rounds: Math.min(LEVELS[index].rounds, settings.preset.maxRounds),
-        options: Math.min(LEVELS[index].options, settings.choiceLimit),
+        rounds: Math.min(SHAPE_LEVELS[index].rounds, settings.preset.maxRounds),
+        options: Math.min(SHAPE_LEVELS[index].options, settings.choiceLimit),
         warmUp: settings.activeBand === "young" && index < LEVELS_PER_TIER,
     };
 }
 
 // ── View ──────────────────────────────────────────────────────────────────────
-
-interface ShapeOption {
-    shape: ShapeId;
-    color: ColorId;
-    rot: number;
-    /** Veličina primerka u pločici (1 = cela pločica) */
-    scale: number;
-}
 
 /**
  * `correctCount` = zadaci rešeni samostalno iz prvog pokušaja, `incorrectCount` = pogrešni dodiri
@@ -499,49 +458,13 @@ export interface ShapesView extends BaseView {
     hint: boolean;
     /** Zadaci rešeni tek pošto je tačan oblik istaknut */
     promptedCount: number;
+    /** Uzorak se upravo pokazuje u boji, pre nego što pređe u senku ili obris (prvi nivo sa senkom/obrisom) */
+    preview: boolean;
 }
 
-type RoundPlan = Pick<ShapesView, "target" | "targetColor" | "options">;
+type RoundPlan = ShapeRound;
 
-function pickOne<T>(items: readonly T[]): T {
-    return items[Math.floor(Math.random() * items.length)];
-}
-
-/** Svi zadaci nivoa unapred. Traženi oblici su različiti, pa se isti nikad ne ponavlja dva puta zaredom. */
-function buildPlan(cfg: LevelConfig, limits: PlanLimits): RoundPlan[] {
-    const pool = POOL.slice(0, cfg.pool);
-    return shuffle(pool)
-        .slice(0, limits.rounds)
-        .map((target, round) => {
-            const count = limits.warmUp && round === 0 ? Math.min(limits.options, WARM_UP_OPTIONS) : limits.options;
-            const lookAlikes = SHAPES[target].similar.filter((shape) => pool.includes(shape));
-            const similar = shuffle(lookAlikes).slice(0, cfg.similar);
-            let others = shuffle(pool.filter((shape) => shape !== target && !similar.includes(shape)));
-            // Dok se slični oblici još ne traže, ometači se jasno razlikuju: ni sličan oblik ni ista boja
-            if (cfg.similar === 0 && cfg.coloring === "natural") {
-                const distinct = others.filter((shape) => !lookAlikes.includes(shape) && SHAPES[shape].color !== SHAPES[target].color);
-                if (distinct.length >= count - 1) others = distinct;
-            }
-            const distractors = [...similar, ...others].slice(0, count - 1);
-
-            const shared = pickOne(COLOR_IDS);
-            const targetColor = cfg.coloring === "uniform" ? shared : SHAPES[target].color;
-            const spare = shuffle(COLOR_IDS.filter((color) => color !== targetColor));
-            const sizes = shuffle(SIZES);
-
-            const options = [target, ...distractors].map((shape, i): ShapeOption => {
-                let color = SHAPES[shape].color;
-                if (cfg.coloring === "uniform") color = shared;
-                // Tačan oblik (i = 0) dobija drugu boju, a prvi ometač (i = 1) je mamac u boji uzorka
-                if (cfg.coloring === "mixed") color = i === 1 ? targetColor : spare[i % spare.length];
-                return { shape, color, rot: cfg.rotate ? pickOne(TURNS) : 0, scale: sizes[i % sizes.length] };
-            });
-
-            return { target, targetColor, options: shuffle(options) };
-        });
-}
-
-function emptyView(cfg: LevelConfig, rounds: number): ShapesView {
+function emptyView(cfg: ShapeLevel, rounds: number): ShapesView {
     return {
         score: 0,
         correctCount: 0,
@@ -549,7 +472,8 @@ function emptyView(cfg: LevelConfig, rounds: number): ShapesView {
         round: 1,
         totalRounds: rounds,
         target: POOL[0],
-        targetColor: SHAPES[POOL[0]].color,
+        targetColor: SHAPE_INFO[POOL[0]].color,
+        preview: false,
         look: cfg.look,
         options: [],
         wrong: [],
@@ -567,7 +491,7 @@ function hasKey<T extends object>(record: T, key: unknown): key is keyof T {
 function toOption(value: unknown): ShapeOption | null {
     if (typeof value !== "object" || value === null) return null;
     const { shape, color, rot, scale } = value as Partial<ShapeOption>;
-    if (!hasKey(SHAPES, shape) || !hasKey(PALETTE, color)) return null;
+    if (!hasKey(SHAPE_INFO, shape) || !hasKey(PALETTE, color)) return null;
     return { shape, color, rot: finiteOr(rot, 0), scale: finiteOr(scale, 1) };
 }
 
@@ -577,7 +501,7 @@ function toShown(fallback: ShapesView, state: Partial<ShapesView> | null | undef
     const options: unknown[] = Array.isArray(merged.options) ? merged.options : [];
     return {
         ...merged,
-        target: hasKey(SHAPES, merged.target) ? merged.target : fallback.target,
+        target: hasKey(SHAPE_INFO, merged.target) ? merged.target : fallback.target,
         targetColor: hasKey(PALETTE, merged.targetColor) ? merged.targetColor : fallback.targetColor,
         look: merged.look === "shadow" || merged.look === "outline" ? merged.look : "color",
         options: options.map(toOption).filter((option): option is ShapeOption => option !== null),
@@ -593,7 +517,7 @@ function promptFor(view: ShapesView): { title: string; subtitle: string } {
     const recolored = view.look === "color" && correct !== undefined && correct.color !== view.targetColor;
     const rotated = view.options.some((option) => option.rot);
 
-    let title = `Pronađi ${SHAPES[view.target].acc}`;
+    let title = `Pronađi ${SHAPE_INFO[view.target].acc}`;
     const steps = ["Nađi isti oblik."];
     if (view.look === "shadow") {
         title = "Čija je ovo senka?";
@@ -617,7 +541,7 @@ const WRONG_FIRST = "Nije to. Probaj opet.";
 
 /** Tačno: imenuje se pronađeni oblik. Prva greška: poziv na novi pokušaj. Svaka sledeća: ponavlja se šta tražimo. */
 function feedbackText(view: ShapesView): string {
-    const target = SHAPES[view.target];
+    const target = SHAPE_INFO[view.target];
     if (view.feedback === "correct") return `To je ${target.name.toLowerCase()}.`;
     return view.wrong.length >= 2 ? `Tražimo ${target.acc}.` : WRONG_FIRST;
 }
@@ -663,9 +587,11 @@ const BOARD_STYLE = {
 
 const GAME = getGame("shapes");
 const WRONG_FEEDBACK_MS = 1400;
+/** Koliko dugo se uzorak pokazuje u boji pre nego što pređe u senku ili obris */
+const PREVIEW_MS = 1800;
 
 export default function ShapeMatchingGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<ShapesView>) {
-    const cfg = LEVELS[levelIndex(level)];
+    const cfg = SHAPE_LEVELS[shapeLevelIndex(level)];
     const settings = useChildSettings();
 
     const sync = useGameSync<ShapesView>({ childId, gameId: "shapes", level, isMonitor });
@@ -679,8 +605,10 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
     const demo = useDemo(!isMonitor);
 
     // Monitor nema podešavanja deteta: sve što crta stiže u `monitorState`
-    const [plan] = useState<RoundPlan[]>(() => (isMonitor ? [] : buildPlan(cfg, limitsFor(level, settings))));
-    const [view, setView] = useState<ShapesView>(() => ({ ...emptyView(cfg, plan.length || cfg.rounds), ...plan[0] }));
+    const [plan] = useState<RoundPlan[]>(() => (isMonitor ? [] : buildShapePlan(cfg, limitsFor(level, settings))));
+    const [view, setView] = useState<ShapesView>(() => ({ ...emptyView(cfg, plan.length || cfg.rounds), ...plan[0], preview: !isMonitor && cfg.preview }));
+    /** Na ranim nivoima tačan oblik zasvetli već posle prve greške (osim kad je roditelj isključio pomoć) */
+    const hintAfter = cfg.earlyHint && settings.hintAfter > 0 ? 1 : settings.hintAfter;
 
     // Poslednje stanje za rukovaoce i tajmere (dva brza dodira ne vide zastarelo stanje)
     const viewRef = useRef(view);
@@ -711,6 +639,21 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
         if (!isMonitor) say(speechFor(viewRef.current, true));
     }, [isMonitor, say]);
 
+    /** Pregled u boji traje kratko, pa uzorak mirno pređe u senku ili obris */
+    const endPreviewSoon = useCallback(
+        (round: number) => {
+            after(PREVIEW_MS, () => {
+                const current = viewRef.current;
+                if (current.round === round && current.preview) commit({ ...current, preview: false });
+            });
+        },
+        [after, commit]
+    );
+
+    useEffect(() => {
+        if (!isMonitor && viewRef.current.preview) endPreviewSoon(viewRef.current.round);
+    }, [isMonitor, endPreviewSoon]);
+
     const finish = () => {
         if (finishedRef.current) return;
         finishedRef.current = true;
@@ -740,10 +683,12 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
             picked: null,
             feedback: null,
             hint: false,
+            preview: cfg.preview,
         };
         // Dodir koji je ostao od prethodnog zadatka ne sme da odgovori na novi
         guard.hold();
-        commit(next, `Zadatak ${index + 1}: traži se ${SHAPES[round.target].name.toLowerCase()}`);
+        commit(next, `Zadatak ${index + 1}: traži se ${SHAPE_INFO[round.target].name.toLowerCase()}`);
+        if (cfg.preview) endPreviewSoon(index + 1);
         demo.show();
         say(speechFor(next, false));
     };
@@ -757,7 +702,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
 
         cancel(feedbackTimer.current);
         feedbackTimer.current = null;
-        const targetName = SHAPES[current.target].name.toLowerCase();
+        const targetName = SHAPE_INFO[current.target].name.toLowerCase();
 
         if (option.shape === current.target) {
             // Zadatak koji je pokazala ruka (prvi u prvom nivou) je pokazivanje, a ne zadatak:
@@ -787,11 +732,11 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
 
         const wrong = [...current.wrong, index];
         // Pomoć stiže posle zadatog broja grešaka, a najkasnije kad ostane samo tačan oblik
-        const hint = hintDue(settings.hintAfter, wrong.length, current.options.length - 1);
+        const hint = hintDue(hintAfter, wrong.length, current.options.length - 1);
         const missed: ShapesView = { ...current, picked: index, feedback: "wrong", wrong, hint, incorrectCount: current.incorrectCount + 1 };
         commit(
             missed,
-            `Greška: izabrano ${SHAPES[option.shape].name.toLowerCase()}, traži se ${targetName}${hint && !current.hint ? " (prikazana pomoć)" : ""}`
+            `Greška: izabrano ${SHAPE_INFO[option.shape].name.toLowerCase()}, traži se ${targetName}${hint && !current.hint ? " (prikazana pomoć)" : ""}`
         );
         playSfx("wrong");
         say(feedbackText(missed), undefined, "gentle");
@@ -858,8 +803,8 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                         key={solved ? "filled" : "empty"}
                         shape={shown.target}
                         color={shown.targetColor}
-                        look={solved ? "color" : shown.look}
-                        label={TARGET_LABEL[shown.look](SHAPES[shown.target].name)}
+                        look={solved || shown.preview ? "color" : shown.look}
+                        label={TARGET_LABEL[shown.look](SHAPE_INFO[shown.target].name)}
                         className={cn("h-[72%] w-[72%]", solved && "animate-pop")}
                     />
                 </div>
@@ -882,7 +827,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                                 state={state}
                                 disabled={isMonitor || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(index)}
-                                aria-label={SHAPES[option.shape].name}
+                                aria-label={SHAPE_INFO[option.shape].name}
                                 className="aspect-square"
                             >
                                 <span className={cn("absolute grid place-items-center", option.rot ? "inset-[17%]" : "inset-[11%]")}>

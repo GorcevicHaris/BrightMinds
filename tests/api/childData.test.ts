@@ -1,14 +1,13 @@
-// Podaci jednog deteta: statistika (GET/DELETE progress), izvoz u CSV, „Moje priče” i brisanje profila.
+// Podaci jednog deteta: statistika (GET/DELETE progress), „Moje priče” i brisanje profila.
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
-import { GET as exportCsv } from "@/app/api/children/[id]/export/route";
 import { DELETE as deleteProgress, GET as getProgress } from "@/app/api/children/[id]/progress/route";
 import { DELETE as deleteChild } from "@/app/api/children/[id]/route";
 import { DELETE as deleteStory, PUT as putStory } from "@/app/api/children/[id]/stories/[storyId]/route";
 import { GET as getStories, POST as postStory } from "@/app/api/children/[id]/stories/route";
 import { MAX_STORIES_PER_CHILD } from "@/lib/customStories";
 import type { ProgressResponse } from "@/lib/progress";
-import { CHILD_ID, OTHER_CHILD_ID, PARENT, belgradeDay, db, idParams, jsonRequest, readJson, resetWorld, seedFamily, signInAsChild, signInAsParent } from "../setup/api";
+import { CHILD_ID, OTHER_CHILD_ID, PARENT, db, idParams, jsonRequest, readJson, resetWorld, seedFamily, signInAsChild, signInAsParent } from "../setup/api";
 import type { Row } from "../setup/fakeSupabase";
 
 const SHAPES = 1;
@@ -136,64 +135,6 @@ describe("DELETE /api/children/[id]", () => {
         assert.equal(response.status, 200);
         assert.equal(db.rows("children").length, 1);
         assert.deepEqual(db.rows("progress_logs"), []);
-    });
-});
-
-describe("GET /api/children/[id]/export", () => {
-    const download = async () => {
-        const response = await exportCsv(jsonRequest("GET"), idParams(CHILD_ID));
-        assert.equal(response.status, 200);
-        // `response.text()` bi sam uklonio BOM, pa se čitaju bajtovi
-        const bytes = new Uint8Array(await response.arrayBuffer());
-        const hasBom = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf;
-        const text = new TextDecoder().decode(bytes);
-        return { response, hasBom, text, lines: text.trimEnd().split("\r\n") };
-    };
-
-    it("returns a CSV file named after the child and the Belgrade date", async () => {
-        db.rows("children")[0].first_name = "Đorđe";
-        const { response } = await download();
-        assert.equal(response.headers.get("content-type"), "text/csv; charset=utf-8");
-        assert.equal(response.headers.get("cache-control"), "no-store");
-        assert.equal(
-            response.headers.get("content-disposition"),
-            `attachment; filename="bright-minds-Djordje-${belgradeDay()}.csv"; filename*=UTF-8''${encodeURIComponent(`bright-minds-Đorđe-${belgradeDay()}.csv`)}`
-        );
-    });
-
-    it("writes one header line and one line per session, newest first, in Belgrade time", async () => {
-        db.seed("play_sessions", [{ id: 7, child_id: CHILD_ID, mood_before: "happy", mood_after: "neutral" }]);
-        db.seed("progress_logs", [
-            logRow({ completed_at: "2026-03-10T23:30:05Z", session_id: 7 }),
-            logRow({ completed_at: "2026-03-12T08:00:00Z", activity_id: 8, level: 1, stars: 1, correct_count: 0, total_count: 4, prompted_count: 0 }),
-            logRow({ child_id: OTHER_CHILD_ID }),
-        ]);
-        const { lines, text, hasBom } = await download();
-        assert.ok(hasBom, "starts with a UTF-8 byte order mark so Excel reads š, đ, č, ć, ž");
-        assert.ok(text.endsWith("\r\n"));
-        assert.deepEqual(lines, [
-            "Datum;Vreme;Igra;Nivo;Zvezdice;Samostalno tačno;Uz pomoć;Ukupno zadataka;Trajanje (s);Raspoloženje pre;Raspoloženje posle",
-            "2026-03-12;09:00:00;Emocije;1;1;0;0;4;90;;",
-            "2026-03-11;00:30:05;Pogodi oblik;2;3;4;1;5;90;Dobro;Okej",
-        ]);
-    });
-
-    it("fills old rows from the note and the minutes column", async () => {
-        db.seed("progress_logs", [
-            { child_id: CHILD_ID, activity_id: SHAPES, completed_at: "2026-03-10 10:00:00", notes: "Nivo 3, Zvezdice: 2, Rezultat: 150", duration_minutes: 2, mood_before: "upset" },
-        ]);
-        const { lines } = await download();
-        assert.equal(lines[1], "2026-03-10;11:00:00;Pogodi oblik;3;2;;;;120;Umorno;");
-    });
-
-    it("returns only the header for a child who has not played", async () => {
-        const { lines } = await download();
-        assert.equal(lines.length, 1);
-    });
-
-    it("answers 404 when the child row no longer exists", async () => {
-        db.seed("user_children", [{ user_id: PARENT.id, child_id: 77 }]);
-        assert.equal((await exportCsv(jsonRequest("GET"), idParams(77))).status, 404);
     });
 });
 

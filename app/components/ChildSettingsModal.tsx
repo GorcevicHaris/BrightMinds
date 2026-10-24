@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BookOpenText, Database, Gamepad2, Leaf } from "lucide-react";
 import { Alert } from "./ui/Card";
-import { Button, buttonClasses } from "./ui/Button";
+import { Button } from "./ui/Button";
 import { Select, Switch } from "./ui/Field";
 import { Modal } from "./ui/Modal";
 import {
@@ -13,12 +13,15 @@ import {
     bandForAge,
     MAX_PLAN_GAMES,
     defaultSettings,
+    playAgeFor,
+    WEEKDAYS,
     sanitizeSettings,
     type AgeBand,
     type ChildSettings,
 } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
-import { GAMES, type GameId } from "@/lib/games";
+import { UNLOCK_AFTER_LEVEL } from "@/lib/gameAccess";
+import { GAMES, ageLabel, sortGamesForChild, type GameId } from "@/lib/games";
 
 interface Props {
     childId: number;
@@ -39,6 +42,8 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
         </section>
     );
 }
+
+const WEEKDAY_NAMES = ["Ponedeljak", "Utorak", "Sreda", "Četvrtak", "Petak", "Subota", "Nedelja"];
 
 /** Teme podešavanja: odjednom se vidi samo jedna, da prozor ne bude dugačak spisak. */
 const TABS = [
@@ -66,6 +71,17 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
             if (prev.plan.length >= MAX_PLAN_GAMES) return prev;
             return { ...prev, plan: [...prev.plan, id] };
         });
+
+    // Igre redom kojim ih dete vidi (uzrast i težina); isključena igra izlazi i iz plana
+    const sortedGames = sortGamesForChild(GAMES, playAgeFor(ageInYears(dateOfBirth), settings.band));
+    const toggleGame = (id: GameId) =>
+        setSettings((prev) => {
+            if (prev.disabledGames.includes(id)) return { ...prev, disabledGames: prev.disabledGames.filter((g) => g !== id) };
+            // Bar jedna igra ostaje uključena
+            if (prev.disabledGames.length >= GAMES.length - 1) return prev;
+            return { ...prev, disabledGames: [...prev.disabledGames, id], plan: prev.plan.filter((g) => g !== id) };
+        });
+    const enabledInOrder = sortedGames.filter((game) => !settings.disabledGames.includes(game.id));
 
     const eraseResults = async () => {
         setEraseState("working");
@@ -199,11 +215,60 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                         </Section>
 
                         <Section
+                            title="Koje igre dete vidi"
+                            hint="Poređane su kako ih dete vidi: prvo igre za njegov uzrast, od najlakše. Isključenu igru dete ne vidi."
+                        >
+                            <ul className="grid gap-2 sm:grid-cols-2">
+                                {sortedGames.map((game) => {
+                                    const enabled = !settings.disabledGames.includes(game.id);
+                                    const position = enabledInOrder.indexOf(game);
+                                    const last = enabled && enabledInOrder.length === 1;
+                                    return (
+                                        <li key={game.id}>
+                                            <button
+                                                type="button"
+                                                role="switch"
+                                                aria-checked={enabled}
+                                                disabled={last}
+                                                title={last ? "Bar jedna igra ostaje uključena" : undefined}
+                                                onClick={() => toggleGame(game.id)}
+                                                className={cn(
+                                                    "flex min-h-12 w-full items-center gap-2 rounded-xl border-2 px-3 py-2 text-left text-sm font-extrabold transition-colors disabled:cursor-not-allowed",
+                                                    enabled ? "border-brand-200 bg-surface text-ink hover:border-brand-400" : "border-line bg-canvas text-ink-faint hover:border-brand-200"
+                                                )}
+                                            >
+                                                <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg text-base", enabled ? "bg-brand-50" : "bg-surface grayscale")} aria-hidden="true">
+                                                    {settings.unlockInOrder && enabled ? <span className="text-sm text-brand-700">{position + 1}.</span> : game.icon}
+                                                </span>
+                                                <span className="min-w-0 flex-1 truncate">{game.title}</span>
+                                                <span className="shrink-0 text-xs font-bold text-ink-faint">{ageLabel(game)}</span>
+                                                <span
+                                                    className={cn("relative h-5 w-9 shrink-0 rounded-full transition-colors", enabled ? "bg-brand-600" : "bg-line")}
+                                                    aria-hidden="true"
+                                                >
+                                                    <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-[left]", enabled ? "left-[1.125rem]" : "left-0.5")} />
+                                                </span>
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            <div className="mt-2">
+                                <Switch
+                                    label="Otključavanje redom"
+                                    description={`Igre se otvaraju jedna za drugom, redom sa spiska iznad: sledeća kad dete završi ${UNLOCK_AFTER_LEVEL}. nivo prethodne. Igre koje je dete već igralo ostaju otvorene, kao i igre iz plana.`}
+                                    checked={settings.unlockInOrder}
+                                    onChange={(v) => set("unlockInOrder", v)}
+                                />
+                            </div>
+                        </Section>
+
+                        <Section
                             title="Plan igre „prvo–zatim”"
                             hint={`Izaberite do ${MAX_PLAN_GAMES} igre redom kojim će ih dete igrati. Dete vidi raspored i zna šta je sada, šta posle i kada je kraj. Bez plana dete bira samo.`}
                         >
                             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                {GAMES.map((game) => {
+                                {enabledInOrder.map((game) => {
                                     const position = settings.plan.indexOf(game.id);
                                     const selected = position >= 0;
                                     const full = !selected && settings.plan.length >= MAX_PLAN_GAMES;
@@ -303,51 +368,107 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                 )}
 
                 {tab === "calm" && (
-                    <Section title="Mir i tempo">
-                        <Switch
-                            label="Manje animacija"
-                            description="Gasi kretanje na ekranu. Učitelj ostaje, ali miruje."
-                            checked={settings.reduceMotion}
-                            onChange={(v) => set("reduceMotion", v)}
-                        />
-                        <Switch
-                            label="Učitelj na ekranu"
-                            description="Lik koji čita zadatke: izraz lica prati ton rečenice."
-                            checked={settings.avatar}
-                            onChange={(v) => set("avatar", v)}
-                        />
-                        <div className="mt-2 grid gap-4 sm:grid-cols-2">
-                            <Select
-                                label="Dnevno vreme igre"
-                                hint="Igra se završava mirno, na kraju nivoa."
-                                value={settings.sessionMinutes}
-                                onChange={(e) => set("sessionMinutes", Number(e.target.value) as ChildSettings["sessionMinutes"])}
-                            >
-                                <option value={10}>10 minuta</option>
-                                <option value={15}>15 minuta</option>
-                                <option value={20}>20 minuta</option>
-                                <option value={30}>30 minuta</option>
-                                <option value={0}>Bez ograničenja</option>
-                            </Select>
-                            <Select
-                                label="Pitanje „Kako si?”"
-                                hint="Detetov izbor lica, ne merenje. Kod dece mlađe od 6 godina nije pouzdano."
-                                value={settings.moodCheck}
-                                onChange={(e) => set("moodCheck", e.target.value as ChildSettings["moodCheck"])}
-                            >
-                                <option value="off">Isključeno</option>
-                                <option value="three">Tri lica, može da se preskoči</option>
-                            </Select>
-                        </div>
-                    </Section>
+                    <>
+                        <Section title="Mir i tempo">
+                            <Switch
+                                label="Manje animacija"
+                                description="Gasi kretanje na ekranu. Učitelj ostaje, ali miruje."
+                                checked={settings.reduceMotion}
+                                onChange={(v) => set("reduceMotion", v)}
+                            />
+                            <Switch
+                                label="Učitelj na ekranu"
+                                description="Lik koji čita zadatke: izraz lica prati ton rečenice."
+                                checked={settings.avatar}
+                                onChange={(v) => set("avatar", v)}
+                            />
+                            <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                                <Select
+                                    label="Dnevno vreme igre"
+                                    hint="Igra se završava mirno, na kraju nivoa."
+                                    value={settings.sessionMinutes}
+                                    onChange={(e) => set("sessionMinutes", Number(e.target.value) as ChildSettings["sessionMinutes"])}
+                                >
+                                    <option value={10}>10 minuta</option>
+                                    <option value={15}>15 minuta</option>
+                                    <option value={20}>20 minuta</option>
+                                    <option value={30}>30 minuta</option>
+                                    <option value={0}>Bez ograničenja</option>
+                                </Select>
+                                <Select
+                                    label="Pitanje „Kako si?”"
+                                    hint="Detetov izbor lica, ne merenje. Kod dece mlađe od 6 godina nije pouzdano."
+                                    value={settings.moodCheck}
+                                    onChange={(e) => set("moodCheck", e.target.value as ChildSettings["moodCheck"])}
+                                >
+                                    <option value="off">Isključeno</option>
+                                    <option value="three">Tri lica, može da se preskoči</option>
+                                </Select>
+                            </div>
+                        </Section>
+                        <Section
+                            title="Podsetnik"
+                            hint="Blag podsetnik u aplikaciji: posle izabranog vremena, ako dete tog dana još nije igralo, početni ekran kaže „Vreme je za igru sa drugarom!”, a vaš panel da dete danas još nije vežbalo. Bez obaveštenja na telefonu i bez mejlova."
+                        >
+                            <Switch
+                                label="Dnevni podsetnik"
+                                checked={settings.reminder.enabled}
+                                onChange={(v) => set("reminder", { ...settings.reminder, enabled: v })}
+                            />
+                            <div className={cn("mt-2 grid gap-4 sm:grid-cols-2", !settings.reminder.enabled && "opacity-50")}>
+                                <div>
+                                    <label htmlFor="settings-reminder-time" className="block text-sm font-extrabold text-ink">
+                                        Posle koliko sati
+                                    </label>
+                                    <input
+                                        id="settings-reminder-time"
+                                        type="time"
+                                        step={300}
+                                        value={settings.reminder.time}
+                                        disabled={!settings.reminder.enabled}
+                                        onChange={(e) => e.target.value && set("reminder", { ...settings.reminder, time: e.target.value.slice(0, 5) })}
+                                        className="mt-1.5 min-h-11 w-full rounded-xl border-2 border-line bg-surface px-3 text-base font-bold text-ink focus:border-brand-500 focus:outline-none"
+                                    />
+                                </div>
+                                <fieldset disabled={!settings.reminder.enabled}>
+                                    <legend className="text-sm font-extrabold text-ink">Dani</legend>
+                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                        {WEEKDAYS.map((day) => {
+                                            const on = settings.reminder.days.includes(day);
+                                            const only = on && settings.reminder.days.length === 1;
+                                            return (
+                                                <button
+                                                    key={day}
+                                                    type="button"
+                                                    aria-pressed={on}
+                                                    aria-label={WEEKDAY_NAMES[day - 1]}
+                                                    title={only ? "Bar jedan dan ostaje izabran" : WEEKDAY_NAMES[day - 1]}
+                                                    disabled={only}
+                                                    onClick={() =>
+                                                        set("reminder", {
+                                                            ...settings.reminder,
+                                                            days: on ? settings.reminder.days.filter((d) => d !== day) : WEEKDAYS.filter((d) => d === day || settings.reminder.days.includes(d)),
+                                                        })
+                                                    }
+                                                    className={cn(
+                                                        "grid h-11 w-11 place-items-center rounded-xl border-2 text-sm font-extrabold transition-colors disabled:cursor-not-allowed",
+                                                        on ? "border-brand-500 bg-brand-50 text-brand-700" : "border-line bg-surface text-ink-soft hover:border-brand-200"
+                                                    )}
+                                                >
+                                                    {WEEKDAY_NAMES[day - 1].slice(0, 3)}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </fieldset>
+                            </div>
+                        </Section>
+                    </>
                 )}
 
                 {tab === "data" && (
-                    <Section title="Podaci" hint="Rezultati igara pripadaju vama i detetu: možete ih preuzeti ili trajno obrisati.">
+                    <Section title="Podaci" hint="Rezultati igara pripadaju vama i detetu: možete ih trajno obrisati.">
                         <div className="flex flex-wrap items-center gap-2">
-                            <a href={`/api/children/${childId}/export`} download className={buttonClasses({ variant: "secondary", size: "sm" })}>
-                                Preuzmi rezultate (CSV)
-                            </a>
                             {!confirmErase ? (
                                 <Button variant="ghost" size="sm" onClick={() => setConfirmErase(true)} disabled={eraseState === "working"}>
                                     Obriši sve rezultate

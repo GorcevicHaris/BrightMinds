@@ -1,5 +1,7 @@
 // lib/games.ts — spisak igara, zvezdice i pravilo „nivo se polaže”.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, it } from "node:test";
 import {
     ACTIVITY_IDS,
@@ -9,6 +11,7 @@ import {
     MAX_LEVEL,
     MOODS,
     MOODS_THREE,
+    ageLabel,
     getGame,
     getGameByActivityId,
     getGameByType,
@@ -17,6 +20,7 @@ import {
     starsFor,
     successLevelFor,
     starsForGame,
+    sortGamesForChild,
 } from "@/lib/games";
 import { toCyrillic } from "@/lib/script";
 
@@ -99,8 +103,8 @@ describe("isGradedActivity", () => {
 describe("game registry", () => {
     const unique = (values: readonly unknown[]) => new Set(values).size === values.length;
 
-    it("has thirteen games with unique ids, activity ids and game types", () => {
-        assert.equal(GAMES.length, 13);
+    it("has fifteen games with unique ids, activity ids and game types", () => {
+        assert.equal(GAMES.length, 15);
         assert.ok(unique(GAMES.map((game) => game.id)));
         assert.ok(unique(GAMES.map((game) => game.activityId)));
         assert.ok(unique(GAMES.map((game) => game.gameType)));
@@ -109,9 +113,9 @@ describe("game registry", () => {
     it("keeps the activity ids that are already stored in the database", () => {
         assert.deepEqual(
             Object.fromEntries(GAMES.map((game) => [game.id, game.activityId])),
-            { shapes: 1, memory: 3, coloring: 4, "sound-to-image": 5, social: 6, "social-story": 7, emotions: 8, sorting: 9, sequence: 10, where: 11, uses: 12, counting: 13, gaze: 14 }
+            { shapes: 1, memory: 3, coloring: 4, "sound-to-image": 5, social: 6, "social-story": 7, emotions: 8, sorting: 9, sequence: 10, where: 11, uses: 12, counting: 13, gaze: 14, letters: 15, numbers: 16 }
         );
-        assert.deepEqual(ACTIVITY_IDS, [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]);
+        assert.deepEqual(ACTIVITY_IDS, [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
     });
 
     it("gives every game a title, a skill, an image and an off-screen tip for the adult", () => {
@@ -182,5 +186,65 @@ describe("moods", () => {
         assert.equal(getMood("ecstatic"), undefined);
         assert.equal(getMood(null), undefined);
         assert.equal(getMood(undefined), undefined);
+    });
+});
+
+describe("moods shown to parents and children", () => {
+    it("say „Tužno”, never „Loše”, on both scales", () => {
+        for (const mood of [...MOODS, ...MOODS_THREE]) assert.doesNotMatch(mood.label, /lo[šs]e/i, mood.value);
+        assert.equal(MOODS_THREE.find((mood) => mood.value === "upset")?.label, "Tužno");
+        assert.equal(MOODS.find((mood) => mood.value === "very_upset")?.label, "Tužno");
+    });
+
+    it("are not spelled out as „Loše” anywhere on the parent's screens", () => {
+        const parentScreens = ["app/components/ProgressDashboard.tsx", "app/components/LiveMonitor.tsx", "app/components/dashboard.tsx", "lib/progress.ts", "app/dev/progress-data/route.ts"];
+        for (const file of parentScreens) {
+            assert.doesNotMatch(readFileSync(path.join(process.cwd(), file), "utf8"), /["'„]Lo[šs]e/, file);
+        }
+    });
+});
+
+describe("age range and learning order", () => {
+    const ids = (games: { id: string }[]) => games.map((game) => game.id);
+
+    it("every game has an age range within 3–10 and its own place in the learning order", () => {
+        const orders = GAMES.map((game) => game.order);
+        assert.equal(new Set(orders).size, GAMES.length, "orders are unique");
+        assert.deepEqual([...orders].sort((a, b) => a - b), GAMES.map((_, index) => index + 1), "orders are 1…n");
+        for (const game of GAMES) {
+            assert.ok(Number.isInteger(game.ages.min) && Number.isInteger(game.ages.max), game.id);
+            assert.ok(game.ages.min >= 3 && game.ages.max <= 10 && game.ages.min < game.ages.max, game.id);
+        }
+    });
+
+    it("labels the age range for parents", () => {
+        assert.equal(ageLabel({ ages: { min: 3, max: 5 } }), "3–5 god.");
+    });
+
+    it("puts the games for the child's age first, easiest first, then easier games, then harder ones", () => {
+        const games = [
+            { id: "hard", ages: { min: 5, max: 10 }, order: 3 },
+            { id: "easy", ages: { min: 3, max: 5 }, order: 1 },
+            { id: "middle", ages: { min: 4, max: 7 }, order: 2 },
+        ];
+        assert.deepEqual(ids(sortGamesForChild(games, 3)), ["easy", "middle", "hard"]);
+        assert.deepEqual(ids(sortGamesForChild(games, 4)), ["easy", "middle", "hard"]);
+        assert.deepEqual(ids(sortGamesForChild(games, 6)), ["middle", "hard", "easy"]);
+        assert.deepEqual(ids(sortGamesForChild(games, 9)), ["hard", "easy", "middle"]);
+    });
+
+    it("sorts only by learning order when the age is not known, and leaves the input alone", () => {
+        const before = ids(GAMES);
+        const sorted = sortGamesForChild(GAMES, null);
+        assert.deepEqual(sorted.map((game) => game.order), GAMES.map((_, index) => index + 1));
+        assert.deepEqual(ids(GAMES), before);
+        assert.deepEqual(ids(sortGamesForChild(GAMES, Number.NaN)), ids(sorted));
+    });
+
+    it("starts a three-year-old with matching shapes and an eight-year-old with games for school age", () => {
+        assert.equal(sortGamesForChild(GAMES, 3)[0].id, "shapes");
+        const forEight = sortGamesForChild(GAMES, 8);
+        for (const game of forEight.slice(0, 5)) assert.ok(game.ages.max >= 8, game.id);
+        assert.equal(forEight.length, GAMES.length);
     });
 });
