@@ -4,7 +4,7 @@
 
 import * as THREE from "three";
 import { BONES, type BodyShape, type BoneName, type ExtraBoneName, type Joints, type Rig } from "../contract";
-import type { HumanKind } from "../data";
+import { HUMAN_TRAITS, type HumanKind } from "../data";
 import { profile, smoothstep, type BoneWeights } from "./surface";
 
 export { BONES, type BodyShape, type BoneName, type Joints, type Rig } from "../contract";
@@ -70,22 +70,71 @@ function adultShape(kind: "woman" | "man"): BodyShape {
     };
 }
 
+interface YoungSpec {
+    /** Umanjenje visine prema odraslom istog pola */
+    k: number;
+    /** Glava veća od umanjene odrasle */
+    headK: number;
+    /** Debljina udova (umnožak) */
+    limb: number;
+    /** Širina trupa (umnožak; tinejdžer je vitkiji) */
+    width?: number;
+    chin: number;
+    cheeks: number;
+    /** Vrat puniji od umanjenog odraslog */
+    neck: number;
+    /** Veća šaka i stopalo (deca) */
+    handK: number;
+    footK: number;
+}
+
 /**
  * Deca: ista građa kao odrasli, umanjena (≈ 1,3 m), sa većom glavom (≈ 1/4,7 visine),
  * punijim vratom i bez grudi — kao Bitmoji tinejdžer, prilagođeno uzrastu.
  */
 function childShape(kind: "girl" | "boy"): BodyShape {
-    const base = adultShape(kind === "girl" ? "woman" : "man");
-    const k = kind === "girl" ? 0.76 : 0.72;
-    // Glava ≈ 1/5 visine (veća nego kod odraslih, ali ne „balon”)
-    const headK = 1.17;
-    const limb = 0.98;
+    return youngShape(kind, kind === "girl" ? "woman" : "man", {
+        k: kind === "girl" ? 0.76 : 0.72,
+        // Glava ≈ 1/5 visine (veća nego kod odraslih, ali ne „balon”)
+        headK: 1.17,
+        limb: 0.98,
+        chin: kind === "girl" ? 0.78 : 0.8,
+        cheeks: 0.6,
+        neck: 1.12,
+        handK: 1.12,
+        footK: 1.05,
+    });
+}
+
+/**
+ * Tinejdžeri (≈ 1,55–1,6 m): vitki, duže noge, glava malo veća od odrasle, bez grudi (lik
+ * za decu), lice između dečjeg i odraslog.
+ */
+function teenShape(kind: "teengirl" | "teenboy"): BodyShape {
+    const girl = kind === "teengirl";
+    return youngShape(kind, girl ? "woman" : "man", {
+        k: girl ? 0.9 : 0.885,
+        headK: 1.06,
+        limb: 0.95,
+        width: girl ? 0.95 : 0.93,
+        chin: girl ? 0.76 : 0.79,
+        cheeks: 0.44,
+        neck: 1.04,
+        handK: 1.03,
+        footK: 1.0,
+    }, "adult");
+}
+
+function youngShape(kind: HumanKind, adult: "woman" | "man", o: YoungSpec, proportion: "child" | "adult" = "child"): BodyShape {
+    const base = adultShape(adult);
+    const { k, headK, limb } = o;
+    const wk = o.width ?? 1;
     const sy = (f: (y: number) => number, r = k) => (y: number) => f(y / k) * r;
     const h = base.head;
     return {
         ...base,
         kind,
-        proportion: "child",
+        proportion,
         crotchY: base.crotchY * k,
         hipY: base.hipY * k,
         waistY: base.waistY * k,
@@ -93,27 +142,82 @@ function childShape(kind: "girl" | "boy"): BodyShape {
         shoulderY: base.shoulderY * k,
         neckBaseY: base.neckBaseY * k,
         headBoneY: base.headBoneY * k,
-        head: { w: h.w * k * headK, h: h.h * k * headK, d: h.d * k * headK, up: h.up * k * headK, fwd: h.fwd * k, chin: kind === "girl" ? 0.78 : 0.8, cheeks: 0.6 },
+        head: { w: h.w * k * headK, h: h.h * k * headK, d: h.d * k * headK, up: h.up * k * headK, fwd: h.fwd * k, chin: o.chin, cheeks: o.cheeks },
         torsoW: (y: number) => {
             const v = base.torsoW(y / k) * k;
-            // Vrat malo puniji nego kod umanjenog odraslog
-            return y > base.neckBaseY * k - 0.01 ? Math.max(v, base.neckR * k * 1.12) : v;
+            const neck = y > base.neckBaseY * k - 0.01;
+            // Vrat malo puniji nego kod umanjenog odraslog; vitkiji trup se meko vraća ka vratu
+            const slim = wk + (1 - wk) * smoothstep(base.shoulderY * k - 0.02, base.neckBaseY * k - 0.01, y);
+            return neck ? Math.max(v, base.neckR * k * o.neck) : v * slim;
         },
         torsoFront: sy(base.torsoFront),
         torsoBack: sy(base.torsoBack),
         bust: 0,
-        neckR: base.neckR * k * 1.12,
-        shoulderX: base.shoulderX * k,
+        neckR: base.neckR * k * o.neck,
+        shoulderX: base.shoulderX * k * (0.5 + 0.5 * wk),
         upperArm: base.upperArm * k,
         forearm: base.forearm * k,
         armR: (t: number) => base.armR(t) * k * limb,
-        hand: base.hand * k * 1.12,
-        hipX: base.hipX * k,
+        hand: base.hand * k * o.handK,
+        hipX: base.hipX * k * (0.5 + 0.5 * wk),
         thigh: base.thigh * k,
         shin: base.shin * k,
         legR: (t: number) => base.legR(t) * k * limb,
         ankleY: base.ankleY * k,
-        foot: { len: base.foot.len * k * 1.05, w: base.foot.w * k * 1.05, h: base.foot.h * k, back: base.foot.back * k },
+        foot: { len: base.foot.len * k * o.footK, w: base.foot.w * k * o.footK, h: base.foot.h * k, back: base.foot.back * k },
+        height: base.height * k,
+    };
+}
+
+const gaussY = (y: number, mu: number, s: number) => Math.exp(-((y - mu) ** 2) / (2 * s * s));
+
+/**
+ * Nana i dedo: građa odraslog, malo niži (≈ 0,97), mekši i puniji u struku (dedo i blag
+ * stomak), malo uža i oblija ramena, puniji gornji deo ruke. Glava iste veličine, lice starije
+ * (head.ts). Kosti u mirovanju su iste kao kod odraslih, pa sva odeća i sidra rade isto.
+ */
+function seniorShape(kind: "grandma" | "grandpa"): BodyShape {
+    const grandpa = kind === "grandpa";
+    const base = adultShape(grandpa ? "man" : "woman");
+    const k = 0.97;
+    const y0 = (v: number) => v * k;
+    const waist = base.waistY * k;
+    const hip = base.hipY * k;
+    const belly = grandpa ? 0.016 : 0.012;
+    const h = base.head;
+    const neckTop = base.neckBaseY * k - 0.01;
+    return {
+        ...base,
+        kind,
+        proportion: "adult",
+        crotchY: y0(base.crotchY),
+        hipY: hip,
+        waistY: waist,
+        chestY: y0(base.chestY),
+        shoulderY: y0(base.shoulderY),
+        neckBaseY: y0(base.neckBaseY),
+        headBoneY: y0(base.headBoneY),
+        head: { ...h, chin: grandpa ? 0.83 : 0.79, cheeks: 0.42 },
+        // Struk puniji (meko), kukovi nane malo širi; vrat i ramena isti kao kod odraslih
+        torsoW: (y: number) => {
+            const v = base.torsoW(y / k) * k;
+            if (y > neckTop) return v;
+            return v + (grandpa ? 0.012 : 0.01) * gaussY(y, waist, 0.075) + (grandpa ? 0 : 0.006) * gaussY(y, hip, 0.05);
+        },
+        torsoFront: (y: number) => {
+            const v = base.torsoFront(y / k) * k;
+            return y > neckTop ? v : v + belly * gaussY(y, (waist + hip) / 2, 0.07);
+        },
+        torsoBack: (y: number) => base.torsoBack(y / k) * k,
+        neckR: base.neckR * 1.02,
+        shoulderX: base.shoulderX * 0.97,
+        upperArm: base.upperArm * k,
+        forearm: base.forearm * k,
+        armR: (t: number) => base.armR(t) * (1.04 + 0.04 * (1 - t)),
+        thigh: base.thigh * k,
+        shin: base.shin * k,
+        legR: (t: number) => base.legR(t) * 1.03,
+        foot: { ...base.foot, len: base.foot.len * 0.98 },
         height: base.height * k,
     };
 }
@@ -123,10 +227,42 @@ const SHAPES = new Map<HumanKind, BodyShape>();
 export function bodyShape(kind: HumanKind): BodyShape {
     let shape = SHAPES.get(kind);
     if (!shape) {
-        shape = kind === "girl" || kind === "boy" ? childShape(kind) : adultShape(kind);
+        shape = makeShape(kind);
         SHAPES.set(kind, shape);
     }
     return shape;
+}
+
+function makeShape(kind: HumanKind): BodyShape {
+    switch (kind) {
+        case "girl":
+        case "boy":
+            return childShape(kind);
+        case "teengirl":
+        case "teenboy":
+            return teenShape(kind);
+        case "grandma":
+        case "grandpa":
+            return seniorShape(kind);
+        default:
+            return adultShape(kind);
+    }
+}
+
+/** Mladost lica: 1 = dete, ≈ 0,45 = tinejdžer, 0 = odrasli i stariji (oči, nos, obrazi) */
+export function youthOf(kind: string): number {
+    const age = (HUMAN_TRAITS as Record<string, { age: string } | undefined>)[kind]?.age;
+    return age === "child" ? 1 : age === "teen" ? 0.45 : 0;
+}
+
+/** Ženski lik (trepavice, rumenilo, usne) */
+export function isFemaleKind(kind: string): boolean {
+    return Boolean((HUMAN_TRAITS as Record<string, { female: boolean } | undefined>)[kind]?.female);
+}
+
+/** Stariji lik (nana, dedo): bore od smeha, mekši kapci */
+export function isSeniorKind(kind: string): boolean {
+    return (HUMAN_TRAITS as Record<string, { age: string } | undefined>)[kind]?.age === "senior";
 }
 
 // ── Zglobovi u mirovanju (svetske koordinate) ───────────────────────────────────

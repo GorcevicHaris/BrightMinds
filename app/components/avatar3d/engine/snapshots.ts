@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import type { FaceExpression } from "@/lib/emotion";
 import type { CompanionLook, Slot, Wear } from "../contract";
+import { humanLookId } from "../looks";
 import { Figure } from "./figure";
 import type { PoseName } from "./pose";
 import { REST_YAW, StageScene, type Framing } from "./scene";
@@ -31,7 +32,8 @@ const MAX_FIGURES = 3;
 
 function lookKey(look: CompanionLook): string {
     const h = look.human;
-    return h ? `${look.kind}|${h.tone}.${h.eye}.${h.hair}.${h.style}.${h.hijab}` : `${look.kind}|${look.skin}`;
+    // Ceo id izgleda (i pegice, brada, brkovi) — inače sličice sa i bez brade dele keš
+    return h ? `${look.kind}|${humanLookId(h)}` : `${look.kind}|${look.skin}`;
 }
 
 export function snapKey(spec: SnapSpec): string {

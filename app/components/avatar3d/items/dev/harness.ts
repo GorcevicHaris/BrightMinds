@@ -7,7 +7,7 @@ import type { CompanionKind, FigureBody, ItemBuild, Wear } from "../../contract"
 import { companionBuilder, isHumanKind, itemBuilder } from "../../contract";
 import { makeItemContext } from "../../engine/figure";
 import { buildHuman } from "../../engine/human";
-import { HIJAB_COLORS, HUMAN_DEFAULT, NO_HIJAB } from "../../looks";
+import { HIJAB_COLORS, HUMAN_DEFAULT, NO_HIJAB, hasHijabOption } from "../../looks";
 import "../../animals";
 
 // ── Probni lik ────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ export interface TestFigureOptions {
 export function buildTestFigure(kind: CompanionKind, options: TestFigureOptions): TestFigure {
     if (isHumanKind(kind)) {
         const hijabId = options.hijab ? (HIJAB_COLORS.find((c) => c.hex.toLowerCase() === options.hijab!.toLowerCase())?.id ?? "roze") : NO_HIJAB;
-        const look = { ...HUMAN_DEFAULT[kind], hijab: kind === "girl" || kind === "woman" ? hijabId : NO_HIJAB };
+        const look = { ...HUMAN_DEFAULT[kind], hijab: hasHijabOption(kind) ? hijabId : NO_HIJAB };
         const body = buildHuman(kind, look, { quality: "high" });
         const crown = body.setHeadwear(options.hat);
         return { body, hijab: body.hijab, hairCrown: crown, extra: [] };

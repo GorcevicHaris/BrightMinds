@@ -1,4 +1,4 @@
-// Ljudski drugari (devojčica, dečak, učiteljica, učitelj) po ugovoru: telo, glava sa licem,
+// Ljudski drugari (devojčica, dečak, učiteljica, učitelj, tinejdžeri, nana, dedo) po ugovoru: telo, glava sa licem,
 // kosa i hidžab iz izgleda (looks.ts, uvek besplatno), sidra za predmete. Odeću (i osnovnu
 // odeću kad mesto ostane prazno) dodaje Figure (figure.ts).
 
@@ -6,9 +6,9 @@ import * as THREE from "three";
 import type { HairStyle } from "../catalog";
 import { registerCompanion, type Anchors, type CompanionBuilder, type FigureBody, type FigureContext, type HeadSurface } from "../contract";
 import { HUMAN_KINDS, type HumanKind } from "../data";
-import { EYE_COLORS, HAIR_COLORS, HIJAB_COLORS, SKIN_TONES, hairShape, hijabParts, humanLook, partHex, type HumanLook } from "../looks";
+import { EYE_COLORS, HAIR_COLORS, HIJAB_COLORS, NO_BEARD, SKIN_TONES, hairShape, hasBeardOption, hijabParts, humanLook, partHex, type HumanLook } from "../looks";
 import { buildBody } from "./body";
-import { buildBeard, buildHair, hairCrown } from "./hair";
+import { buildBeard, buildHair, hairCrown, type BeardStyle } from "./hair";
 import { buildHead, EAR_U, EAR_V, headInfo, type HeadInfo } from "./head";
 import { buildHijab, HIJAB_THICKNESS } from "./hijab";
 import { Kit } from "./kit";
@@ -40,6 +40,18 @@ const HAIR_STYLE: Record<string, HairStyle | null> = {
     swept: "swept",
     wavy: "wavy",
     straight: "straight",
+    puffs: "puffs",
+    cornrows: "cornrows",
+    bob: "bob",
+    pixie: "pixie",
+    highbun: "highbun",
+    curlylong: "curlylong",
+    sidepart: "sidepart",
+    spiky: "spiky",
+    fade: "fade",
+    pigtails: "pigtails",
+    receding: "receding",
+    afro: "afro",
     none: null,
 };
 
@@ -149,8 +161,8 @@ function buildHumanAt(kind: HumanKind, look: HumanLook, ctx: FigureContext): Hum
     const freckles = look.freckles === "vise" ? 2 : look.freckles === "malo" ? 1 : 0;
     const face = buildHead(info, tone, partHex(EYE_COLORS, look.eye), hairHex, "neutral", { freckles });
     rig.bone("head").add(face.group);
-    // Brada (učitelj) je deo lica: ide uz glavu i ispod kape
-    if (kind === "man" && look.beard === "brada") face.group.add(buildBeard(info, hairHex, tone));
+    // Brada i brkovi (učitelj, dedo) su deo lica: idu uz glavu i ispod kape
+    if (look.beard && look.beard !== NO_BEARD && hasBeardOption(kind)) face.group.add(buildBeard(info, hairHex, tone, look.beard as BeardStyle));
 
     // Hidžab: deo tela (izgled), ne predmet; uši i kosa se ispod njega ne crtaju
     const hijabObjects: THREE.Object3D[] = [];

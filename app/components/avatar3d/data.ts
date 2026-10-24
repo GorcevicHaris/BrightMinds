@@ -33,8 +33,27 @@ export const SLOT_LABELS: Record<Slot, string> = {
 
 export type CompanionKind = CompanionKindId;
 
-export const HUMAN_KINDS = ["girl", "boy", "woman", "man"] as const;
+/** Ljudi, porodica: tinejdžeri, nana i dedo (isti motor i ista sidra kao ostali ljudi) */
+export const FAMILY_KINDS = ["teengirl", "teenboy", "grandma", "grandpa"] as const;
+export type FamilyKind = (typeof FAMILY_KINDS)[number];
+
+export const HUMAN_KINDS = ["girl", "boy", "woman", "man", ...FAMILY_KINDS] as const;
 export type HumanKind = (typeof HUMAN_KINDS)[number];
+
+/** Uzrast lika: lice (oči, nos, obrazi), građa i ponuda frizura zavise od njega */
+export type HumanAge = "child" | "teen" | "adult" | "senior";
+
+/** Osobine ljudskog lika: žensko (hidžab, trepavice) i uzrast */
+export const HUMAN_TRAITS: Record<HumanKind, { female: boolean; age: HumanAge }> = {
+    girl: { female: true, age: "child" },
+    boy: { female: false, age: "child" },
+    woman: { female: true, age: "adult" },
+    man: { female: false, age: "adult" },
+    teengirl: { female: true, age: "teen" },
+    teenboy: { female: false, age: "teen" },
+    grandma: { female: true, age: "senior" },
+    grandpa: { female: false, age: "senior" },
+};
 
 /** Osnovne životinje (animals/<vrsta>.ts, izgledi u animals/skins.data.ts) */
 export const ANIMAL_KINDS = ["cat", "dog", "bunny", "bear", "fox", "lion", "penguin", "unicorn"] as const;
@@ -65,6 +84,12 @@ export const COMPANION_LABELS: Record<CompanionKind, string> = {
     boy: "Dečak",
     woman: "Učiteljica",
     man: "Učitelj",
+    // ── Ljudi, porodica ──
+    teengirl: "Tinejdžerka",
+    teenboy: "Tinejdžer",
+    grandma: "Nana",
+    grandpa: "Dedo",
+    // ── Životinje ──
     cat: "Mačka",
     dog: "Pas",
     bunny: "Zeka",

@@ -25,11 +25,15 @@ export const POINTS_PER_STAR = 5;
 export const COINS_PER_STAR = 2;
 
 /**
- * Pratioci koje dete može da izabere: ljudi (devojčica, dečak, učiteljica, učitelj) i životinje.
+ * Pratioci koje dete može da izabere: ljudi (devojčica, dečak, učiteljica, učitelj, tinejdžerka,
+ * tinejdžer, nana, dedo) i životinje.
  * 3D crteži: app/components/avatar3d; 2D (kad WebGL ne radi): app/components/avatar/Companion.
  */
 export const COMPANION_KINDS = [
     "girl", "boy", "woman", "man",
+    // ── Ljudi, porodica (tinejdžerka, tinejdžer, nana, dedo) — posebna grupa, odmah posle ljudi ──
+    "teengirl", "teenboy", "grandma", "grandpa",
+    // ── Životinje ──
     "cat", "dog", "bunny", "bear", "fox", "lion", "penguin", "unicorn",
     "panda", "koala", "elephant", "monkey", "owl", "tiger", "dinosaur", "giraffe",
     "pony", "frog", "hedgehog", "raccoon", "deer", "sheep", "hamster", "squirrel",

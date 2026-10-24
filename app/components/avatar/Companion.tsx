@@ -17,9 +17,11 @@ export { COMPANION_ACTIONS, type CompanionAction } from "./motion";
  * (kad WebGL ne radi) crtaju kao najsličniji: devojčica → učiteljica, dečak → učitelj…
  */
 const FALLBACK_2D: Record<string, CompanionKind> = { girl: "woman", boy: "man", fox: "cat", lion: "bear", penguin: "bear", unicorn: "bunny" };
+/** Porodica (tinejdžeri, nana, dedo) u 2D: učiteljica ili učitelj */
+const FAMILY_FALLBACK_2D: Record<string, CompanionKind> = { teengirl: "woman", teenboy: "man", grandma: "woman", grandpa: "man" };
 
 export function companion2DKind(kind: string): CompanionKind {
-    return FALLBACK_2D[kind] ?? (isCompanionKind(kind) ? kind : "woman");
+    return FALLBACK_2D[kind] ?? FAMILY_FALLBACK_2D[kind] ?? (isCompanionKind(kind) ? kind : "woman");
 }
 
 /** 3D izgled čoveka `koža.oči.kosa.frizura.hidžab` → 2D `koža.kosa.frizura` (nepoznat deo → dosadašnji crtež) */
