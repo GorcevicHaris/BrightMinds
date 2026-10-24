@@ -388,6 +388,66 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
         else if (goalNow.item) void buy(goalNow.item);
     };
 
+    // Proba, kupovina, poruka ili cilj („Radim za”): na tabletu i računaru preko donjeg dela 3D
+    // prikaza, a na telefonu kao sažeta traka na dnu lista — da ne pokriva drugara. Dete tako
+    // istovremeno vidi predmet na drugaru i dugme „Kupi”.
+    const actionBar =
+        message || selected || goalNow ? (
+            <>
+                {message && (
+                    <p role="status" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700 shadow-soft">
+                        {message}
+                    </p>
+                )}
+                {selected?.type === "item" && (
+                    <TryOn
+                        label={selected.item.label}
+                        price={selected.item.price}
+                        coins={coins}
+                        isGoal={goal === selected.item.id}
+                        busy={busy}
+                        buyLabel="Kupi za"
+                        workLabel="Radim za ovo"
+                        onBuy={() => buy(selected.item)}
+                        onWorkFor={() => workFor(selected.item.id, selected.item.label)}
+                        onClose={() => {
+                            remember();
+                            setSelected(null);
+                        }}
+                    />
+                )}
+                {selected?.type === "skin" && (
+                    <TryOn
+                        label={selected.skin.label}
+                        price={selected.skin.price}
+                        coins={coins}
+                        isGoal={goal === skinGoalId(selected.kind, selected.skin.id)}
+                        busy={busy}
+                        buyLabel="Kupi za"
+                        workLabel="Radim za ovo"
+                        onBuy={() => buyFur(selected.skin)}
+                        onWorkFor={() => workFor(skinGoalId(selected.kind, selected.skin.id), selected.skin.label)}
+                        onClose={() => setSelected(null)}
+                    />
+                )}
+                {selected?.type === "set" && (
+                    <SetTryOn
+                        set={selected.set}
+                        owned={owned}
+                        worn={sameLook(wear, selected.set.items)}
+                        coins={coins}
+                        isGoal={goal === setGoalId(selected.set.id)}
+                        busy={busy}
+                        onBuy={() => buySet(selected.set)}
+                        onWear={() => wearSet(selected.set)}
+                        onWorkFor={() => workFor(setGoalId(selected.set.id), selected.set.label)}
+                        onClose={() => setSelected(null)}
+                    />
+                )}
+                {!selected && goalNow && <GoalCard goal={goalNow} kind={kind} skin={skin} busy={busy} onTry={tryGoal} onBuy={buyGoal} onClear={clearGoal} />}
+            </>
+        ) : null;
+
     // ── Gornji deo: živ drugar ───────────────────────────────────────────────────
     const stage = (
         <section aria-label="Moj drugar" className="relative h-full overflow-hidden rounded-card bg-[#E4E6EB] shadow-soft ring-1 ring-line">
@@ -411,80 +471,31 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                     setLookTab("companion");
                 }}
                 aria-label="Lik: drugar i izgled"
-                className="absolute left-3 top-3 grid h-14 w-14 place-items-center overflow-hidden rounded-full bg-white shadow-soft ring-2 ring-white hover:ring-brand-300"
+                className="absolute left-2 top-2 grid h-12 w-12 place-items-center overflow-hidden rounded-full bg-white shadow-soft ring-2 ring-white hover:ring-brand-300 sm:left-3 sm:top-3 sm:h-14 sm:w-14"
             >
                 <CompanionPicture kind={kind} skin={skin} variant="face" emotion="happy" className="h-full w-full" eager />
             </button>
             {/* Gore desno: novčići */}
-            <Coins count={coins} className="absolute right-3 top-3 bg-white/95 text-base shadow-soft sm:text-lg" />
+            <Coins count={coins} className="absolute right-2 top-2 bg-white/95 text-base shadow-soft max-sm:px-2.5 max-sm:py-0.5 sm:right-3 sm:top-3 sm:text-lg" />
+            {/* Na telefonu „Probaš” bi prekrio glavu; tamo probu pokazuje traka na dnu lista */}
             {selected && (
-                <span className="absolute left-1/2 top-3 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/95 px-3 py-1 text-sm font-extrabold text-brand-700 shadow-soft ring-1 ring-brand-200">
+                <span className="absolute left-1/2 top-3 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/95 px-3 py-1 text-sm font-extrabold text-brand-700 shadow-soft ring-1 ring-brand-200 max-sm:hidden">
                     Probaš
                 </span>
             )}
-            {/* Dole: proba i kupovina, ili cilj */}
-            <div className="absolute inset-x-3 bottom-3 flex items-end gap-2">
-                <div className="flex shrink-0 flex-col gap-2">
+            {/* Dole: „Vrati” i „Ponovo” u jednoj tabli; proba i kupovina (ili cilj) desno, samo na
+                širem ekranu. Prazan deo trake ne hvata prst — drugar se i tu okreće prevlačenjem. */}
+            <div className="pointer-events-none absolute inset-x-2 bottom-2 flex items-end gap-2 sm:inset-x-3 sm:bottom-3">
+                <div className="pointer-events-auto flex shrink-0 flex-col overflow-hidden rounded-full bg-white/90 shadow-soft ring-1 ring-line backdrop-blur-sm">
                     <RoundButton label="Vrati" onClick={undo} disabled={busy || history.past.length === 0}>
-                        <Undo2 className="h-6 w-6" aria-hidden="true" />
+                        <Undo2 className="h-5 w-5" aria-hidden="true" />
                     </RoundButton>
+                    <span aria-hidden="true" className="mx-2.5 h-px bg-line" />
                     <RoundButton label="Ponovo" onClick={redo} disabled={busy || history.future.length === 0}>
-                        <Redo2 className="h-6 w-6" aria-hidden="true" />
+                        <Redo2 className="h-5 w-5" aria-hidden="true" />
                     </RoundButton>
                 </div>
-                <div className="ml-auto flex w-full max-w-[22rem] flex-col gap-2">
-                    {message && (
-                        <p role="status" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-bold text-rose-700 shadow-soft">
-                            {message}
-                        </p>
-                    )}
-                    {selected?.type === "item" && (
-                        <TryOn
-                            label={selected.item.label}
-                            price={selected.item.price}
-                            coins={coins}
-                            isGoal={goal === selected.item.id}
-                            busy={busy}
-                            buyLabel="Kupi za"
-                            workLabel="Radim za ovo"
-                            onBuy={() => buy(selected.item)}
-                            onWorkFor={() => workFor(selected.item.id, selected.item.label)}
-                            onClose={() => {
-                                remember();
-                                setSelected(null);
-                            }}
-                        />
-                    )}
-                    {selected?.type === "skin" && (
-                        <TryOn
-                            label={selected.skin.label}
-                            price={selected.skin.price}
-                            coins={coins}
-                            isGoal={goal === skinGoalId(selected.kind, selected.skin.id)}
-                            busy={busy}
-                            buyLabel="Kupi za"
-                            workLabel="Radim za ovo"
-                            onBuy={() => buyFur(selected.skin)}
-                            onWorkFor={() => workFor(skinGoalId(selected.kind, selected.skin.id), selected.skin.label)}
-                            onClose={() => setSelected(null)}
-                        />
-                    )}
-                    {selected?.type === "set" && (
-                        <SetTryOn
-                            set={selected.set}
-                            owned={owned}
-                            worn={sameLook(wear, selected.set.items)}
-                            coins={coins}
-                            isGoal={goal === setGoalId(selected.set.id)}
-                            busy={busy}
-                            onBuy={() => buySet(selected.set)}
-                            onWear={() => wearSet(selected.set)}
-                            onWorkFor={() => workFor(setGoalId(selected.set.id), selected.set.label)}
-                            onClose={() => setSelected(null)}
-                        />
-                    )}
-                    {!selected && goalNow && <GoalCard goal={goalNow} kind={kind} skin={skin} busy={busy} onTry={tryGoal} onBuy={buyGoal} onClear={clearGoal} />}
-                </div>
+                {actionBar && <div className="pointer-events-auto ml-auto hidden w-full max-w-[22rem] flex-col gap-2 sm:flex">{actionBar}</div>}
             </div>
         </section>
     );
@@ -497,51 +508,66 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
     ];
 
     return (
-        // Telefon: gore 3D (≈ 47 % visine), dole list koji se povlači nagore (≈ 75 %); tablet i
-        // računar: 3D levo, list desno. List ima svoje listanje, a zaglavlje i čipovi ostaju vidljivi.
-        <div className="flex h-[calc(100svh-11.5rem)] min-h-[32rem] flex-col gap-3 sm:h-[calc(100svh-13rem)] lg:grid lg:h-[calc(100svh-12.5rem)] lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] xl:gap-6">
-            <div className={cn("min-h-0 flex-none lg:h-full", !reduceMotion && "transition-[height] duration-300", expanded ? "h-[26%]" : "h-[47%]")}>{stage}</div>
+        // Telefon (kao „Avatar” u Snapchatu): strana se ne pomera — ekran između zaglavlja i donje
+        // trake pripada drugaru (gore, ≈ 40 %) i listu (dole); u listu stoje delovi i čipovi, a
+        // lista se samo mreža predmeta. Visina: 100dvh − zaglavlje (65 px) − razmak (8 px) − donja
+        // traka (65 px + max(bezbedna zona, 0,5rem)). Negativne margine poništavaju unutrašnji
+        // razmak <main> (pt-5, pb-5) i pb-24 omotača iz ChildPageClient-a, pa strana nema šta da lista.
+        // Tablet: gore 3D (≈ 47 %), dole list koji se povlači nagore; računar: 3D levo, list desno.
+        <div
+            className={cn(
+                "flex flex-col gap-2 [--nav-safe:max(env(safe-area-inset-bottom),0.5rem)] sm:gap-3",
+                "max-sm:-mt-3 max-sm:mb-[calc(var(--nav-safe)_-_3.25rem)] max-sm:h-[calc(100dvh_-_8.625rem_-_var(--nav-safe))] max-sm:min-h-[26rem]",
+                "sm:h-[calc(100svh-18.5rem)] sm:min-h-[32rem] md:h-[calc(100svh-15rem)]",
+                "lg:grid lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] xl:gap-6"
+            )}
+        >
+            <div className={cn("min-h-0 flex-none max-sm:h-[39%] lg:h-full", !reduceMotion && "sm:transition-[height] sm:duration-300", expanded ? "sm:h-[26%]" : "sm:h-[47%]")}>{stage}</div>
 
-            <section aria-label="Prodavnica, ormar i lik" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-t-[1.75rem] bg-surface px-3 pb-6 shadow-soft ring-1 ring-line sm:px-4 lg:h-full lg:rounded-card">
-                <div className="sticky top-0 z-20 -mx-3 bg-surface px-3 pb-2 pt-1 sm:-mx-4 sm:px-4">
-                {/* Ručka: povlačenje nagore pokazuje više predmeta, nadole više drugara */}
-                <button
-                    type="button"
-                    aria-label={expanded ? "Više drugara" : "Više predmeta"}
-                    aria-expanded={expanded}
-                    onClick={() => setExpanded((value) => !value)}
-                    onPointerDown={(event) => {
-                        dragY.current = event.clientY;
-                    }}
-                    onPointerUp={(event) => {
-                        const dy = event.clientY - (dragY.current ?? event.clientY);
-                        dragY.current = null;
-                        if (dy < -24) setExpanded(true);
-                        else if (dy > 24) setExpanded(false);
-                    }}
-                    className="mx-auto mb-1 flex h-7 w-24 touch-none items-center justify-center lg:hidden"
-                >
-                    <span aria-hidden="true" className="block h-1.5 w-12 rounded-full bg-line" />
-                </button>
-                {/* Tri dela: ikonica + reč */}
-                <div role="tablist" aria-label="Delovi" className="grid grid-cols-3 gap-1 rounded-2xl bg-brand-50 p-1 lg:mt-2">
-                    {panels.map(({ id, label, Icon }) => {
-                        const active = panel === id;
-                        return (
-                            <button
-                                key={id}
-                                type="button"
-                                role="tab"
-                                aria-selected={active}
-                                onClick={() => openPanel(id, label)}
-                                className={cn("flex min-h-12 items-center justify-center gap-2 rounded-xl text-sm font-extrabold transition-colors sm:text-base", active ? "bg-white text-brand-700 shadow-soft" : "text-ink-soft hover:text-ink")}
-                            >
-                                <Icon className="h-5 w-5" aria-hidden="true" />
-                                {label}
-                            </button>
-                        );
-                    })}
-                </div>
+            <section
+                aria-label="Prodavnica, ormar i lik"
+                className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-[1.75rem] bg-surface shadow-soft ring-1 ring-line max-sm:-mx-4 max-sm:shadow-[0_-8px_24px_-14px_rgb(31_27_58/0.25)] sm:rounded-b-[1.75rem] lg:h-full lg:rounded-card"
+            >
+                <div className="flex-none px-4 pb-2 pt-2 sm:pt-1">
+                    {/* Ručka (samo tablet): povlačenje nagore pokazuje više predmeta, nadole više drugara */}
+                    <button
+                        type="button"
+                        aria-label={expanded ? "Više drugara" : "Više predmeta"}
+                        aria-expanded={expanded}
+                        onClick={() => setExpanded((value) => !value)}
+                        onPointerDown={(event) => {
+                            dragY.current = event.clientY;
+                        }}
+                        onPointerUp={(event) => {
+                            const dy = event.clientY - (dragY.current ?? event.clientY);
+                            dragY.current = null;
+                            if (dy < -24) setExpanded(true);
+                            else if (dy > 24) setExpanded(false);
+                        }}
+                        className="mx-auto mb-1 hidden h-7 w-24 touch-none items-center justify-center sm:flex lg:hidden"
+                    >
+                        <span aria-hidden="true" className="block h-1.5 w-12 rounded-full bg-line" />
+                    </button>
+                    {/* Tri dela: ikonica + reč */}
+                    <div role="tablist" aria-label="Delovi" className="grid grid-cols-3 gap-1 rounded-2xl bg-brand-50 p-0.5 sm:p-1 lg:mt-2">
+                        {panels.map(({ id, label, Icon }) => {
+                            const active = panel === id;
+                            return (
+                                <button
+                                    key={id}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={active}
+                                    onClick={() => openPanel(id, label)}
+                                    className={cn("flex min-h-12 items-center justify-center gap-1.5 rounded-xl text-sm font-extrabold transition-colors sm:gap-2 sm:text-base", active ? "bg-white text-brand-700 shadow-soft" : "text-ink-soft hover:text-ink")}
+                                >
+                                    {/* Najuži telefoni (< 380 px): samo reč, da „Prodavnica” stane cela */}
+                                    <Icon className="h-5 w-5 shrink-0 max-[380px]:hidden" aria-hidden="true" />
+                                    {label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
 
                 {panel === "shop" && (
@@ -589,6 +615,9 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                         wear={wear}
                     />
                 )}
+
+                {/* Telefon: proba i kupovina na dnu lista (mreža iznad se skrati, ništa se ne pomera pod prstom) */}
+                {actionBar && <div className="flex flex-none flex-col gap-2 border-t border-line bg-surface px-3 py-2 sm:hidden">{actionBar}</div>}
             </section>
         </div>
     );
@@ -617,17 +646,9 @@ function ShopPanel({ category, sub, onCategory, onSub, owned, wear, coins, goal,
     const groups = category === "sets" ? [] : subgroupsOf(category, items);
     const shown = sub ? items.filter((item) => groupOf(item) === sub) : items;
     const label = CATEGORIES.find((c) => c.id === category)?.label ?? "";
-    return (
-        <div className="space-y-3">
-            <StickyChips>
-            <ChipRow label="Kategorije">
-                {CATEGORIES.map((c) => (
-                    <Chip key={c.id} active={c.id === category} onClick={() => onCategory(c.id, c.label)} Icon={CATEGORY_ICON[c.id]}>
-                        {c.label}
-                    </Chip>
-                ))}
-            </ChipRow>
-            {groups.length > 1 && (
+    const subRow = (className: string) =>
+        groups.length > 1 && (
+            <div className={className}>
                 <ChipRow label={`Vrste: ${label}`} small>
                     <Chip small active={sub === null} onClick={() => onSub(null, label)}>
                         {label}
@@ -638,10 +659,29 @@ function ShopPanel({ category, sub, onCategory, onSub, owned, wear, coins, goal,
                         </Chip>
                     ))}
                 </ChipRow>
-            )}
-            </StickyChips>
+            </div>
+        );
+    return (
+        <PanelLayout
+            resetKey={`${category}:${sub ?? ""}`}
+            chips={
+                <>
+                    <ChipRow label="Kategorije">
+                        {CATEGORIES.map((c) => (
+                            <Chip key={c.id} active={c.id === category} onClick={() => onCategory(c.id, c.label)} Icon={CATEGORY_ICON[c.id]}>
+                                {c.label}
+                            </Chip>
+                        ))}
+                    </ChipRow>
+                    {subRow("max-sm:hidden")}
+                </>
+            }
+        >
+            {/* Telefon: podvrste su prvi red liste (odlistaju se), da mreža ima više mesta */}
+            {subRow("sm:hidden")}
             {category === "sets" ? (
-                <ul className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-3 xl:grid-cols-4 2xl:grid-cols-5">
+                // Kompleti su viši (ceo drugar), pa i na telefonu staju tri u red
+                <ul className="grid grid-cols-3 gap-1.5 sm:gap-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {SETS.map((set) => (
                         <SetTile
                             key={set.id}
@@ -660,13 +700,13 @@ function ShopPanel({ category, sub, onCategory, onSub, owned, wear, coins, goal,
             ) : (
                 <ItemGrid items={shown} owned={owned} wear={wear} coins={coins} goal={goal} selected={selected} onPick={onPick} />
             )}
-        </div>
+        </PanelLayout>
     );
 }
 
 function ItemGrid({ items, owned, wear, coins, goal, selected, onPick }: { items: readonly ItemData[]; owned: readonly string[]; wear: Wear; coins: number; goal?: string; selected: Selection | null; onPick: (item: ItemData) => void }) {
     return (
-        <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 xl:grid-cols-5 2xl:grid-cols-6">
+        <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 sm:gap-3 xl:grid-cols-5 2xl:grid-cols-6">
             {items.map((item) => (
                 <ItemTile
                     key={item.id}
@@ -692,12 +732,10 @@ function ClosetPanel({ owned, wear, busy, anythingWorn, onPick, onUndress }: { o
         .filter((c) => c.items.length > 0);
     const current = mine.find((c) => c.id === slot) ?? mine[0];
     return (
-        <div className="space-y-3">
-            {mine.length === 0 ? (
-                <p className="rounded-tile bg-brand-50 p-5 text-center text-base font-bold text-ink-soft">Ormar je još prazan.</p>
-            ) : (
-                <>
-                    <StickyChips>
+        <PanelLayout
+            resetKey={current?.id}
+            chips={
+                mine.length > 0 && (
                     <ChipRow label="Kategorije u ormaru">
                         {mine.map((c) => (
                             <Chip
@@ -713,16 +751,20 @@ function ClosetPanel({ owned, wear, busy, anythingWorn, onPick, onUndress }: { o
                             </Chip>
                         ))}
                     </ChipRow>
-                    </StickyChips>
-                    {current && <ItemGrid items={current.items} owned={owned} wear={wear} coins={0} selected={null} onPick={onPick} />}
-                </>
+                )
+            }
+        >
+            {mine.length === 0 ? (
+                <p className="rounded-tile bg-brand-50 p-5 text-center text-base font-bold text-ink-soft">Ormar je još prazan.</p>
+            ) : (
+                current && <ItemGrid items={current.items} owned={owned} wear={wear} coins={0} selected={null} onPick={onPick} />
             )}
             {/* Daleko od kupovine; bez pitanja — sve se može ponovo obući */}
-            <Button variant="secondary" size="md" onClick={onUndress} disabled={busy || !anythingWorn}>
+            <Button variant="secondary" size="md" onClick={onUndress} disabled={busy || !anythingWorn} className="max-sm:min-h-12">
                 <Undo2 className="h-5 w-5" aria-hidden="true" />
                 Skini sve
             </Button>
-        </div>
+        </PanelLayout>
     );
 }
 
@@ -770,8 +812,9 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
     void _bg;
 
     return (
-        <div className="space-y-3">
-            <StickyChips>
+        <PanelLayout
+            resetKey={active}
+            chips={
                 <ChipRow label="Lik">
                     {tabs.map((t) => (
                         <Chip key={t.id} active={active === t.id} onClick={() => onTab(t.id, t.label)} Icon={t.Icon}>
@@ -779,10 +822,11 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
                         </Chip>
                     ))}
                 </ChipRow>
-            </StickyChips>
+            }
+        >
 
             {active === "companion" && (
-                <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 xl:grid-cols-6">
+                <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 xl:grid-cols-6">
                     {COMPANION_KINDS.map((option) => {
                         const chosen = option === kind;
                         return (
@@ -859,10 +903,13 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
                         const status = worn ? ", nosi" : mine ? "" : `, ${entry.price} ${coinWord(entry.price)}${isGoal ? ", radim za ovo" : ""}`;
                         return (
                             <li key={entry.id}>
-                                <button type="button" onClick={() => onPickFur(entry)} disabled={busy && mine} aria-pressed={mine ? worn : trying} aria-label={`${entry.label}${status}`} className={cn(TILE, tileBorder(trying, worn))}>
+                                <button type="button" onClick={() => onPickFur(entry)} disabled={busy && mine} aria-pressed={mine ? worn : trying} aria-label={`${entry.label}${status}`} className={cn(TILE, TILE_PHONE, tileBorder(trying, worn))}>
                                     <CompanionPicture kind={kind} skin={entry.id} variant="face" emotion="happy" className={cn("aspect-square w-full rounded-xl bg-[#EEF0F3]", !mine && !affordable && "opacity-70")} />
-                                    <span className="line-clamp-2 min-h-8 text-xs font-extrabold leading-tight text-ink sm:text-sm">{entry.label}</span>
-                                    <Price price={entry.price} owned={mine} worn={worn} affordable={affordable} />
+                                    <span className="line-clamp-2 min-h-8 text-xs font-extrabold leading-tight text-ink max-sm:hidden sm:text-sm">{entry.label}</span>
+                                    <span className="max-sm:hidden">
+                                        <Price price={entry.price} owned={mine} worn={worn} affordable={affordable} />
+                                    </span>
+                                    <PriceChip price={entry.price} owned={mine} worn={worn} affordable={affordable} />
                                     {worn && <WornBadge />}
                                     {isGoal && <GoalBadge />}
                                 </button>
@@ -871,7 +918,7 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
                     })}
                 </ul>
             )}
-        </div>
+        </PanelLayout>
     );
 }
 
@@ -927,14 +974,44 @@ function HijabPicker({ look, busy, onPick }: { look: HumanLook; busy: boolean; o
 
 // ── Pločice i delovi ──────────────────────────────────────────────────────────
 
-/** Čipovi ostaju vidljivi ispod zaglavlja lista dok dete lista predmete */
-function StickyChips({ children }: { children: ReactNode }) {
-    return <div className="sticky top-[6.25rem] z-10 -mx-3 space-y-2 bg-surface px-3 pb-2 sm:-mx-4 sm:px-4 lg:top-[4.5rem]">{children}</div>;
+/**
+ * Deo lista: čipovi stoje gore (ne listaju se), a ispod njih se lista samo mreža — strana i list
+ * miruju, pa se dva listanja ne bore. Nova kategorija (ili deo) počinje od vrha.
+ */
+function PanelLayout({ chips, resetKey, children }: { chips?: ReactNode; resetKey?: string; children: ReactNode }) {
+    const scroller = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (scroller.current) scroller.current.scrollTop = 0;
+    }, [resetKey]);
+    return (
+        <>
+            {chips && <div className="flex flex-none flex-col gap-1.5 px-4 pb-2 sm:gap-2">{chips}</div>}
+            <div ref={scroller} className="scroll-soft min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-4 pb-4 pt-0.5 sm:space-y-3">
+                {children}
+            </div>
+        </>
+    );
 }
 
+/**
+ * Red čipova u jednom redu koji se pomera vodoravno (prstom; mišem točkićem ili tankom trakom
+ * na računaru) — mreža predmeta tako ima mesta i na tabletu i na računaru.
+ */
 function ChipRow({ label, small = false, children }: { label: string; small?: boolean; children: ReactNode }) {
     return (
-        <div role="group" aria-label={label} className={cn("-mx-3 flex gap-2 overflow-x-auto px-3 pb-1 sm:-mx-4 sm:px-4 lg:mx-0 lg:flex-wrap lg:overflow-visible lg:px-0", small && "gap-1.5")}>
+        <div
+            role="group"
+            aria-label={label}
+            onWheel={(event) => {
+                // Točkić miša (gore-dole) pomera red levo-desno; strana i list se ionako ne listaju
+                const row = event.currentTarget;
+                if (row.scrollWidth > row.clientWidth && Math.abs(event.deltaY) > Math.abs(event.deltaX)) row.scrollLeft += event.deltaY;
+            }}
+            className={cn(
+                "-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:pb-1.5 lg:[scrollbar-color:var(--color-brand-200)_transparent] lg:[scrollbar-width:thin]",
+                small && "gap-1.5"
+            )}
+        >
             {children}
         </div>
     );
@@ -948,7 +1025,7 @@ function Chip({ active, onClick, Icon, small = false, children }: { active: bool
             aria-pressed={active}
             className={cn(
                 "inline-flex shrink-0 items-center gap-1.5 rounded-full border-2 font-extrabold transition-colors",
-                small ? "min-h-10 px-3 text-sm" : "min-h-12 px-4 text-sm sm:text-base",
+                small ? "min-h-12 px-3.5 text-sm sm:min-h-10 sm:px-3" : "min-h-12 px-4 text-sm sm:text-base",
                 active ? "border-brand-500 bg-brand-500 text-white" : "border-line bg-white text-ink hover:border-brand-300"
             )}
         >
@@ -966,7 +1043,7 @@ function RoundButton({ label, onClick, disabled, children }: { label: string; on
             disabled={disabled}
             aria-label={label}
             title={label}
-            className="grid h-12 w-12 place-items-center rounded-full bg-white/95 text-ink shadow-soft ring-1 ring-line transition-opacity hover:bg-white disabled:opacity-40"
+            className="grid h-12 w-12 place-items-center text-ink transition-opacity hover:bg-white disabled:opacity-35"
         >
             {children}
         </button>
@@ -990,6 +1067,8 @@ function GoalBadge() {
 }
 
 const TILE = "relative flex w-full flex-col items-center gap-1.5 rounded-tile border-2 bg-white p-1.5 text-center shadow-soft transition-colors";
+/** Telefon: pločica predmeta je kvadrat — sličica i cena na njoj; naziv kaže glas i traka za probu */
+const TILE_PHONE = "max-sm:gap-0 max-sm:p-1";
 
 function tileBorder(active: boolean, worn: boolean): string {
     return active ? "border-brand-500 bg-brand-50" : worn ? "border-emerald-400 bg-emerald-50" : "border-transparent hover:border-brand-300";
@@ -1007,17 +1086,41 @@ function Price({ price, owned, worn, affordable }: { price: number; owned: boole
     );
 }
 
+/** Telefon: cena kao mala oznaka na dnu sličice (pločica ostaje kvadrat, staje više u red i kolonu) */
+function PriceChip(props: { price: number; owned: boolean; worn: boolean; affordable: boolean }) {
+    return (
+        <span className="pointer-events-none absolute inset-x-1 bottom-1 flex justify-center sm:hidden">
+            <span className="inline-flex min-h-6 items-center rounded-full bg-white/95 px-2 shadow-soft ring-1 ring-line">
+                <Price {...props} />
+            </span>
+        </span>
+    );
+}
+
+/** Kad se ispod mreže pojavi traka za probu, dodirnuta pločica ostaje cela na ekranu */
+function useReveal<T extends HTMLElement>(active: boolean) {
+    const ref = useRef<T>(null);
+    useEffect(() => {
+        if (active) ref.current?.scrollIntoView({ block: "nearest" });
+    }, [active]);
+    return ref;
+}
+
 /** Pločica van ekrana se ne iscrtava dok ne dođe blizu (glatko listanje i sa 200+ predmeta) */
-const OFFSCREEN = "[content-visibility:auto] [contain-intrinsic-size:auto_11rem]";
+const OFFSCREEN = "[content-visibility:auto]";
 
 function ItemTile({ item, owned, worn, affordable, active, isGoal, onPick }: { item: ItemData; owned: boolean; worn: boolean; affordable: boolean; active: boolean; isGoal: boolean; onPick: (item: ItemData) => void }) {
     const status = owned ? (worn ? ", nosi" : ", kupljeno") : `, ${item.price} ${coinWord(item.price)}${isGoal ? ", radim za ovo" : ""}`;
+    const ref = useReveal<HTMLLIElement>(active);
     return (
-        <li className={OFFSCREEN}>
-            <button type="button" onClick={() => onPick(item)} aria-pressed={owned ? worn : active} aria-label={`${item.label}${status}`} className={cn(TILE, tileBorder(active, worn))}>
+        <li ref={ref} className={cn(OFFSCREEN, "[contain-intrinsic-size:auto_7rem] sm:[contain-intrinsic-size:auto_11rem]")}>
+            <button type="button" onClick={() => onPick(item)} aria-pressed={owned ? worn : active} aria-label={`${item.label}${status}`} className={cn(TILE, TILE_PHONE, tileBorder(active, worn))}>
                 <ItemThumb item={item} className={cn("aspect-square w-full rounded-xl bg-[#EEF0F3]", !owned && !affordable && "opacity-75")} />
-                <span className="line-clamp-2 min-h-8 text-xs font-extrabold leading-tight text-ink sm:text-sm">{item.label}</span>
-                <Price price={item.price} owned={owned} worn={worn} affordable={affordable} />
+                <span className="line-clamp-2 min-h-8 text-xs font-extrabold leading-tight text-ink max-sm:hidden sm:text-sm">{item.label}</span>
+                <span className="max-sm:hidden">
+                    <Price price={item.price} owned={owned} worn={worn} affordable={affordable} />
+                </span>
+                <PriceChip price={item.price} owned={owned} worn={worn} affordable={affordable} />
                 {worn && <WornBadge />}
                 {isGoal && <GoalBadge />}
             </button>
@@ -1030,15 +1133,17 @@ function SetTile({ set, kind, skin, owned, worn, coins, active, isGoal, onPick }
     const complete = have >= total;
     const affordable = coins >= price;
     const status = complete ? (worn ? ", nosi" : ", sve imaš") : `, imaš ${have} od ${total}, ${price} ${coinWord(price)}${isGoal ? ", radim za ovo" : ""}`;
+    const ref = useReveal<HTMLLIElement>(active);
     return (
-        <li className={cn(OFFSCREEN, "[contain-intrinsic-size:auto_16rem]")}>
-            <button type="button" onClick={() => onPick(set)} aria-pressed={active} aria-label={`${set.label}${status}`} className={cn(TILE, tileBorder(active, worn))}>
+        <li ref={ref} className={cn(OFFSCREEN, "[contain-intrinsic-size:auto_9.5rem] sm:[contain-intrinsic-size:auto_16rem]")}>
+            <button type="button" onClick={() => onPick(set)} aria-pressed={active} aria-label={`${set.label}${status}`} className={cn(TILE, TILE_PHONE, tileBorder(active, worn))}>
                 <SetThumb set={set} kind={kind} skin={skin} className={cn("aspect-[4/5] w-full rounded-xl bg-[#EEF0F3]", !complete && !affordable && "opacity-80")} />
-                <span className="line-clamp-1 text-sm font-extrabold leading-tight text-ink">{set.label}</span>
-                <span className="text-xs font-bold text-ink-soft">
+                <span className="line-clamp-1 text-sm font-extrabold leading-tight text-ink max-sm:hidden">{set.label}</span>
+                <span className="text-xs font-bold text-ink-soft max-sm:hidden">
                     {have} / {total}
                 </span>
-                {complete ? <Price price={0} owned worn={worn} affordable /> : <Price price={price} owned={false} worn={false} affordable={affordable} />}
+                <span className="max-sm:hidden">{complete ? <Price price={0} owned worn={worn} affordable /> : <Price price={price} owned={false} worn={false} affordable={affordable} />}</span>
+                {complete ? <PriceChip price={0} owned worn={worn} affordable /> : <PriceChip price={price} owned={false} worn={false} affordable={affordable} />}
                 {worn && <WornBadge />}
                 {isGoal && <GoalBadge />}
             </button>
@@ -1046,7 +1151,10 @@ function SetTile({ set, kind, skin, owned, worn, coins, active, isGoal, onPick }
     );
 }
 
-// ── Proba i cilj (preko donjeg dela 3D prikaza) ──────────────────────────────
+// ── Proba i cilj (preko 3D prikaza; na telefonu traka na dnu lista) ──────────────────────────────
+
+/** Telefon: u traci na dnu lista kartica nema svoju senku ni okvir — traka je već odvojena */
+const BAR_PHONE = "max-sm:bg-transparent max-sm:p-0 max-sm:shadow-none max-sm:backdrop-blur-none";
 
 function BuyLabel({ text, price }: { text: string; price: number }) {
     return (
@@ -1061,7 +1169,7 @@ function BuyLabel({ text, price }: { text: string; price: number }) {
 
 function CloseButton({ onClick, label }: { onClick: () => void; label: string }) {
     return (
-        <button type="button" onClick={onClick} aria-label={label} className="-m-1 grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-soft hover:bg-brand-50 hover:text-ink">
+        <button type="button" onClick={onClick} aria-label={label} className="-m-1 grid h-12 w-12 shrink-0 place-items-center rounded-xl text-ink-soft hover:bg-brand-50 hover:text-ink">
             <X className="h-5 w-5" aria-hidden="true" />
         </button>
     );
@@ -1086,14 +1194,14 @@ function TryOn({ label, price, coins, isGoal, busy, buyLabel, workLabel, note, o
     const missing = Math.max(0, price - coins);
     const status = missing > 0 ? (isGoal ? `Radiš za ovo · još ${missing}` : `Još ${missing}`) : "Možeš da kupiš";
     return (
-        <div className="flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-soft backdrop-blur-sm">
+        <div className={cn("flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-soft backdrop-blur-sm", BAR_PHONE)}>
             <CloseButton onClick={onClose} label="Skini probu" />
             <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-extrabold leading-tight text-ink sm:text-base">{label}</p>
                 <p className="truncate text-xs font-bold text-ink-soft">{note ? `${note} · ${status}` : status}</p>
             </div>
             {missing === 0 ? (
-                <Button chunky size="md" variant="success" onClick={onBuy} disabled={busy} className="shrink-0">
+                <Button chunky size="md" variant="success" onClick={onBuy} disabled={busy} className="shrink-0 max-sm:min-h-12">
                     <BuyLabel text={buyLabel} price={price} />
                 </Button>
             ) : isGoal ? (
@@ -1101,9 +1209,11 @@ function TryOn({ label, price, coins, isGoal, busy, buyLabel, workLabel, note, o
                     <Target className="h-5 w-5" />
                 </span>
             ) : (
-                <Button chunky size="md" variant="sun" onClick={onWorkFor} disabled={busy} className="shrink-0">
+                <Button chunky size="md" variant="sun" onClick={onWorkFor} disabled={busy} className="shrink-0 max-sm:min-h-12">
                     <Target className="h-5 w-5" aria-hidden="true" />
-                    {workLabel}
+                    {/* Na telefonu kratko, da naziv predmeta ostane čitljiv */}
+                    <span className="sm:hidden">Radim za ovo</span>
+                    <span className="max-sm:hidden">{workLabel}</span>
                 </Button>
             )}
         </div>
@@ -1118,7 +1228,7 @@ function SetTryOn({ set, owned, worn, coins, isGoal, busy, onBuy, onWear, onWork
         );
     }
     return (
-        <div className="flex flex-col gap-2 rounded-2xl bg-white/95 p-2.5 shadow-soft sm:p-3">
+        <div className={cn("flex flex-col gap-2 rounded-2xl bg-white/95 p-2.5 shadow-soft sm:p-3", BAR_PHONE)}>
             <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                     <p className="text-base font-extrabold leading-tight text-ink sm:text-lg">{set.label}</p>
@@ -1144,8 +1254,8 @@ function SetTryOn({ set, owned, worn, coins, isGoal, busy, onBuy, onWear, onWork
 /** „Radim za”: sličica cilja, naziv i traka napretka u jednom redu; kad je dosta novčića — „Kupi” */
 function GoalCard({ goal, kind, skin, busy, onTry, onBuy, onClear }: { goal: GoalProgress; kind: string; skin?: string; busy: boolean; onTry: () => void; onBuy: () => void; onClear: () => void }) {
     return (
-        <div className="flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-soft ring-2 ring-sun-300">
-            <button type="button" onClick={onTry} aria-label={`Probaj: ${goal.label}`} className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-sun-50 ring-1 ring-sun-200 hover:bg-sun-100">
+        <div className="flex items-center gap-2 rounded-2xl bg-white/95 p-2 shadow-soft ring-2 ring-sun-300 max-sm:shadow-none">
+            <button type="button" onClick={onTry} aria-label={`Probaj: ${goal.label}`} className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-xl bg-sun-50 ring-1 ring-sun-200 hover:bg-sun-100">
                 <GoalThumb goal={goal} kind={kind} skin={skin} itemClassName="h-10 w-10" setClassName="h-11 w-10" />
             </button>
             <div className="min-w-0 flex-1">
@@ -1158,7 +1268,7 @@ function GoalCard({ goal, kind, skin, busy, onTry, onBuy, onClear }: { goal: Goa
                 </div>
             </div>
             {goal.missing === 0 ? (
-                <Button chunky size="md" variant="success" onClick={onBuy} disabled={busy} className="shrink-0">
+                <Button chunky size="md" variant="success" onClick={onBuy} disabled={busy} className="shrink-0 max-sm:min-h-12">
                     <BuyLabel text="Kupi" price={goal.price} />
                 </Button>
             ) : (
