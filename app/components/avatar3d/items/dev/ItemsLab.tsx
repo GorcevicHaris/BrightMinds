@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from "react";
 import type { CompanionKind, Slot, ThumbHint, Wear } from "../../contract";
-import { ANIMAL_KINDS, SLOT_LABELS, itemBuilder } from "../../contract";
+import { ANIMAL_KINDS, HUMAN_KINDS, SLOT_LABELS, itemBuilder } from "../../contract";
 import { SETS, itemsOf } from "../../manifest";
 import type { CellRequest } from "./lab";
 
@@ -81,7 +81,7 @@ function buildCells(): Cell[] {
             }
         });
     } else if (view === "sets") {
-        const list = kinds ?? (["girl", "boy", "woman", "man", ...ANIMAL_KINDS] as CompanionKind[]);
+        const list = kinds ?? ([...HUMAN_KINDS, ...ANIMAL_KINDS] as CompanionKind[]);
         const only = q.get("ids")?.split(",");
         for (const set of SETS) {
             if (only && !only.includes(set.id)) continue;

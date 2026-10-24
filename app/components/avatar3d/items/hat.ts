@@ -393,6 +393,67 @@ function hatBody(f: HeadFit, loop: (q: number, out: THREE.Vector3) => THREE.Vect
     return { ...body, fn };
 }
 
+// ── Kapica (takija): mala okrugla kapa na temenu, heklana ili vezena ───────
+
+/** Šara heklane/vezene kapice: redovi sitnih rombova i tačkica (konac u boji `thread`) */
+function kufiTexture(base: string, thread: string, embroidered: boolean): THREE.Texture {
+    const map = printTexture(`takija-${base}-${thread}-${embroidered ? "vez" : "hekl"}`, (ctx, w, h) => {
+        ctx.fillStyle = base;
+        ctx.fillRect(0, 0, w, h);
+        // Heklani redovi (blage vodoravne linije) i rupice
+        ctx.strokeStyle = darker(base, 0.1);
+        ctx.lineWidth = 1;
+        for (let j = 0; j < 16; j++) {
+            ctx.beginPath();
+            ctx.moveTo(0, (j + 0.5) * (h / 16));
+            ctx.lineTo(w, (j + 0.5) * (h / 16));
+            ctx.stroke();
+        }
+        ctx.fillStyle = darker(base, 0.14);
+        for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {
+            ctx.beginPath();
+            ctx.arc((i + (j % 2 ? 0.5 : 0)) * (w / 16), j * (h / 16), w / 120, 0, TAU);
+            ctx.fill();
+        }
+        if (embroidered) {
+            // Vez: dva reda rombova pri dnu i zvezdice gore
+            ctx.fillStyle = thread;
+            for (const row of [0.62, 0.8]) {
+                for (let i = 0; i < 8; i++) {
+                    const x = (i + 0.5) * (w / 8);
+                    const y = row * h;
+                    const r = w / 28;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y - r);
+                    ctx.lineTo(x + r, y);
+                    ctx.lineTo(x, y + r);
+                    ctx.lineTo(x - r, y);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+            for (let i = 0; i < 8; i++) {
+                ctx.beginPath();
+                ctx.arc((i + 0.5) * (w / 8) + w / 16, h * 0.38, w / 70, 0, TAU);
+                ctx.fill();
+            }
+        }
+    }, 256, 256);
+    map.wrapS = map.wrapT = THREE.RepeatWrapping;
+    return map;
+}
+
+function kufi(f: HeadFit, base: string, thread: string, embroidered = false) {
+    const lift = f.crown + 0.004;
+    const edge = capEdge(0.27, 0.34, 1.1);
+    const m = patternedFabric(kufiTexture(base, thread, embroidered), "cotton", "#FFFFFF", { side: THREE.DoubleSide });
+    const dome = f.dome(edge, (_u, w) => lift + 0.004 * (1 - w * w), m, 72, 20, [4, 1]);
+    // Uzak zadebljan obod (rub kapice)
+    f.rim((q, out) => dome(q, 1, out), 0.0024 * f.k, 0.0034 * f.k, embroidered ? fabric(thread, "satin", { roughness: 0.4 }) : rib(darker(base, 0.06)), 72);
+    f.openings(f.domeInside(edge, lift + 0.006), rib(base));
+}
+
+// ── Kape po id-ju ───────────────────────────────────────────────────────────
 // ── Kape po id-ju ───────────────────────────────────────────────────────────
 
 type HatBuild = (f: HeadFit, ctx: ItemContext) => ItemBuild;
@@ -1238,4 +1299,17 @@ registerItems("hat", [
     hat("zelena-opustena-kapa", (f) => slouchyBeanie(f, "#9CAF88")),
     hat("traka-za-kosu", (f) => softHeadband(f, "#F3ECE2")),
     hat("traka-marama", (f) => bandanaHeadband(f)),
+    // ── Novo: kapice (takija), zimske kape, kapa sa šiltom, traka ──
+    hat("bela-kapica", (f) => kufi(f, "#F7F5EF", "#DCD6C8")),
+    hat("vezena-kapica", (f) => kufi(f, "#EFE3C8", "#C9A55A", true)),
+    hat("teget-kapica", (f) => kufi(f, "#2E3A66", "#C9CED6", true)),
+    hat("zuta-zimska-kapa", (f) => {
+        beanie(f, { color: "#F7C948", cuff: "#F2A516", pom: "#FFFFFF" });
+    }),
+    hat("teget-zimska-kapa", (f) => {
+        beanie(f, { color: "#2E3A66", cuff: "#B8323A", pomR: 0 });
+    }),
+    hat("zuta-kapa-siltom", (f) => baseballCap(f, { color: "#F7C948", visor: "#2E9A50", visorTh: 1.15, badge: capStar("#F7C948", "#2E9A50") })),
+    hat("lila-opustena-kapa", (f) => slouchyBeanie(f, "#B9A2F2")),
+    hat("roze-traka-za-kosu", (f) => softHeadband(f, "#F7B8C8")),
 ]);

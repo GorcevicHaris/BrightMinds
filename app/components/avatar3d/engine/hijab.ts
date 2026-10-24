@@ -10,7 +10,7 @@ import { torsoPoint } from "./body";
 import type { HeadInfo } from "./head";
 import type { Kit } from "./kit";
 import { fabricMaterial } from "./materials";
-import { torsoWeights } from "./rig";
+import { torsoWeights, youthOf } from "./rig";
 import { buildSurface, ringTube, smoothstep, type SurfaceFn } from "./surface";
 
 const gauss = (x: number, mu: number, s: number) => Math.exp(-((x - mu) ** 2) / (2 * s * s));
@@ -27,7 +27,7 @@ export function buildHijab(kit: Kit, head: HeadInfo, hex: string, style: HijabSt
     // Meka tkanina (pamuk/žerse): mat, blag sheen na ivicama, sitna mapa normala
     const cloth = fabricMaterial(hex, "cotton", { roughness: 0.78, sheen: 0.7, sheenLift: 0.28, normalScale: 0.16, side: THREE.DoubleSide });
     const band = fabricMaterial(new THREE.Color(hex).lerp(new THREE.Color("#FFFFFF"), 0.55).getStyle(), "rib", { roughness: 0.8, sheen: 0.5, normalScale: 0.3 });
-    const child = shape.kind === "girl" || shape.kind === "boy";
+    const child = youthOf(shape.kind) > 0.5;
 
     // Otvor za lice: elipsa u (θ, v) — tkanina pokriva čelo do obrva, obraze do jagodica
     const tw = child ? 1.0 : 0.95;

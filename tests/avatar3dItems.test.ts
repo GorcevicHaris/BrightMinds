@@ -80,9 +80,13 @@ describe("3D katalog predmeta", () => {
         }
     });
 
-    it("svaki predmet se sagradi na devojčici, učitelju i životinjama (mačka, zeka, jednorog, pingvin, lav), bez grešaka i u budžetu", () => {
-        // Učitelj (odrasli) i zeka (visoke uši) u slabijem kvalitetu — samo da se sagrade bez greške
-        const kinds: [CompanionKind, "high" | "low"][] = [["girl", "high"], ["cat", "high"], ["man", "low"], ["bunny", "low"], ["unicorn", "low"], ["penguin", "low"], ["lion", "low"]];
+    it("svaki predmet se sagradi na devojčici, učitelju, tinejdžerima, nani, dedi i životinjama (mačka, zeka, jednorog, pingvin, lav), bez grešaka i u budžetu", () => {
+        // Učitelj (odrasli) i zeka (visoke uši) u slabijem kvalitetu — samo da se sagrade bez greške;
+        // dedo (najširi struk) u punom kvalitetu, da se proveri i budžet na drugoj građi
+        const kinds: [CompanionKind, "high" | "low"][] = [
+            ["girl", "high"], ["cat", "high"], ["grandpa", "high"], ["man", "low"], ["teengirl", "low"], ["teenboy", "low"], ["grandma", "low"],
+            ["bunny", "low"], ["unicorn", "low"], ["penguin", "low"], ["lion", "low"],
+        ];
         const over: string[] = [];
         for (const [kind, quality] of kinds) {
             const plain = harness.buildTestFigure(kind, { hat: false });

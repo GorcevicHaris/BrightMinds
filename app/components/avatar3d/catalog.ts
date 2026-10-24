@@ -50,7 +50,10 @@ export const HAIR_COLORS_3D: readonly Swatch[] = [
     { id: "seda", label: "Seda", hex: "#C9C9CF" },
 ];
 
-export type HairStyle = "short" | "curly" | "long" | "ponytail" | "braids" | "buzz" | "bun" | "messy" | "swept" | "wavy" | "straight";
+export type HairStyle =
+    | "short" | "curly" | "long" | "ponytail" | "braids" | "buzz" | "bun" | "messy" | "swept" | "wavy" | "straight"
+    // Nove frizure motora (looks.ts HairShape)
+    | "puffs" | "cornrows" | "bob" | "pixie" | "highbun" | "curlylong" | "sidepart" | "spiky" | "fade" | "pigtails" | "receding" | "afro";
 
 export const HAIR_STYLES_3D: readonly { id: HairStyle; label: string }[] = [
     { id: "short", label: "Kratka" },

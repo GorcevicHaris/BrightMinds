@@ -225,9 +225,9 @@ function beeWings(ctx: ItemContext): ItemBuild {
     return { animate: set.animate };
 }
 
-function fairyWings(ctx: ItemContext): ItemBuild {
-    const pink = sheer("#FFB8CB", 0.72, true);
-    const blue = sheer("#9EE0F6", 0.72, true);
+function fairyWings(ctx: ItemContext, upper = "#FFB8CB", lower = "#9EE0F6"): ItemBuild {
+    const pink = sheer(upper, 0.72, true);
+    const blue = sheer(lower, 0.72, true);
     const rim = plastic("#FFFFFF", 0.2);
     const teardrop = (len: number, wd: number, rot: number) => {
         const s = new THREE.Shape();
@@ -412,6 +412,31 @@ function birdWings(ctx: ItemContext, angel: boolean): ItemBuild {
     const colors = angel ? ["#FFFFFF", "#F7F9FD", "#E8EEF7"] : ["#9FE0F6", "#3D9BE9", "#2C6BC0"];
     const set = wings(ctx, () => featherWing(ctx, colors, angel ? 1.15 : 1), { spread: 0.6, flap: 0.12, speed: 1.3, y: 0.05, size: 1.25 });
     return { animate: set.animate };
+}
+
+/** Krila od perja u zadatim bojama (flamingo, sova) */
+function featherWings(ctx: ItemContext, colors: string[], size = 1): ItemBuild {
+    const set = wings(ctx, () => featherWing(ctx, colors, size), { spread: 0.6, flap: 0.12, speed: 1.3, y: 0.05, size: 1.25 });
+    return { animate: set.animate };
+}
+
+/** Planinarski ranac: viši ranac, smotana prostirka gore i kaiš na grudima */
+function hikingPack(ctx: ItemContext): void {
+    const { group, w, h, d } = backpack(ctx, "#C9473F", { accent: "#A8363A", strap: "#3A3A40" });
+    const k = backScale(ctx);
+    // Smotana prostirka (valjak) preko vrha i dva kaišića
+    const mat = fabric("#3E9E6A", "felt", { sheen: 0.4 });
+    const roll = new THREE.CylinderGeometry(0.03 * k, 0.03 * k, w * 1.15, q(ctx, 20, 8));
+    roll.rotateZ(Math.PI / 2);
+    group.add(mesh(roll, mat, V(0, h / 2 + 0.024 * k, 0)));
+    for (const sx of [1, -1]) {
+        const band = new THREE.TorusGeometry(0.031 * k, 0.003 * k, 6, q(ctx, 20, 8));
+        band.rotateY(Math.PI / 2);
+        group.add(mesh(band, fabric("#3A3A40", "cotton"), V(sx * w * 0.3, h / 2 + 0.024 * k, 0)));
+    }
+    // Džepić sa strane i kaišić sa kopčom napred na poklopcu
+    group.add(mesh(new RoundedBoxGeometry(w * 0.4, 0.012 * k, 0.004 * k, 2, 0.002 * k), fabric("#3A3A40", "cotton"), V(0, h * 0.22, -d / 2 - 0.002)));
+    group.add(mesh(new RoundedBoxGeometry(0.014 * k, 0.012 * k, 0.005 * k, 2, 0.002 * k), metal("#C9CCD3"), V(0, h * 0.22, -d / 2 - 0.004)));
 }
 
 function rainbowWings(ctx: ItemContext): ItemBuild {
@@ -628,4 +653,18 @@ registerItems("back", [
     item("raketa-ranac", (ctx) => rocketPack(ctx)),
     item("skolska-torba", (ctx) => schoolBag(ctx)),
     item("ranac-zeka", (ctx) => bunnyPack(ctx)),
+    // ── Novo: ranci u bojama, planinarski ranac, krila flaminga i sove, plava krila vile ──
+    item("zeleni-ranac", (ctx) => {
+        backpack(ctx, "#3E9E6A", { accent: "#2E7D52" });
+    }),
+    item("roze-ranac", (ctx) => {
+        backpack(ctx, "#F78FB3", { accent: "#E0709A", strap: "#C9587F" });
+    }),
+    item("zuti-ranac", (ctx) => {
+        backpack(ctx, "#F7C948", { accent: "#2F6FC4", strap: "#2F6FC4" });
+    }),
+    item("planinarski-ranac", (ctx) => hikingPack(ctx)),
+    item("krila-flaminga", (ctx) => featherWings(ctx, ["#FFD1DC", "#F7A1BC", "#E8608E"]), { motion: "wings" }),
+    item("krila-sove", (ctx) => featherWings(ctx, ["#E8D3B0", "#B8875A", "#7A5638"]), { motion: "wings" }),
+    item("plava-krila-vile", (ctx) => fairyWings(ctx, "#9EC5FF", "#C7B3EC"), { motion: "wings" }),
 ]);

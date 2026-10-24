@@ -24,4 +24,12 @@ export const ITEMS: readonly ItemData[] = [
     // Novo u 3D katalogu
     { id: "skolska-torba", slot: "back", label: "Školska torba", price: 9 },
     { id: "ranac-zeka", slot: "back", label: "Ranac zeka", price: 10 },
+    // ── Novo (porodica, škola, sport, praznik, zima, kiša, spavanje) ──
+    { id: "zeleni-ranac", slot: "back", label: "Zeleni ranac", price: 8 },
+    { id: "roze-ranac", slot: "back", label: "Roze ranac", price: 8 },
+    { id: "zuti-ranac", slot: "back", label: "Žuti ranac", price: 8 },
+    { id: "planinarski-ranac", slot: "back", label: "Planinarski ranac", price: 12 },
+    { id: "krila-flaminga", slot: "back", label: "Krila flaminga", price: 22 },
+    { id: "krila-sove", slot: "back", label: "Krila sove", price: 22 },
+    { id: "plava-krila-vile", slot: "back", label: "Plava krila vile", price: 22 },
 ];

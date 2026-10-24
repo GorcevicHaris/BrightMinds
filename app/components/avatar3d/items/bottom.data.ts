@@ -49,4 +49,16 @@ export const ITEMS: readonly ItemData[] = [
     { id: "duga-cvetna-suknja", slot: "bottom", label: "Duga cvetna suknja", price: 11, group: "suknje" },
     { id: "ljubicasta-duga-suknja", slot: "bottom", label: "Ljubičasta duga suknja", price: 10, group: "suknje" },
     { id: "suknja-na-volane", slot: "bottom", label: "Suknja na volane", price: 12, group: "suknje" },
+    // ── Novo (porodica, škola, sport, praznik, zima, kiša, spavanje) ──
+    { id: "sive-pantalone", slot: "bottom", label: "Sive školske pantalone", price: 7, group: "pantalone" },
+    { id: "smedje-pantalone", slot: "bottom", label: "Smeđe pantalone", price: 7, group: "pantalone" },
+    { id: "planinarske-pantalone", slot: "bottom", label: "Planinarske pantalone", price: 9, group: "pantalone" },
+    { id: "teget-trenerke", slot: "bottom", label: "Teget trenerke", price: 6, group: "pantalone" },
+    { id: "crveni-sportski-sorc", slot: "bottom", label: "Crveni sportski šorc", price: 5, group: "sorcevi" },
+    { id: "zuti-sportski-sorc", slot: "bottom", label: "Žuti sportski šorc", price: 5, group: "sorcevi" },
+    { id: "siva-plisirana-suknja", slot: "bottom", label: "Siva školska suknja", price: 7, group: "suknje" },
+    { id: "teget-plisirana-suknja", slot: "bottom", label: "Teget plisirana suknja", price: 7, group: "suknje" },
+    { id: "duga-teget-suknja", slot: "bottom", label: "Duga teget suknja", price: 10, group: "suknje" },
+    { id: "duga-bez-suknja", slot: "bottom", label: "Duga bež suknja", price: 10, group: "suknje" },
+    { id: "duga-zelena-suknja", slot: "bottom", label: "Duga zelena suknja", price: 10, group: "suknje" },
 ];

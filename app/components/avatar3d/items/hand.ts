@@ -405,12 +405,13 @@ function popcorn(): THREE.Object3D {
     return g;
 }
 
-function book(ctx: ItemContext): THREE.Object3D {
+/** Knjiga (podrazumevano tirkizna; nove: crvena, ljubičasta knjiga priča) */
+function book(ctx: ItemContext, color = "#3BB2A0", spineHex = "#2C8F80", starHex = "#FFD15C"): THREE.Object3D {
     const g = new THREE.Group();
-    const cover = canvasMap("knjiga", 256, 320, (c, w, h) => {
-        c.fillStyle = "#3BB2A0";
+    const cover = canvasMap(color === "#3BB2A0" ? "knjiga" : `knjiga-${color}`, 256, 320, (c, w, h) => {
+        c.fillStyle = color;
         c.fillRect(0, 0, w, h);
-        c.fillStyle = "#2C8F80";
+        c.fillStyle = spineHex;
         c.fillRect(0, 0, w * 0.14, h);
         c.fillStyle = "#FFFFFF";
         c.globalAlpha = 0.85;
@@ -421,7 +422,7 @@ function book(ctx: ItemContext): THREE.Object3D {
         c.globalAlpha = 1;
     });
     const coverMat = paperMap(cover, THREE.FrontSide);
-    const side = fabric("#2C8F80", "felt");
+    const side = fabric(spineHex, "felt");
     const pages = canvasMap("stranice", 64, 64, (c, w, h) => {
         c.fillStyle = "#FAF6EC";
         c.fillRect(0, 0, w, h);
@@ -444,8 +445,8 @@ function book(ctx: ItemContext): THREE.Object3D {
         g.add(mesh(board, s === 1 ? [side, side, side, side, coverMat, side] : side, V(0, 0, (s * D) / 2)));
     }
     const spine = new THREE.CylinderGeometry(D / 2 + 0.002, D / 2 + 0.002, H, q(ctx, 14), 1, true, Math.PI, Math.PI);
-    g.add(mesh(spine, fabric("#2C8F80", "felt", { side: THREE.DoubleSide }), V(-W / 2, 0, 0)));
-    const star = mesh(puffy(starShape(0.024, 0.011), 0.002, 0.0018, 1, 4), plastic("#FFD15C", 0.3), V(0.01, 0.022, D / 2 + 0.003));
+    g.add(mesh(spine, fabric(spineHex, "felt", { side: THREE.DoubleSide }), V(-W / 2, 0, 0)));
+    const star = mesh(puffy(starShape(0.024, 0.011), 0.002, 0.0018, 1, 4), plastic(starHex, 0.3), V(0.01, 0.022, D / 2 + 0.003));
     g.add(star);
     g.position.set(-0.03, 0.055, 0.03);
     g.rotation.set(-0.1, -0.5, 0.08);
@@ -581,7 +582,7 @@ function wateringCan(ctx: ItemContext): THREE.Object3D {
     return g;
 }
 
-function umbrella(ctx: ItemContext): THREE.Object3D {
+function umbrella(ctx: ItemContext, colorA = "#8E77E6", colorB = "#B9A2F2", innerHex = "#D8CCF8"): THREE.Object3D {
     // Kišobran iznad glave: osa od šake do tačke iznad temena (i ušiju), malo napred i u stranu
     const k = propScale(ctx);
     const a = ctx.body.anchors;
@@ -599,9 +600,9 @@ function umbrella(ctx: ItemContext): THREE.Object3D {
     const R = 0.34;
     const H = 0.12;
     const panels = 8;
-    const outerA = plastic("#8E77E6", 0.45);
-    const outerB = plastic("#B9A2F2", 0.45);
-    const inner = fabric("#D8CCF8", "satin", { side: THREE.BackSide });
+    const outerA = plastic(colorA, 0.45);
+    const outerB = plastic(colorB, 0.45);
+    const inner = fabric(innerHex, "satin", { side: THREE.BackSide });
     const nu = q(ctx, 10);
     const nv = q(ctx, 12);
     for (let p = 0; p < panels; p++) {
@@ -945,7 +946,8 @@ function kite(ctx: ItemContext): ItemBuild {
     };
 }
 
-function guitar(ctx: ItemContext): THREE.Object3D {
+/** Gitara (narandžasta); ukulele je ista, plava i manja */
+function guitar(ctx: ItemContext, topHex = "#FF8A3D"): THREE.Object3D {
     const g = new THREE.Group();
     // Telo: dve spojene kružnice (izvučeno, zaobljena ivica)
     const shape = new THREE.Shape();
@@ -959,7 +961,7 @@ function guitar(ctx: ItemContext): THREE.Object3D {
     shape.bezierCurveTo(-upper * 1.25, -0.02, -waist * 0.95, -0.05, -waist, -0.07);
     shape.bezierCurveTo(-lower * 1.15, -0.06, -lower * 1.3, -0.2, 0, -0.2);
     const body = puffy(shape, 0.035, 0.008, 1);
-    const top = plastic("#FF8A3D", 0.28);
+    const top = plastic(topHex, 0.28);
     g.add(mesh(body, top));
     g.add(mesh(new THREE.CircleGeometry(0.022, q(ctx, 24, 10)), plastic("#3A2416", 0.6), V(0, -0.045, 0.026)));
     g.add(mesh(new THREE.TorusGeometry(0.025, 0.002, 6, q(ctx, 24, 10)), plastic("#FFD15C", 0.3), V(0, -0.045, 0.0262)));
@@ -1019,6 +1021,209 @@ function magnifier(ctx: ItemContext): THREE.Object3D {
     g.add(mesh(new THREE.TorusGeometry(0.034, 0.0055, q(ctx, 10, 6), q(ctx, 36, 14)), plastic("#E5484D", 0.25), V(0, 0.088, 0)));
     g.add(mesh(new THREE.CircleGeometry(0.033, q(ctx, 32, 12)), material({ kind: "glass", color: "#DFF4FF", opacity: 0.3 }), V(0, 0.088, 0)));
     g.add(mesh(new THREE.CylinderGeometry(0.0065, 0.0065, 0.012, 10), metal("#C9CED6"), V(0, 0.052, 0)));
+    return g;
+}
+
+// ── Novo: lopte, instrumenti, praznik, škola, planinarenje, igračke ─────────
+
+/** Lopta sa šarom (canvas) — fudbalska ili košarkaška */
+function sportBall(ctx: ItemContext, kind: "fudbal" | "kosarka"): THREE.Object3D {
+    const g = new THREE.Group();
+    const map = canvasMap(`lopta-${kind}`, 256, 128, (c, w, h) => {
+        if (kind === "fudbal") {
+            c.fillStyle = "#FAFAF7";
+            c.fillRect(0, 0, w, h);
+            c.fillStyle = "#2A2733";
+            // Crni petouglovi raspoređeni po lopti (ekvirektangularno)
+            for (let j = 0; j < 4; j++) for (let i = 0; i < 6; i++) {
+                const x = (i + (j % 2 ? 0.5 : 0)) * (w / 6);
+                const y = (j + 0.5) * (h / 4);
+                const r = h / 11;
+                c.beginPath();
+                for (let p = 0; p < 5; p++) {
+                    const a = (p / 5) * TAU - Math.PI / 2;
+                    c.lineTo(x + Math.cos(a) * r * 1.4, y + Math.sin(a) * r);
+                }
+                c.closePath();
+                c.fill();
+            }
+        } else {
+            c.fillStyle = "#F07A2E";
+            c.fillRect(0, 0, w, h);
+            c.strokeStyle = "#3A2416";
+            c.lineWidth = 3;
+            c.beginPath();
+            c.moveTo(0, h / 2);
+            c.lineTo(w, h / 2);
+            for (const x of [0.25, 0.75]) {
+                c.moveTo(x * w, 0);
+                c.lineTo(x * w, h);
+            }
+            c.stroke();
+            c.beginPath();
+            c.ellipse(w / 2, h / 2, w * 0.12, h * 0.48, 0, 0, TAU);
+            c.stroke();
+        }
+    });
+    const ball = mesh(new THREE.SphereGeometry(0.075, q(ctx, 32, 14), q(ctx, 22, 10)), glossyMap(map, kind === "fudbal" ? 0.35 : 0.55, kind === "fudbal" ? 0.5 : 0.1));
+    ball.rotation.set(0.4, 0.6, 0);
+    g.add(ball);
+    g.position.set(-0.02, 0.06, 0.05);
+    return g;
+}
+
+/** Frula: drvena cev sa rupicama i kljunićem */
+function recorder(ctx: ItemContext): THREE.Object3D {
+    const g = new THREE.Group();
+    const body = wood("#C98B52", 0.45);
+    g.add(mesh(lathe(smoothProfile([[0, -0.1], [0.011, -0.1], [0.013, -0.09], [0.009, -0.06], [0.009, 0.1], [0.0105, 0.12], [0.008, 0.135], [0, 0.138]], 20), q(ctx, 18, 8)), body));
+    for (let i = 0; i < 6; i++) g.add(mesh(new THREE.CylinderGeometry(0.0026, 0.0026, 0.002, 10).rotateX(Math.PI / 2), plastic("#3A2416", 0.6), V(0, 0.07 - i * 0.022, 0.009)));
+    g.add(mesh(new RoundedBoxGeometry(0.008, 0.006, 0.003, 1, 0.001), plastic("#3A2416", 0.6), V(0, 0.11, 0.0095)));
+    return g;
+}
+
+/** Marakas: obojena okrugla glava na dršci, sa tufnama */
+function maraca(ctx: ItemContext): THREE.Object3D {
+    const g = new THREE.Group();
+    g.add(stick(ctx, 0.0075, -0.05, 0.05, wood("#9A6236", 0.5)));
+    const map = canvasMap("marakas", 128, 64, (c, w, h) => {
+        c.fillStyle = "#F45B8D";
+        c.fillRect(0, 0, w, h);
+        const colors = ["#FFD15C", "#3D9BE9", "#3BB273", "#FFFFFF"];
+        for (let i = 0; i < 14; i++) {
+            c.fillStyle = colors[i % colors.length];
+            c.beginPath();
+            c.arc(((i * 37) % w), (i % 2 ? 0.3 : 0.65) * h, h * 0.08, 0, TAU);
+            c.fill();
+        }
+    });
+    const head = mesh(new THREE.SphereGeometry(0.04, q(ctx, 24, 12), q(ctx, 18, 8)), glossyMap(map), V(0, 0.08, 0));
+    head.scale.set(1, 1.15, 1);
+    g.add(head);
+    return g;
+}
+
+/** Tamburin: drveni obruč sa membranom i parovima zvončića */
+function tambourine(ctx: ItemContext): THREE.Object3D {
+    const g = new THREE.Group();
+    const R = 0.07;
+    const frame = new THREE.CylinderGeometry(R, R, 0.022, q(ctx, 36, 14), 1, true);
+    frame.rotateX(Math.PI / 2);
+    g.add(mesh(frame, fabric("#E5484D", "satin", { side: THREE.DoubleSide })));
+    const skin = new THREE.CircleGeometry(R * 0.99, q(ctx, 36, 14));
+    skin.translate(0, 0, 0.011);
+    g.add(mesh(skin, fabric("#F6EBD4", "felt")));
+    g.add(mesh(new THREE.TorusGeometry(R, 0.003, 6, q(ctx, 36, 14)), plastic("#FFD15C", 0.3), V(0, 0, 0.011)));
+    for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU + 0.3;
+        for (const dz of [-0.004, 0.004]) {
+            const jingle = new THREE.CylinderGeometry(0.009, 0.009, 0.002, 12).rotateX(Math.PI / 2);
+            g.add(mesh(jingle, meshMetal("#E3B754"), V(Math.cos(a) * R, Math.sin(a) * R, dz)));
+        }
+    }
+    g.position.set(-0.05, 0.03, 0.02);
+    g.rotation.set(0, -0.4, 0);
+    return g;
+}
+
+/** Praznični fenjer: šestougaono kućište sa toplim svetlom unutra i ručkom */
+function lantern(ctx: ItemContext): THREE.Object3D {
+    const g = new THREE.Group();
+    const frame = meshMetal("#C9A55A");
+    const sides = 6;
+    const R = 0.042;
+    // Ručka (prsten) iznad šake, telo visi ispod
+    g.add(mesh(new THREE.TorusGeometry(0.018, 0.0028, 6, q(ctx, 18, 10)), frame, V(0, 0.0, 0)));
+    const top = -0.016;
+    g.add(mesh(new THREE.ConeGeometry(R * 1.1, 0.04, sides), frame, V(0, top - 0.018, 0)));
+    const glassMat = softGlow("#FFC765", 1.1);
+    g.add(mesh(new THREE.CylinderGeometry(R * 0.92, R * 0.92, 0.09, sides), glassMat, V(0, top - 0.085, 0)));
+    for (let i = 0; i < sides; i++) {
+        const a = (i / sides) * TAU;
+        g.add(mesh(new THREE.CylinderGeometry(0.0025, 0.0025, 0.094, 6), frame, V(Math.cos(a) * R, top - 0.085, Math.sin(a) * R)));
+    }
+    g.add(mesh(new THREE.CylinderGeometry(R * 1.05, R * 0.8, 0.018, sides), frame, V(0, top - 0.138, 0)));
+    // Polumesec i zvezdica na vrhu
+    g.add(mesh(puffy(starShape(0.009, 0.004), 0.002, 0.0012, res(ctx), 3), frame, V(0, top + 0.012, 0)));
+    return g;
+}
+
+/** Poklon: kutija sa trakom i mašnom */
+function gift(ctx: ItemContext): THREE.Object3D {
+    const g = new THREE.Group();
+    const box = plastic("#3D9BE9", 0.5);
+    const ribbon = fabric("#FFD15C", "satin", { roughness: 0.35 });
+    g.add(mesh(new RoundedBoxGeometry(0.11, 0.09, 0.09, 2, 0.006), box));
+    g.add(mesh(new RoundedBoxGeometry(0.118, 0.022, 0.098, 2, 0.004), plastic("#2C7FCC", 0.5), V(0, 0.034, 0)));
+    g.add(mesh(new THREE.BoxGeometry(0.02, 0.094, 0.094), ribbon));
+    g.add(mesh(new THREE.BoxGeometry(0.114, 0.094, 0.02), ribbon));
+    for (const s of [1, -1]) {
+        const loop = new THREE.TorusGeometry(0.018, 0.006, 6, q(ctx, 16, 8));
+        loop.scale(1, 0.7, 0.6);
+        g.add(mesh(loop, ribbon, V(s * 0.018, 0.058, 0), new THREE.Euler(0, 0, s * 0.5)));
+    }
+    g.add(mesh(new THREE.SphereGeometry(0.008, 10, 8), ribbon, V(0, 0.052, 0)));
+    g.position.set(-0.02, 0.04, 0.06);
+    g.rotation.y = -0.4;
+    return g;
+}
+
+/** Globus na postolju: plava kugla sa zelenim kontinentima */
+function globe(ctx: ItemContext): THREE.Object3D {
+    const g = new THREE.Group();
+    const map = canvasMap("globus", 256, 128, (c, w, h) => {
+        c.fillStyle = "#4FA3E0";
+        c.fillRect(0, 0, w, h);
+        c.fillStyle = "#6CC46F";
+        const blobs: [number, number, number, number][] = [[0.18, 0.35, 0.09, 0.18], [0.24, 0.68, 0.06, 0.16], [0.5, 0.3, 0.07, 0.12], [0.53, 0.6, 0.07, 0.18], [0.72, 0.35, 0.14, 0.14], [0.85, 0.72, 0.06, 0.08]];
+        for (const [x, y, rx, ry] of blobs) {
+            c.beginPath();
+            c.ellipse(x * w, y * h, rx * w, ry * h, 0.3, 0, TAU);
+            c.fill();
+        }
+        c.fillStyle = "#FFFFFF";
+        c.fillRect(0, 0, w, h * 0.06);
+        c.fillRect(0, h * 0.94, w, h * 0.06);
+    });
+    const ball = mesh(new THREE.SphereGeometry(0.075, q(ctx, 32, 14), q(ctx, 22, 10)), glossyMap(map, 0.3, 0.5), V(0, 0.13, 0));
+    ball.rotation.z = 0.4;
+    g.add(ball);
+    const arc = new THREE.TorusGeometry(0.084, 0.003, 6, q(ctx, 30, 12), Math.PI * 1.2);
+    g.add(mesh(arc, meshMetal("#C9A55A"), V(0, 0.13, 0), new THREE.Euler(0, Math.PI / 2, -Math.PI * 0.35)));
+    g.add(mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.05, 10), wood("#7A4A28", 0.5), V(0, 0.035, 0)));
+    g.add(mesh(new THREE.CylinderGeometry(0.035, 0.042, 0.014, q(ctx, 24, 10)), wood("#5C3A25", 0.5), V(0, 0.006, 0)));
+    g.position.set(-0.02, -0.02, 0.07);
+    return g;
+}
+
+/** Štap za planinarenje: dugačak, sa ručkom od plute, kaiščićem i gumenim vrhom */
+function hikingStick(ctx: ItemContext): THREE.Object3D {
+    const g = new THREE.Group();
+    g.add(mesh(new THREE.CylinderGeometry(0.0055, 0.0045, 0.6, q(ctx, 10, 6)), meshMetal("#5B8DD9"), V(0, -0.2, 0)));
+    g.add(mesh(new THREE.CylinderGeometry(0.011, 0.01, 0.1, q(ctx, 14, 8)), wood("#C9A574", 0.8), V(0, 0.02, 0)));
+    g.add(mesh(new THREE.SphereGeometry(0.012, 12, 8), plastic("#2A2A30", 0.4), V(0, 0.075, 0)));
+    g.add(mesh(tube([V(0.008, 0.06, 0), V(0.03, 0.03, 0.01), V(0.028, -0.01, 0.006), V(0.009, 0.0, 0)], 0.0025, 16, 5), fabric("#C9473F", "cotton")));
+    g.add(mesh(new THREE.ConeGeometry(0.008, 0.02, 10), rubber("#2A2A30"), V(0, -0.51, 0), new THREE.Euler(Math.PI, 0, 0)));
+    g.add(mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.003, q(ctx, 14, 8)), plastic("#2A2A30", 0.5), V(0, -0.46, 0)));
+    return g;
+}
+
+/** Autić-igračka: zaobljena karoserija, prozori i četiri točka */
+function toyCar(ctx: ItemContext): THREE.Object3D {
+    const g = new THREE.Group();
+    const paint = plastic("#E5484D", 0.25);
+    g.add(mesh(new RoundedBoxGeometry(0.13, 0.04, 0.07, 3, 0.014), paint, V(0, 0.03, 0)));
+    g.add(mesh(new RoundedBoxGeometry(0.07, 0.035, 0.062, 3, 0.012), paint, V(-0.008, 0.062, 0)));
+    const glassMat = plastic("#BFE9FF", 0.1);
+    for (const s of [1, -1]) g.add(mesh(new RoundedBoxGeometry(0.03, 0.022, 0.002, 1, 0.004), glassMat, V(-0.008 + s * 0.017, 0.064, 0.0315)));
+    for (const x of [-0.04, 0.04]) for (const z of [-0.036, 0.036]) {
+        const wheel = new THREE.CylinderGeometry(0.016, 0.016, 0.012, q(ctx, 16, 8)).rotateX(Math.PI / 2);
+        g.add(mesh(wheel, rubber("#2A2A30"), V(x, 0.012, z)));
+        g.add(mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.013, 10).rotateX(Math.PI / 2), meshMetal("#C9CED6"), V(x, 0.012, z)));
+    }
+    g.add(mesh(new THREE.SphereGeometry(0.006, 8, 6), plastic("#FFD15C", 0.3), V(0.064, 0.034, 0.024)));
+    g.position.set(-0.02, 0.0, 0.06);
+    g.rotation.set(0, -0.6, 0);
     return g;
 }
 
@@ -1130,5 +1335,28 @@ registerItems("hand", [
     simple("bojica", crayon),
     simple("flasica", bottle, { lean: 0.15 }),
     simple("lupa", magnifier, { lean: 0.5 }),
+    // ── Novo: knjige, lopte, instrumenti, praznik, škola, planinarenje, igračke ──
+    simple("crvena-knjiga", (ctx) => book(ctx, "#D94040", "#A8303A", "#FFFFFF"), { upright: true }),
+    simple("knjiga-prica", (ctx) => book(ctx, "#8E77E6", "#6F58C4", "#FFD15C"), { upright: true }),
+    simple("fudbalska-lopta", (ctx) => sportBall(ctx, "fudbal"), { upright: true }),
+    simple("kosarkaska-lopta", (ctx) => sportBall(ctx, "kosarka"), { upright: true }),
+    simple("frula", recorder, { lean: 0.6 }),
+    simple("marakas", maraca, { lean: 0.3 }),
+    simple("tamburin", tambourine, { upright: true }),
+    simple("ukulele", (ctx) => guitar(ctx, "#3D9BE9"), { upright: true, size: 0.85 }, { thumb: { focus: "full" } }),
+    simple("fenjer", lantern, { upright: true }),
+    simple("poklon", gift, { upright: true }),
+    simple("globus", globe, { upright: true }),
+    simple("stap-za-planinarenje", hikingStick, { lean: 0.12, size: 1 }, { thumb: { focus: "full" } }),
+    simple("autic", toyCar, { upright: true }),
+    {
+        id: "roze-kisobran",
+        build: (ctx) => {
+            const upright = keepUpright(ctx, hold(ctx, umbrella(ctx, "#F78FB3", "#FFD1DF", "#FFE3EC"), { upright: true, size: 1 }));
+            return { animate: () => upright() };
+        },
+        dependsOn: ["hat"],
+        thumb: { focus: "full", zoom: 0.82 },
+    },
 ]);
 

@@ -11,7 +11,7 @@ import type { FaceControl, FaceExpression } from "../contract";
 import { FACE_POSES, mixPose, type FacePose } from "./expressions";
 import { Mouth, mouthSurfaceFrom } from "./mouth";
 import { basicMaterial, createSkinMaterial, skinMaterial } from "./materials";
-import type { BodyShape } from "./rig";
+import { isFemaleKind, isSeniorKind, youthOf, type BodyShape } from "./rig";
 import { buildSurface, polyPath, taperedTube, type SurfaceFn } from "./surface";
 import { faceTexture, irisTexture } from "./textures";
 
@@ -48,11 +48,14 @@ export interface HeadInfo {
 export function headInfo(shape: BodyShape): HeadInfo {
     const { w, h, d, up, fwd, chin, cheeks } = shape.head;
     const center = new THREE.Vector3(0, up, fwd);
-    const child = shape.kind === "girl" || shape.kind === "boy";
-    const man = shape.kind === "man";
-    const nose = child ? 0.95 : man ? 1.25 : 1.08;
+    // Mladost (1 = dete, ≈ 0,45 tinejdžer, 0 = odrasli): oči, nos i obrazi se mešaju po njoj
+    const youth = youthOf(shape.kind);
+    const male = !isFemaleKind(shape.kind);
+    const senior = isSeniorKind(shape.kind);
+    const lerp = (adult: number, child: number) => adult + (child - adult) * youth;
+    const nose = lerp(male ? 1.25 : 1.08, 0.95) * (senior ? 1.08 : 1);
     // Koliko se donji deo lica produžava (duže, vitkije lice; deca malo manje)
-    const longer = child ? 0.05 : 0.075;
+    const longer = lerp(0.075, 0.05);
     const fn: SurfaceFn = (u, v, out) => {
         const th = (u - 0.5) * Math.PI * 2;
         const ph = Math.min(Math.PI, Math.max(0, v * Math.PI));
@@ -93,12 +96,25 @@ export function headInfo(shape: BodyShape): HeadInfo {
         const jaw = 1 - (1 - chin) * smoothstep(-0.05, -0.8, y);
         const back = 1 - (1 - chin) * 0.6 * Math.pow(smoothstep(-0.3, -1, y), 1.5);
         x *= back + (jaw - back) * front;
-        if (y < 0 && z > 0) z *= 1 - (child ? 0.08 : 0.05) * lower * lower;
+        if (y < 0 && z > 0) z *= 1 - lerp(0.05, 0.08) * lower * lower;
         // Duži donji deo lica i brada malo napred
         y -= longer * smoothstep(-0.15, -0.95, y) * smoothstep(-0.4, 0.4, z);
         z += 0.02 * gauss3(x, y, z, 0, -0.92, 0.42, 0.2);
         // Lice je ravnije od sfere (oči leže na blažoj krivini)
         if (z > 0) z *= 1 - 0.1 * Math.pow(z, 3) * (1 - Math.abs(y) * 0.5);
+        // Nana i dedo: meki nabori od smeha (od krilca nosa ka uglu usana) i blago puniji obrazi
+        if (senior && z > 0.3) {
+            const fold = (sx: number) => {
+                // Duž od (±0,13, −0,43) do (±0,25, −0,66) u (x, y) lica
+                const t = Math.min(1, Math.max(0, ((x - sx * 0.13) * sx * 0.12 + (y + 0.43) * -0.23) / (0.12 * 0.12 + 0.23 * 0.23)));
+                const dx = x - sx * (0.13 + 0.12 * t);
+                const dy = y - (-0.43 - 0.23 * t);
+                return Math.exp(-(dx * dx + dy * dy) / (2 * 0.026 * 0.026)) * Math.sin(Math.PI * Math.min(1, t * 1.15));
+            };
+            const k = 1 - 0.012 * (fold(1) + fold(-1));
+            x *= k;
+            z *= k;
+        }
         return out.set(center.x + (x * w) / 2, center.y + (y * h) / 2, center.z + (z * d) / 2);
     };
     const p0 = new THREE.Vector3();
@@ -121,8 +137,8 @@ export function headInfo(shape: BodyShape): HeadInfo {
         return out.addScaledVector(n, offset(u, v));
     };
     // Srednje oči (ne ogromne), malo razmaknute
-    const eyeR = w * (child ? 0.136 : 0.126);
-    return { shape, center, fn, point, normal, offsetFn, eyeU: child ? 0.079 : 0.077, eyeV: child ? 0.548 : 0.535, eyeR, mouthV: child ? 0.712 : 0.705 };
+    const eyeR = w * lerp(0.126, 0.136) * (senior ? 0.95 : 1);
+    return { shape, center, fn, point, normal, offsetFn, eyeU: lerp(0.077, 0.079), eyeV: lerp(0.535, 0.548), eyeR, mouthV: lerp(0.705, 0.712) };
 }
 
 /** Rumenilo, senke u udubljenjima, senka kapaka (boje temena: množe boju kože) */
@@ -135,7 +151,9 @@ function headColors(geometry: THREE.BufferGeometry, info: HeadInfo) {
     const c = new THREE.Color();
     const { center } = info;
     const { w, h, d } = info.shape.head;
-    const girlish = info.shape.kind === "girl" || info.shape.kind === "woman";
+    const girlish = isFemaleKind(info.shape.kind);
+    const senior = isSeniorKind(info.shape.kind);
+    const line = (v: number, at: number, s: number) => Math.exp(-((v - at) ** 2) / (2 * s * s));
     for (let i = 0; i < position.count; i++) {
         const x = (position.getX(i) - center.x) / (w / 2);
         const y = (position.getY(i) - center.y) / (h / 2);
@@ -158,6 +176,18 @@ function headColors(geometry: THREE.BufferGeometry, info: HeadInfo) {
         const side = smoothstep(0.55, 0.95, Math.abs(x)) * smoothstep(0.1, -0.5, y);
         const hollow = Math.max(gauss3(x, y, z, 0.62, -0.55, 0.6, 0.14), gauss3(x, y, z, -0.62, -0.55, 0.6, 0.14));
         c.multiplyScalar(1 - noseSide * 0.1 - underNose * 0.26 - underLip * 0.14 - - jaw * 0.4 - side * 0.08 - hollow * 0.06);
+        if (senior && z > 0) {
+            // Nana i dedo: blage bore (bez „strogog” izraza) — dve linije na čelu, „guščje
+            // nožice” uz spoljne uglove očiju i senka nabora od smeha
+            const brow = (line(y, 0.36, 0.018) + line(y, 0.45, 0.018) * 0.8) * smoothstep(0.42, 0.2, Math.abs(x)) * smoothstep(0.6, 0.85, z);
+            let crow = 0;
+            for (const sx of [1, -1]) {
+                const ex = x * sx - 0.6;
+                if (ex > -0.02 && ex < 0.14) crow += (line(y + ex * 0.7, 0.01, 0.012) + line(y, -0.02, 0.012) + line(y - ex * 0.6, -0.05, 0.012)) * smoothstep(-0.02, 0.03, ex) * (1 - smoothstep(0.08, 0.14, ex));
+            }
+            const fold = Math.max(gauss3(Math.abs(x), y, z, 0.2, -0.56, 0.86, 0.03), gauss3(Math.abs(x), y, z, 0.17, -0.5, 0.88, 0.03));
+            c.multiplyScalar(1 - brow * 0.09 - crow * 0.12 - fold * 0.18);
+        }
         colors.set([c.r, c.g, c.b], i * 3);
     }
     geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
@@ -219,13 +249,15 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
     head.name = "lice";
     group.add(head);
 
-    const girlish = info.shape.kind === "girl" || info.shape.kind === "woman";
-    const child = info.shape.kind === "girl" || info.shape.kind === "boy";
+    const girlish = isFemaleKind(info.shape.kind);
+    const youth = youthOf(info.shape.kind);
+    const child = youth > 0.5;
+    const senior = isSeniorKind(info.shape.kind);
     const tone = new THREE.Color(skinHex);
 
-    // ── Uši (manje, malo niže) ──
+    // ── Uši (manje, malo niže; kod nane i dede malo veće) ──
     const ears: THREE.Mesh[] = [];
-    const earK = 1;
+    const earK = senior ? 1.1 : 1;
     for (const side of [1, -1]) {
         const ear = new THREE.Group();
         const outer = new THREE.SphereGeometry(1, 18, 14);
@@ -377,7 +409,7 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
         const browU = (t: number) => 0.5 + side * (info.eyeU - 0.043 + t * 0.088);
         // Luk: unutrašnji kraj malo podignut (prijatan izraz), vrh na ≈ 60 %, rep spušten
         const browV = (t: number) => info.eyeV - 0.088 - Math.sin(Math.pow(t, 0.85) * Math.PI) * 0.02 + 0.016 * smoothstep(0.55, 1, t) - 0.004 * (1 - smoothstep(0, 0.25, t));
-        const base = (girlish ? 0.021 : 0.026) * (child ? 0.88 : 1);
+        const base = (girlish ? 0.021 : 0.026) * (1 - 0.12 * youth) * (senior ? 0.92 : 1);
         // Puna kod nosa, najdeblja u prvoj trećini, tanak rep
         const thick = (t: number) => base * (0.62 + 0.38 * Math.sin(Math.min(1, t * 3.2) * Math.PI / 2)) * (1 - 0.72 * smoothstep(0.3, 1, t));
         const fn: SurfaceFn = (t, q, out) => {
@@ -398,10 +430,12 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
     }
 
     // ── Usta (prava 3D površina: usne, unutrašnjost, zubi, jezik) ──
-    const man = info.shape.kind === "man";
-    // Zdrave ružičaste usne (ne blede ni ljubičaste)
-    const lip = "#" + tone.clone().lerp(new THREE.Color(girlish ? "#E2687A" : "#D4766E"), girlish ? 0.58 : man ? 0.42 : 0.5).getHexString();
-    const mouth = new Mouth(mouthSurfaceFrom(info.fn, info.normal, 0.5, info.mouthV, 0.0026, 0.0032, child ? 0.0058 : man ? 0.0052 : 0.0064), lip);
+    const man = !girlish && youth < 0.5;
+    // Zdrave ružičaste usne (ne blede ni ljubičaste); nana i dedo malo bleđe i tanje
+    const lipK = (girlish ? 0.58 : man ? 0.42 : 0.5) * (senior ? 0.8 : 1);
+    const lip = "#" + tone.clone().lerp(new THREE.Color(girlish ? "#E2687A" : "#D4766E"), lipK).getHexString();
+    const lipH = (child ? 0.0058 : man ? 0.0052 : 0.0064) * (senior ? 0.85 : 1);
+    const mouth = new Mouth(mouthSurfaceFrom(info.fn, info.normal, 0.5, info.mouthV, 0.0026, 0.0032, lipH), lip);
     group.add(mouth.group);
 
     // ── Izraz: brojevi iz FACE_POSES, meko mešanje; usta dodatno otvara glas ──
@@ -424,7 +458,8 @@ export function buildHead(info: HeadInfo, skinHex: string, eyeHex: string, browC
         // ispod; pogled gore malo podigne kapak, dole spusti
         const openEdge = 0.61 + (pose.eye - 1) * 1.25 + gaze.y * 0.12;
         const upperEdge = THREE.MathUtils.lerp(openEdge, -0.23, blink);
-        const lowerRest = THREE.MathUtils.lerp(-0.72, -0.42, pose.lid) + gaze.y * 0.05;
+        // Nana i dedo: „oči koje se smeju” (donji kapak malo viši) — topao, blag pogled
+        const lowerRest = THREE.MathUtils.lerp(-0.72, -0.42, Math.min(1, pose.lid + (senior ? 0.18 : 0))) + gaze.y * 0.05;
         const lowerEdge = THREE.MathUtils.lerp(lowerRest, -0.23, blink);
         upperLids.forEach((lid) => (lid.rotation.x = -upperEdge));
         lowerLids.forEach((lid) => (lid.rotation.x = -lowerEdge));

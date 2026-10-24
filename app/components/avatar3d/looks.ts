@@ -1,5 +1,6 @@
-// Izgled čoveka (devojčica, dečak, učiteljica, učitelj): boja kože, boja očiju, boja kose,
-// frizura, hidžab, pegice i brada (učitelj). Sve je UVEK besplatno — identitet se ne plaća.
+// Izgled čoveka (devojčica, dečak, učiteljica, učitelj, tinejdžerka, tinejdžer, nana, dedo):
+// boja kože, boja očiju, boja kose, frizura, hidžab, pegice i brada/brkovi (učitelj, dedo).
+// Sve je UVEK besplatno — identitet se ne plaća (i vesele boje kose su besplatne).
 // Čisti podaci, bez three.js: uvozi ga i server (provera izbora).
 //
 // Zapis u bazi (children.settings.companion.skin[<drugar>]) je jedan id od pet delova:
@@ -10,7 +11,7 @@
 // Stari 2D zapis od tri dela `<koža>.<kosa>.<frizura>` i dalje važi (oči smeđe, bez hidžaba),
 // pa izgled koji je dete ranije izabralo ostaje isti.
 
-import { isHumanKind, type HumanKind } from "./data";
+import { HUMAN_TRAITS, isHumanKind, type HumanKind } from "./data";
 
 export interface LookPart {
     id: string;
@@ -58,6 +59,12 @@ export const EYE_COLORS: readonly ColorLookPart[] = [
     { id: "zelene", label: "Zelene oči", hex: "#6DB565" },
     { id: "plave", label: "Plave oči", hex: "#5AA8E8" },
     { id: "sive", label: "Sive oči", hex: "#7D8A96" },
+    // Nove boje očiju (dodate na kraj: stari id-jevi ostaju isti)
+    { id: "cilibar", label: "Oči boje ćilibara", hex: "#C98B2E" },
+    { id: "tamnoplave", label: "Tamnoplave oči", hex: "#2F5FA8" },
+    { id: "plavozelene", label: "Plavozelene oči", hex: "#3E9E9A" },
+    { id: "sivozelene", label: "Sivozelene oči", hex: "#7E9A7A" },
+    { id: "svetlosmedje", label: "Svetlosmeđe oči", hex: "#A8743E" },
 ];
 
 /** Boje kose (isti id-jevi kao 2D) */
@@ -68,10 +75,26 @@ export const HAIR_COLORS: readonly ColorLookPart[] = [
     { id: "plava", label: "Plava kosa", hex: "#D9AE5C" },
     { id: "rida", label: "Riđa kosa", hex: "#C2552A" },
     { id: "seda", label: "Seda kosa", hex: "#C9C9CF" },
+    // Nove prirodne boje (nana i dedo: bela i proseda; ostali: nijanse smeđe i plave)
+    { id: "tamnosmedja", label: "Tamnosmeđa kosa", hex: "#3E2A1F" },
+    { id: "svetlosmedja", label: "Svetlosmeđa kosa", hex: "#8A6440" },
+    { id: "medena", label: "Medeno plava kosa", hex: "#C08A48" },
+    { id: "platinasta", label: "Platinasta kosa", hex: "#E6D9B8" },
+    { id: "bakarna", label: "Bakarna kosa", hex: "#A8461F" },
+    { id: "proseda", label: "Proseda kosa", hex: "#8C8A8C" },
+    { id: "bela", label: "Bela kosa", hex: "#EEEBE6" },
+    // Vesele boje (takođe besplatne)
+    { id: "roze", label: "Roze kosa", hex: "#EE8DB8" },
+    { id: "ljubicasta", label: "Ljubičasta kosa", hex: "#9A7AD6" },
+    { id: "nebo", label: "Nebeskoplava kosa", hex: "#6AA6E6" },
+    { id: "tirkizna", label: "Tirkizna kosa", hex: "#3FBDB8" },
 ];
 
 /** Oblik kose u 3D (engine/hair.ts) za svaku frizuru */
-export type HairShape = "short" | "curly" | "long" | "shoulder" | "ponytail" | "braids" | "buzz" | "bun" | "messy" | "swept" | "wavy" | "straight" | "none";
+export type HairShape =
+    | "short" | "curly" | "long" | "shoulder" | "ponytail" | "braids" | "buzz" | "bun" | "messy" | "swept" | "wavy" | "straight" | "none"
+    // Nove frizure
+    | "puffs" | "cornrows" | "bob" | "pixie" | "highbun" | "curlylong" | "sidepart" | "spiky" | "fade" | "pigtails" | "receding" | "afro";
 
 export interface HairStylePart extends LookPart {
     shape: HairShape;
@@ -95,20 +118,61 @@ const STYLE: Record<string, HairStylePart> = {
     zacesljana: { id: "zacesljana", label: "Začešljana u stranu", shape: "swept" },
     talasasta: { id: "talasasta", label: "Talasasta", shape: "wavy" },
     "ravna-razdeljak": { id: "ravna-razdeljak", label: "Duga ravna, razdeljak", shape: "straight" },
+    // Još frizura (sve besplatne): afro punđice, pletenice uz glavu, bob, pixi, visoka punđa,
+    // duga kovrdžava, razdeljak u stranu, šiljci, podšišana sa strane, kikice, proređena, afro
+    "afro-pundjice": { id: "afro-pundjice", label: "Afro punđice", shape: "puffs" },
+    "pletenice-uz-glavu": { id: "pletenice-uz-glavu", label: "Pletenice uz glavu", shape: "cornrows" },
+    bob: { id: "bob", label: "Bob frizura", shape: "bob" },
+    pixi: { id: "pixi", label: "Kratka pixi frizura", shape: "pixie" },
+    "visoka-pundja": { id: "visoka-pundja", label: "Visoka punđa", shape: "highbun" },
+    "duga-kovrdzava": { id: "duga-kovrdzava", label: "Duga kovrdžava", shape: "curlylong" },
+    "razdeljak-strana": { id: "razdeljak-strana", label: "Kratka sa razdeljkom", shape: "sidepart" },
+    siljci: { id: "siljci", label: "Šiljci", shape: "spiky" },
+    fejd: { id: "fejd", label: "Podšišana sa strane", shape: "fade" },
+    kikice: { id: "kikice", label: "Dve kikice", shape: "pigtails" },
+    proredjena: { id: "proredjena", label: "Proređena kosa", shape: "receding" },
+    afro: { id: "afro", label: "Afro", shape: "afro" },
 };
 
 /** Frizure po drugaru; prva je podrazumevana (kod učiteljice i učitelja — dosadašnji 2D crtež) */
+// Nove frizure se dopisuju POSLE starih (prva ostaje podrazumevana, stari izbori važe)
 export const HAIRSTYLES: Record<HumanKind, readonly HairStylePart[]> = {
-    girl: [STYLE.duga, STYLE["ravna-razdeljak"], STYLE["do-ramena"], STYLE.rep, STYLE.pletenice, STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.kratka],
-    boy: [STYLE.kratka, STYLE.razbarusena, STYLE.zacesljana, STYLE.talasasta, STYLE.kovrdzava, STYLE.duza, STYLE.osisana],
-    woman: [STYLE["do-ramena"], STYLE.duga, STYLE["ravna-razdeljak"], STYLE.rep, STYLE.pletenice, STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.kratka],
-    man: [STYLE.kratka, STYLE.talasasta, STYLE.zacesljana, STYLE.razbarusena, STYLE.kovrdzava, STYLE.duza, STYLE.osisana, STYLE["bez-kose"]],
+    girl: [
+        STYLE.duga, STYLE["ravna-razdeljak"], STYLE["do-ramena"], STYLE.rep, STYLE.pletenice, STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.kratka,
+        STYLE.kikice, STYLE["afro-pundjice"], STYLE["pletenice-uz-glavu"], STYLE.bob, STYLE["visoka-pundja"], STYLE["duga-kovrdzava"], STYLE.pixi, STYLE.afro,
+    ],
+    boy: [
+        STYLE.kratka, STYLE.razbarusena, STYLE.zacesljana, STYLE.talasasta, STYLE.kovrdzava, STYLE.duza, STYLE.osisana,
+        STYLE["razdeljak-strana"], STYLE.siljci, STYLE.fejd, STYLE["pletenice-uz-glavu"], STYLE.afro,
+    ],
+    woman: [
+        STYLE["do-ramena"], STYLE.duga, STYLE["ravna-razdeljak"], STYLE.rep, STYLE.pletenice, STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.kratka,
+        STYLE.bob, STYLE.pixi, STYLE["visoka-pundja"], STYLE["duga-kovrdzava"], STYLE["afro-pundjice"], STYLE["pletenice-uz-glavu"], STYLE.afro,
+    ],
+    man: [
+        STYLE.kratka, STYLE.talasasta, STYLE.zacesljana, STYLE.razbarusena, STYLE.kovrdzava, STYLE.duza, STYLE.osisana, STYLE["bez-kose"],
+        STYLE["razdeljak-strana"], STYLE.fejd, STYLE.siljci, STYLE.proredjena, STYLE["pletenice-uz-glavu"], STYLE.afro,
+    ],
+    teengirl: [
+        STYLE.rep, STYLE["visoka-pundja"], STYLE.duga, STYLE["ravna-razdeljak"], STYLE.bob, STYLE["duga-kovrdzava"], STYLE.kikice, STYLE["afro-pundjice"],
+        STYLE["pletenice-uz-glavu"], STYLE.pixi, STYLE["do-ramena"], STYLE.pletenice, STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.afro,
+    ],
+    teenboy: [
+        STYLE.fejd, STYLE.razbarusena, STYLE.siljci, STYLE["razdeljak-strana"], STYLE.zacesljana, STYLE.talasasta, STYLE.kovrdzava, STYLE.kratka,
+        STYLE.osisana, STYLE.duza, STYLE["pletenice-uz-glavu"], STYLE.afro,
+    ],
+    grandma: [
+        STYLE.pundja, STYLE["kratka-kovrdzava"], STYLE.bob, STYLE.kratka, STYLE["do-ramena"], STYLE["visoka-pundja"], STYLE.pixi, STYLE.rep, STYLE.pletenice, STYLE.afro,
+    ],
+    grandpa: [
+        STYLE.proredjena, STYLE.kratka, STYLE.zacesljana, STYLE["razdeljak-strana"], STYLE.osisana, STYLE["bez-kose"], STYLE.kovrdzava, STYLE.talasasta,
+    ],
 };
 
 /** Bez hidžaba */
 export const NO_HIJAB = "nema";
 
-/** Boje hidžaba (besplatno, kao i ostatak izgleda); nudi se devojčici i učiteljici */
+/** Boje hidžaba (besplatno, kao i ostatak izgleda); nudi se svim ženskim likovima (i nani) */
 export const HIJAB_COLORS: readonly ColorLookPart[] = [
     { id: "krem", label: "Krem hidžab", hex: "#E3D3BC" },
     { id: "bela", label: "Beli hidžab", hex: "#F2EFEA" },
@@ -141,7 +205,7 @@ export function hijabValue(color: string, style: "omotan" | "sportski"): string 
 }
 
 export function hasHijabOption(kind: HumanKind): boolean {
-    return kind === "girl" || kind === "woman";
+    return HUMAN_TRAITS[kind].female;
 }
 
 /** Pegice (besplatno): bez, malo, više; „bez” je podrazumevano i ne piše se u id */
@@ -152,15 +216,18 @@ export const FRECKLES: readonly LookPart[] = [
     { id: "vise", label: "Više pegica" },
 ];
 
-/** Kratka brada (besplatno, samo učitelj); „bez” je podrazumevano */
+/** Brada i brkovi (besplatno, odrasli muškarci: učitelj i dedo); „bez” je podrazumevano */
 export const NO_BEARD = "bez";
 export const BEARDS: readonly LookPart[] = [
     { id: NO_BEARD, label: "Bez brade" },
     { id: "brada", label: "Kratka brada" },
+    { id: "brkovi", label: "Brkovi" },
+    { id: "puna", label: "Puna brada" },
 ];
 
 export function hasBeardOption(kind: HumanKind): boolean {
-    return kind === "man";
+    const traits = HUMAN_TRAITS[kind];
+    return !traits.female && (traits.age === "adult" || traits.age === "senior");
 }
 
 export interface HumanLook {
@@ -172,7 +239,7 @@ export interface HumanLook {
     hijab: string;
     /** Pegice (FRECKLES); bez vrednosti = bez pegica */
     freckles?: string;
-    /** Brada (BEARDS, samo učitelj); bez vrednosti = bez brade */
+    /** Brada ili brkovi (BEARDS: učitelj i dedo); bez vrednosti = bez brade */
     beard?: string;
 }
 
@@ -182,6 +249,11 @@ export const HUMAN_DEFAULT: Record<HumanKind, HumanLook> = {
     // Kao dosadašnja 2D učiteljica i učitelj (skins.ts HUMAN_DEFAULT)
     woman: { tone: "vrlo-svetla", eye: "smedje", hair: "kestenjasta", style: "do-ramena", hijab: NO_HIJAB },
     man: { tone: "svetla", eye: "smedje", hair: "smedja", style: "kratka", hijab: NO_HIJAB },
+    // Porodica: tinejdžeri, nana (seda punđa) i dedo (proređena seda kosa i brkovi)
+    teengirl: { tone: "medena", eye: "tamne", hair: "tamnosmedja", style: "rep", hijab: NO_HIJAB },
+    teenboy: { tone: "karamel", eye: "smedje", hair: "crna", style: "fejd", hijab: NO_HIJAB },
+    grandma: { tone: "svetla", eye: "plave", hair: "seda", style: "pundja", hijab: NO_HIJAB },
+    grandpa: { tone: "psenicna", eye: "smedje", hair: "bela", style: "proredjena", hijab: NO_HIJAB, beard: "brkovi" },
 };
 
 export function humanLookId(look: HumanLook): string {
