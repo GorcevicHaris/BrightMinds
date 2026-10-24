@@ -21,6 +21,7 @@ import CompanionRoom from "./CompanionRoom";
 import { chosenSkin, CompanionProvider, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
 import LockedGameHint from "./LockedGameHint";
+import ReminderBanner from "./ReminderBanner";
 import type { ChildProfile } from "./page";
 
 type View = "games" | "companion" | "progress";
@@ -35,6 +36,8 @@ interface Props {
     /** Probni režim (razvoj): bez mreže */
     preview?: boolean;
     previewUnlocked?: number;
+    /** Dnevni podsetnik (samo kad ga je roditelj uključio): da li je dete danas igralo i da li je sada vreme */
+    reminder?: { playedToday: boolean; initialDue: boolean };
 }
 
 const TABS: { id: View; label: string; Icon: typeof Gamepad2 }[] = [
@@ -98,7 +101,7 @@ function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boo
     );
 }
 
-function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }: Omit<Props, "realtimeTopic">) {
+function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, reminder }: Omit<Props, "realtimeTopic">) {
     const router = useRouter();
     const [view, setView] = useState<View>("games");
     const [points, setPoints] = useState(child.experience_points ?? 0);
@@ -219,6 +222,10 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                         <GreetingBanner showAvatar={showAvatar} onCompanion={() => setView("companion")}>
                             <BannerGreeting firstName={firstName} onGoal={() => setView("companion")} />
                         </GreetingBanner>
+
+                        {reminder && (
+                            <ReminderBanner reminder={settings.reminder} playedToday={reminder.playedToday} initialDue={reminder.initialDue} gameOpen={gameOpen} showCompanion={showAvatar} />
+                        )}
 
                         <GameContainer
                             childId={child.id}

@@ -60,7 +60,24 @@ export interface ChildSettings {
      * deteta — sledeća kad dete završi 3. nivo prethodne (videti lib/gameAccess.ts).
      */
     unlockInOrder: boolean;
+    /** Blag dnevni podsetnik na početnom ekranu (bez obaveštenja i mejlova) */
+    reminder: ReminderSettings;
 }
+
+/** Dani u nedelji kao u ISO kalendaru: 1 = ponedeljak … 7 = nedelja */
+export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export const WEEKDAYS: Weekday[] = [1, 2, 3, 4, 5, 6, 7];
+
+export interface ReminderSettings {
+    /** Podrazumevano isključeno */
+    enabled: boolean;
+    /** Vreme dana „HH:MM” (Beograd) posle kog se podsetnik prikazuje ako dete danas nije igralo */
+    time: string;
+    /** Dani u kojima važi; prazno se ne čuva (tada podsetnik ne bi imao smisla) */
+    days: Weekday[];
+}
+
+export const DEFAULT_REMINDER: ReminderSettings = { enabled: false, time: "17:00", days: [...WEEKDAYS] };
 
 export interface BandPreset {
     label: string;
@@ -144,6 +161,7 @@ export function defaultSettings(band: AgeBand): ChildSettings {
         plan: [],
         disabledGames: [],
         unlockInOrder: false,
+        reminder: { ...DEFAULT_REMINDER, days: [...DEFAULT_REMINDER.days] },
     };
 }
 
@@ -175,6 +193,20 @@ function sanitizeDisabledGames(value: unknown): GameId[] {
         if (typeof item === "string" && valid.has(item) && !disabled.includes(item as GameId)) disabled.push(item as GameId);
     }
     return disabled.length >= GAMES.length ? [] : disabled;
+}
+
+const TIME_OF_DAY = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function sanitizeReminder(value: unknown): ReminderSettings {
+    const source = isRecord(value) ? value : {};
+    const days = Array.isArray(source.days)
+        ? WEEKDAYS.filter((day) => (source.days as unknown[]).includes(day))
+        : [...DEFAULT_REMINDER.days];
+    return {
+        enabled: bool(source.enabled, DEFAULT_REMINDER.enabled) && days.length > 0,
+        time: typeof source.time === "string" && TIME_OF_DAY.test(source.time) ? source.time : DEFAULT_REMINDER.time,
+        days: days.length > 0 ? days : [...DEFAULT_REMINDER.days],
+    };
 }
 
 function bool(value: unknown, fallback: boolean): boolean {
@@ -209,6 +241,7 @@ export function sanitizeSettings(raw: unknown, ageBand: AgeBand): ChildSettings 
         // Isključena igra ne može biti u planu: plan bi inače čekao igru koju dete ne vidi
         ...withoutDisabledInPlan(sanitizePlan(source.plan), sanitizeDisabledGames(source.disabledGames)),
         unlockInOrder: bool(source.unlockInOrder, base.unlockInOrder),
+        reminder: sanitizeReminder(source.reminder),
     };
 }
 

@@ -174,6 +174,7 @@ describe("sanitizeSettings", () => {
             plan: ["emotions", "shapes"],
             disabledGames: ["memory", "counting"],
             unlockInOrder: true,
+            reminder: { enabled: true, time: "18:30", days: [1, 3, 5] },
         };
         assert.deepEqual(sanitizeSettings(valid, "young"), valid);
     });
@@ -370,5 +371,35 @@ describe("game access settings", () => {
         assert.deepEqual(settingsOverrides(base, "middle"), {});
         const changed = sanitizeSettings({ disabledGames: ["memory"], unlockInOrder: true }, "middle");
         assert.deepEqual(settingsOverrides(changed, "middle"), { disabledGames: ["memory"], unlockInOrder: true });
+    });
+});
+
+describe("reminder settings", () => {
+    it("are off by default, at five in the afternoon, every day", () => {
+        assert.deepEqual(sanitizeSettings({}, "young").reminder, { enabled: false, time: "17:00", days: [1, 2, 3, 4, 5, 6, 7] });
+    });
+
+    it("keep a valid time and days in week order, and fix the rest", () => {
+        assert.deepEqual(sanitizeSettings({ reminder: { enabled: true, time: "07:05", days: [5, 1, 1, 9, "2"] } }, "young").reminder, {
+            enabled: true,
+            time: "07:05",
+            days: [1, 5],
+        });
+        for (const time of ["7:05", "24:00", "12:60", "noon", 1700]) {
+            assert.equal(sanitizeSettings({ reminder: { enabled: true, time } }, "young").reminder.time, "17:00", String(time));
+        }
+    });
+
+    it("switch off when no day is chosen", () => {
+        assert.deepEqual(sanitizeSettings({ reminder: { enabled: true, time: "18:00", days: [] } }, "young").reminder, {
+            enabled: false,
+            time: "18:00",
+            days: [1, 2, 3, 4, 5, 6, 7],
+        });
+    });
+
+    it("are stored only when changed", () => {
+        const changed = sanitizeSettings({ reminder: { enabled: true, time: "18:00", days: [1, 2, 3, 4, 5, 6, 7] } }, "young");
+        assert.deepEqual(settingsOverrides(changed, "young"), { reminder: { enabled: true, time: "18:00", days: [1, 2, 3, 4, 5, 6, 7] } });
     });
 });

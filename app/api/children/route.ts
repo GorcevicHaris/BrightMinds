@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
     assertPinAvailable,
+    childrenWhoPlayedToday,
     childWriteError,
     parseChildInput,
     selectChildRows,
@@ -34,7 +35,15 @@ export async function GET() {
                 .order("id", { ascending: true })
         );
 
-        return NextResponse.json({ children: rows.map(toChild) });
+        // Za podsetnik u panelu: ko je danas već igrao. Sporedno — greška ne obara spisak dece.
+        let playedToday = new Set<number>();
+        try {
+            playedToday = await childrenWhoPlayedToday(rows.map((row) => row.id));
+        } catch (error) {
+            console.error("[api] GET /api/children: današnja igra nije pročitana:", error);
+        }
+
+        return NextResponse.json({ children: rows.map((row) => ({ ...toChild(row), played_today: playedToday.has(row.id) })) });
     } catch (error) {
         return errorResponse(error, "GET /api/children");
     }

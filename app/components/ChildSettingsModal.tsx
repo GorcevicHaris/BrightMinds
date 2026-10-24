@@ -14,6 +14,7 @@ import {
     MAX_PLAN_GAMES,
     defaultSettings,
     playAgeFor,
+    WEEKDAYS,
     sanitizeSettings,
     type AgeBand,
     type ChildSettings,
@@ -41,6 +42,8 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
         </section>
     );
 }
+
+const WEEKDAY_NAMES = ["Ponedeljak", "Utorak", "Sreda", "Četvrtak", "Petak", "Subota", "Nedelja"];
 
 /** Teme podešavanja: odjednom se vidi samo jedna, da prozor ne bude dugačak spisak. */
 const TABS = [
@@ -401,6 +404,63 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                                     <option value="off">Isključeno</option>
                                     <option value="three">Tri lica, može da se preskoči</option>
                                 </Select>
+                            </div>
+                        </Section>
+                        <Section
+                            title="Podsetnik"
+                            hint="Blag podsetnik u aplikaciji: posle izabranog vremena, ako dete tog dana još nije igralo, početni ekran kaže „Vreme je za igru sa drugarom!”, a vaš panel da dete danas još nije vežbalo. Bez obaveštenja na telefonu i bez mejlova."
+                        >
+                            <Switch
+                                label="Dnevni podsetnik"
+                                checked={settings.reminder.enabled}
+                                onChange={(v) => set("reminder", { ...settings.reminder, enabled: v })}
+                            />
+                            <div className={cn("mt-2 grid gap-4 sm:grid-cols-2", !settings.reminder.enabled && "opacity-50")}>
+                                <div>
+                                    <label htmlFor="settings-reminder-time" className="block text-sm font-extrabold text-ink">
+                                        Posle koliko sati
+                                    </label>
+                                    <input
+                                        id="settings-reminder-time"
+                                        type="time"
+                                        step={300}
+                                        value={settings.reminder.time}
+                                        disabled={!settings.reminder.enabled}
+                                        onChange={(e) => e.target.value && set("reminder", { ...settings.reminder, time: e.target.value.slice(0, 5) })}
+                                        className="mt-1.5 min-h-11 w-full rounded-xl border-2 border-line bg-surface px-3 text-base font-bold text-ink focus:border-brand-500 focus:outline-none"
+                                    />
+                                </div>
+                                <fieldset disabled={!settings.reminder.enabled}>
+                                    <legend className="text-sm font-extrabold text-ink">Dani</legend>
+                                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                                        {WEEKDAYS.map((day) => {
+                                            const on = settings.reminder.days.includes(day);
+                                            const only = on && settings.reminder.days.length === 1;
+                                            return (
+                                                <button
+                                                    key={day}
+                                                    type="button"
+                                                    aria-pressed={on}
+                                                    aria-label={WEEKDAY_NAMES[day - 1]}
+                                                    title={only ? "Bar jedan dan ostaje izabran" : WEEKDAY_NAMES[day - 1]}
+                                                    disabled={only}
+                                                    onClick={() =>
+                                                        set("reminder", {
+                                                            ...settings.reminder,
+                                                            days: on ? settings.reminder.days.filter((d) => d !== day) : WEEKDAYS.filter((d) => d === day || settings.reminder.days.includes(d)),
+                                                        })
+                                                    }
+                                                    className={cn(
+                                                        "grid h-11 w-11 place-items-center rounded-xl border-2 text-sm font-extrabold transition-colors disabled:cursor-not-allowed",
+                                                        on ? "border-brand-500 bg-brand-50 text-brand-700" : "border-line bg-surface text-ink-soft hover:border-brand-200"
+                                                    )}
+                                                >
+                                                    {WEEKDAY_NAMES[day - 1].slice(0, 3)}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </fieldset>
                             </div>
                         </Section>
                     </>

@@ -15,6 +15,7 @@ import {
     shiftDateOnly,
 } from "@/lib/validation";
 import { getClientIp, takeAttempts, type RateLimitRule } from "@/lib/rateLimit";
+import { isToday, playedTodayWindowStart } from "@/lib/reminder";
 import { enforceRateLimit, HttpError } from "./http";
 
 export const GENDERS = ["male", "female", "other"] as const;
@@ -338,4 +339,26 @@ export function parseDbTimestamp(value: string | null | undefined): Date | null 
     const hasZone = /(Z|[+-]\d{2}(:?\d{2})?)$/i.test(value);
     const date = new Date(hasZone ? value : `${value.replace(" ", "T")}Z`);
     return Number.isNaN(date.getTime()) ? null : date;
+}
+
+// ── Podsetnik: da li je dete danas igralo ──────────────────────────────────────
+
+/**
+ * Deca (od zadatih) koja danas imaju bar jednu završenu partiju, po kalendaru aplikacije.
+ * Jedan upit za sve: partije iz poslednjih 26 sati, pa se dan proverava u kodu.
+ */
+export async function childrenWhoPlayedToday(childIds: readonly number[], now: Date = new Date()): Promise<Set<number>> {
+    if (childIds.length === 0) return new Set();
+    const { data, error } = await supabaseAdmin
+        .from("progress_logs")
+        .select("child_id, completed_at")
+        .in("child_id", [...childIds])
+        .gt("completed_at", playedTodayWindowStart(now).toISOString())
+        .limit(1000);
+    if (error) throw error;
+    const played = new Set<number>();
+    for (const row of (data ?? []) as { child_id: number; completed_at: string | null }[]) {
+        if (isToday(parseDbTimestamp(row.completed_at), now)) played.add(row.child_id);
+    }
+    return played;
 }

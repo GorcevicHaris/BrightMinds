@@ -159,10 +159,36 @@ describe("GET /api/children", () => {
                 "last_name",
                 "notes",
                 "pin_code",
+                "played_today",
                 "settings",
                 "streak",
             ]);
         }
+    });
+
+    it("says which children already played today (Belgrade day), for the parent's reminder", async () => {
+        const now = Date.now();
+        db.seed("progress_logs", [
+            { child_id: CHILD_ID, activity_id: 1, completed_at: new Date(now - 60_000).toISOString() },
+            // Drugo dete je igralo juče — i nije dete ovog roditelja
+            { child_id: OTHER_CHILD_ID, activity_id: 1, completed_at: new Date(now - 60_000).toISOString() },
+        ]);
+        const list = (await readJson(await GET())).children as { id: number; played_today: boolean }[];
+        assert.deepEqual(list.map((item) => [item.id, item.played_today]), [[CHILD_ID, true]]);
+
+        db.reset();
+        seedFamily();
+        db.seed("progress_logs", [{ child_id: CHILD_ID, activity_id: 1, completed_at: `${belgradeDay(-1)}T08:00:00Z` }]);
+        const yesterday = (await readJson(await GET())).children as { played_today: boolean }[];
+        assert.equal(yesterday[0].played_today, false);
+    });
+
+    it("still lists the children when today's play cannot be read", async (t) => {
+        t.mock.method(console, "error", () => undefined);
+        db.failNext("progress_logs", "select", { code: "XX000" });
+        const list = (await readJson(await GET())).children as { played_today: boolean }[];
+        assert.equal(list.length, 1);
+        assert.equal(list[0].played_today, false);
     });
 
     it("returns an empty list for an adult without children", async () => {
