@@ -576,8 +576,9 @@ const LAYOUT: Record<number, string> = {
 const TARGET_STYLE: CSSProperties = { width: "clamp(5rem, 16dvh, 11rem)", height: "clamp(5rem, 16dvh, 11rem)" };
 
 const BOARD_STYLE = {
-    // ≈23rem zauzimaju zaglavlje, traka napretka, uputstvo i poruka, a još do 12rem mesto za oblik
-    "--tile": "clamp(4.5rem, calc((100dvh - 23rem - min(16dvh, 11rem) - 1.5rem) / var(--rows) - var(--gap)), 14rem)",
+    // --chrome zauzimaju zaglavlje, traka napretka, uputstvo (i u dva reda, na teškim nivoima) i poruka,
+    // a još do 12rem mesto za oblik (--chrome je u klasama: na tabletu su uputstvo i razmaci veći)
+    "--tile": "clamp(4.5rem, calc((100dvh - var(--chrome) - min(16dvh, 11rem) - 1.5rem) / var(--rows) - var(--gap)), 14rem)",
     gap: "var(--gap)",
     gridTemplateColumns: "repeat(var(--cols), minmax(0, 1fr))",
     maxWidth: "calc(var(--cols) * var(--tile) + (var(--cols) - 1) * var(--gap))",
@@ -813,7 +814,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                     role="group"
                     aria-label="Ponuđeni oblici"
                     className={cn(
-                        "mx-auto grid w-full animate-fade-up [--gap:0.75rem] sm:[--gap:0.875rem]",
+                        "mx-auto grid w-full animate-fade-up [--chrome:24rem] [--gap:0.75rem] sm:[--chrome:28rem] sm:[--gap:0.875rem]",
                         LAYOUT[shown.options.length] ?? DEFAULT_LAYOUT,
                         isMonitor && "pointer-events-none"
                     )}
