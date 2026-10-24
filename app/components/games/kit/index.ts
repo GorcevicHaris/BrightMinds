@@ -26,7 +26,7 @@ export {
     type FeedbackKind,
 } from "./ui";
 export { usePraise } from "./praise";
-export { CelebrationLayer, celebrate, celebrateBig } from "./Celebration";
+export { CelebrationLayer, celebrate, celebrateBig, celebrateBigWhenSettled } from "./Celebration";
 export { announcePraise, flyItems, useWideScreen, FLY_MS } from "./hype";
 export { useCompanionHype, HypeBubble, HypePlus, type CompanionHype } from "./CompanionCheer";
 export { GamePauseContext, useGamePaused } from "./pause";

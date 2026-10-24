@@ -56,6 +56,7 @@ const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
     gaze: dynamic(() => import("@/app/components/games/GazeGame"), { ssr: false, loading: MirrorLoading }),
     letters: dynamic(() => import("@/app/components/games/LettersGame"), { ssr: false, loading: MirrorLoading }),
     numbers: dynamic(() => import("@/app/components/games/NumbersGame"), { ssr: false, loading: MirrorLoading }),
+    food: dynamic(() => import("@/app/components/games/FoodGame"), { ssr: false, loading: MirrorLoading }),
 };
 
 const noop = () => {};

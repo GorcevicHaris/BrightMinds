@@ -41,6 +41,9 @@ export const SOUND_ITEMS: SoundMeta[] = [
     // Sova i vetar: NIKO IH JOŠ NIJE PRESLUŠAO. Jačina je namerno oprezna i određena samo merenjem fajla
     // (isti postupak kao za ostale: najglasnija sekunda na oko −20 dBFS; vetar se meri u prvih 6 s, koliko se
     // i pušta). Pre objave ih treba preslušati na uređaju i proveriti da nijedan ne počinje naglo.
+    // Merenje fajlova (dekodirano, bez puštanja): sova 3,6 s, 44,1 kHz stereo, vrh −3,6 dBFS, bez odsecanja,
+    // počinje posle 0,13 s tišine; vetar 19 s, 48 kHz stereo, polako raste iz tišine, ali ima 33 odsečena
+    // uzorka (0 dBFS), jedan kratak niz na 4,8 s (u delu koji se pušta) — uz jačinu 0,35 verovatno se ne čuje.
     { id: "owl", label: "Sova", sound: "/sounds/sova.mp3", category: "animals", loud: false, level: 0.45 },
     { id: "horse", label: "Konj", image: animalImage("horse"), sound: "/sounds/konj.mp3", category: "animals", loud: true, level: 0.5 },
     { id: "wind", label: "Vetar", sound: "/sounds/vetar.mp3", category: "weather", loud: false, level: 0.35 },

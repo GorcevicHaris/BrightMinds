@@ -477,11 +477,12 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                         </button>
                     )
                 ) : (
-                    // Korpa: predmeti koje treba vratiti
+                    // Korpa: predmeti koje treba vratiti. Položen ekran: dva predmeta u redu (u jednom stupcu
+                    // pet predmeta ne bi stalo po visini)
                     <div
                         role="group"
                         aria-label="Korpa"
-                        className="flex min-h-20 w-full max-w-xl flex-wrap items-center justify-center gap-1.5 rounded-2xl border-2 border-amber-300 bg-amber-100/70 p-1.5 sm:gap-3 sm:p-3 landscape:w-56 landscape:max-w-56"
+                        className="flex min-h-20 w-full max-w-xl flex-wrap items-center justify-center gap-1.5 rounded-2xl border-2 border-amber-300 bg-amber-100/70 p-1.5 sm:gap-3 sm:p-3 landscape:w-60 landscape:max-w-60"
                     >
                         {shown.tray.length === 0 && <span className="text-base font-bold text-ink-soft">Korpa je prazna.</span>}
                         {shown.tray.map((id) => {
