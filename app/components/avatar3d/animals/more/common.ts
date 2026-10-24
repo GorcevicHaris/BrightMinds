@@ -569,7 +569,7 @@ export interface FeatherFan {
     count: number;
     len: number;
     w: number;
-    /** Ugao lepeze (rad, ukupno) i nagib unazad-nagore (rad od vertikale naniže) */
+    /** Ugao lepeze (rad, ukupno) i nagib: rad od pravca naniže ka pozadi (π/2 = vodoravno unazad, više = nagore) */
     spread: number;
     tilt: number;
     /** Boje pera (redom) i boja vrha (opciono) */
@@ -579,6 +579,8 @@ export interface FeatherFan {
     height?: number;
     /** Duže srednje pero (papagaj) */
     middle?: number;
+    /** Lepeza u ravni simetrije (lučni rep kokice, vidi se sa strane) umesto poprečno */
+    side?: boolean;
 }
 
 /**
@@ -599,7 +601,8 @@ export function addFeatherTail(b: AnimalBuild, f: FeatherFan): THREE.Mesh {
         const g = finGeometry(leafOutline(len, f.w * k * 0.5, 0.55), 0.004 * k, b.quality);
         // Pero leži u ravni xy (dužina po +y): okreni ga naniže-unazad i raširi lepezu
         g.rotateZ(Math.PI + t * f.spread);
-        g.rotateX(-f.tilt);
+        if (f.side) g.rotateY(Math.PI / 2);
+        g.rotateX(f.tilt);
         g.translate(base.x, base.y, base.z - 0.004 * Math.abs(t));
         const c = col(f.colors[i % f.colors.length]);
         const pos = g.getAttribute("position");
