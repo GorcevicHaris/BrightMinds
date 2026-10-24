@@ -17,7 +17,8 @@ export type GameId =
     | "counting"
     | "gaze"
     | "letters"
-    | "numbers";
+    | "numbers"
+    | "food";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -35,7 +36,8 @@ export type GameType =
     | "counting"
     | "gaze"
     | "letters"
-    | "numbers";
+    | "numbers"
+    | "food";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -202,9 +204,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Odigrajte kratku scenu sa igračkama: ko šta kaže kad dobije poklon ili traži pomoć.",
         graded: true,
-        // 12. po redu: izbor reči u društvenoj situaciji
+        // 13. po redu: izbor reči u društvenoj situaciji
         ages: { min: 5, max: 10 },
-        order: 12,
+        order: 13,
     },
     {
         id: "social-story",
@@ -226,9 +228,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Pre odlaska kod zubara ili u prodavnicu, ispričajte redom šta će se dešavati.",
         graded: true,
-        // 13. po redu: cela situacija iz svakodnevice, korak po korak
+        // 14. po redu: cela situacija iz svakodnevice, korak po korak
         ages: { min: 5, max: 10 },
-        order: 13,
+        order: 14,
     },
     {
         id: "emotions",
@@ -250,9 +252,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Dok čitate slikovnicu, pitajte: „Kako se oseća ovaj lik? Po čemu to vidiš?”",
         graded: true,
-        // 8. po redu: prepoznavanje osećanja na licu i u priči
+        // 9. po redu: prepoznavanje osećanja na licu i u priči
         ages: { min: 4, max: 8 },
-        order: 8,
+        order: 9,
     },
     {
         id: "sorting",
@@ -274,9 +276,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Pri sklanjanju veša ili igračaka razvrstavajte zajedno: „Čarape ovde, majice tamo.” ili „Crvene kocke u ovu kutiju.”",
         graded: true,
-        // 10. po redu: razvrstavanje po pravilu (kategorija, boja)
+        // 11. po redu: razvrstavanje po pravilu (kategorija, boja)
         ages: { min: 4, max: 8 },
-        order: 10,
+        order: 11,
     },
     {
         id: "sequence",
@@ -298,9 +300,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Pre nove aktivnosti recite korake redom: „Prvo obučemo jaknu, zatim obujemo cipele, na kraju idemo napolje.”",
         graded: true,
-        // 11. po redu: redosled koraka: planiranje
+        // 12. po redu: redosled koraka: planiranje
         ages: { min: 5, max: 10 },
-        order: 11,
+        order: 12,
     },
     {
         id: "where",
@@ -346,9 +348,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Dok spremate doručak ili se kupate, pitajte: „Čime jedemo supu?”, „Čime peremo kosu?” — neka dete pokaže ili donese predmet.",
         graded: true,
-        // 7. po redu: razumevanje rečenice o nameni predmeta
+        // 8. po redu: razumevanje rečenice o nameni predmeta
         ages: { min: 4, max: 7 },
-        order: 7,
+        order: 8,
     },
     {
         id: "counting",
@@ -370,9 +372,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Brojite zajedno ono što je oko vas: stepenice, kašike na stolu, autiće u kutiji. Neka dete dodirne svaku stvar dok broji, pa pitajte: „Koliko ima?” ili „Gde ima više?”",
         graded: true,
-        // 9. po redu: brojanje i poređenje količina
+        // 10. po redu: brojanje i poređenje količina
         ages: { min: 4, max: 7 },
-        order: 9,
+        order: 10,
     },
     {
         id: "gaze",
@@ -420,7 +422,7 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Pišite slova prstom po pesku, brašnu ili po leđima deteta, krupno i polako, i recite: „M kao mačka.” Prvo vi napišete, pa dete preko vašeg slova, pa samostalno. Dobro je početi od slova iz detetovog imena.",
         ages: { min: 4, max: 10 },
-        order: 14,
+        order: 15,
         graded: true,
     },
     {
@@ -444,8 +446,33 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Tražite brojeve oko sebe: na liftu, satu, tablici kola, kalendaru — i pitajte: „Koji je ovo broj?” Pišite broj prstom po stolu i pored njega stavite toliko dugmića ili kockica. Na stepenicama brojite i pitajte: „Koji broj dolazi posle tri?”",
         ages: { min: 4, max: 8 },
-        order: 15,
+        order: 16,
         graded: true,
+    },
+    {
+        id: "food",
+        gameType: "food",
+        activityId: 17,
+        title: "Šta jede?",
+        description: "Ko šta jede: nahrani životinje",
+        skill: "Razumevanje govora i svet oko nas",
+        icon: "🥕",
+        image: "/images/stajede.svg",
+        accent: {
+            solid: "bg-red-500",
+            edge: "border-red-700",
+            soft: "bg-red-50",
+            text: "text-red-700",
+            border: "border-red-200",
+            ring: "ring-red-200",
+            gradient: "from-orange-400 to-red-500",
+        },
+        offscreenTip:
+            "U zoološkom vrtu, na selu ili uz slikovnicu pitajte: „Šta jede zeka?”, „Ko jede travu?” Neka dete pokaže ili kaže, a vi ponovite celu rečenicu: „Zeka jede šargarepu.” Dok spremate obrok, dajte detetu da „nahrani” plišane životinje.",
+        graded: true,
+        // 7. po redu: ko šta jede — poznate životinje i hrana, pre pitanja o nameni predmeta
+        ages: { min: 3, max: 7 },
+        order: 7,
     },
 ];
 
