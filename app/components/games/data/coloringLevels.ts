@@ -8,18 +8,28 @@
 //   7–9   Boje po brojevima: u svakom delu piše broj, a uz svaku boju u paleti njen broj
 //         (1 = …, 2 = …). Prvo dve-tri boje, veliki brojevi, istaknuta boja u paleti i označeni
 //         svi delovi sa brojem izabrane boje; zatim bez oznaka; na kraju više boja i manji brojevi.
-//   10–11 Bojenje po izgovorenom uputstvu („Oboji krov crvenom bojom”); uz uputstvo stoji krug u
-//         traženoj boji, a na 10. nivou je i traženi deo označen.
-//   12–14 Samo uputstvo: bez kruga u boji, pa iz svih 12 boja (i svetlih nijansi), na kraju bez
-//         kratkog pokazivanja dela.
+//   10–11 Oboji drugu polovinu (simetrija): leva polovina slike je već obojena, a dete boji svaki
+//         deo desne polovine bojom njegovog odraza u ogledalu. Primer je i dalje na ekranu (u samoj
+//         slici), ali ga dete mora „preslikati” — prostorno preslikavanje dolazi posle bojenja po
+//         primeru i po brojevima, a pre bojenja samo po izgovorenom uputstvu (gde vidljivog primera
+//         više nema). Zato je ovde, na kraju srednjeg i na početku teškog stepena. Na 10. nivou
+//         prvi deo oboji sam drugar (model, učenje bez grešaka), a predloženi deo i njegov odraz
+//         su označeni; na 11. nivou nema oznaka, a slike imaju više delova. Pogrešna boja se ne
+//         nanosi (deo ostaje beo), pa na slici nikad ne ostaje pogrešan primer.
+//   12    Bojenje po izgovorenom uputstvu („Oboji krov crvenom bojom”); uz uputstvo stoji krug u
+//         traženoj boji, a traženi deo je označen.
+//   13–14 Samo uputstvo: prvo uz krug u boji, pa bez njega iz svih 12 boja (i svetlih nijansi).
 //   15    Slobodno bojenje najveće slike, svim bojama, bez primera i bez pogrešnog ishoda.
+//
+// Ranije su 10–14 bili nivoi po uputstvu; dva su sažeta u jedan, pa nivoa je i dalje 15 i
+// sačuvan napredak (otključan nivo, zvezdice po broju nivoa) znači isto što i pre.
 //
 // Kako nivoi rastu, raste i broj delova (a delovi su sve manji) i broj ponuđenih boja.
 
 import { BASIC_COLORS, COLORS, PICTURE_BY_ID, zoneOrder, modelColors, type ColorId, type Picture, type Zone } from "./coloringPictures";
 
-/** copy: po primeru · number: po brojevima · verbal: po uputstvu · free: slobodno */
-export type ColoringMode = "copy" | "number" | "verbal" | "free";
+/** copy: po primeru · number: po brojevima · mirror: druga polovina (simetrija) · verbal: po uputstvu · free: slobodno */
+export type ColoringMode = "copy" | "number" | "mirror" | "verbal" | "free";
 /** Primer u boji: stalno na ekranu, samo na zahtev ili ga nema */
 export type ModelView = "shown" | "request" | "none";
 
@@ -46,6 +56,8 @@ export interface ColoringLevel {
     colors: number;
     /** Boje se biraju iz svih 12 (uz svetle nijanse, sivu i crnu), inače iz osnovnih 8 */
     full: boolean;
+    /** Druga polovina: prvi deo oboji drugar (pokazni, ne ocenjuje se) */
+    demo?: boolean;
 }
 
 const copy = (pictures: string[], colors: number, support: Partial<ColoringLevel> = {}): ColoringLevel => ({
@@ -80,6 +92,22 @@ const numbers = (pictures: string[], numberSize: number, support: Partial<Colori
     ...support,
 });
 
+const mirror = (pictures: string[], colors: number, support: Partial<ColoringLevel> = {}): ColoringLevel => ({
+    mode: "mirror",
+    model: "none",
+    showZone: false,
+    showColor: false,
+    showMatches: false,
+    numberSize: 0,
+    showSwatch: false,
+    pulseZone: false,
+    earlyHint: false,
+    pictures,
+    colors,
+    full: false,
+    ...support,
+});
+
 const verbal = (pictures: string[], colors: number, support: Partial<ColoringLevel> = {}): ColoringLevel => ({
     mode: "verbal",
     model: "none",
@@ -108,12 +136,13 @@ export const COLORING_LEVELS: ColoringLevel[] = [
     numbers(["drvo", "lopta"], 0.13, { showColor: true, showMatches: true, earlyHint: true }),
     numbers(["cvet", "raketa", "kruna"], 0.11),
     numbers(["leptir", "autobus", "voz"], 0.085),
-    verbal(["kucica", "meda", "voz"], 4, { showZone: true, showSwatch: true }),
-    // Teško: samo izgovoreno uputstvo
-    verbal(["riba", "auto", "sova"], 6, { showSwatch: true }),
-    verbal(["sova", "meda", "auto"], 6),
-    verbal(["slon", "macka", "riba"], 6, { full: true }),
-    verbal(["robot", "zamak", "slon", "macka"], 6, { full: true, pulseZone: false }),
+    // Druga polovina: drugar oboji prvi deo, predloženi deo i njegov odraz su označeni
+    mirror(["pola-srce", "pola-bubamara", "pola-cvet"], 1, { showZone: true, earlyHint: true, demo: true }),
+    // Teško: druga polovina bez oznaka, pa samo izgovoreno uputstvo
+    mirror(["pola-leptir", "pola-kuca", "pola-robot", "pola-raketa"], 2),
+    verbal(["kucica", "meda", "voz", "riba", "auto"], 4, { showZone: true, showSwatch: true }),
+    verbal(["riba", "auto", "sova", "meda"], 6, { showSwatch: true }),
+    verbal(["slon", "macka", "robot", "zamak"], 6, { full: true }),
     {
         mode: "free",
         model: "none",
@@ -187,12 +216,13 @@ export function buildColoringPlan(levelNumber: number, limits: ColoringLimits | 
     const level = coloringLevel(levelNumber);
     const chosen = pictureId && level.pictures.includes(pictureId) ? pictureId : level.pictures[Math.floor(random() * level.pictures.length)];
     const picture = PICTURE_BY_ID[chosen] ?? PICTURE_BY_ID[level.pictures[0]]!;
-    const ordered = zoneOrder(picture);
+    // Druga polovina: zadaci su samo delovi desne polovine; leva (i sve na liniji ogledala) je obojena
+    const ordered = level.mode === "mirror" && picture.mirror ? zoneOrder(picture).filter((zone) => zone.id in picture.mirror!.pairs) : zoneOrder(picture);
 
     // Mlađa deca imaju manje zadataka: poslednji delovi iz redosleda su obojeni od početka
     const count = level.mode === "free" || !limits ? ordered.length : Math.max(1, Math.min(ordered.length, limits.rounds));
     const zones = ordered.slice(0, count);
-    const prefilled: Record<string, ColorId> = Object.fromEntries(ordered.slice(count).map((zone) => [zone.id, zone.c]));
+    const prefilled: Record<string, ColorId> = Object.fromEntries(picture.zones.filter((zone) => !zones.includes(zone)).map((zone) => [zone.id, zone.c]));
 
     const source = level.full ? ALL_IDS : ALL_IDS.slice(0, BASIC_COLORS);
     let palette: ColorId[] = [];
@@ -203,8 +233,8 @@ export function buildColoringPlan(levelNumber: number, limits: ColoringLimits | 
     } else if (level.mode === "number") {
         // Svaka boja sa slike dobija broj: 1 je boja prvog dela u redosledu, 2 sledeće nove boje…
         palette = modelColors(zones);
-    } else if (level.mode === "copy") {
-        // Sve boje sa primera, plus nekoliko drugih (koliko dozvoljavaju podešavanja deteta)
+    } else if (level.mode === "copy" || level.mode === "mirror") {
+        // Sve boje sa primera (po polovini: sa leve polovine), plus nekoliko drugih (koliko dozvoljavaju podešavanja deteta)
         const needed = modelColors(zones);
         const room = limits ? Math.max(0, limits.choices - needed.length) : level.colors;
         const extraCount = Math.min(level.colors, room);
@@ -224,4 +254,9 @@ export function buildColoringPlan(levelNumber: number, limits: ColoringLimits | 
 /** Broj boje na nivoima „po brojevima” (1, 2, 3…); 0 kad boja nema broj */
 export function colorNumber(plan: Pick<ColoringPlan, "palette">, color: ColorId | string | undefined): number {
     return color ? plan.palette.indexOf(color as ColorId) + 1 : 0;
+}
+
+/** Druga polovina: odraz dela u ogledalu (deo leve polovine) */
+export function mirrorPartner(picture: Pick<Picture, "mirror">, zoneId: string | null | undefined): string | undefined {
+    return zoneId ? picture.mirror?.pairs[zoneId] : undefined;
 }

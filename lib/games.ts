@@ -18,7 +18,8 @@ export type GameId =
     | "gaze"
     | "letters"
     | "numbers"
-    | "food";
+    | "food"
+    | "puzzle";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -37,7 +38,8 @@ export type GameType =
     | "gaze"
     | "letters"
     | "numbers"
-    | "food";
+    | "food"
+    | "puzzle";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -474,6 +476,31 @@ export const GAMES: GameDefinition[] = [
         // 7. po redu: ko šta jede — poznate životinje i hrana, pre pitanja o nameni predmeta
         ages: { min: 3, max: 7 },
         order: 7,
+    },
+    {
+        id: "puzzle",
+        gameType: "puzzle",
+        activityId: 22,
+        title: "Složi sliku",
+        description: "Spoji delove u celu sliku",
+        skill: "Vizuelno-prostorno opažanje",
+        icon: "🧩",
+        image: "/images/slozisliku.svg",
+        accent: {
+            solid: "bg-purple-500",
+            edge: "border-purple-700",
+            soft: "bg-purple-50",
+            text: "text-purple-700",
+            border: "border-purple-200",
+            ring: "ring-purple-200",
+            gradient: "from-fuchsia-400 to-purple-600",
+        },
+        offscreenTip:
+            "Isecite staru razglednicu ili crtež na dva dela, pa na tri-četiri, i slažite zajedno. Prvo vi pokažite gde ide jedan deo, pa neka dete doda ostale. Pričajte šta je na delu: „Ovde je nebo, ono ide gore.”",
+        graded: true,
+        // Slaganje slike od delova: od dve polovine do 16 delova, za sve uzraste
+        ages: { min: 3, max: 10 },
+        order: 17,
     },
 ];
 
