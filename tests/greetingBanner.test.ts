@@ -38,3 +38,19 @@ describe("drugar u uglu dok dete skroluje", () => {
         assert.match(floating, /<CompanionStage[^>]*framing="portrait"/);
     });
 });
+
+describe("kupljena pozadina preko cele strane", () => {
+    it("baner pokazuje samo drugara (bez sveta koji bi se razvukao), a svet je iza cele strane", () => {
+        assert.match(BANNER, /<CompanionStage[^>]*framing="wide"[^>]*background=\{false\}/);
+        assert.match(SOURCE, /\{showAvatar && <CompanionWorld \/>\}/);
+        assert.match(SOURCE, /relative isolate min-h-dvh/);
+    });
+
+    it("svet je snimak (ne živo platno), ispod svega i ne hvata dodir", () => {
+        const world = readFileSync(path.join(process.cwd(), "app/dashboard/child/[id]/CompanionWorld.tsx"), "utf8");
+        assert.match(world, /pointer-events-none fixed inset-0 -z-10/);
+        assert.match(world, /aria-hidden="true"/);
+        assert.match(world, /framing: "item" as const,\s*slot: "background" as const/);
+        assert.doesNotMatch(world, /CompanionStage/);
+    });
+});
