@@ -2,6 +2,9 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
 import { PATCH, POST } from "@/app/api/activities/complete/route";
+import { GAME_LOCKED } from "@/lib/gameAccess";
+import { resolveSettings } from "@/lib/childSettings";
+import { GAMES, sortGamesForChild } from "@/lib/games";
 import {
     CHILD_ID,
     OTHER_CHILD_ID,
@@ -362,7 +365,8 @@ describe("POST /api/activities/complete — database without newer migrations", 
 
     it("keeps the saved result when awarding points fails", async (t) => {
         const logged = t.mock.method(console, "error", () => undefined);
-        db.failNext("children", "select", { code: "XX000" });
+        // Prvo čitanje deteta je provera da li je igra otključana; nagrada je upis poena
+        db.failNext("children", "update", { code: "XX000" });
         const response = await post(result());
         assert.equal(response.status, 200);
         const body = await readJson(response);
@@ -439,5 +443,56 @@ describe("PATCH /api/activities/complete — mood after play", () => {
         await patch({ childId: CHILD_ID, sessionId: saved.sessionId, logIds: [saved.logId], moodAfter: "neutral" });
         assert.equal(visits()[0].mood_after, "neutral");
         assert.equal("mood_after" in logs()[0], false);
+    });
+});
+
+describe("POST /api/activities/complete — games the parent locked", () => {
+    /** Igre redom za Milu (uzrast iz datuma rođenja, kao na serveru) */
+    const order = () => {
+        const mila = childRow()!;
+        return sortGamesForChild(GAMES, resolveSettings(mila.settings, mila.date_of_birth as string).playAge);
+    };
+    /** Pogled `child_game_progress` (u lažnoj bazi je to obična tabela) */
+    const passedLevels = (activityId: number, upTo: number) =>
+        db.seed("child_game_progress", [{ child_id: CHILD_ID, activity_id: activityId, highest_level_passed: upTo }]);
+
+    it("refuses a game the parent switched off, for the child and the parent alike, and stores nothing", async () => {
+        childRow()!.settings = { disabledGames: ["shapes"] };
+        for (const signIn of [() => signInAsChild(CHILD_ID), () => signInAsParent()]) {
+            signIn();
+            const response = await post(result({ activityId: 1 }));
+            assert.equal(response.status, 403);
+            assert.deepEqual(await readJson(response), { error: GAME_LOCKED });
+        }
+        assert.equal(logs().length, 0);
+        assert.equal(visits().length, 0);
+        assert.equal(childRow()?.experience_points, 0);
+        assert.equal((await post(result({ activityId: 3 }))).status, 200);
+    });
+
+    it("with unlocking in order, saves only the first game until its level 3 is passed", async () => {
+        childRow()!.settings = { unlockInOrder: true };
+        signInAsChild(CHILD_ID);
+        const [first, second, third] = order();
+        assert.equal((await post(result({ activityId: second.activityId, level: 1 }))).status, 403);
+        assert.equal((await post(result({ activityId: first.activityId, level: 1 }))).status, 200);
+
+        passedLevels(first.activityId, 3);
+        assert.equal((await post(result({ activityId: second.activityId, level: 1 }))).status, 200);
+        assert.equal((await post(result({ activityId: third.activityId, level: 1 }))).status, 403);
+    });
+
+    it("with unlocking in order, still saves games from the parent's plan and games already played", async () => {
+        const [, second, third] = order();
+        childRow()!.settings = { unlockInOrder: true, plan: [third.id] };
+        passedLevels(second.activityId, 1);
+        signInAsChild(CHILD_ID);
+        assert.equal((await post(result({ activityId: third.activityId, level: 1 }))).status, 200);
+        assert.equal((await post(result({ activityId: second.activityId, level: 2 }))).status, 200);
+    });
+
+    it("saves every game when nothing is locked, also in a database without the settings column", async () => {
+        db.dropColumns("children", "settings");
+        for (const game of GAMES.slice(0, 3)) assert.equal((await post(result({ activityId: game.activityId }))).status, 200, game.id);
     });
 });

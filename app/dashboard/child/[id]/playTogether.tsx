@@ -1,0 +1,604 @@
+// app/dashboard/child/[id]/playTogether.tsx
+"use client";
+
+// „Igraj sa drugom” (isti uređaj, na smenu). Dete bira druga — dete sa istog roditeljskog
+// naloga ili drug čije ime upiše odrasli — i oboje igraju isti nivo: jedan zadatak jedno,
+// sledeći drugo. Svako ima svoju boju i svog drugara; na vrhu igre uvek piše čiji je red
+// („Sada igra Amar”), a ko čeka vidi karticu „Sačekaj svoj red”. Na kraju pohvala oboma,
+// bez poređenja: „Zajedno ste skupili 12 zvezdica!”. Novčiće i nivoe dobija samo prijavljeno
+// dete; drug dobija pohvalu. Ime druga upisanog na uređaju ostaje samo na ovom uređaju.
+//
+// Igre se ne menjaju: red se čita iz stanja koje igra ionako šalje posle svakog poteza
+// (GameEventTapProvider u lib/realtime.ts → turnIndexFor u lib/playTogether.ts).
+
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Image from "next/image";
+import { ArrowRight, Check, Hand, RotateCcw, UserPlus, Users, X } from "lucide-react";
+import { useCalmMotion } from "@/app/components/avatar/motion";
+import CompanionPicture from "@/app/components/avatar3d/CompanionPicture";
+import type { Wear } from "@/app/components/avatar3d/data";
+import { Button } from "@/app/components/ui/Button";
+import { CoinIcon } from "@/app/components/ui/CoinIcon";
+import { Modal } from "@/app/components/ui/Modal";
+import { COINS_PER_STAR } from "@/lib/companion";
+import { cn } from "@/lib/cn";
+import { LEVELS_PER_TIER, MAX_LEVEL, getGame, type GameDefinition, type GameId } from "@/lib/games";
+import {
+    FRIEND_KINDS,
+    TOGETHER_GAMES,
+    cleanFriendName,
+    isTogetherGame,
+    parseSavedFriends,
+    rememberFriend,
+    togetherPraise,
+    turnIndexFor,
+    type TogetherPlayer,
+} from "@/lib/playTogether";
+import { GameEventTapProvider } from "@/lib/realtime";
+import type { GameUpdate } from "@/lib/types";
+import { chosenSkin, useCompanion } from "./companionState";
+
+// ── Boje igrača ───────────────────────────────────────────────────────────────
+
+/** Svaki igrač ima svoju boju (i oblik znaka), da se red vidi i bez čitanja */
+const LOOKS = [
+    { solid: "bg-brand-600", soft: "bg-brand-50", ring: "ring-brand-400", text: "text-brand-700", border: "border-brand-500", mark: "★" },
+    { solid: "bg-orange-500", soft: "bg-orange-50", ring: "ring-orange-400", text: "text-orange-700", border: "border-orange-400", mark: "●" },
+] as const;
+
+// ── Stanje zajedničke igre ──────────────────────────────────────────────────────
+
+interface TogetherValue {
+    childId: number;
+    preview: boolean;
+    host: TogetherPlayer;
+    friend: TogetherPlayer | null;
+    choose: (friend: TogetherPlayer) => void;
+    stop: () => void;
+    /** Zbir zvezdica svih zajedno odigranih nivoa */
+    totalStars: number;
+    /** Broj zajedno odigranih nivoa (red na sledećem nivou počinje onaj ko je čekao) */
+    levels: number;
+    /** Zvezdice po partiji (ključ: igra–nivo–pokušaj) */
+    scores: Record<string, number>;
+    /** Beleži zvezdice nivoa (jednom po partiji) */
+    addLevel: (key: string, stars: number) => void;
+}
+
+const TogetherContext = createContext<TogetherValue | null>(null);
+
+/** Stanje igre sa drugom; van provajdera null (igra radi kao i do sada) */
+export function useTogether(): TogetherValue | null {
+    return useContext(TogetherContext);
+}
+
+interface ProviderProps {
+    childId: number;
+    childName: string;
+    gender?: string;
+    preview?: boolean;
+    children: ReactNode;
+}
+
+export function TogetherProvider({ childId, childName, gender, preview = false, children }: ProviderProps) {
+    const companion = useCompanion();
+    const [friend, setFriend] = useState<TogetherPlayer | null>(null);
+    const [scores, setScores] = useState<Record<string, number>>({});
+
+    const host = useMemo<TogetherPlayer>(
+        () => ({
+            name: childName,
+            kind: companion?.kind ?? (gender?.toLowerCase() === "female" ? "girl" : "boy"),
+            skin: chosenSkin(companion),
+            wear: companion?.wear as Record<string, string> | undefined,
+            childId,
+        }),
+        [childName, companion, gender, childId]
+    );
+
+    const choose = useCallback((next: TogetherPlayer) => {
+        setFriend(next);
+        setScores({});
+    }, []);
+    const stop = useCallback(() => {
+        setFriend(null);
+        setScores({});
+    }, []);
+    const addLevel = useCallback((key: string, stars: number) => {
+        setScores((prev) => (key in prev ? prev : { ...prev, [key]: stars }));
+    }, []);
+
+    const value = useMemo<TogetherValue>(() => {
+        const list = Object.values(scores);
+        return { childId, preview, host, friend, choose, stop, totalStars: list.reduce((a, b) => a + b, 0), levels: list.length, scores, addLevel };
+    }, [childId, preview, host, friend, choose, stop, scores, addLevel]);
+
+    return <TogetherContext value={value}>{children}</TogetherContext>;
+}
+
+// ── Portret igrača ────────────────────────────────────────────────────────────
+
+function PlayerPicture({ player, look, className, dim = false }: { player: TogetherPlayer; look: (typeof LOOKS)[number]; className?: string; dim?: boolean }) {
+    return (
+        <span className={cn("relative block shrink-0 overflow-hidden rounded-2xl ring-4", look.soft, look.ring, dim && "opacity-60 grayscale", className)}>
+            <CompanionPicture kind={player.kind} skin={player.skin} wear={player.wear as Wear | undefined} variant="bust" eager className="h-full w-full" />
+        </span>
+    );
+}
+
+// ── Početak: „Igraj sa drugom” ─────────────────────────────────────────────────
+
+export function TogetherStartButton() {
+    const together = useTogether();
+    const [open, setOpen] = useState(false);
+    if (!together || together.friend) return null;
+    return (
+        <>
+            <button
+                type="button"
+                onClick={() => setOpen(true)}
+                className="inline-flex min-h-13 items-center gap-2 rounded-2xl border-2 border-b-[5px] border-orange-600 bg-orange-500 px-5 text-base font-extrabold text-white shadow-soft transition-[transform,border-width] hover:bg-orange-600 active:translate-y-[3px] active:border-b-2"
+            >
+                <Users className="h-6 w-6" aria-hidden="true" />
+                Igraj sa drugom
+            </button>
+            <FriendPicker open={open} onClose={() => setOpen(false)} />
+        </>
+    );
+}
+
+interface ServerFriend {
+    id: number;
+    firstName: string;
+    companion: { kind: string; skin: string | null; wear: Record<string, string> };
+}
+
+function savedKey(childId: number) {
+    return `bm-together-friends:${childId}`;
+}
+
+function readSaved(childId: number): TogetherPlayer[] {
+    try {
+        return parseSavedFriends(window.localStorage.getItem(savedKey(childId)));
+    } catch {
+        return [];
+    }
+}
+
+function writeSaved(childId: number, list: TogetherPlayer[]) {
+    try {
+        window.localStorage.setItem(savedKey(childId), JSON.stringify(list));
+    } catch {
+        /* skladište nije dostupno: drug važi samo za ovu igru */
+    }
+}
+
+function FriendPicker({ open, onClose }: { open: boolean; onClose: () => void }) {
+    const together = useTogether();
+    const childId = together?.childId ?? 0;
+    const preview = together?.preview ?? false;
+    const [siblings, setSiblings] = useState<TogetherPlayer[] | null>(null);
+    const [saved, setSaved] = useState<TogetherPlayer[]>([]);
+    const [adding, setAdding] = useState(false);
+    const [name, setName] = useState("");
+    const [kind, setKind] = useState<string>(FRIEND_KINDS[0]);
+
+    useEffect(() => {
+        if (!open) return;
+        const controller = new AbortController();
+        queueMicrotask(() => {
+            if (controller.signal.aborted) return;
+            setSaved(readSaved(childId));
+            setAdding(false);
+            setName("");
+        });
+        if (preview) {
+            // Probni prikaz: izmišljen brat ili sestra sa istog naloga
+            queueMicrotask(() => !controller.signal.aborted && setSiblings([{ name: "Amar", kind: "dog", childId: -1 }]));
+            return () => controller.abort();
+        }
+        fetch(`/api/children/${childId}/friends`, { cache: "no-store", signal: controller.signal })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                const list = Array.isArray(data?.friends) ? (data.friends as ServerFriend[]) : [];
+                setSiblings(list.map((f) => ({ name: f.firstName, kind: f.companion.kind, skin: f.companion.skin ?? undefined, wear: f.companion.wear, childId: f.id })));
+            })
+            .catch(() => {
+                if (!controller.signal.aborted) setSiblings([]);
+            });
+        return () => controller.abort();
+    }, [open, childId, preview]);
+
+    if (!together) return null;
+    const cleaned = cleanFriendName(name);
+
+    const pick = (friend: TogetherPlayer) => {
+        if (friend.childId === undefined) {
+            const next = rememberFriend(saved, friend);
+            writeSaved(childId, next);
+        }
+        together.choose(friend);
+        onClose();
+    };
+
+    const people = [...(siblings ?? []), ...saved];
+
+    return (
+        <Modal open={open} onClose={onClose} title="Ko igra sa tobom?" size="md">
+            {!adding ? (
+                <div className="space-y-5">
+                    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {people.map((friend) => (
+                            <li key={`${friend.childId ?? "d"}-${friend.name}`}>
+                                <button
+                                    type="button"
+                                    onClick={() => pick(friend)}
+                                    className="flex w-full flex-col items-center gap-2 rounded-tile border-2 border-b-[5px] border-orange-200 bg-orange-50 p-3 text-center transition-[transform,border-width] hover:border-orange-300 active:translate-y-[3px] active:border-b-2"
+                                >
+                                    <PlayerPicture player={friend} look={LOOKS[1]} className="h-24 w-24" />
+                                    <span className="w-full truncate font-display text-lg font-extrabold text-ink">{friend.name}</span>
+                                </button>
+                            </li>
+                        ))}
+                        <li>
+                            <button
+                                type="button"
+                                onClick={() => setAdding(true)}
+                                className="flex h-full min-h-40 w-full flex-col items-center justify-center gap-2 rounded-tile border-2 border-dashed border-line bg-surface p-3 text-center text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+                            >
+                                <UserPlus className="h-10 w-10" aria-hidden="true" />
+                                <span className="font-display text-lg font-extrabold">Novi drug</span>
+                            </button>
+                        </li>
+                    </ul>
+                    {siblings === null && <p className="text-sm font-bold text-ink-faint" role="status">Tražim drugove…</p>}
+                    <p className="rounded-xl bg-canvas px-4 py-3 text-sm font-semibold normal-case text-ink-soft">
+                        <span className="font-extrabold text-ink">Za odrasle:</span> igrate na smenu na ovom uređaju — jedan zadatak {together.host.name}, jedan drug.
+                        Novčiće i nivoe dobija {together.host.name}, a drug pohvalu.
+                    </p>
+                </div>
+            ) : (
+                <form
+                    className="space-y-5"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        if (cleaned) pick({ name: cleaned, kind });
+                    }}
+                >
+                    <label className="block">
+                        <span className="block text-base font-extrabold text-ink">Ime druga</span>
+                        <span className="block text-sm font-semibold normal-case text-ink-soft">Upisuje odrasli. Samo ime; ostaje samo na ovom uređaju.</span>
+                        <input
+                            value={name}
+                            onChange={(event) => setName(event.target.value)}
+                            maxLength={16}
+                            autoComplete="off"
+                            autoFocus
+                            className="mt-2 block min-h-13 w-full rounded-xl border-2 border-line bg-surface px-4 text-lg font-bold text-ink outline-none focus:border-brand-400"
+                            placeholder="npr. Amar"
+                        />
+                    </label>
+                    <fieldset>
+                        <legend className="text-base font-extrabold text-ink">Drugar za druga</legend>
+                        <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                            {FRIEND_KINDS.map((option) => (
+                                <button
+                                    key={option}
+                                    type="button"
+                                    aria-pressed={kind === option}
+                                    aria-label={KIND_NAMES[option] ?? option}
+                                    onClick={() => setKind(option)}
+                                    className={cn(
+                                        "rounded-2xl border-2 p-1 transition-colors",
+                                        kind === option ? "border-orange-500 bg-orange-50" : "border-line bg-surface hover:border-orange-200"
+                                    )}
+                                >
+                                    <CompanionPicture kind={option} variant="face" eager className="aspect-square w-full" />
+                                </button>
+                            ))}
+                        </div>
+                    </fieldset>
+                    <div className="flex flex-col gap-3 sm:flex-row-reverse">
+                        <Button type="submit" chunky size="lg" variant="success" disabled={!cleaned} className="sm:flex-1">
+                            Igrajmo zajedno
+                            <ArrowRight className="h-5 w-5" aria-hidden="true" />
+                        </Button>
+                        <Button type="button" size="lg" variant="secondary" onClick={() => setAdding(false)}>
+                            Nazad
+                        </Button>
+                    </div>
+                </form>
+            )}
+        </Modal>
+    );
+}
+
+const KIND_NAMES: Record<string, string> = { dog: "Kuca", cat: "Maca", bunny: "Zeka", bear: "Meda", fox: "Lisica", panda: "Panda" };
+
+// ── Izbor igre za dvoje ────────────────────────────────────────────────────────
+
+interface TogetherGamePickerProps {
+    games: GameDefinition[];
+    unlockedFor: (id: GameId) => number;
+    pending?: boolean;
+    unavailable?: boolean;
+    onOpen: (id: GameId) => void;
+}
+
+export function TogetherGamePicker({ games, unlockedFor, pending = false, unavailable = false, onOpen }: TogetherGamePickerProps) {
+    const together = useTogether();
+    if (!together?.friend) return null;
+    const { host, friend } = together;
+    // Samo igre u kojima smena ima smisla (i koje su inače ponuđene)
+    const shown = TOGETHER_GAMES.filter((id) => games.some((g) => g.id === id)).map((id) => getGame(id));
+
+    return (
+        <section aria-label="Igra sa drugom" className="space-y-4 sm:space-y-5">
+            <div className="flex flex-wrap items-center gap-3 rounded-card border-2 border-orange-200 bg-orange-50 p-3 sm:gap-4 sm:p-4">
+                <div className="flex shrink-0 -space-x-3">
+                    <PlayerPicture player={host} look={LOOKS[0]} className="h-16 w-16 sm:h-20 sm:w-20" />
+                    <PlayerPicture player={friend} look={LOOKS[1]} className="h-16 w-16 sm:h-20 sm:w-20" />
+                </div>
+                <div className="min-w-0 flex-1">
+                    <p className="font-display text-xl font-extrabold leading-tight text-ink sm:text-2xl">
+                        {host.name} i {friend.name}
+                    </p>
+                    <p className="text-base font-semibold text-ink-soft">Igrate na smenu. Izaberite igru.</p>
+                </div>
+                <Button variant="secondary" onClick={together.stop}>
+                    <X className="h-5 w-5" aria-hidden="true" />
+                    Kraj igre sa drugom
+                </Button>
+            </div>
+
+            {/* Kartica „Sačekaj svoj red”: deca je upoznaju pre igre, pa je u igri prepoznaju */}
+            <WaitCard />
+
+            <ul className="grid grid-cols-2 gap-3 sm:gap-5 lg:grid-cols-4">
+                {shown.map((game) => {
+                    const done = Math.min(Math.max(unlockedFor(game.id) - 1, 0), MAX_LEVEL);
+                    return (
+                        <li key={game.id}>
+                            <button
+                                type="button"
+                                onClick={() => onOpen(game.id)}
+                                disabled={pending || unavailable}
+                                className="group flex w-full flex-col overflow-hidden rounded-card border-2 border-b-[6px] border-line bg-surface text-left shadow-soft transition-[transform,border-color] hover:border-orange-300 active:translate-y-[3px] active:border-b-2 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <span className="relative block aspect-[16/9] w-full overflow-hidden bg-brand-50">
+                                    <Image src={game.image} alt="" fill sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover" />
+                                </span>
+                                <span className="flex items-center gap-3 p-3 sm:p-4">
+                                    <span className={cn("hidden h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-2xl sm:grid", game.accent.gradient)} aria-hidden="true">
+                                        {game.icon}
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                        <span className="block font-display text-base font-extrabold leading-tight text-ink sm:truncate sm:text-lg">{game.title}</span>
+                                        <span className="block truncate text-sm font-semibold text-ink-soft">
+                                            {done} / {MAX_LEVEL} nivoa
+                                        </span>
+                                    </span>
+                                </span>
+                            </button>
+                        </li>
+                    );
+                })}
+            </ul>
+        </section>
+    );
+}
+
+/** Slikovna kartica „Sačekaj svoj red”: ruka na kolenu, peščani sat — mirno čekanje */
+function WaitCard({ compact = false, className }: { compact?: boolean; className?: string }) {
+    return (
+        <div className={cn("flex items-center gap-3 rounded-2xl border-2 border-sky-200 bg-sky-50", compact ? "px-2.5 py-1.5" : "p-3 sm:p-4", className)}>
+            <span className={cn("grid shrink-0 place-items-center rounded-xl bg-white text-sky-700 shadow-soft", compact ? "h-9 w-9" : "h-14 w-14")} aria-hidden="true">
+                <Hand className={compact ? "h-5 w-5" : "h-8 w-8"} />
+            </span>
+            <span className="min-w-0">
+                <span className={cn("block font-display font-extrabold leading-tight text-sky-800", compact ? "text-sm sm:text-base" : "text-lg sm:text-xl")}>Sačekaj svoj red</span>
+                {!compact && <span className="block text-sm font-semibold text-sky-700 sm:text-base">Ruke mirno. Gledaj kako drug igra. Odmah si ti na redu.</span>}
+            </span>
+        </div>
+    );
+}
+
+// ── U igri: čiji je red ────────────────────────────────────────────────────────
+
+/** Posle promene reda dodiri se kratko ne primaju: prethodni igrač ne „uskoči” u tuđi potez */
+const HANDOFF_GUARD_MS = 700;
+
+interface TurnLayerProps {
+    gameId: GameId;
+    children: ReactNode;
+}
+
+/**
+ * Omotač igre u zajedničkoj igri: traka „Sada igra …” iznad igre i kratka zaštita pri smeni.
+ * Van zajedničke igre (ili u igri bez smene) samo prikazuje igru. Ključ omotača je partija
+ * (igra–nivo–pokušaj), kao i same igre.
+ */
+export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
+    const together = useTogether();
+    const active = Boolean(together?.friend) && isTogetherGame(gameId);
+    const [turn, setTurn] = useState(0);
+    const [guard, setGuard] = useState(0);
+    const turnRef = useRef(0);
+    // Na svakom sledećem nivou prvi igra onaj ko je na prethodnom počinjao drugi (omotač se
+    // pravi iznova za svaku partiju, pa se broj nivoa čita jednom, na početku)
+    const [offset] = useState(() => (together?.levels ?? 0) % 2);
+
+    const onUpdate = useCallback(
+        (update: GameUpdate) => {
+            if (update.event === "completed") return;
+            const index = turnIndexFor(gameId, update.data);
+            if (index === null || index === turnRef.current) return;
+            turnRef.current = index;
+            setTurn(index);
+            setGuard(Date.now());
+        },
+        [gameId]
+    );
+
+    useEffect(() => {
+        if (!guard) return;
+        const timer = setTimeout(() => setGuard(0), HANDOFF_GUARD_MS);
+        return () => clearTimeout(timer);
+    }, [guard]);
+
+    if (!active || !together?.friend) return <>{children}</>;
+    const players = [together.host, together.friend];
+    const now = (turn + offset) % 2;
+    const waiting = 1 - now;
+
+    return (
+        <GameEventTapProvider value={onUpdate}>
+            <div className="relative flex flex-1 flex-col gap-2 sm:gap-3">
+                <TurnStrip key={now} player={players[now]} look={LOOKS[now]} other={players[waiting]} otherLook={LOOKS[waiting]} />
+                <div className={cn("relative flex flex-1 flex-col rounded-[1.75rem] border-4 border-dashed p-1 transition-colors", LOOKS[now].border)}>
+                    {children}
+                    {guard > 0 && <div className="absolute inset-0 z-30" aria-hidden="true" />}
+                </div>
+            </div>
+        </GameEventTapProvider>
+    );
+}
+
+function TurnStrip({ player, look, other, otherLook }: { player: TogetherPlayer; look: (typeof LOOKS)[number]; other: TogetherPlayer; otherLook: (typeof LOOKS)[number] }) {
+    const calm = useCalmMotion();
+    return (
+        <div className="flex items-stretch gap-2 sm:gap-3" role="status" aria-live="polite">
+            <div className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-2.5 py-2 text-white shadow-soft sm:px-4", look.solid, !calm && "animate-pop")}>
+                <PlayerPicture player={player} look={look} className="h-12 w-12 bg-white sm:h-16 sm:w-16" />
+                <span className="min-w-0">
+                    <span className="block text-xs font-extrabold uppercase tracking-wide text-white/85 sm:text-sm">
+                        <span aria-hidden="true">{look.mark} </span>Tvoj red
+                    </span>
+                    <span className="block truncate font-display text-lg font-extrabold leading-tight sm:text-2xl">Sada igra {player.name}</span>
+                </span>
+            </div>
+            <div className="flex shrink-0 items-center gap-2 rounded-2xl border-2 border-line bg-surface px-2 py-1.5 sm:px-3">
+                <span className="relative shrink-0">
+                    <PlayerPicture player={other} look={otherLook} dim className="h-10 w-10 sm:h-12 sm:w-12" />
+                    {/* Kartica „Sačekaj svoj red” u malom: ruka, i kad za tekst nema mesta */}
+                    <span className="absolute -bottom-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full bg-sky-600 text-white shadow-soft ring-2 ring-white" aria-hidden="true">
+                        <Hand className="h-3.5 w-3.5" />
+                    </span>
+                </span>
+                <span className="hidden min-w-0 min-[480px]:block">
+                    <span className="block max-w-28 truncate text-sm font-extrabold text-ink sm:max-w-36">{other.name}</span>
+                    <span className="flex items-center gap-1 text-xs font-extrabold text-sky-700 sm:text-sm">
+                        <Hand className="h-4 w-4" aria-hidden="true" />
+                        Sačekaj svoj red
+                    </span>
+                </span>
+                <span className="sr-only min-[480px]:hidden">{other.name}: sačekaj svoj red</span>
+            </div>
+        </div>
+    );
+}
+
+// ── Kraj nivoa: zajednička pohvala ───────────────────────────────────────────────
+
+interface TogetherEndProps {
+    gameId: GameId;
+    /** Ključ partije (igra–nivo–pokušaj): zvezdice se broje jednom */
+    playKey: string;
+    stars: number;
+    level: number;
+    advance: boolean;
+    limitReached: boolean;
+    saved: "saving" | "ok" | "failed";
+    onNext: () => void;
+    onRetry: () => void;
+    onLeave: () => void;
+}
+
+/** Da li se kraj nivoa u ovoj igri prikazuje kao zajednička pohvala */
+export function useTogetherEnd(gameId: GameId | null | undefined): boolean {
+    const together = useTogether();
+    return Boolean(together?.friend) && isTogetherGame(gameId);
+}
+
+export function TogetherEnd({ playKey, stars, level, advance, limitReached, saved, onNext, onRetry, onLeave }: TogetherEndProps) {
+    const together = useTogether();
+    const addLevel = together?.addLevel;
+    useEffect(() => {
+        addLevel?.(playKey, stars);
+    }, [addLevel, playKey, stars]);
+
+    const panelRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        panelRef.current?.focus();
+    }, []);
+
+    if (!together?.friend) return null;
+    const { host, friend } = together;
+    // Zbir svih zajedničkih nivoa; ovaj nivo se ubraja i pre nego što se upiše (prvo crtanje)
+    const sum = together.totalStars + (playKey in together.scores ? 0 : stars);
+    const praise = togetherPraise([host.name, friend.name], sum);
+    const lastInTier = level % LEVELS_PER_TIER === 0;
+    const canNext = advance && !lastInTier && level < MAX_LEVEL;
+
+    return (
+        <div className="absolute inset-0 z-10 flex items-end justify-center bg-ink/55 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="alertdialog" aria-modal="true" aria-label={praise.title}>
+            <div ref={panelRef} tabIndex={-1} className="max-h-full w-full max-w-lg animate-fade-up overflow-y-auto rounded-t-[2rem] bg-surface p-6 text-center shadow-pop outline-none sm:rounded-[2rem] sm:p-9">
+                <div className="flex items-end justify-center gap-4 sm:gap-8">
+                    {[host, friend].map((player, index) => (
+                        <div key={index} className="flex min-w-0 flex-col items-center gap-2">
+                            <PlayerPicture player={player} look={LOOKS[index]} className="h-28 w-28 sm:h-32 sm:w-32" />
+                            <span className={cn("max-w-32 truncate font-display text-lg font-extrabold", LOOKS[index].text)}>{player.name}</span>
+                            {index === 0 ? (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-sun-100 px-3 py-1 text-base font-extrabold text-sun-700 ring-1 ring-sun-300">
+                                    + {stars * COINS_PER_STAR} <CoinIcon className="h-5 w-5" />
+                                    <span className="sr-only">novčića</span>
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-base font-extrabold text-orange-700 ring-1 ring-orange-300">
+                                    <span aria-hidden="true">👏</span> Bravo!
+                                </span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                <div className="mt-5 flex justify-center gap-2" aria-label={`${stars} od 3 zvezdice`}>
+                    {[1, 2, 3].map((s) => (
+                        <span key={s} className={cn("text-5xl", s <= stars ? "animate-pop" : "opacity-20 grayscale")} aria-hidden="true">
+                            ⭐
+                        </span>
+                    ))}
+                </div>
+                <h2 className="mt-3 text-2xl font-extrabold text-ink sm:text-3xl">{praise.title}</h2>
+                <p className="mt-1 text-lg font-extrabold text-sun-700 sm:text-xl">{praise.text}</p>
+                <p className="mt-2 text-base font-semibold text-ink-soft">Odlično se smenjujete.</p>
+                {limitReached && <p className="mt-2 text-base font-semibold text-ink-soft">Za danas smo završili. Vidimo se sledeći put.</p>}
+
+                <div className="mt-6 flex flex-col gap-3">
+                    {!limitReached && canNext && (
+                        <Button chunky size="xl" variant="success" block onClick={onNext}>
+                            Još jedan nivo zajedno
+                            <ArrowRight className="h-6 w-6" aria-hidden="true" />
+                        </Button>
+                    )}
+                    {!limitReached && !canNext && (
+                        <Button chunky size="xl" variant="sun" block onClick={onRetry}>
+                            <RotateCcw className="h-6 w-6" aria-hidden="true" />
+                            Igrajte još jednom
+                        </Button>
+                    )}
+                    <Button chunky size="xl" variant="secondary" block onClick={onLeave}>
+                        <Check className="h-6 w-6" aria-hidden="true" />
+                        {limitReached ? "Gotovo za danas" : "Gotovo"}
+                    </Button>
+                </div>
+                <p className="mt-4 border-t border-line pt-3 text-sm font-semibold normal-case text-ink-faint">
+                    <span className="font-extrabold text-ink-soft">Za odrasle:</span> novčići i nivo idu detetu koje je prijavljeno ({host.name}); drug dobija pohvalu.
+                </p>
+                <p className="mt-1 min-h-5 text-xs font-bold normal-case text-ink-faint" aria-live="polite">
+                    {saved === "failed" && "Nema interneta. Rezultat nije sačuvan."}
+                </p>
+            </div>
+        </div>
+    );
+}

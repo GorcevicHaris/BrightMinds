@@ -8,9 +8,9 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, BarChart3, Radio } from "lucide-react";
 import { buttonClasses } from "@/app/components/ui/Button";
 import { Logo } from "@/app/components/ui/Logo";
-import { AuthError, requireChildOwner } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { supabaseAdmin } from "@/lib/supabase";
+import { ownerPageAccess } from "./access";
 
 /** Ime i pol (zbog oblika reči u igrama); prezime se na ovim stranicama ne prikazuje, pa se i ne učitava. */
 export interface OwnedChild {
@@ -25,15 +25,11 @@ export interface OwnedChild {
  * ili nepostojeće dete vraćaju na /dashboard.
  */
 export async function loadOwnedChild(idParam: string): Promise<OwnedChild> {
-    const childId = /^[1-9]\d{0,14}$/.test(idParam) ? Number(idParam) : Number.NaN;
-    if (Number.isNaN(childId)) redirect("/dashboard");
-
-    try {
-        await requireChildOwner(childId);
-    } catch (error) {
-        if (error instanceof AuthError) redirect(error.status === 401 ? "/login" : "/dashboard");
-        throw error;
-    }
+    const access = await ownerPageAccess(idParam);
+    if (access.kind === "login") redirect("/login");
+    if (access.kind === "unavailable") throw new Error("Podaci o detetu trenutno nisu dostupni");
+    if (access.kind !== "ok") redirect("/dashboard");
+    const childId = access.childId;
 
     const { data } = await supabaseAdmin.from("children").select("first_name, gender").eq("id", childId).maybeSingle();
     const firstName = typeof data?.first_name === "string" ? data.first_name.trim() : "";

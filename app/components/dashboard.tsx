@@ -15,6 +15,7 @@ import { Logo } from "./ui/Logo";
 import { Modal } from "./ui/Modal";
 import { cn } from "@/lib/cn";
 import { BAND_PRESETS, ageInYears, bandForAge, sanitizeSettings } from "@/lib/childSettings";
+import { parentReminderText, reminderDue } from "@/lib/reminder";
 import { PIN_LENGTH, pinToItems } from "@/lib/visualPinData";
 
 interface Child {
@@ -29,6 +30,8 @@ interface Child {
     experience_points: number | null;
     /** Sirova podešavanja iz baze; {} dok ih roditelj ne promeni */
     settings?: unknown;
+    /** Da li dete danas ima završenu partiju (za podsetnik) */
+    played_today?: boolean;
 }
 
 interface CurrentUser {
@@ -256,6 +259,8 @@ export default function Dashboard() {
                         </Button>
                     </Card>
                 )}
+
+                {loadState === "ready" && children.length > 0 && <ParentReminders kids={children} />}
 
                 {loadState === "ready" && children.length > 0 && (
                     <ul className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -760,5 +765,43 @@ function ChildFormModal({ child, onClose, onSaved }: ChildFormModalProps) {
                 </div>
             </form>
         </Modal>
+    );
+}
+
+/** Trenutno vreme, osveženo jednom u minuti (za podsetnik koji počinje u zadato vreme). */
+function useMinuteClock(): number {
+    const [now, setNow] = useState(() => Date.now());
+    useEffect(() => {
+        const timer = setInterval(() => setNow(Date.now()), 60_000);
+        return () => clearInterval(timer);
+    }, []);
+    return now;
+}
+
+/**
+ * Podsetnik roditelju (uključuje se u podešavanjima deteta, „Mir i vreme” → „Podsetnik”):
+ * posle izabranog vremena, za dete koje danas još nije igralo. Samo tekst na panelu —
+ * bez obaveštenja i mejlova.
+ */
+function ParentReminders({ kids }: { kids: Child[] }) {
+    const now = useMinuteClock();
+    const due = kids.filter((child) => {
+        const { reminder } = sanitizeSettings(child.settings, bandForAge(ageInYears(child.date_of_birth)));
+        return reminderDue(reminder, child.played_today === true, new Date(now));
+    });
+    if (due.length === 0) return null;
+    return (
+        <ul className="mb-6 space-y-2" aria-label="Podsetnici za danas">
+            {due.map((child) => (
+                <li key={child.id} className="flex flex-wrap items-center gap-3 rounded-card border border-sun-300 bg-sun-50 px-4 py-3">
+                    <span className="text-2xl" aria-hidden="true">⏰</span>
+                    <p className="min-w-0 flex-1 text-base font-extrabold text-sun-700">{parentReminderText(child.first_name, child.gender)}</p>
+                    <Link href={`/dashboard/child/${child.id}`} className={buttonClasses({ variant: "secondary", size: "sm" })}>
+                        <Play className="h-4 w-4" aria-hidden="true" />
+                        Pokreni igru
+                    </Link>
+                </li>
+            ))}
+        </ul>
     );
 }

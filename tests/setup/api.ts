@@ -3,6 +3,7 @@
 // Rute se pozivaju direktno kao funkcije (`POST(request)`), bez servera.
 import jwt from "jsonwebtoken";
 import { mock } from "node:test";
+import { pinFingerprint } from "@/lib/auth";
 import { dateOnlyInTimeZone, shiftDateOnly } from "@/lib/validation";
 import { db, type Row } from "./fakeSupabase";
 import { cookieJar } from "./nextHeaders";
@@ -71,9 +72,20 @@ export function signInAsParent(user: TestUser = PARENT): void {
     cookieJar.set(SESSION_COOKIE, jwt.sign({ id: user.id, email: user.email, role: user.role }, testSecret(), { expiresIn: "1h" }));
 }
 
-/** Dečja sesija (prijava PIN-om): nosi `childId` i nalog roditelja. */
-export function signInAsChild(childId: number = CHILD_ID, owner: TestUser = PARENT): void {
-    const payload = { id: owner.id, email: owner.email, role: owner.role, childId };
+/**
+ * Dečja sesija (prijava PIN-om): nosi `childId`, nalog roditelja i otisak tajnog koda.
+ * Bez `pin` otisak se računa od koda koji dete trenutno ima u bazi (zato se poziva posle
+ * `seedFamily`); `pin: null` pravi stariji oblik sesije, bez otiska.
+ */
+export function signInAsChild(childId: number = CHILD_ID, owner: TestUser = PARENT, pin?: string | null): void {
+    const current = pin === undefined ? db.rows("children").find((row) => row.id === childId)?.pin_code : pin;
+    const payload = {
+        id: owner.id,
+        email: owner.email,
+        role: owner.role,
+        childId,
+        ...(typeof current === "string" ? { pv: pinFingerprint(childId, current) } : {}),
+    };
     cookieJar.set(SESSION_COOKIE, jwt.sign(payload, testSecret(), { expiresIn: "1h" }));
 }
 
