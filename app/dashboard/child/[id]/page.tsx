@@ -2,12 +2,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AuthError, requireChildAccess } from "@/lib/auth";
 import { ageInYears, resolveSettings, type ResolvedSettings } from "@/lib/childSettings";
 import { realtimeTopicFor } from "@/lib/realtimeTopic";
+import { reminderDue } from "@/lib/reminder";
 import { supabaseAdmin } from "@/lib/supabase";
+import { childrenWhoPlayedToday } from "@/app/api/_lib/children";
 import { buttonClasses } from "@/app/components/ui/Button";
 import ChildPageClient from "./ChildPageClient";
+import { childPageAccess } from "../../_shared/access";
 
 export const metadata: Metadata = { title: "Igre" };
 
@@ -43,21 +45,17 @@ function Problem({ title, text }: { title: string; text: string }) {
 }
 
 export default async function ChildPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const childId = Number(id);
-
-    // Pristup ima samo roditelj ovog deteta ili dete prijavljeno svojim kodom
-    let viewer: "child" | "parent";
-    try {
-        const session = await requireChildAccess(childId);
-        viewer = session.childId ? "child" : "parent";
-    } catch (error) {
-        if (error instanceof AuthError && error.status === 401) redirect("/login");
-        if (error instanceof AuthError) {
-            return <Problem title="Nemaš pristup" text="Ovaj profil ne postoji ili ne pripada tvom nalogu." />;
-        }
+    // Pristup ima samo roditelj ovog deteta ili dete prijavljeno svojim kodom — provera je
+    // ovde, na serveru, pre nego što se učita bilo šta o detetu
+    const access = await childPageAccess((await params).id);
+    if (access.kind === "login") redirect("/login");
+    if (access.kind === "denied") {
+        return <Problem title="Nemaš pristup" text="Ovaj profil ne postoji ili ne pripada tvom nalogu." />;
+    }
+    if (access.kind === "unavailable") {
         return <Problem title="Nešto nije u redu" text="Podaci trenutno nisu dostupni. Pokušaj ponovo malo kasnije." />;
     }
+    const { childId, viewer } = access;
 
     let child: ChildProfile | null = null;
     let settings: ResolvedSettings = resolveSettings(null, null);
@@ -84,5 +82,18 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
         return <Problem title="Profil nije pronađen" text="Ovaj profil ne postoji ili je obrisan." />;
     }
 
-    return <ChildPageClient child={child} viewer={viewer} settings={settings} realtimeTopic={realtimeTopicFor(child.id)} />;
+    // Podsetnik (ako ga je roditelj uključio): da li je dete danas već igralo. Sporedno —
+    // greška samo znači da se podsetnik ovog puta ne prikazuje.
+    let reminder: { playedToday: boolean; initialDue: boolean } | undefined;
+    if (settings.reminder.enabled) {
+        try {
+            const now = new Date();
+            const playedToday = (await childrenWhoPlayedToday([child.id], now)).has(child.id);
+            reminder = { playedToday, initialDue: reminderDue(settings.reminder, playedToday, now) };
+        } catch {
+            reminder = undefined;
+        }
+    }
+
+    return <ChildPageClient child={child} viewer={viewer} settings={settings} realtimeTopic={realtimeTopicFor(child.id)} reminder={reminder} />;
 }

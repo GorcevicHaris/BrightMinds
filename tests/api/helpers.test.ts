@@ -136,9 +136,16 @@ describe("session tokens", () => {
         assert.deepEqual(await getSession(), { userId: 10, email: "roditelj@example.com", role: "parent", childId: undefined });
     });
 
-    it("round-trip a child session with its child id", async () => {
-        setSessionToken(signSession({ userId: 10, email: "roditelj@example.com", role: "parent", childId: 3 }));
-        assert.equal((await getSession())?.childId, 3);
+    it("round-trip a child session with its child id and PIN fingerprint", async () => {
+        setSessionToken(signSession({ userId: 10, email: "roditelj@example.com", role: "parent", childId: 3, pinTag: "abc" }));
+        const session = await getSession();
+        assert.equal(session?.childId, 3);
+        assert.equal(session?.pinTag, "abc");
+    });
+
+    it("never put a PIN fingerprint into a parent session", async () => {
+        setSessionToken(signSession({ userId: 10, email: "roditelj@example.com", role: "parent", pinTag: "abc" }));
+        assert.equal((await getSession())?.pinTag, undefined);
     });
 
     it("expire after seven days", async () => {

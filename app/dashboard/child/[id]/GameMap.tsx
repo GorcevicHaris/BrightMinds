@@ -169,8 +169,8 @@ export default function GameMap({ games, unlockedFor, statusFor, pending = false
     const settings = useChildSettings();
     const companion = useCompanion();
 
-    // posle spajanja: sortGamesForChild / availableGames — redosled i dostupnost stižu iz lib/games.ts;
-    // do tada redosled je GAMES, a zaključana je samo igra koja u dnevnom planu još nije na redu
+    // Redosled po uzrastu i samo otvorene igre stižu spolja (pickerGames u lib/gameAccess.ts);
+    // ovde je zaključana samo igra koja u dnevnom planu još nije na redu
     const stops = useMemo(
         () =>
             games.map((game) => {

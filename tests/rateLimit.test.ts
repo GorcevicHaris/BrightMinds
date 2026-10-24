@@ -2,7 +2,7 @@
 // treći argument `takeAttempt`, pa testovi ne čekaju i ne diraju sat.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { getClientIp, resetRateLimit, takeAttempt, type RateLimitRule } from "@/lib/rateLimit";
+import { getClientIp, resetRateLimit, takeAttempt, takeAttempts, type RateLimitRule } from "@/lib/rateLimit";
 
 const RULE: RateLimitRule = { limit: 3, windowMs: 60_000 };
 const START = 1_000_000;
@@ -168,5 +168,47 @@ describe("getClientIp", () => {
 
     it("cuts an oversized header value to 64 characters", () => {
         assert.equal(getClientIp(requestWith({ "x-forwarded-for": "9".repeat(500) })).length, 64);
+    });
+});
+
+describe("takeAttempts", () => {
+    const LONG: RateLimitRule = { limit: 5, windowMs: 600_000 };
+
+    it("is allowed only while every rule allows it", () => {
+        const short = freshKey();
+        const long = freshKey();
+        const entries = [
+            { key: short, rule: RULE },
+            { key: long, rule: LONG },
+        ];
+        for (let index = 0; index < RULE.limit; index += 1) assert.equal(takeAttempts(entries, START + index).allowed, true);
+        const refused = takeAttempts(entries, START + 10);
+        assert.equal(refused.allowed, false);
+        // Odbijen zahtev ne troši duži prozor: od pet su potrošena samo tri
+        assert.equal(takeAttempt(long, LONG, START + 11).allowed, true);
+        assert.equal(takeAttempt(long, LONG, START + 12).allowed, true);
+        assert.equal(takeAttempt(long, LONG, START + 13).allowed, false);
+    });
+
+    it("reports the longest wait among the rules that refuse", () => {
+        const short = freshKey();
+        const long = freshKey();
+        for (let index = 0; index < LONG.limit; index += 1) takeAttempt(long, LONG, START);
+        for (let index = 0; index < RULE.limit; index += 1) takeAttempt(short, RULE, START);
+        const refused = takeAttempts([{ key: short, rule: RULE }, { key: long, rule: LONG }], START + 1000);
+        assert.equal(refused.allowed, false);
+        assert.equal(refused.retryAfterSec, 599);
+    });
+
+    it("refunds every rule at once", () => {
+        const first = freshKey();
+        const second = freshKey();
+        const entries = [
+            { key: first, rule: RULE },
+            { key: second, rule: RULE },
+        ];
+        for (let index = 0; index < RULE.limit * 3; index += 1) takeAttempts(entries, START + index).refund();
+        assert.equal(takeAttempt(first, RULE, START + 100).allowed, true);
+        assert.equal(takeAttempt(second, RULE, START + 100).allowed, true);
     });
 });

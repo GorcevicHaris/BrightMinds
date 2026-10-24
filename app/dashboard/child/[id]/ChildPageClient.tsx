@@ -20,7 +20,9 @@ import CompanionStage from "@/app/components/avatar3d/CompanionStage";
 import CompanionRoom from "./CompanionRoom";
 import { chosenSkin, CompanionProvider, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
+import LockedGameHint from "./LockedGameHint";
 import { TogetherProvider } from "./playTogether";
+import ReminderBanner from "./ReminderBanner";
 import type { ChildProfile } from "./page";
 
 type View = "games" | "companion" | "progress";
@@ -35,6 +37,8 @@ interface Props {
     /** Probni režim (razvoj): bez mreže */
     preview?: boolean;
     previewUnlocked?: number;
+    /** Dnevni podsetnik (samo kad ga je roditelj uključio): da li je dete danas igralo i da li je sada vreme */
+    reminder?: { playedToday: boolean; initialDue: boolean };
 }
 
 const TABS: { id: View; label: string; Icon: typeof Gamepad2 }[] = [
@@ -98,7 +102,7 @@ function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boo
     );
 }
 
-function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }: Omit<Props, "realtimeTopic">) {
+function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, reminder }: Omit<Props, "realtimeTopic">) {
     const router = useRouter();
     const [view, setView] = useState<View>("games");
     const [points, setPoints] = useState(child.experience_points ?? 0);
@@ -220,6 +224,10 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                             <BannerGreeting firstName={firstName} onGoal={() => setView("companion")} />
                         </GreetingBanner>
 
+                        {reminder && (
+                            <ReminderBanner reminder={settings.reminder} playedToday={reminder.playedToday} initialDue={reminder.initialDue} gameOpen={gameOpen} showCompanion={showAvatar} />
+                        )}
+
                         {/* „Igraj sa drugom” (playTogether.tsx): stanje traje dok je dete na ovoj strani */}
                         <TogetherProvider childId={child.id} childName={firstName} gender={gender} preview={preview}>
                             <GameContainer
@@ -234,6 +242,9 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                                 ageYears={child.age_years ?? null}
                             />
                         </TogetherProvider>
+
+                        {/* „Otključavanje redom”: sledeća zaključana igra i šta treba završiti da se otvori */}
+                        <LockedGameHint childId={child.id} settings={settings} gameOpen={gameOpen} preview={preview} previewUnlocked={previewUnlocked} />
 
                         {/* Priče koje je odrasli napisao baš za ovo dete (ne prikazuje se ako ih nema) */}
                         <CustomStoryShelf childId={child.id} gender={gender} offline={preview} />

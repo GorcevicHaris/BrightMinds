@@ -69,6 +69,16 @@ export interface GameDefinition {
      * svaki završen nivo otključava sledeći, a broj `correct` znači „najčešći odgovor”.
      */
     graded: boolean;
+    /**
+     * Uzrast za koji je igra namenjena (navršene godine, uključivo). Prikazuje se samo
+     * roditelju, diskretno; dete ne vidi brojeve godina.
+     */
+    ages: { min: number; max: number };
+    /**
+     * Redosled učenja: 1 = uči se prvo (najlakše), veći broj = oslanja se na ranije veštine.
+     * Po njemu se igre ređaju na početnom ekranu i otključavaju jedna za drugom.
+     */
+    order: number;
 }
 
 export const GAMES: GameDefinition[] = [
@@ -92,6 +102,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Potražite zajedno iste oblike po kući: tanjir je krug, prozor je kvadrat.",
         graded: true,
+        // 1. po redu: isti oblik: najjednostavnije vizuelno uparivanje
+        ages: { min: 3, max: 5 },
+        order: 1,
     },
     {
         id: "memory",
@@ -113,6 +126,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Sakrijte dve-tri igračke pod čaše, pa neka dete pogodi gde je koja.",
         graded: true,
+        // 6. po redu: pamćenje mesta: traži pažnju kroz više poteza
+        ages: { min: 4, max: 7 },
+        order: 6,
     },
     {
         id: "coloring",
@@ -134,6 +150,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Bojite zajedno na papiru i imenujte boje predmeta oko sebe.",
         graded: true,
+        // 4. po redu: boje i fina motorika, bez tačnog i netačnog
+        ages: { min: 3, max: 7 },
+        order: 4,
     },
     {
         id: "sound-to-image",
@@ -155,6 +174,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Zastanite u šetnji i pitajte: „Šta čuješ?” — ptica, auto, vetar.",
         graded: true,
+        // 2. po redu: zvuk → slika: uparivanje sluhom
+        ages: { min: 3, max: 5 },
+        order: 2,
     },
     {
         id: "social",
@@ -176,6 +198,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Odigrajte kratku scenu sa igračkama: ko šta kaže kad dobije poklon ili traži pomoć.",
         graded: true,
+        // 12. po redu: izbor reči u društvenoj situaciji
+        ages: { min: 5, max: 10 },
+        order: 12,
     },
     {
         id: "social-story",
@@ -197,6 +222,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Pre odlaska kod zubara ili u prodavnicu, ispričajte redom šta će se dešavati.",
         graded: true,
+        // 13. po redu: cela situacija iz svakodnevice, korak po korak
+        ages: { min: 5, max: 10 },
+        order: 13,
     },
     {
         id: "emotions",
@@ -218,6 +246,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Dok čitate slikovnicu, pitajte: „Kako se oseća ovaj lik? Po čemu to vidiš?”",
         graded: true,
+        // 8. po redu: prepoznavanje osećanja na licu i u priči
+        ages: { min: 4, max: 8 },
+        order: 8,
     },
     {
         id: "sorting",
@@ -239,6 +270,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Pri sklanjanju veša ili igračaka razvrstavajte zajedno: „Čarape ovde, majice tamo.” ili „Crvene kocke u ovu kutiju.”",
         graded: true,
+        // 10. po redu: razvrstavanje po pravilu (kategorija, boja)
+        ages: { min: 4, max: 8 },
+        order: 10,
     },
     {
         id: "sequence",
@@ -260,6 +294,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Pre nove aktivnosti recite korake redom: „Prvo obučemo jaknu, zatim obujemo cipele, na kraju idemo napolje.”",
         graded: true,
+        // 11. po redu: redosled koraka: planiranje
+        ages: { min: 5, max: 10 },
+        order: 11,
     },
     {
         id: "where",
@@ -281,6 +318,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "U igri sa igračkama recite gde su i neka dete pokaže ili sakrije: „Meda je ispod stola.”, „Stavi loptu u kutiju.”",
         graded: true,
+        // 5. po redu: u, na, ispod, pored: prvi prostorni pojmovi
+        ages: { min: 3, max: 6 },
+        order: 5,
     },
     {
         id: "uses",
@@ -302,6 +342,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Dok spremate doručak ili se kupate, pitajte: „Čime jedemo supu?”, „Čime peremo kosu?” — neka dete pokaže ili donese predmet.",
         graded: true,
+        // 7. po redu: razumevanje rečenice o nameni predmeta
+        ages: { min: 4, max: 7 },
+        order: 7,
     },
     {
         id: "counting",
@@ -323,6 +366,9 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip: "Brojite zajedno ono što je oko vas: stepenice, kašike na stolu, autiće u kutiji. Neka dete dodirne svaku stvar dok broji, pa pitajte: „Koliko ima?” ili „Gde ima više?”",
         graded: true,
+        // 9. po redu: brojanje i poređenje količina
+        ages: { min: 4, max: 7 },
+        order: 9,
     },
     {
         id: "gaze",
@@ -345,6 +391,9 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Sedite jedno pored drugog, pogledajte u neku igračku i pitajte: „Šta ja gledam?” Pokažite i rukom ako treba. Ne tražite da vas dete gleda u oči — dovoljno je da prati gde gledate.",
         graded: true,
+        // 3. po redu: praćenje pogleda: osnova zajedničke pažnje
+        ages: { min: 3, max: 6 },
+        order: 3,
     },
 ];
 
@@ -363,6 +412,39 @@ export function getGameByType(gameType: string): GameDefinition | undefined {
 
 export function getGameByActivityId(activityId: number): GameDefinition | undefined {
     return GAMES.find((g) => g.activityId === activityId);
+}
+
+// ── Uzrast i redosled ─────────────────────────────────────────────────────────
+
+/** „3–5 god.” — diskretna oznaka uzrasta za roditelje. */
+export function ageLabel(game: Pick<GameDefinition, "ages">): string {
+    return `${game.ages.min}–${game.ages.max} god.`;
+}
+
+/**
+ * Grupa igre za dete datog uzrasta: 0 = baš za taj uzrast, 1 = za mlađu decu (lako
+ * ponavljanje), 2 = za stariju decu (teže; dolazi na kraju).
+ */
+function ageGroup(game: Pick<GameDefinition, "ages">, ageYears: number): 0 | 1 | 2 {
+    if (ageYears < game.ages.min) return 2;
+    if (ageYears > game.ages.max) return 1;
+    return 0;
+}
+
+/**
+ * Igre poređane za dete: prvo one namenjene njegovom uzrastu, pa igre za mlađu decu, pa
+ * igre za stariju; u svakoj grupi od najlakše (ono što se uči prvo, `order`). Bez poznatog
+ * uzrasta samo po redosledu učenja. Ne menja ulazni niz.
+ */
+export function sortGamesForChild<T extends Pick<GameDefinition, "ages" | "order">>(games: readonly T[], ageYears: number | null): T[] {
+    const age = typeof ageYears === "number" && Number.isFinite(ageYears) ? ageYears : null;
+    return [...games].sort((a, b) => {
+        if (age !== null) {
+            const group = ageGroup(a, age) - ageGroup(b, age);
+            if (group !== 0) return group;
+        }
+        return a.order - b.order;
+    });
 }
 
 // ── Raspoloženje ───────────────────────────────────────────────────────────────
