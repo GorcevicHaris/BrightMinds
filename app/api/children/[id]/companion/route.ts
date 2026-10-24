@@ -9,7 +9,8 @@
 import { NextResponse } from "next/server";
 import { COMPANION_CATALOG } from "@/app/components/avatar3d/manifest";
 import { requireChildAccess } from "@/lib/auth";
-import { applyCompanionAction, coinsAvailable, parseCompanionAction, sanitizeCompanion, type CompanionCatalog } from "@/lib/companion";
+import { applyCompanionAction, parseCompanionAction, sanitizeCompanion, type CompanionCatalog } from "@/lib/companion";
+import { companionBody } from "@/lib/companionPayload";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isRecord } from "@/lib/validation";
 import { CHILD_NOT_FOUND } from "../../../_lib/children";
@@ -52,13 +53,7 @@ function stateOf(row: ChildCompanionRow) {
 }
 
 function response(row: ChildCompanionRow, state = stateOf(row)) {
-    return NextResponse.json(
-        {
-            companion: { kind: state.kind, owned: state.owned, wear: state.wear, goal: state.goal ?? null, skin: state.skin ?? {}, skins: state.skins ?? [] },
-            coins: coinsAvailable(row.experience_points, state.spent),
-        },
-        { headers: { "Cache-Control": "no-store" } }
-    );
+    return NextResponse.json(companionBody(state, row.experience_points), { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {

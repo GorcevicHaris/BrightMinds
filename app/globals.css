@@ -12,6 +12,13 @@
   }
 }
 
+/* Drugar levo, prodavnica desno: računar, i položen tablet ili nizak laptop (širok, a nizak ekran) */
+@custom-variant side {
+  @media (min-width: 64rem), (min-width: 48rem) and (orientation: landscape) {
+    @slot;
+  }
+}
+
 @theme {
   --font-sans: var(--font-nunito), ui-rounded, "Segoe UI", system-ui, sans-serif;
   --font-display: var(--font-baloo), var(--font-nunito), ui-rounded, system-ui, sans-serif;

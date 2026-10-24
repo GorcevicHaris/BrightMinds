@@ -7,6 +7,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { COMPANION_CATALOG } from "@/app/components/avatar3d/manifest";
+import type { CompanionPayload } from "@/lib/companionPayload";
 import {
     applyCompanionAction,
     coinsAvailable,
@@ -67,13 +68,15 @@ interface ProviderProps {
     /** Probni prikaz bez baze: novčići iz zadatih poena, izmene samo u memoriji */
     preview?: boolean;
     previewPoints?: number;
+    /** Stanje poslato uz stranicu: prvi prikaz je već pravi drugar, a ne podrazumevani */
+    initial?: CompanionPayload;
     children: ReactNode;
 }
 
-export function CompanionProvider({ childId, gender, preview = false, previewPoints = 0, children }: ProviderProps) {
-    const [state, setState] = useState<CompanionState>(() => defaultCompanion(gender));
-    const [coins, setCoins] = useState(() => (preview ? coinsAvailable(previewPoints, 0) : 0));
-    const [loaded, setLoaded] = useState(preview);
+export function CompanionProvider({ childId, gender, preview = false, previewPoints = 0, initial, children }: ProviderProps) {
+    const [state, setState] = useState<CompanionState>(() => (initial && !preview ? { ...defaultCompanion(gender), ...fromServer(initial.companion) } : defaultCompanion(gender)));
+    const [coins, setCoins] = useState(() => (preview ? coinsAvailable(previewPoints, 0) : (initial?.coins ?? 0)));
+    const [loaded, setLoaded] = useState(preview || Boolean(initial));
     const [tick, setTick] = useState(0);
 
     useEffect(() => {

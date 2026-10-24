@@ -513,20 +513,21 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
         // lista se samo mreža predmeta. Visina: 100dvh − zaglavlje (65 px) − razmak (8 px) − donja
         // traka (65 px + max(bezbedna zona, 0,5rem)). Negativne margine poništavaju unutrašnji
         // razmak <main> (pt-5, pb-5) i pb-24 omotača iz ChildPageClient-a, pa strana nema šta da lista.
-        // Tablet: gore 3D (≈ 47 %), dole list koji se povlači nagore; računar: 3D levo, list desno.
+        // Uspravan tablet: gore 3D (≈ 47 %), dole list koji se povlači nagore; računar, položen tablet
+        // i nizak laptop (varijanta `side`, globals.css): 3D levo, list desno (2 : 3).
         <div
             className={cn(
                 "flex flex-col gap-2 [--nav-safe:max(env(safe-area-inset-bottom),0.5rem)] sm:gap-3",
                 "max-sm:-mt-3 max-sm:mb-[calc(var(--nav-safe)_-_3.25rem)] max-sm:h-[calc(100dvh_-_8.625rem_-_var(--nav-safe))] max-sm:min-h-[26rem]",
-                "sm:h-[calc(100svh-18.5rem)] sm:min-h-[32rem] md:h-[calc(100svh-15rem)]",
-                "lg:grid lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] xl:grid-cols-[minmax(0,34rem)_minmax(0,1fr)] xl:gap-6"
+                "sm:h-[calc(100svh-16.25rem)] sm:min-h-[32rem] md:h-[calc(100svh-11.25rem)] md:min-h-[24rem]",
+                "side:grid side:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] xl:gap-6"
             )}
         >
-            <div className={cn("min-h-0 flex-none max-sm:h-[39%] lg:h-full", !reduceMotion && "sm:transition-[height] sm:duration-300", expanded ? "sm:h-[26%]" : "sm:h-[47%]")}>{stage}</div>
+            <div className={cn("min-h-0 flex-none max-sm:h-[39%] side:h-full", !reduceMotion && "sm:transition-[height] sm:duration-300", expanded ? "sm:h-[26%]" : "sm:h-[47%]")}>{stage}</div>
 
             <section
                 aria-label="Prodavnica, ormar i lik"
-                className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-[1.75rem] bg-surface shadow-soft ring-1 ring-line max-sm:-mx-4 max-sm:shadow-[0_-8px_24px_-14px_rgb(31_27_58/0.25)] sm:rounded-b-[1.75rem] lg:h-full lg:rounded-card"
+                className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-t-[1.75rem] bg-surface shadow-soft ring-1 ring-line max-sm:-mx-4 max-sm:shadow-[0_-8px_24px_-14px_rgb(31_27_58/0.25)] sm:rounded-b-[1.75rem] side:h-full side:rounded-card"
             >
                 <div className="flex-none px-4 pb-2 pt-2 sm:pt-1">
                     {/* Ručka (samo tablet): povlačenje nagore pokazuje više predmeta, nadole više drugara */}
@@ -544,12 +545,12 @@ export default function CompanionRoom({ gender }: { gender?: string }) {
                             if (dy < -24) setExpanded(true);
                             else if (dy > 24) setExpanded(false);
                         }}
-                        className="mx-auto mb-1 hidden h-7 w-24 touch-none items-center justify-center sm:flex lg:hidden"
+                        className="mx-auto mb-1 hidden h-7 w-24 touch-none items-center justify-center sm:flex side:hidden"
                     >
                         <span aria-hidden="true" className="block h-1.5 w-12 rounded-full bg-line" />
                     </button>
                     {/* Tri dela: ikonica + reč */}
-                    <div role="tablist" aria-label="Delovi" className="grid grid-cols-3 gap-1 rounded-2xl bg-brand-50 p-0.5 sm:p-1 lg:mt-2">
+                    <div role="tablist" aria-label="Delovi" className="grid grid-cols-3 gap-1 rounded-2xl bg-brand-50 p-0.5 sm:p-1 side:mt-2">
                         {panels.map(({ id, label, Icon }) => {
                             const active = panel === id;
                             return (
@@ -1008,7 +1009,7 @@ function ChipRow({ label, small = false, children }: { label: string; small?: bo
                 if (row.scrollWidth > row.clientWidth && Math.abs(event.deltaY) > Math.abs(event.deltaX)) row.scrollLeft += event.deltaY;
             }}
             className={cn(
-                "-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] lg:pb-1.5 lg:[scrollbar-color:var(--color-brand-200)_transparent] lg:[scrollbar-width:thin]",
+                "-mx-4 flex gap-2 overflow-x-auto px-4 [scrollbar-width:none] side:pb-1.5 side:[scrollbar-color:var(--color-brand-200)_transparent] side:[scrollbar-width:thin]",
                 small && "gap-1.5"
             )}
         >
