@@ -66,6 +66,20 @@ export const EXTRA_ANIMAL_KINDS = [
 ] as const;
 export type ExtraAnimalKind = (typeof EXTRA_ANIMAL_KINDS)[number];
 
+// ── Još životinja (animals/more/, izgledi u animals/more/skins.data.ts) ──
+/** Još životinja: vuk, zebra, nilski konj, krokodil, kengur… (redom kao u lib/companion.ts) */
+export const MORE_ANIMAL_KINDS = [
+    "wolf", "zebra", "hippo", "crocodile", "kangaroo", "cow", "pig", "goat", "duck",
+    "chicken", "parrot", "flamingo", "seal", "dolphin", "turtle", "beaver", "otter",
+    "mole", "alpaca", "rhino", "fennec", "cheetah", "leopard", "mouse", "bat", "dragon",
+] as const;
+export type MoreAnimalKind = (typeof MORE_ANIMAL_KINDS)[number];
+
+export function isMoreAnimalKind(kind: string): kind is MoreAnimalKind {
+    return (MORE_ANIMAL_KINDS as readonly string[]).includes(kind);
+}
+// ── kraj: još životinja ──
+
 export function isHumanKind(kind: string): kind is HumanKind {
     return (HUMAN_KINDS as readonly string[]).includes(kind);
 }
@@ -114,6 +128,34 @@ export const COMPANION_LABELS: Record<CompanionKind, string> = {
     sheep: "Ovčica",
     hamster: "Hrčak",
     squirrel: "Veverica",
+    // ── Još životinja (animals/more/) ──
+    wolf: "Vuk",
+    zebra: "Zebra",
+    hippo: "Nilski konj",
+    crocodile: "Krokodil",
+    kangaroo: "Kengur",
+    cow: "Kravica",
+    pig: "Prase",
+    goat: "Kozica",
+    duck: "Patka",
+    chicken: "Kokica",
+    parrot: "Papagaj",
+    flamingo: "Flamingo",
+    seal: "Foka",
+    dolphin: "Delfin",
+    turtle: "Kornjača",
+    beaver: "Dabar",
+    otter: "Vidra",
+    mole: "Krtica",
+    alpaca: "Alpaka",
+    rhino: "Nosorog",
+    fennec: "Pustinjska lisica",
+    cheetah: "Gepard",
+    leopard: "Leopard",
+    mouse: "Mišić",
+    bat: "Slepi miš",
+    dragon: "Zmaj",
+    // ── kraj: još životinja ──
 };
 
 /** Proporcije tela: kroj odeće i kadar kamere zavise od njih */
