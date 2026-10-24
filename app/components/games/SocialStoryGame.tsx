@@ -503,12 +503,12 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                 >
                     <div aria-hidden="true" className={cn("h-2 bg-linear-to-r", ACCENT.gradient)} />
                     <Scene emojis={story.cover} tone={story.tone} size="cover" picture={storyScene(level, "cover")} female={female} />
-                    <div className="flex flex-col items-center gap-3 px-4 py-5 text-center sm:gap-4 sm:px-8 sm:py-8">
+                    <div className="flex flex-col items-center gap-3 px-4 py-5 text-center sm:gap-4 sm:px-8 sm:py-8 short:sm:gap-3 short:sm:py-5">
                         <p className={cn("rounded-full border px-3 py-1 text-sm font-extrabold", ACCENT.soft, ACCENT.text, ACCENT.border)}>
                             Priča u {story.steps.length} koraka
                         </p>
-                        <h2 className="text-3xl font-extrabold leading-tight text-ink sm:text-5xl">{story.title}</h2>
-                        <p className="max-w-md text-lg font-bold leading-snug text-ink-soft sm:text-xl">{t(story.intro)}</p>
+                        <h2 className="text-3xl font-extrabold leading-tight text-ink sm:text-5xl short:sm:text-3xl">{story.title}</h2>
+                        <p className="max-w-md text-lg font-bold leading-snug text-ink-soft sm:text-xl short:sm:text-lg">{t(story.intro)}</p>
 
                         <div role="radiogroup" aria-label="Način čitanja" className="mt-1 grid w-full max-w-md grid-cols-2 gap-3">
                             {MODES.map((item) => {
@@ -522,7 +522,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                         disabled={isMonitor}
                                         onClick={() => selectMode(item.id)}
                                         className={cn(
-                                            "flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-2 py-2 text-base font-extrabold leading-tight transition-colors disabled:cursor-default sm:text-lg",
+                                            "flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-2 py-2 text-base font-extrabold leading-tight transition-colors disabled:cursor-default sm:text-lg short:sm:min-h-16",
                                             selected ? "border-brand-500 bg-brand-50 text-brand-800" : "border-line bg-surface text-ink-soft"
                                         )}
                                     >
@@ -535,7 +535,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                             })}
                         </div>
 
-                        <PrimaryButton onClick={begin} disabled={isMonitor} className="mt-2 w-full sm:w-auto sm:min-w-56">
+                        <PrimaryButton onClick={begin} disabled={isMonitor} className="mt-2 w-full sm:w-auto sm:min-w-56 short:sm:mt-0">
                             Počni priču
                         </PrimaryButton>
                     </div>
@@ -767,7 +767,7 @@ interface SceneProps {
 /** Najveća širina crteža: tolika da mu visina (2/3 širine) ne pređe zadati deo ekrana */
 const PICTURE_WIDTH = {
     page: "max-w-[min(100%,30dvh)] lg:max-w-[min(100%,32dvh)] short:max-w-[min(100%,20dvh)]",
-    cover: "max-w-[min(100%,42dvh)] short:max-w-[min(100%,34dvh)]",
+    cover: "max-w-[min(100%,42dvh)] short:max-w-[min(100%,20dvh)]",
     choice: "max-w-[min(100%,26dvh)] short:max-w-[min(100%,22dvh)]",
     thumb: "",
 };

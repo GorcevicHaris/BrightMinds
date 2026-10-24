@@ -393,6 +393,9 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
 
     const triedOption = shown.picked === null && lastTried !== null ? situation.options[lastTried] : null;
     const also = shown.picked !== null ? alsoLine(situation, shown.picked, shown.order, female) : null;
+    // Posle izbora koji pomaže objašnjenje stoji na mestu primera i pitanja (iznad izbora), pa
+    // zadatak sa objašnjenjem i dugmetom „Dalje” staje na ekran bez pomeranja
+    const answered = shown.picked !== null;
 
     return (
         <GameStage width="narrow">
@@ -411,6 +414,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                 // Dok se primer čita, slika je velika, iznad teksta; posle ostaje mala, levo od teksta.
                 className={cn(
                     "flex animate-fade-up rounded-card border-2 shadow-soft sm:gap-4",
+                    answered && "hidden",
                     shown.optionsShown ? "items-center gap-3 p-2.5 sm:p-3" : picture ? "flex-col items-stretch gap-3 p-3 sm:p-5" : "items-center gap-3 p-4 sm:p-5",
                     ACCENT.soft,
                     ACCENT.border
@@ -457,13 +461,31 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     <GamePrompt
                         key={`prompt-${situation.id}`}
                         // Na tabletu je pitanje u kartici sa primerom (iznad); za čitače ekrana ostaje ovde
-                        className="animate-fade sm:sr-only"
+                        className={cn("animate-fade sm:sr-only", answered && "hidden")}
                         compact
                         // Slika je već u primeru iznad; emodži samo kad slike nema
                         visual={picture ? undefined : <span aria-hidden="true">{situation.scene}</span>}
                         title={genderText(situation.text, female)}
                         subtitle={situation.ask}
                     />
+
+                    {shown.picked !== null && (
+                        <ExplainPanel
+                            accent={ACCENT}
+                            icon={situation.options[shown.picked].emoji}
+                            text={
+                                <span className="flex flex-col gap-1.5">
+                                    <span>{genderText(situation.options[shown.picked].note, female)}</span>
+                                    <span className={ACCENT.text}>{echoLine(situation, shown.picked, female)}</span>
+                                    {also && <span className="text-base text-ink-soft sm:text-lg">{also}</span>}
+                                </span>
+                            }
+                            done={shown.finished}
+                            doneText="Gotovo!"
+                            onNext={isMonitor ? undefined : handleNext}
+                            nextRef={nextButtonRef}
+                        />
+                    )}
 
                     <ul key={`options-${shown.round}`} aria-label="Ponuđeni izbori" className={cn("grid animate-fade gap-2 sm:gap-3", OPTION_GRID[shown.order.length] ?? OPTION_GRID[3])}>
                         {shown.order.map((index) => {
@@ -500,9 +522,11 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     </ul>
                     <span ref={optionsEndRef} aria-hidden="true" className="-mt-3 block h-0 scroll-mb-4" />
 
-                    <Feedback kind={feedback} correctText={HELPS_TEXT} wrongText={shown.hint ? HINT_TEXT : RETRY_TEXT} />
+                    {/* Posle izbora koji pomaže poruku čuje samo čitač ekrana: na ekranu je kvačica i objašnjenje */}
+                    <Feedback kind={feedback} correctText={HELPS_TEXT} wrongText={shown.hint ? HINT_TEXT : RETRY_TEXT} className={answered ? "sr-only" : undefined} />
 
-                    <div aria-live="polite">
+                    {/* Prazan red ne sme da doda razmak između delova */}
+                    <div aria-live="polite" className="empty:-mt-4 sm:empty:-mt-5">
                         {triedOption && (
                             <TriedNote
                                 key={lastTried}
@@ -513,23 +537,6 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                         )}
                     </div>
 
-                    {shown.picked !== null && (
-                        <ExplainPanel
-                            accent={ACCENT}
-                            icon={situation.options[shown.picked].emoji}
-                            text={
-                                <span className="flex flex-col gap-1.5">
-                                    <span>{genderText(situation.options[shown.picked].note, female)}</span>
-                                    <span className={ACCENT.text}>{echoLine(situation, shown.picked, female)}</span>
-                                    {also && <span className="text-base text-ink-soft sm:text-lg">{also}</span>}
-                                </span>
-                            }
-                            done={shown.finished}
-                            doneText="Gotovo!"
-                            onNext={isMonitor ? undefined : handleNext}
-                            nextRef={nextButtonRef}
-                        />
-                    )}
                 </>
             )}
         </GameStage>
