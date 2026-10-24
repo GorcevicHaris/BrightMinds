@@ -1350,7 +1350,9 @@ function CompanionPanel() {
                     kind={companion.kind}
                     skin={chosenSkin(companion)}
                     wear={companion.wear}
-                    framing="full"
+                    // Uzak i visok panel: krupniji kadar; sa ljubimcem lik malo levo, da i ljubimac stane
+                    framing="wide"
+                    align={companion.wear.pet ? -0.4 : 0}
                     background
                     action={hype.action}
                     actionKey={hype.actionKey}
