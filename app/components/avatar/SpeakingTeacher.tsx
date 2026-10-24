@@ -4,8 +4,10 @@ import { cn } from "@/lib/cn";
 import { useVoiceState } from "@/lib/voice";
 import { useChildSettings } from "../ChildSettingsProvider";
 import CompanionPicture from "../avatar3d/CompanionPicture";
+import CompanionStage from "../avatar3d/CompanionStage";
 import { isCompanionKindId } from "@/lib/companion";
 import TeacherAvatar from "./TeacherAvatar";
+import type { CompanionAction } from "./motion";
 import type { Wear } from "./wearables";
 
 interface SpeakingTeacherProps {
@@ -16,6 +18,16 @@ interface SpeakingTeacherProps {
     wear?: Wear;
     /** Izgled izabranog drugara (skins.ts) */
     skin?: string;
+    /**
+     * Živ 3D drugar umesto slike (portret u traci igre): diše, govori ustima i skače na tačan
+     * odgovor. Na stranici je samo jedno živo platno, pa se uključuje samo tamo gde je drugar glavni.
+     */
+    live?: boolean;
+    /** Kadar živog drugara: `portrait` do pojasa (mali portret), `full` ceo lik */
+    framing?: "full" | "portrait";
+    /** Jednokratni pokret živog drugara (skok, radost, aplauz) */
+    action?: CompanionAction;
+    actionKey?: number | string;
     className?: string;
 }
 
@@ -24,7 +36,7 @@ interface SpeakingTeacherProps {
  * prsten — jasno je ko se obraća detetu. Ne crta se kada je učitelj
  * isključen u podešavanjima deteta.
  */
-export default function SpeakingTeacher({ gender, kind, wear, skin, className }: SpeakingTeacherProps) {
+export default function SpeakingTeacher({ gender, kind, wear, skin, live = false, framing = "portrait", action, actionKey, className }: SpeakingTeacherProps) {
     const settings = useChildSettings();
     const { speaking, emotion } = useVoiceState();
     if (!settings.avatar) return null;
@@ -36,7 +48,10 @@ export default function SpeakingTeacher({ gender, kind, wear, skin, className }:
                 className
             )}
         >
-            {isCompanionKindId(kind) ? (
+            {isCompanionKindId(kind) && live ? (
+                // Živ drugar u svom svetu: lice i usta prate glas, skok dolazi spolja (`action`)
+                <CompanionStage kind={kind} wear={wear} skin={skin} framing={framing} background action={action} actionKey={actionKey} className="h-full w-full" />
+            ) : isCompanionKindId(kind) ? (
                 // 3D slika celog drugara sa ljubimcem i pozadinom (izraz prati glas; slike su keširane, pa se lice menja odmah)
                 <CompanionPicture kind={kind} wear={wear} skin={skin} variant="full" background emotion={emotion} className="h-full w-full" eager />
             ) : (
