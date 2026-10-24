@@ -415,9 +415,8 @@ function shortLocks(style: HairStyle): Lock[] {
         }
         case "fade":
             // Podšišana sa strane: kratki čuperci gore (napred i nazad), malo šiški
-            locks.push(...fringe({ count: 5, span: 0.05, from: 0.14, to: 0.3, width: 0.026, lift: 0.01, messy: 0.6, seed: 151 }));
-            locks.push(...flow({ count: 6, uFrom: 0.42, uTo: 0.58, from: 0.04, to: 0.26, width: 0.028, root: { u: 0.5, v: 0.03 }, lift: 0.009, seed: 153 }));
-            locks.push(...flow({ count: 5, uFrom: 0.86, uTo: 1.14, from: 0.04, to: 0.28, width: 0.03, root: { u: 1, v: 0.03 }, lift: 0.006, seed: 157 }));
+            locks.push(...fringe({ count: 10, span: 0.085, from: 0.05, to: 0.31, width: 0.025, lift: 0.006, messy: 0.5, sweep: -0.01, seed: 151 }));
+            locks.push(...fringe({ count: 6, span: 0.055, from: 0.03, to: 0.2, width: 0.022, lift: 0.005, messy: 0.8, seed: 153 }));
             break;
         default:
             // Kratka: uredne kraće šiške blago u stranu (i podloga za šiljke)
@@ -621,12 +620,14 @@ function bobCurtain(head: HeadInfo, material: THREE.Material): THREE.Mesh {
         top.addScaledVector(n, 0.015 + 0.01 * ear);
         radial.set(top.x - c.x, 0, top.z - c.z).normalize();
         const end = 1 - 0.3 * smoothstep(0.8, 1, Math.abs(a));
+        // Prednji krajevi zavese prilaze obrazu (ne stoje kao ravna ploča)
+        const hug = -0.008 * smoothstep(0.75, 1, Math.abs(a)) * Math.sin(Math.PI * Math.min(1, t * 1.3));
         const y = top.y + (yBot - top.y) * t + 0.008 * (1 - Math.cos(th)) * t;
         // Blago ispupčeno, kraj se uvija ka unutra; debljina se gubi na krajevima zavese
         const bulge = 0.006 * Math.sin(Math.PI * t) - 0.009 * smoothstep(0.82, 1, t);
         const thick = 0.0075 * Math.sqrt(Math.max(0, 1 - a * a)) * end * (1 - 0.45 * smoothstep(0.85, 1, t)) + 0.0012;
         const groove = 0.0012 * Math.sin(th * 34);
-        return out.set(top.x, y, top.z).addScaledVector(radial, bulge + groove + sideK * thick);
+        return out.set(top.x, y, top.z).addScaledVector(radial, bulge + groove + hug + sideK * thick);
     };
     const geometry = buildSurface(fn, {
         nu: detail(120),
@@ -645,20 +646,23 @@ function sideTail(head: HeadInfo, material: THREE.Material, side: 1 | -1): THREE
     const group = new THREE.Group();
     group.name = "kikica";
     const k = headK(head);
-    const u = 0.5 + side * 0.285;
-    const v = 0.36;
+    const u = 0.5 + side * 0.262;
+    const v = 0.34;
     const base = head.point(u, v);
     const n = head.normal(u, v);
     const tie = new THREE.Mesh(new THREE.TorusGeometry(0.016 * k, 0.0062 * k, 10, 24), new THREE.MeshPhysicalMaterial({ color: side === 1 ? "#8E77E6" : "#3FB3D9", roughness: 0.45, clearcoat: 0.3 }));
     tie.position.copy(base).addScaledVector(n, 0.011 * k);
     tie.lookAt(tie.position.clone().add(n));
     group.add(tie);
+    // Repić izlazi iz gumice napolje, pa se meko savija nadole (bez preloma)
+    const out = new THREE.Vector3(side, 0, 0).lerp(n, 0.5).normalize();
     const p0 = base.clone().addScaledVector(n, 0.004);
-    const p1 = base.clone().addScaledVector(n, 0.042 * k).add(new THREE.Vector3(0, -0.004 * k, 0));
-    const p2 = new THREE.Vector3(p1.x + side * 0.016 * k, p1.y - 0.06 * k, p1.z - 0.012 * k);
-    const p3 = new THREE.Vector3(p1.x + side * 0.008 * k, p1.y - 0.12 * k, p1.z - 0.004 * k);
-    const r = profile([[0, 0.016], [0.12, 0.024], [0.38, 0.027], [0.75, 0.019], [1, 0.003]]);
-    const tail = new THREE.Mesh(taperedTube(polyPath([p0, p1, p2, p3]), (s) => r(s) * k, 36, 16, new THREE.Vector3(0, 0, -1), 0.85), material);
+    const p1 = base.clone().addScaledVector(n, 0.018 * k).add(new THREE.Vector3(0, -0.01 * k, 0));
+    const p2 = base.clone().addScaledVector(out, 0.034 * k).add(new THREE.Vector3(0, -0.04 * k, -0.006 * k));
+    const p3 = base.clone().addScaledVector(out, 0.036 * k).add(new THREE.Vector3(0, -0.085 * k, -0.012 * k));
+    const p4 = base.clone().addScaledVector(out, 0.028 * k).add(new THREE.Vector3(0, -0.125 * k, -0.008 * k));
+    const r = profile([[0, 0.013], [0.12, 0.02], [0.4, 0.025], [0.78, 0.017], [1, 0.003]]);
+    const tail = new THREE.Mesh(taperedTube(polyPath([p0, p1, p2, p3, p4]), (s) => r(s) * k, 40, 16, new THREE.Vector3(0, 0, -1)), material);
     group.add(tail);
     return group;
 }
@@ -675,30 +679,29 @@ export type BeardStyle = "brada" | "brkovi" | "puna";
  * gušća i zaobljena na bradi.
  */
 export function buildBeard(head: HeadInfo, hex: string, skin: string, style: BeardStyle = "brada"): THREE.Mesh {
+    if (style === "brkovi") return moustache(head, hex, skin);
     const jaw = profile([[0, 0.775], [0.3, 0.765], [0.5, 0.75], [0.9, 0.69], [1.2, 0.62], [1.45, 0.55], [1.65, 0.52]]);
     const full = style === "puna";
-    const onlyMoustache = style === "brkovi";
     const offset = (u: number, v: number) => {
         const th = thetaOf(u);
         const a = Math.abs(th);
         const line = jaw(a) + 0.006 * Math.sin(th * 23) - (full ? 0.03 : 0);
-        const below = onlyMoustache ? 0 : smoothstep(line - 0.018, line + 0.014, v) * (1 - smoothstep(1.5, 1.68, a));
-        // Brkovi: kod „brkova” širi i deblji, krajevi blago spušteni
-        const wide = onlyMoustache || full ? 0.06 : 0;
-        const must = smoothstep(0.648, 0.664, v) * (1 - smoothstep(0.684 + wide * 0.15, 0.696 + wide * 0.15, v)) * (1 - smoothstep(0.36 + wide, 0.46 + wide, a));
-        const corner = smoothstep(0.29, 0.35, a) * (1 - smoothstep(0.5 + wide, 0.58 + wide, a)) * smoothstep(0.66, 0.675, v) * (onlyMoustache ? 1 - smoothstep(0.7, 0.72, v) : 1);
+        const below = smoothstep(line - 0.018, line + 0.014, v) * (1 - smoothstep(1.5, 1.68, a));
+        // Puna brada: širi i deblji brkovi, krajevi blago spušteni
+        const wide = full ? 0.06 : 0;
+        const must = smoothstep(0.645, 0.665, v) * (1 - smoothstep(0.682 + wide * 0.15, 0.698 + wide * 0.15, v)) * (1 - smoothstep(0.34 + wide, 0.48 + wide, a));
+        const corner = smoothstep(0.29, 0.35, a) * (1 - smoothstep(0.5 + wide, 0.58 + wide, a)) * smoothstep(0.66, 0.675, v);
         const lips = (1 - smoothstep(0.29, 0.34, a)) * smoothstep(0.686 + wide * 0.12, 0.694 + wide * 0.12, v) * (1 - smoothstep(0.748, 0.762, v));
         const cover = Math.max(below, must, corner) * (1 - lips);
         // Kratke dlake: sitna neravnina, deblje na bradi
         let t = 0.0015 + 0.0008 * smoothstep(0.8, 0.92, v) * (1 - smoothstep(0.2, 0.9, a)) + 0.0003 * Math.sin(th * 41 + v * 60);
-        if (onlyMoustache) t = 0.0026 + 0.0018 * (1 - smoothstep(0.1, 0.5, a)) + 0.0004 * Math.sin(th * 37);
         if (full) t = 0.0035 + 0.0075 * smoothstep(0.76, 0.96, v) * (1 - smoothstep(0.3, 1.2, a)) + 0.0012 * Math.sin(th * 31 + v * 40);
         return cover * t - (1 - cover) * 0.0025;
     };
     const fn = head.offsetFn(offset);
     const geometry = buildSurface((s, t, out) => fn(0.24 + 0.52 * s, 0.48 + 0.5 * t, out), {
-        nu: detail(64),
-        nv: detail(52),
+        nu: detail(style === "brada" ? 64 : 96),
+        nv: detail(style === "brada" ? 52 : 84),
         inside: () => head.center.clone(),
         uv: (s, t) => [s * 4, t * 2],
     });
@@ -706,6 +709,53 @@ export function buildBeard(head: HeadInfo, hex: string, skin: string, style: Bea
     const material = hairMaterial("#" + new THREE.Color(hex).lerp(new THREE.Color(skin), 0.1).getHexString());
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = "brada";
+    return mesh;
+}
+
+/**
+ * Brkovi (dedo, učitelj): mekan zaobljen „jastučić” iznad gornje usne — pune obe polovine,
+ * uži po sredini (ispod nosa), tanki krajevi koji se blago spuštaju niz uglove usana.
+ */
+function moustache(head: HeadInfo, hex: string, skin: string): THREE.Mesh {
+    const k = headK(head);
+    const n = new THREE.Vector3();
+    const uvAt = (s: number): [number, number] => {
+        const a = (s - 0.5) * 2 * 0.47;
+        return [a / (Math.PI * 2) + 0.5, 0.662 + 0.024 * smoothstep(0.2, 0.47, Math.abs(a))];
+    };
+    const points: THREE.Vector3[] = [];
+    for (let i = 0; i <= 20; i++) {
+        const [u, v] = uvAt(i / 20);
+        const p = head.point(u, v);
+        head.normal(u, v, n);
+        points.push(p.addScaledVector(n, 0.0022 * k));
+    }
+    const path = polyPath(points);
+    // Dve pune polovine (najdeblje na ⅓ i ⅔), uža sredina ispod nosa, tanki krajevi
+    const radius = (s: number) => (0.0042 * Math.pow(Math.sin(Math.PI * s), 0.5) + 0.0024 * (gauss(s, 0.3, 0.12) + gauss(s, 0.7, 0.12)) + 0.0006) * k;
+    // Sopstveni okvir preseka (normala lica + bočna osa nagore), bez okretanja ose kod
+    // vodoravne putanje: presek je spljošten ka licu
+    const tangent = new THREE.Vector3();
+    const up = new THREE.Vector3();
+    const a0 = new THREE.Vector3();
+    const a1 = new THREE.Vector3();
+    const fn: SurfaceFn = (q, s, out) => {
+        const [u, v] = uvAt(s);
+        head.normal(u, v, n);
+        path(Math.max(0, s - 0.01), a0);
+        path(Math.min(1, s + 0.01), a1);
+        tangent.subVectors(a1, a0).normalize();
+        up.crossVectors(n, tangent).normalize();
+        if (up.y < 0) up.negate();
+        const ang = q * Math.PI * 2;
+        const r = radius(s);
+        path(s, out);
+        return out.addScaledVector(up, Math.sin(ang) * r).addScaledVector(n, Math.cos(ang) * r * 0.62);
+    };
+    const geometry = buildSurface(fn, { nu: 14, nv: detail(48), closedU: true, inside: (_q, s, out) => path(s, out), uv: (q, s) => [q * 0.5, s * 3] });
+    const material = hairMaterial("#" + new THREE.Color(hex).lerp(new THREE.Color(skin), 0.06).getHexString());
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = "brkovi";
     return mesh;
 }
 
@@ -834,7 +884,7 @@ export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: strin
             add(capMesh(head, spec, material, underHat));
             add(bobCurtain(head, material));
             if (!underHat) {
-                const mesh = locksMesh(head, cap.offset, fringe({ count: 11, span: 0.085, from: 0.14, to: 0.385, width: 0.024, lift: 0.004, seed: 161 }), material);
+                const mesh = locksMesh(head, cap.offset, fringe({ count: 13, span: 0.088, from: 0.16, to: 0.385, width: 0.02, seed: 161 }), material);
                 if (mesh) add(mesh);
             }
             break;
@@ -869,10 +919,10 @@ export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: strin
                 thickness: (th, v) => 0.02 + 0.012 * (1 - smoothstep(0.2, 0.6, v)) + 0.012 * smoothstep(0.45, 0.75, v) * smoothstep(0.9, 1.5, Math.abs(th)),
             };
             const capM = capMesh(head, spec, material, underHat, 1.1);
-            lumpy(capM.geometry, 0.0045, 230);
+            lumpy(capM.geometry, 0.0055, 160);
             add(capM);
             const back = longBack(head, rig, material);
-            lumpy(back.geometry, 0.0065, 190);
+            lumpy(back.geometry, 0.0075, 140);
             add(back);
             break;
         }
@@ -889,14 +939,16 @@ export function buildHair(rig: Rig, head: HeadInfo, style: HairStyle, hex: strin
         case "receding": {
             // Proređena (dedo): ćelavo teme i čelo, kratka kosa sa strane i pozadi („potkovica”)
             const spec: CapSpec = {
-                hairline: LINE_SHORT,
-                clumps: 0.5,
+                hairline: [[0, 0.3], [0.9, 0.44], [1.25, 0.54], [1.5, 0.5], [1.75, 0.6], [2.2, 0.7], [Math.PI, 0.76]],
+                clumps: 0,
                 soft: 0.014,
                 thickness: (th, v) => {
                     const a = Math.abs(th);
-                    const top = 0.44 - 0.16 * smoothstep(1.2, 2.6, a);
-                    const band = smoothstep(top - 0.05, top + 0.03, v) * smoothstep(0.75, 1.15, a);
-                    return 0.0062 * band + 0.0015 * gauss(a, Math.PI, 0.5) * band - 0.004 * (1 - band);
+                    // Gornja ivica „potkovice”: iznad uha niže, pozadi više
+                    const top = 0.36 - 0.1 * smoothstep(1.4, 2.8, a);
+                    const band = smoothstep(top - 0.04, top + 0.04, v) * smoothstep(0.85, 1.2, a);
+                    const fine = 0.0008 * Math.sin(th * 46 + v * 9) * band;
+                    return (0.0085 + 0.0025 * gauss(a, Math.PI, 0.7)) * band + fine - 0.004 * (1 - band);
                 },
             };
             add(capMesh(head, spec, material, underHat));

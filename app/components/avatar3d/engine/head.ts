@@ -186,7 +186,7 @@ function headColors(geometry: THREE.BufferGeometry, info: HeadInfo) {
                 if (ex > -0.02 && ex < 0.14) crow += (line(y + ex * 0.7, 0.01, 0.012) + line(y, -0.02, 0.012) + line(y - ex * 0.6, -0.05, 0.012)) * smoothstep(-0.02, 0.03, ex) * (1 - smoothstep(0.08, 0.14, ex));
             }
             const fold = Math.max(gauss3(Math.abs(x), y, z, 0.2, -0.56, 0.86, 0.03), gauss3(Math.abs(x), y, z, 0.17, -0.5, 0.88, 0.03));
-            c.multiplyScalar(1 - brow * 0.07 - crow * 0.09 - fold * 0.14);
+            c.multiplyScalar(1 - brow * 0.09 - crow * 0.12 - fold * 0.18);
         }
         colors.set([c.r, c.g, c.b], i * 3);
     }
