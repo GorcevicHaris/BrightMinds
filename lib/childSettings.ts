@@ -208,10 +208,32 @@ export interface ResolvedSettings extends ChildSettings {
     preset: BandPreset;
     /** Najviše ponuđenih odgovora posle primene uzrasta i izbora roditelja */
     choiceLimit: number;
+    /**
+     * Uzrast po kome se ređaju igre: navršene godine, ali u granicama uzrasne grupe koju je
+     * roditelj izabrao (dete od 7 godina u grupi „Mlađi” dobija igre kao dete od 4).
+     * null = uzrast nije poznat i grupa nije izabrana.
+     */
+    playAge: number | null;
+}
+
+/** Granice uzrasnih grupa u godinama (isto kao u `bandForAge` i `BAND_PRESETS`). */
+const BAND_AGES: Record<AgeBand, { min: number; max: number }> = {
+    young: { min: 3, max: 4 },
+    middle: { min: 5, max: 6 },
+    older: { min: 7, max: 10 },
+};
+
+/** Uzrast za redosled igara: godine deteta, svedene na izabranu grupu kad je roditelj izabrao drugu. */
+export function playAgeFor(age: number | null, band: AgeBand | null): number | null {
+    if (!band) return age;
+    const range = BAND_AGES[band];
+    if (age === null) return range.min;
+    return Math.min(Math.max(age, range.min), range.max);
 }
 
 export function resolveSettings(raw: unknown, dateOfBirth: string | null | undefined): ResolvedSettings {
-    const ageBand = bandForAge(ageInYears(dateOfBirth));
+    const age = ageInYears(dateOfBirth);
+    const ageBand = bandForAge(age);
     const settings = sanitizeSettings(raw, ageBand);
     const activeBand = settings.band ?? ageBand;
     const preset = BAND_PRESETS[activeBand];
@@ -220,6 +242,7 @@ export function resolveSettings(raw: unknown, dateOfBirth: string | null | undef
         activeBand,
         preset,
         choiceLimit: settings.maxChoices === 0 ? preset.maxChoices : settings.maxChoices,
+        playAge: playAgeFor(age, settings.band),
     };
 }
 

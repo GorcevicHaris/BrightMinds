@@ -322,3 +322,23 @@ describe("waitHint", () => {
         assert.equal(sanitizeSettings({ waitHint: "yes" }, "young").waitHint, true);
     });
 });
+
+describe("playAge (age used to order the games)", () => {
+    const born = (yearsAgo: number) => {
+        const date = new Date();
+        date.setFullYear(date.getFullYear() - yearsAgo, date.getMonth(), Math.max(1, date.getDate() - 2));
+        return date.toISOString().slice(0, 10);
+    };
+
+    it("is the child's age when the parent did not pick an age group", () => {
+        assert.equal(resolveSettings({}, born(5)).playAge, 5);
+        assert.equal(resolveSettings({}, null).playAge, null);
+    });
+
+    it("stays within the age group the parent picked", () => {
+        assert.equal(resolveSettings({ band: "young" }, born(8)).playAge, 4);
+        assert.equal(resolveSettings({ band: "older" }, born(5)).playAge, 7);
+        assert.equal(resolveSettings({ band: "middle" }, born(6)).playAge, 6);
+        assert.equal(resolveSettings({ band: "middle" }, null).playAge, 5);
+    });
+});

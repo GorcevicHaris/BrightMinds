@@ -13,7 +13,7 @@ import { Button } from "@/app/components/ui/Button";
 import { Alert, Card } from "@/app/components/ui/Card";
 import { Select } from "@/app/components/ui/Field";
 import { cn } from "@/lib/cn";
-import { GAMES, MAX_LEVEL, MOODS, MOODS_THREE, getGame, getMood, type GameDefinition, type GameId, type Mood, type SuccessLevel } from "@/lib/games";
+import { GAMES, MAX_LEVEL, MOODS, MOODS_THREE, ageLabel, getGame, getMood, type GameDefinition, type GameId, type Mood, type SuccessLevel } from "@/lib/games";
 import {
     MASTERY_MIN_DAYS,
     MASTERY_RATIO,
@@ -1098,6 +1098,10 @@ function GameCard({ game: progress, timeZone, windowDays, onSelect }: GameCardPr
                     <h3 className="text-base font-extrabold text-ink">{game.title}</h3>
                     <p className="text-sm text-ink-soft">{game.skill}</p>
                 </div>
+                {/* Uzrast za koji je igra namenjena — diskretno, samo za roditelja */}
+                <span className="shrink-0 rounded-full bg-canvas px-2 py-0.5 text-xs font-bold text-ink-faint" title="Uzrast za koji je igra namenjena">
+                    {ageLabel(game)}
+                </span>
             </div>
 
             <MasteryStatusLine game={game} progress={progress} />

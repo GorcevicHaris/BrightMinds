@@ -9,6 +9,7 @@ import {
     MAX_LEVEL,
     MOODS,
     MOODS_THREE,
+    ageLabel,
     getGame,
     getGameByActivityId,
     getGameByType,
@@ -17,6 +18,7 @@ import {
     starsFor,
     successLevelFor,
     starsForGame,
+    sortGamesForChild,
 } from "@/lib/games";
 import { toCyrillic } from "@/lib/script";
 
@@ -182,5 +184,50 @@ describe("moods", () => {
         assert.equal(getMood("ecstatic"), undefined);
         assert.equal(getMood(null), undefined);
         assert.equal(getMood(undefined), undefined);
+    });
+});
+
+describe("age range and learning order", () => {
+    const ids = (games: { id: string }[]) => games.map((game) => game.id);
+
+    it("every game has an age range within 3–10 and its own place in the learning order", () => {
+        const orders = GAMES.map((game) => game.order);
+        assert.equal(new Set(orders).size, GAMES.length, "orders are unique");
+        assert.deepEqual([...orders].sort((a, b) => a - b), GAMES.map((_, index) => index + 1), "orders are 1…n");
+        for (const game of GAMES) {
+            assert.ok(Number.isInteger(game.ages.min) && Number.isInteger(game.ages.max), game.id);
+            assert.ok(game.ages.min >= 3 && game.ages.max <= 10 && game.ages.min < game.ages.max, game.id);
+        }
+    });
+
+    it("labels the age range for parents", () => {
+        assert.equal(ageLabel({ ages: { min: 3, max: 5 } }), "3–5 god.");
+    });
+
+    it("puts the games for the child's age first, easiest first, then easier games, then harder ones", () => {
+        const games = [
+            { id: "hard", ages: { min: 5, max: 10 }, order: 3 },
+            { id: "easy", ages: { min: 3, max: 5 }, order: 1 },
+            { id: "middle", ages: { min: 4, max: 7 }, order: 2 },
+        ];
+        assert.deepEqual(ids(sortGamesForChild(games, 3)), ["easy", "middle", "hard"]);
+        assert.deepEqual(ids(sortGamesForChild(games, 4)), ["easy", "middle", "hard"]);
+        assert.deepEqual(ids(sortGamesForChild(games, 6)), ["middle", "hard", "easy"]);
+        assert.deepEqual(ids(sortGamesForChild(games, 9)), ["hard", "easy", "middle"]);
+    });
+
+    it("sorts only by learning order when the age is not known, and leaves the input alone", () => {
+        const before = ids(GAMES);
+        const sorted = sortGamesForChild(GAMES, null);
+        assert.deepEqual(sorted.map((game) => game.order), GAMES.map((_, index) => index + 1));
+        assert.deepEqual(ids(GAMES), before);
+        assert.deepEqual(ids(sortGamesForChild(GAMES, Number.NaN)), ids(sorted));
+    });
+
+    it("starts a three-year-old with matching shapes and an eight-year-old with games for school age", () => {
+        assert.equal(sortGamesForChild(GAMES, 3)[0].id, "shapes");
+        const forEight = sortGamesForChild(GAMES, 8);
+        for (const game of forEight.slice(0, 5)) assert.ok(game.ages.max >= 8, game.id);
+        assert.equal(forEight.length, GAMES.length);
     });
 });

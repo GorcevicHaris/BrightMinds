@@ -28,6 +28,7 @@ import {
     MAX_LEVEL,
     MOODS_THREE,
     getGame,
+    sortGamesForChild,
     starsForGame,
     type GameDefinition,
     type GameId,
@@ -544,7 +545,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             return <RestCard childName={childName} onExtend={() => clock.addMinutes(ADULT_EXTRA_MINUTES)} />;
         }
         // Sa planom: prikazujemo samo igre iz plana, redom. Kad je plan završen, dete bira samo.
-        const shown = planActive ? plan.map((id) => getGame(id)) : GAMES;
+        const shown = planActive ? plan.map((id) => getGame(id)) : sortGamesForChild(GAMES, settings.playAge);
         return (
             <section aria-labelledby="games-heading" className="space-y-4 sm:space-y-5">
                 {plan.length > 0 && <PlanStrip plan={plan} done={planDone} current={nextPlanned} />}
