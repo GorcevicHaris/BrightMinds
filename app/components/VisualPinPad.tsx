@@ -14,13 +14,15 @@ interface VisualPinPadProps {
     status?: "idle" | "checking" | "error";
     disabled?: boolean;
     className?: string;
+    /** Naziv polja za čitač ekrana (podrazumevano „Tvoj tajni kod”) */
+    label?: string;
 }
 
 /**
  * Unos vizuelnog PIN-a: četiri polja + mreža sličica za trenutni korak.
  * Isti deo koristi dete pri prijavi i roditelj pri postavljanju koda.
  */
-export default function VisualPinPad({ value, onChange, status = "idle", disabled = false, className }: VisualPinPadProps) {
+export default function VisualPinPad({ value, onChange, status = "idle", disabled = false, className, label = "Tvoj tajni kod" }: VisualPinPadProps) {
     const step = Math.min(value.length, PIN_LENGTH - 1);
     const complete = value.length >= PIN_LENGTH;
     const category = VISUAL_PIN_CATEGORIES[step];
@@ -38,7 +40,7 @@ export default function VisualPinPad({ value, onChange, status = "idle", disable
     return (
         <div className={cn("flex w-full flex-col items-center", className)}>
             {/* Polja koda */}
-            <ol className={cn("mb-5 flex justify-center gap-2.5 sm:gap-3", status === "error" && "animate-shake")} aria-label="Tvoj tajni kod">
+            <ol className={cn("mb-5 flex justify-center gap-2.5 sm:gap-3", status === "error" && "animate-shake")} aria-label={label}>
                 {VISUAL_PIN_CATEGORIES.map((cat, idx) => {
                     const item = cat.items.find((i) => i.id === value[idx]);
                     const isCurrent = !complete && idx === value.length;

@@ -24,6 +24,10 @@ const EVENT_WATCHING = "monitor:watching";
 const WATCH_PING_MS = 15_000;
 // Duže od minuta: pregledači usporavaju tajmere u kartici koja nije u prvom planu
 const WATCH_TIMEOUT_MS = 75_000;
+// Igra sa drugom na drugom uređaju: dete javlja roditelju koji prati „Igra sa drugom: Amar”
+const EVENT_TOGETHER = "monitor:together";
+const TOGETHER_PING_MS = 15_000;
+const TOGETHER_TIMEOUT_MS = 45_000;
 // Kanal se gasi tek malo posle poslednjeg korisnika: brzo vraćanje na stranicu inače
 // dobije kanal koji se upravo zatvara i više se ne poveže
 const REMOVE_DELAY_MS = 5_000;
@@ -49,12 +53,18 @@ interface ChannelEntry {
     updateListeners: Set<Listener>;
     syncListeners: Set<() => void>;
     watchListeners: Set<() => void>;
+    togetherListeners: Set<(friend: string | null) => void>;
     statusListeners: Set<(ready: boolean) => void>;
     removeTimer: ReturnType<typeof setTimeout> | null;
 }
 
 let client: SupabaseClient | null = null;
 const entries = new Map<string, ChannelEntry>();
+
+/** Isti Realtime klijent za sve kanale (i za kanal igre sa drugom, lib/inviteChannel.ts) */
+export function realtimeClient(): SupabaseClient {
+    return getClient();
+}
 
 function getClient(): SupabaseClient {
     if (!client) {
@@ -86,6 +96,7 @@ function acquire(topic: string | null): ChannelEntry | null {
         updateListeners: new Set(),
         syncListeners: new Set(),
         watchListeners: new Set(),
+        togetherListeners: new Set(),
         statusListeners: new Set(),
         removeTimer: null,
     };
@@ -101,6 +112,10 @@ function acquire(topic: string | null): ChannelEntry | null {
         })
         .on("broadcast", { event: EVENT_WATCHING }, () => {
             entry.watchListeners.forEach((fn) => fn());
+        })
+        .on("broadcast", { event: EVENT_TOGETHER }, ({ payload }) => {
+            const friend = (payload as { friend?: unknown } | null)?.friend;
+            entry.togetherListeners.forEach((fn) => fn(typeof friend === "string" ? friend : null));
         })
         .subscribe((status) => {
             const ready = status === "SUBSCRIBED";
@@ -260,4 +275,56 @@ export function useWatcherPresence(enabled = true): boolean {
     }, [topic, enabled]);
 
     return watching;
+}
+
+// ── Igra sa drugom na drugom uređaju: znak roditelju ──────────────────────────
+
+/**
+ * Dok dete igra sa drugom na drugom uređaju, javlja roditelju koji prati uživo samo ime
+ * druga (na početku, na zahtev monitora i na svakih 15 sekundi). Na kraju javlja da više nije.
+ */
+export function useTogetherAnnounce(friendName: string | null, enabled = true) {
+    const topic = useContext(TopicContext);
+
+    useEffect(() => {
+        if (!enabled || !friendName) return;
+        const entry = acquire(topic);
+        if (!entry) return;
+        const announce = () => send(entry, EVENT_TOGETHER, { friend: friendName });
+        announce();
+        entry.syncListeners.add(announce);
+        const ping = setInterval(announce, TOGETHER_PING_MS);
+        return () => {
+            clearInterval(ping);
+            entry.syncListeners.delete(announce);
+            send(entry, EVENT_TOGETHER, { friend: null });
+            release(topic);
+        };
+    }, [topic, enabled, friendName]);
+}
+
+/** Monitor: ime druga sa kojim dete trenutno igra na drugom uređaju (null = igra samo). */
+export function useTogetherWatch(topic: string | null): string | null {
+    const [friend, setFriend] = useState<string | null>(null);
+
+    useEffect(() => {
+        const entry = acquire(topic);
+        if (!entry) return;
+        let timeout: ReturnType<typeof setTimeout> | null = null;
+        const onTogether = (name: string | null) => {
+            if (timeout) clearTimeout(timeout);
+            const clean = name ? name.replace(/[^\p{L}\s-]/gu, "").trim().slice(0, 30) : "";
+            setFriend(clean || null);
+            if (clean) timeout = setTimeout(() => setFriend(null), TOGETHER_TIMEOUT_MS);
+        };
+        entry.togetherListeners.add(onTogether);
+        return () => {
+            entry.togetherListeners.delete(onTogether);
+            if (timeout) clearTimeout(timeout);
+            setFriend(null);
+            release(topic);
+        };
+    }, [topic]);
+
+    return friend;
 }

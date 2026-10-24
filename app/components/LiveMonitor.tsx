@@ -7,14 +7,14 @@
 // odrasli gleda, ništa se ne snima i odavde se igrom ne upravlja.
 import { useCallback, useReducer, type ComponentType } from "react";
 import dynamic from "next/dynamic";
-import { Radio } from "lucide-react";
+import { Radio, Users } from "lucide-react";
 import type { BaseView, GameProps } from "@/app/components/games/kit/types";
 import { Spinner } from "@/app/components/ui/Button";
 import { Alert, Card } from "@/app/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { MAX_LEVEL, getGameByType, type GameDefinition, type GameType } from "@/lib/games";
 import { tierForLevel } from "@/lib/progress";
-import { useGameMonitor } from "@/lib/realtime";
+import { useGameMonitor, useTogetherWatch } from "@/lib/realtime";
 import type { GameUpdate } from "@/lib/types";
 
 interface LiveMonitorProps {
@@ -195,6 +195,8 @@ function MonitorSession({ childId, childName, gender, topic }: LiveMonitorProps)
         [childId]
     );
     const { isConnected, isConfigured } = useGameMonitor(childId, handleUpdate, topic);
+    // Igra sa drugom na drugom uređaju: dete javlja samo ime druga
+    const friend = useTogetherWatch(topic);
     const { active, feed } = state;
 
     return (
@@ -202,6 +204,12 @@ function MonitorSession({ childId, childName, gender, topic }: LiveMonitorProps)
             <div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                     <ConnectionStatus isConnected={isConnected} isConfigured={isConfigured} />
+                    {friend && (
+                        <p role="status" className="inline-flex min-h-9 items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3.5 text-sm font-extrabold text-orange-800">
+                            <Users className="h-4 w-4" aria-hidden="true" />
+                            Igra sa drugom: {friend}
+                        </p>
+                    )}
                     {isConfigured && (
                         <p className="text-sm text-ink-soft">Prikaz se osvežava sam, čim {childName} napravi potez u igri.</p>
                     )}

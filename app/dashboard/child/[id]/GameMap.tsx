@@ -27,6 +27,7 @@ import {
     type PickerView,
 } from "./gameMapLayout";
 import { TogetherGamePicker, TogetherStartButton, useTogether } from "./playTogether";
+import { RemoteEndedNotice, RemoteLobby, useRemoteActive } from "./playRemote";
 
 type PlanStatus = "done" | "now" | "later";
 
@@ -92,20 +93,26 @@ interface GamePickerProps extends GameMapProps {
     grid: ReactNode;
     /** Dnevni plan traje: igra sa drugom se ne nudi (plan ima svoj red) */
     planActive?: boolean;
+    /** Igra sa drugom na drugom uređaju: otvara igru baš na zajedničkom nivou */
+    onOpenLevel?: (id: GameId, level: number) => void;
 }
 
-export function GamePicker({ ageYears, grid, planActive = false, ...map }: GamePickerProps) {
+export function GamePicker({ ageYears, grid, planActive = false, onOpenLevel, ...map }: GamePickerProps) {
     const [view, setView] = usePickerView(ageYears);
     const together = useTogether();
-    const togetherOn = Boolean(together?.friend);
+    const remoteOn = useRemoteActive();
+    const togetherOn = Boolean(together?.friend) || remoteOn;
 
     return (
         <div className="space-y-4 sm:space-y-5">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 {!togetherOn && <ViewToggle view={view} onChange={setView} />}
-                {!planActive && <TogetherStartButton />}
+                {!planActive && <TogetherStartButton games={map.games} unlockedFor={map.unlockedFor} />}
             </div>
-            {togetherOn ? (
+            <RemoteEndedNotice />
+            {remoteOn ? (
+                <RemoteLobby pending={map.pending} unavailable={map.unavailable} onOpenLevel={onOpenLevel} />
+            ) : togetherOn ? (
                 <TogetherGamePicker games={map.games} unlockedFor={map.unlockedFor} pending={map.pending} unavailable={map.unavailable} onOpen={map.onOpen} />
             ) : view === "map" ? (
                 <GameMap {...map} />

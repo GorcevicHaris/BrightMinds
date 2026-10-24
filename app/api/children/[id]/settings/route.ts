@@ -8,7 +8,7 @@ import { requireChildAccess, requireChildOwner } from "@/lib/auth";
 import { ageInYears, bandForAge, sanitizeSettings, settingsOverrides, type ChildSettings } from "@/lib/childSettings";
 import { isMissingColumnError, supabaseAdmin } from "@/lib/supabase";
 import { isRecord } from "@/lib/validation";
-import { CHILD_NOT_FOUND, storedSettings, type ChildRow } from "../../../_lib/children";
+import { CHILD_NOT_FOUND, publicSettings, storedSettings, type ChildRow } from "../../../_lib/children";
 import { errorResponse, HttpError, parseIdParam, requireSession } from "../../../_lib/http";
 
 interface RouteContext {
@@ -75,7 +75,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
         const child = await loadChild(childId);
         return NextResponse.json(
-            { settings: storedSettings(child), date_of_birth: child.date_of_birth ?? null },
+            { settings: publicSettings(child), date_of_birth: child.date_of_birth ?? null },
             { headers: { "Cache-Control": "no-store" } }
         );
     } catch (error) {
@@ -103,6 +103,8 @@ export async function PUT(request: Request, { params }: RouteContext) {
         const stored = storedSettings(child);
         const next: Record<string, unknown> = { ...settingsOverrides(settings, ageBand) };
         if (stored.companion !== undefined) next.companion = stored.companion;
+        // Ni poziv za igru sa drugom (`invite`, lib/invite.ts) nije podešavanje roditelja
+        if (stored.invite !== undefined) next.invite = stored.invite;
         const { data, error } = await supabaseAdmin
             .from("children")
             .update({ settings: next })

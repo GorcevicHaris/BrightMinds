@@ -58,6 +58,8 @@ import { usePlanProgress } from "./planProgress";
 // Mapa igara i „Igraj sa drugom” (GameMap.tsx, playTogether.tsx)
 import { GamePicker } from "./GameMap";
 import { TogetherEnd, TurnTakingLayer, useTogetherEnd } from "./playTogether";
+// Drug na drugom uređaju (playRemote.tsx): traka sa drugom i zajednički kraj nivoa
+import { RemoteFriendLayer, RemoteTogetherEnd, useRemoteEnd } from "./playRemote";
 import { useSessionClock } from "./sessionClock";
 
 // Svaka igra se učitava tek kada je dete izabere
@@ -172,6 +174,8 @@ const TIERS: TierConfig[] = [
 
 const tierOf = (id: Tier) => TIERS.find((t) => t.id === id)!;
 const tierMax = (tier: TierConfig) => tier.min + LEVELS_PER_TIER - 1;
+/** Težina kojoj nivo pripada */
+const tierAt = (level: number) => TIERS.find((t) => level >= t.min && level <= tierMax(t)) ?? TIERS[0];
 
 /** Koliko je nivoa u ovom rangu završeno (0–5), ako je `unlocked` sledeći otključani nivo. */
 function completedInTier(tier: TierConfig, unlocked: number): number {
@@ -322,6 +326,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
     const game = gameId ? getGame(gameId) : null;
     const togetherEnd = useTogetherEnd(gameId);
+    const remoteEnd = useRemoteEnd(gameId);
     const tier = tierOf(tierId);
     const unlockedFor = (id: GameId) => unlocked[id] ?? 1;
 
@@ -381,6 +386,23 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         setGameId(id);
         setOutcome(null);
         setScreen("tiers");
+    };
+
+    /** Igra sa drugom na drugom uređaju: oboje otvaraju istu igru baš na zajedničkom nivou */
+    const openAtLevel = (id: GameId, wanted: number) => {
+        if (clock.limitReached || levelsLoading || levelsError) return;
+        const nextTier = tierAt(wanted);
+        playSfx("tap");
+        preloadGame(id);
+        setGameId(id);
+        if (askMood && !moodAsked) {
+            setOutcome(null);
+            setTierId(nextTier.id);
+            setLevel(wanted);
+            setScreen("mood-before");
+        } else {
+            startLevel(nextTier.id, wanted);
+        }
     };
 
     const startLevel = (nextTier: Tier, nextLevel: number) => {
@@ -606,6 +628,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     unavailable={levelsError}
                     planActive={planActive}
                     onOpen={openGame}
+                    onOpenLevel={openAtLevel}
                     grid={
                 <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
                     {shown.map((g, index) => {
@@ -757,6 +780,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         <GamePauseContext.Provider value={onBreak}>
                             {/* Igra sa drugom: traka „Sada igra …” (playTogether.tsx); inače samo igra */}
                             <TurnTakingLayer key={playKey} gameId={game.id}>
+                            <RemoteFriendLayer gameId={game.id}>
                             <GameSlot
                                 key={`${game.id}-${level}-${attempt}`}
                                 gameId={game.id}
@@ -766,6 +790,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                                 childName={childName}
                                 onComplete={handleComplete}
                             />
+                            </RemoteFriendLayer>
                             </TurnTakingLayer>
                         </GamePauseContext.Provider>
                     </div>
@@ -801,7 +826,20 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     onLeave={leaveGame}
                 />
             )}
-            {screen === "playing" && outcome && !togetherEnd && (
+            {/* Drug na drugom uređaju: kraj nivoa za oboje — „Bravo, Lejla i Amar!” (playRemote.tsx) */}
+            {screen === "playing" && outcome && !togetherEnd && remoteEnd && (
+                <RemoteTogetherEnd
+                    playKey={playKey}
+                    stars={outcome.stars}
+                    level={level}
+                    advance={outcome.advance}
+                    limitReached={clock.limitReached}
+                    saved={outcome.saved}
+                    onPlay={(next) => startLevel(tierAt(next).id, next)}
+                    onLeave={leaveGame}
+                />
+            )}
+            {screen === "playing" && outcome && !togetherEnd && !remoteEnd && (
                 <LevelResult
                     outcome={outcome}
                     childName={childName}
