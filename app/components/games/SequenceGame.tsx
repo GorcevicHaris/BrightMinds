@@ -1,9 +1,13 @@
 "use client";
 
-// Igra „Šta je prvo?”: gore su numerisana prazna mesta (1, 2, 3…), dole izmešani koraci.
+// Igra „Šta je prvo?”: gore su numerisana mesta (1, 2, 3…), dole izmešani koraci sa slikom.
 // Dete dodiruje korak koji dolazi sledeći (bez prevlačenja), a on prelazi na svoje mesto.
-// Kad je niz složen, glas ga pročita redom: „Prvo…, zatim…, na kraju…” — isti obrazac
-// „prvo–zatim” koji deca iz spektra poznaju iz vizuelnih rasporeda.
+// Kad je niz složen, glas ga prepriča redom („Prvo…, zatim…, na kraju…”) i uz svaki deo
+// zasvetli njegovo mesto — isti obrazac „prvo–zatim” koji deca iz spektra poznaju iz
+// vizuelnih rasporeda.
+//
+// Pomoć se povlači iz nivoa u nivo (data/sequences.ts): bleda senka tačne slike na praznom
+// mestu → prvi korak je već na mestu kao primer → bez pomoći → kartice bez natpisa.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
@@ -16,7 +20,7 @@ import {
     GamePrompt,
     GameStage,
     hintDue,
-    listenLimitFor,
+    isFemale,
     PlayArea,
     playSfx,
     shuffle,
@@ -34,17 +38,20 @@ import {
     type GameProps,
     type TimerId,
 } from "@/app/components/games/kit";
-import { buildSequenceLevel, getSequence, type Sequence } from "@/app/components/games/data/sequences";
+import { buildSequenceLevel, getSequence, sequenceRule, type Sequence } from "@/app/components/games/data/sequences";
+import { StepArt } from "@/app/components/games/sequence/StepArt";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
 
 export interface SequenceView extends BaseView {
     sequenceId: string;
-    /** Redosled kojim su koraci izmešani na ekranu (indeksi koraka) */
+    /** Kartice koje dete slaže, redom na ekranu (indeksi koraka; bez koraka koji je dat kao primer) */
     order: number[];
     /** Koliko je koraka već na svom mestu (uvek prvih `placed`) */
     placed: number;
+    /** Koliko je koraka na početku već bilo na mestu kao primer (0 ili 1) */
+    model: number;
     /** Koraci probani pogrešno za trenutno mesto */
     wrong: number[];
     picked: number | null;
@@ -54,10 +61,15 @@ export interface SequenceView extends BaseView {
     missed: boolean;
     helped: boolean;
     promptedCount: number;
+    /** Prepričavanje posle složenog niza: koje mesto upravo svetli (−1 = nijedno) */
+    told: number;
 }
 
 const GAME = getGame("sequence");
 const WRONG_FEEDBACK_MS = 1400;
+/** Jedan deo prepričavanja: najmanje ovoliko (i bez glasa), najviše dok glas ne završi */
+const TELL_MIN_MS = 1100;
+const TELL_MAX_MS = 5000;
 
 /** Reč za mesto u nizu: prvo, zatim, na kraju (u nizu od dva koraka: prvo, posle) */
 function positionWord(index: number, total: number): string {
@@ -76,11 +88,20 @@ function lowerFirst(text: string): string {
     return text.charAt(0).toLocaleLowerCase("sr") + text.slice(1);
 }
 
-/** „Prvo obučem čarape, posle obujem patike.” — reči se/ga/mu/me/je ostaju na drugom mestu (`retell`) */
-function retell(sequence: Sequence): string {
-    const parts = sequence.steps.map((step, i) => `${positionWord(i, sequence.steps.length)} ${step.retell ?? lowerFirst(step.text.replace(/\.$/, ""))}`);
-    const sentence = parts.join(", ");
-    return `${sentence.charAt(0).toLocaleUpperCase("sr")}${sentence.slice(1)}.`;
+function upperFirst(text: string): string {
+    return text.charAt(0).toLocaleUpperCase("sr") + text.slice(1);
+}
+
+/** „Prvo obučem čarape.” — reči se/ga/mu/me/je ostaju na drugom mestu (`retell`) */
+export function retellPart(sequence: Sequence, index: number): string {
+    const step = sequence.steps[index];
+    return `${upperFirst(positionWord(index, sequence.steps.length))} ${step.retell ?? lowerFirst(step.text.replace(/\.$/, ""))}.`;
+}
+
+/** Uputstvo za novi niz; kad je prvi korak dat kao primer, glas ga i imenuje */
+function introFor(sequence: Sequence, model: number): string {
+    if (model > 0) return `${sequence.title}. ${retellPart(sequence, 0)} ${questionFor(1, sequence.steps.length)}`;
+    return `${sequence.title}. ${questionFor(0, sequence.steps.length)}`;
 }
 
 function emptyView(totalRounds: number): SequenceView {
@@ -94,23 +115,33 @@ function emptyView(totalRounds: number): SequenceView {
         sequenceId: "",
         order: [],
         placed: 0,
+        model: 0,
         wrong: [],
         picked: null,
         feedback: null,
         hint: false,
         missed: false,
         helped: false,
+        told: -1,
     };
 }
 
-/** Izmešani koraci, ali nikad već složeni redom (inače bi zadatak bio rešen pre početka) */
-function scrambled(count: number): number[] {
-    const ordered = Array.from({ length: count }, (_, i) => i);
+/** Kartice za slaganje: koraci posle primera, izmešani */
+function scrambled(count: number, model: number): number[] {
+    const ordered = Array.from({ length: count - model }, (_, i) => i + model);
+    // Dve kartice smeju i redom (pola–pola); duži niz nikad nije već složen
+    if (ordered.length <= 2) return shuffle(ordered);
     for (let attempt = 0; attempt < 10; attempt += 1) {
         const mixed = shuffle(ordered);
-        if (mixed.some((value, i) => value !== i)) return mixed;
+        if (mixed.some((value, i) => value !== ordered[i])) return mixed;
     }
     return [...ordered].reverse();
+}
+
+/** Polja novog niza */
+function roundStart(sequence: Sequence, model: number) {
+    const given = Math.min(model, sequence.steps.length - 2);
+    return { sequenceId: sequence.id, order: scrambled(sequence.steps.length, given), placed: given, model: given };
 }
 
 function mergeMonitor(state: Partial<SequenceView> | null | undefined): SequenceView {
@@ -118,8 +149,10 @@ function mergeMonitor(state: Partial<SequenceView> | null | undefined): Sequence
     if (!state) return base;
     const sequence = typeof state.sequenceId === "string" ? getSequence(state.sequenceId) : undefined;
     const count = sequence?.steps.length ?? 0;
+    const model = Math.min(toCount(state.model, 0), 1);
     const totalRounds = Math.max(toCount(state.totalRounds, 1), 1);
-    const order = toIndexList(state.order, count);
+    const order = toIndexList(state.order, count).filter((i) => i >= model);
+    const valid = sequence !== undefined && order.length === count - model;
     return {
         ...base,
         score: toCount(state.score, 0),
@@ -128,13 +161,15 @@ function mergeMonitor(state: Partial<SequenceView> | null | undefined): Sequence
         promptedCount: toCount(state.promptedCount, 0),
         round: Math.min(Math.max(toCount(state.round, 1), 1), totalRounds),
         totalRounds,
-        sequenceId: sequence && order.length === count ? sequence.id : "",
-        order: order.length === count ? order : [],
-        placed: Math.min(toCount(state.placed, 0), count),
+        sequenceId: valid ? sequence.id : "",
+        order: valid ? order : [],
+        placed: Math.max(Math.min(toCount(state.placed, 0), count), model),
+        model,
         wrong: Array.isArray(state.wrong) ? state.wrong.filter((i) => order.includes(i)) : [],
         picked: typeof state.picked === "number" && order.includes(state.picked) ? state.picked : null,
         feedback: state.feedback === "correct" || state.feedback === "wrong" ? state.feedback : null,
         hint: state.hint === true,
+        told: typeof state.told === "number" && Number.isInteger(state.told) && state.told >= 0 && state.told < count ? state.told : -1,
     };
 }
 
@@ -153,13 +188,14 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
     const sayThen = useSayThen(say, after);
     const praise = usePraise();
     const guard = useInputGuard();
+    const rule = sequenceRule(level);
+    const female = isFemale(gender);
 
     // Najmlađi slažu najviše tri koraka (choiceLimit: 3), stariji četiri ili pet
     const [plan] = useState<Sequence[]>(() => (isMonitor ? [] : buildSequenceLevel(level, { maxSteps: Math.max(2, settings.choiceLimit) })));
     const [view, setView] = useState<SequenceView>(() => ({
         ...emptyView(plan.length),
-        sequenceId: plan[0]?.id ?? "",
-        order: plan[0] ? scrambled(plan[0].steps.length) : [],
+        ...(plan[0] ? roundStart(plan[0], rule.model ? 1 : 0) : {}),
     }));
     const viewRef = useRef(view);
     const finishedRef = useRef(false);
@@ -183,7 +219,7 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
         guard.hold();
         sync.start(viewRef.current);
         const sequence = getSequence(viewRef.current.sequenceId);
-        if (sequence) say(`Složi redom. ${sequence.title}. Šta je prvo?`);
+        if (sequence) say(`Složi redom. ${introFor(sequence, viewRef.current.model)}`);
     }, [isMonitor, sync, guard, say]);
 
     const finish = () => {
@@ -205,18 +241,35 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
         const sequence = plan[index];
         if (!sequence) return;
         guard.hold();
+        const fields = roundStart(sequence, rule.model ? 1 : 0);
         commit(
-            { ...viewRef.current, sequenceId: sequence.id, order: scrambled(sequence.steps.length), round: index + 1, placed: 0, wrong: [], picked: null, feedback: null, hint: false, missed: false, helped: false },
+            { ...viewRef.current, ...fields, round: index + 1, wrong: [], picked: null, feedback: null, hint: false, missed: false, helped: false, told: -1 },
             `Niz ${index + 1}: ${sequence.title}`
         );
-        say(`${sequence.title}. Šta je prvo?`);
+        say(introFor(sequence, fields.model));
+    };
+
+    /** Prepričavanje: pohvala, pa deo po deo („Prvo …”, „Zatim …”), uz svaki zasvetli njegovo mesto */
+    const tellBack = (sequence: Sequence, lead: string, done: () => void) => {
+        const parts = sequence.steps.map((_, i) => retellPart(sequence, i));
+        const step = (i: number) => {
+            if (finishedRef.current) return;
+            if (i >= parts.length) {
+                commit({ ...viewRef.current, told: -1 });
+                done();
+                return;
+            }
+            commit({ ...viewRef.current, told: i });
+            sayThen(i === 0 && lead ? `${lead} ${parts[i]}` : parts[i], () => step(i + 1), { emotion: "happy", min: TELL_MIN_MS, max: TELL_MAX_MS + (i === 0 && lead ? 2000 : 0) });
+        };
+        step(0);
     };
 
     const handlePick = (step: number) => {
         if (isMonitor || finishedRef.current || guard.blocked()) return;
         const current = viewRef.current;
         const sequence = getSequence(current.sequenceId);
-        if (!sequence || current.feedback === "correct" || step < current.placed || current.wrong.includes(step)) return;
+        if (!sequence || current.feedback === "correct" || step < current.placed || current.wrong.includes(step) || !current.order.includes(step)) return;
         cancel(feedbackTimer.current);
         feedbackTimer.current = null;
         const total = sequence.steps.length;
@@ -250,9 +303,7 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
             commit(solved, `Niz složen ${how}: ${sequence.title}`);
             playSfx("correct");
             const isLast = current.round >= current.totalRounds;
-            // Dug niz se prepričava i do petnaestak sekundi: sledeći niz ne sme da ga preseče
-            const told = praise(retell(sequence), firstTry);
-            sayThen(told, isLast ? finish : () => startRound(current.round), { emotion: "happy", max: Math.max(9000, listenLimitFor(told)) });
+            tellBack(sequence, praise("", firstTry).trim(), isLast ? finish : () => startRound(current.round));
             return;
         }
 
@@ -286,9 +337,9 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
     const repeatInstruction = () => {
         const current = viewRef.current;
         const sequence = getSequence(current.sequenceId);
-        // Složen niz: ništa se ne pita (i ne prekida se pohvala koja upravo teče)
+        // Složen niz: ništa se ne pita (i ne prekida se prepričavanje)
         if (!sequence || current.feedback === "correct") return;
-        say(`${sequence.title}. ${questionFor(current.placed, sequence.steps.length)}`);
+        say(current.placed === current.model ? introFor(sequence, current.model) : `${sequence.title}. ${questionFor(current.placed, sequence.steps.length)}`);
     };
 
     const shown = isMonitor ? mergeMonitor(monitorState) : view;
@@ -307,9 +358,13 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
     const total = sequence.steps.length;
     const solved = shown.feedback === "correct";
     const showHand = !isMonitor && demoRounds(level, shown.totalRounds) > 0 && shown.round === 1 && !shown.missed && !solved;
+    // Na monitoru nivo nije poznat iz plana, ali pravilo zavisi samo od nivoa
+    const ghost = rule.ghost;
+    const captions = rule.captions;
+    const cards = shown.order.length;
 
     return (
-        <GameStage>
+        <GameStage className="gap-3 sm:gap-4">
             <GameHud round={shown.round} totalRounds={shown.totalRounds} unit="Niz" score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
             <GamePrompt
@@ -320,44 +375,54 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
                 subtitle={solved ? "Složeno!" : questionFor(shown.placed, total)}
             />
 
-            <PlayArea accent={GAME.accent}>
-                {/* Mesta u nizu: složeni koraci sa brojem, prazna mesta isprekidana */}
-                <ol aria-label="Redosled" className={cn("mb-4 grid w-full max-w-4xl gap-1.5 sm:mb-6 sm:gap-3", SLOT_COLUMNS[total] ?? SLOT_COLUMNS[5])}>
+            <PlayArea accent={GAME.accent} className="gap-3 p-2.5 sm:gap-5 sm:p-4">
+                {/* Mesta u nizu: složeni koraci sa slikom i brojem; prazna mesta isprekidana (uz senku tačne slike na lakim nivoima) */}
+                <ol aria-label="Redosled" className={cn("grid w-full gap-1.5 sm:gap-3", SLOT_COLUMNS[total] ?? SLOT_COLUMNS[5], SLOT_WIDTH[total] ?? SLOT_WIDTH[5])}>
                     {sequence.steps.map((step, index) => {
                         const filled = index < shown.placed;
                         const next = index === shown.placed && !solved;
+                        const telling = shown.told === index;
+                        const given = index < shown.model;
                         return (
                             <li
                                 key={index}
+                                aria-label={filled ? `${index + 1}. ${step.text}${given ? " (primer)" : ""}` : `Mesto ${index + 1}, prazno`}
                                 className={cn(
-                                    "relative flex min-h-[4.5rem] flex-col items-center justify-center gap-0.5 rounded-2xl border-2 p-1.5 text-center sm:min-h-28 sm:gap-1 sm:p-2",
-                                    filled ? "border-emerald-300 bg-white shadow-soft" : "border-dashed bg-white/60",
-                                    next ? "border-brand-300" : !filled && "border-line"
+                                    "relative flex flex-col items-center justify-center overflow-hidden rounded-2xl border-2 bg-white/60 p-1 text-center transition-[box-shadow,border-color] sm:p-1.5",
+                                    filled ? "border-emerald-300 bg-white shadow-soft" : "border-dashed",
+                                    next ? "border-brand-400" : !filled && "border-line",
+                                    telling && "border-sun-400 ring-4 ring-sun-300"
                                 )}
                             >
-                                <span className="absolute left-1.5 top-1 text-sm font-extrabold text-ink-soft">{index + 1}</span>
-                                {filled ? (
-                                    <>
-                                        <span key={`placed-${index}`} className="animate-pop text-3xl leading-none sm:text-5xl" aria-hidden="true">
-                                            {step.emoji}
+                                <span className="absolute left-1 top-0.5 z-10 grid h-5 min-w-5 place-items-center rounded-full bg-white/90 px-1 text-xs font-extrabold text-ink-soft sm:left-1.5 sm:top-1 sm:h-6 sm:min-w-6 sm:text-sm">{index + 1}</span>
+                                <span className="relative block aspect-[3/2] w-full">
+                                    {filled ? (
+                                        <span key={`placed-${index}`} className={cn("absolute inset-0", !given && "animate-pop")}>
+                                            <StepArt spec={step.art} female={female} className="h-full w-full rounded-xl" />
                                         </span>
-                                        {/* Na telefonu su mesta uska: sličica i broj su dovoljni, rečenica je na kartici i u glasu */}
-                                        <span className="hidden text-sm font-bold leading-tight text-ink sm:line-clamp-2">{step.text}</span>
-                                    </>
-                                ) : (
-                                    <span className="text-2xl font-extrabold text-ink-faint" aria-label={`Mesto ${index + 1}, prazno`}>
-                                        ?
-                                    </span>
-                                )}
+                                    ) : ghost ? (
+                                        // Senka: bleda slika tačnog koraka — dete uparuje karticu sa njom
+                                        <span className="absolute inset-0 opacity-30 grayscale-[60%]">
+                                            <StepArt spec={step.art} female={female} className="h-full w-full rounded-xl" />
+                                        </span>
+                                    ) : (
+                                        <span className="absolute inset-0 grid place-items-center text-2xl font-extrabold text-ink-faint sm:text-3xl" aria-hidden="true">
+                                            ?
+                                        </span>
+                                    )}
+                                </span>
+                                {/* Natpis složenog koraka: na telefonu su mesta uska, a na niskom ekranu nema mesta — tada samo slika i broj */}
+                                {filled && <span className="mt-1 hidden text-xs font-bold leading-tight text-ink sm:line-clamp-2 sm:text-sm short:sm:hidden">{step.text}</span>}
                             </li>
                         );
                     })}
                 </ol>
 
                 {/* Koraci koji još čekaju svoje mesto */}
-                <div role="group" aria-label="Koraci" className={cn("grid w-full max-w-4xl gap-3", COLUMNS[total] ?? COLUMNS[5], isMonitor && "pointer-events-none")}>
+                <div role="group" aria-label="Koraci" className={cn("flex w-full flex-wrap justify-center gap-2 sm:gap-3", CARD_WIDTH[cards] ?? CARD_WIDTH[5], isMonitor && "pointer-events-none")}>
                     {shown.order.map((stepIndex) => {
-                        if (stepIndex < shown.placed) return <span key={stepIndex} aria-hidden="true" />;
+                        // Složena kartica ostavlja prazno mesto iste širine: ostale kartice se ne pomeraju
+                        if (stepIndex < shown.placed) return <span key={stepIndex} aria-hidden="true" className={CARD_BASIS[cards] ?? CARD_BASIS[5]} />;
                         const step = sequence.steps[stepIndex];
                         const state = cardState(shown, stepIndex);
                         return (
@@ -367,12 +432,12 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(stepIndex)}
                                 aria-label={`${step.text}${state === "wrong" ? ", netačno" : ""}`}
-                                className="min-h-24 flex-col gap-1 px-2 py-2 sm:min-h-32 sm:gap-1.5"
+                                className={cn("min-h-0 flex-col justify-start gap-1 p-1.5 sm:gap-1.5 sm:p-2", CARD_BASIS[cards] ?? CARD_BASIS[5])}
                             >
-                                <span className="text-4xl leading-none sm:text-5xl" aria-hidden="true">
-                                    {step.emoji}
+                                <span className="block w-full max-w-[min(100%,28dvh)] short:max-w-[min(100%,22dvh)]">
+                                    <StepArt spec={step.art} female={female} className="aspect-[3/2] w-full rounded-xl" />
                                 </span>
-                                <span className="text-sm font-bold leading-tight sm:text-base">{step.text}</span>
+                                {captions && <span className="line-clamp-2 text-xs font-bold leading-tight sm:text-base">{step.text}</span>}
                                 {showHand && stepIndex === shown.placed && <DemoHand />}
                             </ChoiceCard>
                         );
@@ -394,10 +459,30 @@ const SLOT_COLUMNS: Record<number, string> = {
     5: "grid-cols-5",
 };
 
-/** Kolone koraka za biranje prema broju koraka */
-const COLUMNS: Record<number, string> = {
-    2: "grid-cols-2",
-    3: "grid-cols-3",
-    4: "grid-cols-2 sm:grid-cols-4",
-    5: "grid-cols-3 sm:grid-cols-5",
+/** Mesta su manja od kartica: ne smeju da odnesu visinu koju trebaju kartice */
+const SLOT_WIDTH: Record<number, string> = {
+    2: "max-w-[min(100%,46dvh)]",
+    3: "max-w-[min(100%,66dvh)]",
+    4: "max-w-[min(100%,84dvh)]",
+    5: "max-w-[min(100%,100dvh)]",
+};
+
+/**
+ * Širina kartice prema broju kartica (u redu sa razmakom 0,5 rem, od sm 0,75 rem). Na telefonu su
+ * tri kartice dve pa jedna u sredini — veće slike; od sm sve u jednom redu. Uz `!`, jer ChoiceCard već ima `w-full`.
+ */
+const CARD_BASIS: Record<number, string> = {
+    1: "w-full!",
+    2: "w-[calc(50%-0.25rem)]! sm:w-[calc(50%-0.375rem)]!",
+    3: "w-[calc(50%-0.25rem)]! sm:w-[calc(33.333%-0.5rem)]!",
+    4: "w-[calc(50%-0.25rem)]! sm:w-[calc(25%-0.5625rem)]!",
+    5: "w-[calc(33.333%-0.334rem)]! sm:w-[calc(20%-0.6rem)]!",
+};
+
+const CARD_WIDTH: Record<number, string> = {
+    1: "max-w-xs",
+    2: "max-w-xl",
+    3: "max-w-3xl",
+    4: "max-w-5xl",
+    5: "max-w-6xl",
 };
