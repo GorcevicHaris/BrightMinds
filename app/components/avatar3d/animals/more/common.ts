@@ -39,7 +39,8 @@ export function coat(fur: string, light: string, extra: Partial<Coat> = {}): Coa
         nose: shade(fur, -0.55),
         brow: shade(fur, -0.3),
         iris: ["#9A6A3A", "#3A200C"],
-        pattern: "none",
+        // Dugino krzno (marks = RAINBOW): ugrađena duga po visini preko celog lika
+        pattern: extra.marks === RAINBOW ? "rainbow" : "none",
         ...extra,
     };
 }
