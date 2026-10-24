@@ -59,6 +59,8 @@ export const USE_ITEMS: readonly UseItem[] = [
     u("broom", "🧹", "Metla", "home", "Čime čistimo pod?", "Pod čistimo metlom."),
     u("phone", "📱", "Telefon", "home", "Čime zovemo baku?", "Baku zovemo telefonom."),
     u("ball", "⚽", "Lopta", "home", "Šta šutiramo nogom?", "Loptu šutiramo nogom."),
+    u("fork", "🍴", "Viljuška", "home", "Čime nabadamo hranu?", "Hranu nabadamo viljuškom."),
+    u("lamp", "💡", "Sijalica", "home", "Šta nam daje svetlo u mraku?", "Sijalica nam daje svetlo."),
 
     // Delovi tela (srednje)
     u("eyes", "👀", "Oči", "body", "Čime gledamo?", "Gledamo očima.", { plural: true }),
@@ -68,6 +70,7 @@ export const USE_ITEMS: readonly UseItem[] = [
     u("hand", "✋", "Ruka", "body", "Čime mašemo kad se pozdravljamo?", "Mašemo rukom."),
     u("leg", "🦵", "Noga", "body", "Čime šutiramo loptu?", "Loptu šutiramo nogom."),
     u("teeth", "🦷", "Zubi", "body", "Čime grizemo jabuku?", "Jabuku grizemo zubima.", { plural: true, alsoFits: ["mouth"] }),
+    u("tongue", "👅", "Jezik", "body", "Čime ližemo sladoled?", "Sladoled ližemo jezikom.", { alsoFits: ["mouth"] }),
 
     // Stvari (srednje): manje česti predmeti iz kuće, odeća
     u("backpack", "🎒", "Ranac", "things", "Šta nosimo na leđima u školu?", "Ranac nosimo na leđima."),
@@ -82,6 +85,8 @@ export const USE_ITEMS: readonly UseItem[] = [
     u("brush", "🖌️", "Četkica", "things", "Čime slikamo bojama?", "Slikamo četkicom."),
     u("book", "📖", "Knjiga", "things", "Šta čitamo?", "Čitamo knjigu."),
     u("hammer", "🔨", "Čekić", "things", "Čime zakucavamo ekser?", "Ekser zakucavamo čekićem."),
+    u("crayons", "🖍️", "Bojice", "things", "Čime crtamo šarene crteže?", "Šarene crteže crtamo bojicama.", { plural: true, alsoFits: ["brush"] }),
+    u("scarf", "🧣", "Šal", "things", "Šta nosimo oko vrata kad je hladno?", "Oko vrata nosimo šal."),
 
     // Životinje (teško): po osobini
     u("elephant", "🐘", "Slon", "animals", "Ko ima surlu?", "Slon ima surlu."),
@@ -93,6 +98,8 @@ export const USE_ITEMS: readonly UseItem[] = [
     u("turtle", "🐢", "Kornjača", "animals", "Ko nosi oklop na leđima?", "Kornjača nosi oklop na leđima."),
     u("cow", "🐄", "Krava", "animals", "Ko nam daje mleko?", "Krava nam daje mleko."),
     u("bee", "🐝", "Pčela", "animals", "Ko pravi med?", "Pčela pravi med."),
+    u("frog", "🐸", "Žaba", "animals", "Ko skače i kreketa u bari?", "Žaba skače i kreketa u bari."),
+    u("spider", "🕷️", "Pauk", "animals", "Ko plete mrežu?", "Pauk plete mrežu."),
 
     // Priroda i prevoz (teško): po osobini i funkciji
     u("bicycle", "🚲", "Bicikl", "world", "Šta ima pedale?", "Bicikl ima pedale."),
@@ -104,6 +111,8 @@ export const USE_ITEMS: readonly UseItem[] = [
     u("moon", "🌙", "Mesec", "world", "Šta svetli na nebu noću?", "Mesec svetli na nebu noću."),
     u("rainbow", "🌈", "Duga", "world", "Šta je šareno i vidi se posle kiše?", "Duga se vidi posle kiše."),
     u("snowman", "⛄", "Sneško", "world", "Šta pravimo od snega?", "Od snega pravimo Sneška."),
+    u("train", "🚂", "Voz", "world", "Šta ide po šinama?", "Voz ide po šinama."),
+    u("rocket", "🚀", "Raketa", "world", "Šta leti u svemir?", "Raketa leti u svemir.", { alsoFits: ["plane"] }),
 ];
 
 /** Natpis i odgovor posle pogrešnog izbora: „To je kapa.” / „To su makaze.” */

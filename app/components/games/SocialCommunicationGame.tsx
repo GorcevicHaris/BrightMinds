@@ -42,6 +42,7 @@ import {
     type SocialSituation,
 } from "./data/socialSituations";
 import { socialScene } from "./data/socialScenes";
+import { OPTION_GRID, OptionPicture } from "./OptionPicture";
 import { SceneArt } from "./scene/SceneArt";
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
@@ -409,8 +410,8 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                 // Kad se pojave izbori, primer je već pročitan: na telefonu se sabije, da svi izbori stanu na ekran.
                 // Dok se primer čita, slika je velika, iznad teksta; posle ostaje mala, levo od teksta.
                 className={cn(
-                    "flex animate-fade-up rounded-card border-2 shadow-soft sm:gap-4 sm:p-5",
-                    shown.optionsShown ? "items-center gap-3 p-2.5" : picture ? "flex-col items-stretch gap-3 p-3" : "items-center gap-3 p-4",
+                    "flex animate-fade-up rounded-card border-2 shadow-soft sm:gap-4",
+                    shown.optionsShown ? "items-center gap-3 p-2.5 sm:p-3" : picture ? "flex-col items-stretch gap-3 p-3 sm:p-5" : "items-center gap-3 p-4 sm:p-5",
                     ACCENT.soft,
                     ACCENT.border
                 )}
@@ -419,7 +420,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     <div
                         className={cn(
                             "shrink-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-brand-100",
-                            shown.optionsShown ? "w-28 sm:w-44" : "mx-auto w-full max-w-[min(100%,48dvh)] short:max-w-[min(100%,40dvh)]"
+                            shown.optionsShown ? "w-28 sm:w-36" : "mx-auto w-full max-w-[min(100%,48dvh)] short:max-w-[min(100%,40dvh)]"
                         )}
                     >
                         <SceneArt spec={picture.scene} hero={{ look: picture.hero }} className="h-auto w-full" />
@@ -434,6 +435,13 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     <p className={cn("font-bold leading-snug text-ink sm:text-xl", shown.optionsShown ? "text-base" : "text-lg")}>
                         {genderText(situation.model, female)}
                     </p>
+                    {/* Na tabletu je pitanje u istoj kartici kao primer, da slike izbora stanu na ekran bez pomeranja */}
+                    {shown.optionsShown && (
+                        <div aria-hidden="true" className="mt-2 hidden border-t border-brand-200 pt-2 sm:block">
+                            <p className="font-display text-2xl font-extrabold leading-snug text-ink">{genderText(situation.text, female)}</p>
+                            <p className="text-lg font-bold text-ink-soft">{situation.ask}</p>
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -448,7 +456,8 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                 <>
                     <GamePrompt
                         key={`prompt-${situation.id}`}
-                        className="animate-fade"
+                        // Na tabletu je pitanje u kartici sa primerom (iznad); za čitače ekrana ostaje ovde
+                        className="animate-fade sm:sr-only"
                         compact
                         // Slika je već u primeru iznad; emodži samo kad slike nema
                         visual={picture ? undefined : <span aria-hidden="true">{situation.scene}</span>}
@@ -456,7 +465,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                         subtitle={situation.ask}
                     />
 
-                    <ul key={`options-${shown.round}`} aria-label="Ponuđeni izbori" className="grid animate-fade gap-3">
+                    <ul key={`options-${shown.round}`} aria-label="Ponuđeni izbori" className={cn("grid animate-fade gap-2 sm:gap-3", OPTION_GRID[shown.order.length] ?? OPTION_GRID[3])}>
                         {shown.order.map((index) => {
                             const firstHelpful = shown.order.find((i) => situation.acceptable.includes(i));
                             const showHand = !isMonitor && level === 1 && shown.round === 1 && shown.optionsShown && shown.picked === null && shown.tried.length === 0;
@@ -466,27 +475,25 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                             const inactive = shown.picked !== null || shown.finished || shown.tried.includes(index);
                             const status = state === "correct" ? " To pomaže." : shown.tried.includes(index) ? " Već probano." : "";
                             return (
-                                <li key={index} className="flex items-stretch gap-2">
+                                <li key={index} className="relative flex min-w-0 flex-col items-center gap-1.5">
                                     <ChoiceCard
                                         state={state}
                                         disabled={isMonitor}
                                         aria-disabled={inactive || undefined}
                                         aria-label={`${label}${status}`}
                                         onClick={() => handlePick(index)}
-                                        className={cn("min-w-0 flex-1", inactive && "cursor-default")}
+                                        className={cn("h-full w-full min-w-0 flex-1 p-1.5! sm:p-2.5!", inactive && "cursor-default")}
                                     >
-                                        <span className="flex w-full items-center gap-3 text-left sm:gap-4">
-                                            <span
-                                                aria-hidden="true"
-                                                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 text-3xl leading-none sm:h-14 sm:w-14 sm:text-4xl"
-                                            >
-                                                {option.emoji}
-                                            </span>
-                                            <span className="min-w-0 flex-1 text-lg leading-snug sm:text-xl">{label}</span>
-                                        </span>
-                                        {showHand && index === firstHelpful && <DemoHand />}
+                                        {/* Izbor je slika: dete radi ili kaže baš to; natpis je ispod */}
+                                        <OptionPicture text={option.text} label={label} emoji={option.emoji} female={female}>
+                                            {showHand && index === firstHelpful && <DemoHand />}
+                                        </OptionPicture>
                                     </ChoiceCard>
-                                    {!isMonitor && <OptionSpeaker label={`Pročitaj: ${label}`} onClick={() => handleSpeakOption(index)} />}
+                                    {!isMonitor && (
+                                        <span className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2 [&>button]:min-h-9 [&>button]:w-9 [&>button]:rounded-xl sm:[&>button]:min-h-10 sm:[&>button]:w-10">
+                                            <OptionSpeaker label={`Pročitaj: ${label}`} onClick={() => handleSpeakOption(index)} />
+                                        </span>
+                                    )}
                                 </li>
                             );
                         })}

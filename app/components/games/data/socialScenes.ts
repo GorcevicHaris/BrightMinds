@@ -7,7 +7,7 @@
 // nasmejano.
 // Situacije 1–15 se ponavljaju na tri težine (ID-jevi 16–45), sa istom slikom.
 
-import { hero, scene, say, shout, thing, who, type FigureItem, type LookId, type SceneSpec } from "@/app/components/games/scene/types";
+import { hero, inBed, scene, say, shout, thing, who, type FigureItem, type LookId, type SceneSpec } from "@/app/components/games/scene/types";
 
 export interface SocialPicture {
     /** Dete iz primera */
@@ -24,19 +24,19 @@ export const SOCIAL_SCENES: Readonly<Record<number, SocialPicture>> = pictures({
     // Grupa 1 — hvala, pozdrav, izvini
     1: ["lejla", scene("room", [me(90, { pose: "hold", hold: { prop: "gift", s: 0.9 } }), say(114, 40), who("girl", 166, { flip: true, pose: "give", face: "happy" })])],
     2: ["amar", scene("classroom", [me(84, { pose: "wave" }), say(106, 40), who("teacher", 172, { flip: true, pose: "wave", face: "happy" })])],
-    3: ["amina", scene("park", [me(92, { pose: "give", face: "worried" }), say(70, 40, true), who("boy", 160, { pose: "sit", flip: true, face: "sad" })])],
+    3: ["amina", scene("park", [me(84, { pose: "give", face: "worried" }), say(62, 40, true), who("boy", 150, { pose: "floor", flip: true, face: "sad" })])],
     // Grupa 2 — molim, hvala, doviđenja
     4: ["emir", scene("kitchen", [me(84, { face: "neutral" }), say(106, 40), who("mama", 172, { flip: true, pose: "give", hold: { prop: "glass", s: 1 } })])],
     5: ["selma", scene("room", [me(88, { pose: "give" }), say(110, 40), who("boy", 164, { flip: true, pose: "give", hold: { prop: "teddy", s: 0.9 } })])],
     6: ["merjem", scene("classroom", [who("teacher", 52, { pose: "wave", face: "happy" }), me(132, { pose: "wave", flip: true }), say(110, 40, true), thing("doorOpen", 206, 148), who("mama", 206, { flip: true })])],
     // Grupa 3 — pomoć, hvala za ručak, pozdrav
-    7: ["haris", scene("room", [me(92, { pose: "give", face: "worried" }), say(70, 40, true), who("boy2", 158, { s: 0.85, flip: true, face: "sad" })])],
+    7: ["haris", scene("room", [me(92, { pose: "give", face: "worried" }), say(70, 40, true), who("boy2", 158, { s: 0.85, flip: true, face: "cry" })])],
     8: ["ajla", scene("kitchen", [me(56), say(78, 40), thing("table", 128, 150, { s: 1.1 }), thing("plate", 128, 112, { s: 1.1 }), who("mama", 200, { flip: true, face: "happy" })])],
     9: ["tarik", scene("park", [me(84, { pose: "wave" }), say(106, 40), who("boy", 168, { flip: true, pose: "wave", face: "happy" })])],
     // Grupa 4 — igra, moja stvar, prijatelj je pao
-    10: ["nejla", scene("park", [me(56, { face: "neutral" }), say(78, 40), who("boy", 140, { pose: "give", face: "happy" }), thing("ball", 172, 148), who("girl", 204, { flip: true, pose: "give", face: "happy" })])],
+    10: ["nejla", scene("park", [me(50, { face: "neutral" }), say(72, 40), who("boy", 120, { pose: "kick", face: "happy" }), thing("ball", 150, 140), who("girl", 196, { flip: true, pose: "run", face: "happy" })])],
     11: ["adnan", scene("classroom", [me(88, { pose: "give", face: "firm" }), say(110, 40), who("boy", 168, { flip: true, pose: "give", face: "neutral", hold: { prop: "pencil", s: 1 } })])],
-    12: ["ilma", scene("park", [me(92, { pose: "give", face: "worried" }), say(70, 40, true), who("boy", 160, { pose: "sit", flip: true, face: "sad" }), thing("plaster", 154, 149, { s: 0.8 })])],
+    12: ["ilma", scene("park", [me(84, { pose: "give", face: "worried" }), say(62, 40, true), who("boy", 146, { pose: "knee", flip: true, face: "pain", wear: ["plaster"] })])],
     // Grupa 5 — kupovina, čestitanje, prolazak
     13: ["kenan", scene("street", [me(70), say(92, 40), who("seller", 176, { y: 178, flip: true, face: "happy" }), thing("iceCreamStand", 176, 152, { s: 1.6 })])],
     14: ["lamija", scene("room", [me(88, { pose: "hold", hold: { prop: "gift", s: 0.9 } }), say(110, 40), who("boy", 164, { flip: true, wear: ["partyHat"], face: "happy" }), thing("balloons", 214, 122)])],
@@ -45,8 +45,8 @@ export const SOCIAL_SCENES: Readonly<Record<number, SocialPicture>> = pictures({
     // Zastupanje sebe
     46: ["merjem", scene("classroom", [me(58, { face: "worried" }), say(80, 40), thing("table", 128, 150, { s: 1.1 }), thing("puzzlePieces", 128, 114, { s: 1.1 }), who("teacher", 202, { flip: true })])],
     47: ["amar", scene("classroom", [me(96, { pose: "ears", face: "worried" }), say(120, 40), thing("speaker", 196, 148, { s: 1.3 }), thing("loudNotes", 192, 80)])],
-    48: ["amina", scene("park", [me(96, { pose: "stop", face: "firm" }), say(72, 40, true), who("boy", 150, { flip: true, pose: "push", face: "neutral" })])],
-    49: ["emir", scene("kitchen", [me(56, { face: "neutral" }), say(78, 40), thing("table", 128, 150, { s: 1.1 }), thing("bowlEmpty", 128, 114, { s: 1.1 }), who("mama", 200, { flip: true, pose: "give", hold: { prop: "pot", s: 0.8 } })])],
+    48: ["amina", scene("park", [me(96, { pose: "stop", face: "firm" }), say(72, 40, true), who("boy", 132, { flip: true, pose: "take", face: "neutral" }), thing("motion", 168, 110)])],
+    49: ["emir", scene("kitchen", [thing("chair", 70, 150), me(76, { pose: "sitDraw", y: 134, s: 1, face: "neutral", hold: { prop: "spoon", s: 0.8 } }), say(98, 46), thing("table", 126, 150, { s: 1.1 }), thing("bowlEmpty", 120, 114, { s: 1.1 }), who("mama", 200, { flip: true, pose: "give", hold: { prop: "pot", s: 0.8 } })])],
     50: ["selma", scene("room", [me(84, { pose: "wave", face: "neutral" }), say(106, 40), who("aunt", 170, { flip: true, pose: "hug", face: "calm" })])],
     51: ["haris", scene("room", [me(56, { face: "worried" }), say(78, 40), thing("table", 128, 150, { s: 1.1 }), thing("cards", 128, 114, { s: 1.1 }), who("boy", 198, { flip: true, face: "talk" }), thing("motionLeft", 176, 80)])],
     52: ["ajla", scene("classroom", [thing("chair", 92, 150), me(84, { pose: "sitHold", y: 134, face: "tired", hold: { prop: "pencil", s: 0.9 } }), thing("desk", 100, 150, { s: 1.1 }), thing("paper", 100, 117), say(108, 40), who("teacher", 198, { flip: true })])],
@@ -58,6 +58,21 @@ export const SOCIAL_SCENES: Readonly<Record<number, SocialPicture>> = pictures({
     58: ["lamija", scene("classroom", [me(84, { pose: "stop", face: "firm" }), say(60, 40, true), who("boy", 168, { flip: true, face: "neutral" }), shout(150, 42, true)])],
     59: ["faris", scene("playground", [thing("carousel", 112, 150, { s: 1.4 }), me(108, { pose: "stop", y: 138, s: 1, face: "worried" }), thing("spin", 112, 156), say(84, 44, true), who("boy", 196, { flip: true, pose: "push", face: "neutral" })])],
     60: ["emir", scene("clinic", [thing("dentistChair", 104, 150, { s: 1.4 }), me(92, { pose: "sitReach", y: 124, s: 1, face: "worried" }), thing("lampBright", 140, 24, { rot: 180, s: 1.3 }), who("dentist", 190, { flip: true })])],
+    61: ["amar", scene("kitchen", [me(84, { pose: "take" }), say(106, 40), who("baka", 160, { flip: true, pose: "give", face: "happy", hold: { prop: "cookie", s: 0.9 } })])],
+    62: ["selma", scene("classroom", [me(84, { pose: "wave", face: "worried" }), say(106, 40), who("teacher", 158, { flip: true }), thing("door", 214, 148), thing("toilet", 214, 74, { s: 0.6 })])],
+    63: ["ilma", scene("classroom", [thing("chair", 60, 150), me(66, { pose: "sitDraw", y: 134, s: 1, face: "neutral", hold: { prop: "pencil", s: 0.7, rot: 150 } }), say(88, 46), thing("table", 116, 150), thing("paper", 112, 116, { s: 1.2 }), who("boy", 176, { flip: true, pose: "hold", face: "calm", hold: { prop: "crayons", s: 0.8 } })])],
+    64: ["nejla", scene("street", [thing("doorOpen", 96, 148), who("baka", 94, { pose: "walk", face: "happy" }), me(138, { pose: "give", flip: true }), say(160, 40, true)])],
+    65: ["kenan", scene("park", [thing("sun", 200, 40, { s: 1.4 }), me(96, { wear: ["jacket"], face: "tired" }), say(120, 40), who("mama", 166, { flip: true })], "clear")],
+    66: ["faris", scene("classroom", [me(84), say(106, 40), who("boy", 160, { flip: true, pose: "mouth", face: "yawn" }), thing("burst", 136, 70, { s: 0.45 })])],
+    67: ["lamija", scene("bedroom", [...inBed("hero", 80, 1.3, { face: "worried" }), say(70, 78), thing("doorOpen", 200, 148), who("mama", 200, { flip: true })], "night")],
+    68: ["emir", scene("room", [me(96, { pose: "give", hold: { prop: "teddy", s: 0.8 } }), say(118, 40), who("baby", 150, { face: "cry", s: 1.2 })])],
+    69: ["tarik", scene("park", [me(64, { pose: "run" }), say(86, 40), who("boy", 150, { pose: "run", face: "happy" }), thing("tree", 210, 140)])],
+    70: ["adnan", scene("train", [who("man", 36, { face: "talk" }), me(100, { pose: "ears", face: "worried" }), say(124, 40), who("mama", 166, { flip: true }), thing("soundWaves", 210, 64)])],
+    71: ["amina", scene("living", [me(96, { pose: "drink", hold: { prop: "phone", s: 0.7 } }), say(120, 40), who("mama", 180, { flip: true, pose: "point" })])],
+    72: ["merjem", scene("classroom", [me(84, { pose: "belly", face: "pain" }), say(106, 40), who("teacher", 168, { flip: true })])],
+    73: ["selma", scene("room", [me(90, { pose: "hold", face: "calm", hold: { prop: "gift", s: 0.9 } }), say(112, 40), who("girl", 164, { flip: true, pose: "give", face: "happy" })])],
+    74: ["haris", scene("pool", [me(70, { face: "worried" }), say(92, 40), who("tata", 128, { pose: "point" }), thing("lock", 196, 148)])],
+    75: ["lejla", scene("classroom", [me(80, { pose: "wave" }), say(102, 40), who("boy", 170, { flip: true, face: "neutral", wear: ["backpack"] })])],
 });
 
 /** Situacije 16–45 su situacije 1–15 na težoj težini: ista slika */

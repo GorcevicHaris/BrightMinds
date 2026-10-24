@@ -90,15 +90,33 @@ function chair(cx: number): Drawn {
     };
 }
 
+/** Nizak krevet: uzglavlje levo, jastuk i ćebe; ispod rama ima mesta za igračku */
+function bed(cx: number): Drawn {
+    return {
+        front: (
+            <g>
+                {shadow(cx, 64)}
+                <rect x={cx - 64} y={70} width={10} height={GROUND - 70} rx={3} fill="#b07a4a" stroke="#8f5d34" strokeWidth={2} />
+                <rect x={cx + 54} y={92} width={10} height={GROUND - 92} rx={3} fill="#b07a4a" stroke="#8f5d34" strokeWidth={2} />
+                <rect x={cx - 58} y={104} width={116} height={9} rx={2} fill="#8f5d34" />
+                <rect x={cx - 56} y={94} width={112} height={12} rx={4} fill="#f6f0e6" stroke="#d9cfbf" strokeWidth={1.5} />
+                <ellipse cx={cx - 40} cy={91} rx={13} ry={6} fill="#ffffff" stroke="#d9cfbf" strokeWidth={1.5} />
+                <rect x={cx - 22} y={92} width={78} height={13} rx={4} fill="#8ab8f0" stroke="#5f8fcf" strokeWidth={1.5} />
+            </g>
+        ),
+    };
+}
+
 function drawObject(object: ObjectId, cx: number, open = false): Drawn {
     if (object === "box") return box(cx, open);
     if (object === "basket") return basket(cx);
     if (object === "table") return table(cx);
+    if (object === "bed") return bed(cx);
     return chair(cx);
 }
 
 /** Gornja površina predmeta (na kojoj igračka stoji ili iznad koje lebdi) */
-const TOP: Record<ObjectId, number> = { box: 86, basket: 98, table: 86, chair: 96 };
+const TOP: Record<ObjectId, number> = { box: 86, basket: 98, table: 86, chair: 96, bed: 92 };
 
 function figureAt(emoji: string, x: number, y: number, size = SIZE) {
     return (
@@ -125,7 +143,7 @@ function placementFor(relation: Relation, object: ObjectId): Placement {
         case "under":
             return { objects: [{ cx: 100 }], figure: { x: 101, y: GROUND - 17, size: object === "chair" ? 30 : 34 }, hidden: false };
         case "next":
-            return { objects: [{ cx: object === "table" ? 74 : 80 }], figure: { x: 166, y: GROUND - 19 }, hidden: false };
+            return { objects: [{ cx: object === "table" || object === "bed" ? 72 : 80 }], figure: { x: object === "bed" ? 170 : 166, y: GROUND - 19 }, hidden: false };
         case "behind":
             // Viri iza zatvorene kutije: vidi se samo gornji deo glave, ostalo zaklanja predmet
             return { objects: [{ cx: 100 }], figure: { x: 112, y: top - 4, size: 44 }, hidden: true };

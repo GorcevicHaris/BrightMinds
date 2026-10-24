@@ -17,7 +17,7 @@ import { STORY_SCENES, storyScene } from "@/app/components/games/data/storyScene
 import { USE_ITEMS } from "@/app/components/games/data/usesItems";
 import { USES_SCENES, usesScene } from "@/app/components/games/data/usesScenes";
 import type { PropId, ViewId } from "@/app/components/games/scene/types";
-import { BACKGROUND_IDS, hero, inBed, isFigure, PROP_IDS, scene, sceneParts, thing, think, who, type SceneSpec } from "@/app/components/games/scene/types";
+import { ACTION_FACES, BACKGROUND_IDS, hero, inBed, isFigure, POSE_IDS, PROP_IDS, scene, sceneParts, thing, think, who, type SceneSpec } from "@/app/components/games/scene/types";
 
 /** Svaki deo slike postoji u kompletu: pozadine, predmeti i likovi */
 function assertDrawable(spec: SceneSpec, where: string) {
@@ -31,6 +31,34 @@ describe("scene kit", () => {
     it("draws every background and every prop it names", () => {
         for (const bg of BACKGROUND_IDS) assert.ok(hasBackground(bg), bg);
         for (const prop of PROP_IDS) assert.ok(hasProp(prop), prop);
+    });
+
+    it("draws every pose and every face for children and adults", () => {
+        for (const pose of POSE_IDS) {
+            for (const id of ["amina", "haris", "baby", "mama", "doctor"] as const) {
+                const markup = renderToStaticMarkup(createElement("svg", null, createElement(Figure, { id, pose, face: "calm" })));
+                assert.ok(markup.length > 200, `${id} ${pose}`);
+            }
+        }
+        for (const face of ACTION_FACES) {
+            const markup = renderToStaticMarkup(createElement("svg", null, createElement(Figure, { id: "lejla", face })));
+            assert.notEqual(markup, renderToStaticMarkup(createElement("svg", null, createElement(Figure, { id: "lejla", face: "calm" }))), face);
+        }
+    });
+
+    it("lowers the head when the figure sits on a chair or on the floor", () => {
+        const standing = headCenter("haris", "stand")[1];
+        assert.ok(headCenter("haris", "sitEat")[1] > standing);
+        assert.ok(headCenter("haris", "knee")[1] > headCenter("haris", "sitEat")[1]);
+        assert.ok(headCenter("mama", "floor")[1] > headCenter("mama", "sit")[1]);
+    });
+
+    it("tilts a whole figure and lets a held bag hang below the hand", () => {
+        const art = (spec: SceneSpec) => renderToStaticMarkup(createElement(SceneArt, { spec }));
+        assert.match(art(scene("plain", [who("amina", 100, { rot: 40 })])), /rotate\(40\)/);
+        const hanging = art(scene("plain", [who("amina", 100, { hold: { prop: "bag", dy: 18 } })]));
+        const resting = art(scene("plain", [who("amina", 100, { hold: { prop: "bag" } })]));
+        assert.notEqual(hanging, resting);
     });
 
     it("lists the parts of a scene, inside thought bubbles too", () => {
@@ -83,7 +111,7 @@ describe("social scenes", () => {
     it("has a picture for every situation on every level", () => {
         const missing = situations.filter((situation) => !socialScene(situation.id)).map((situation) => situation.id);
         assert.deepEqual(missing, [], `bez slike: ${missing.join(", ")}`);
-        assert.equal(new Set(situations.map((situation) => situation.id)).size, 60);
+        assert.equal(new Set(situations.map((situation) => situation.id)).size, 75);
     });
 
     it("draws the child from the example, by name, from existing parts", () => {
@@ -254,6 +282,12 @@ describe("uses scenes", () => {
         rainbow: ["rainbow"],
         snowman: ["snowman"],
         magnifier: ["magnifier"],
+        fork: ["fork"],
+        lamp: ["lamp", "lampBright"],
+        crayons: ["crayons", "crayonsBroken"],
+        frog: ["frog"],
+        spider: ["spider"],
+        train: ["train"],
     };
     /** Pogled koji crta sunce, mesec ili dugu */
     const SKY_SHOWS: Partial<Record<ViewId, string>> = { day: "sun", night: "moon", dark: "moon", rainbow: "rainbow" };

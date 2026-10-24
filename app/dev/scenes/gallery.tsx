@@ -10,11 +10,15 @@ import { buildGazeLevel, gazeAnswer, gazeQuestion } from "@/app/components/games
 import { gazeScene } from "@/app/components/games/data/gazeScenes";
 import { USE_ITEMS } from "@/app/components/games/data/usesItems";
 import { usesScene } from "@/app/components/games/data/usesScenes";
+import { FIGURES, PLACE_OBJECTS, placeSentence } from "@/app/components/games/data/whereScenes";
+import { WhereScene } from "@/app/components/games/WhereScene";
+import { OPTION_ART, optionPicture } from "@/app/components/games/data/optionPictures";
 import { getSituationsForLevel, type SocialSituation } from "@/app/components/games/data/socialSituations";
 import { emotionHero, storyHero } from "@/app/components/games/scene/heroes";
 import { genderText } from "@/app/components/games/kit/utils";
 import { SceneArt } from "@/app/components/games/scene/SceneArt";
 import {
+    ACTION_FACES,
     ADULT_IDS,
     BACKGROUND_IDS,
     LOOK_IDS,
@@ -34,6 +38,8 @@ export const GALLERY_PARTS = [
     { id: "stories", label: "Socijalne priče" },
     { id: "uses", label: "Čemu služi?" },
     { id: "gaze", label: "Šta gleda?" },
+    { id: "where", label: "Gde je?" },
+    { id: "options", label: "Izbori" },
     { id: "kit", label: "Delovi" },
 ] as const;
 export type GalleryPartId = (typeof GALLERY_PARTS)[number]["id"];
@@ -55,6 +61,70 @@ interface Part {
 }
 
 const FACES: Face[] = ["calm", "talk", "sleep", "happy", "sad", "angry", "scared", "surprised", "proud"];
+const MORE_FACES: Face[] = ["neutral", "worried", "firm", "tired", ...ACTION_FACES];
+
+/** Radnje iz tekstova: položaj, predmet u ruci i izraz zajedno, kako ih slike koriste */
+const ACTIONS: { text: string; spec: ReturnType<typeof scene> }[] = [
+    {
+        text: "liže sladoled, jede kolač, pije vodu, pere zube",
+        spec: scene("plain", [
+            hero(30, { pose: "eat", face: "lick", hold: { prop: "iceCream", s: 0.7 } }),
+            hero(90, { pose: "eat", face: "chew", hold: { prop: "cookie", s: 0.6 } }),
+            hero(150, { pose: "drink", hold: { prop: "glass", s: 0.6, rot: -30 } }),
+            hero(210, { pose: "brush", hold: { prop: "toothbrush", s: 0.6, rot: -60 } }),
+        ]),
+    },
+    {
+        text: "pao je i drži koleno, sedi na podu, vezuje pertle, plače",
+        spec: scene("plain", [
+            hero(30, { pose: "knee", face: "pain", wear: ["plaster"] }),
+            hero(100, { pose: "floor", face: "calm" }),
+            hero(160, { pose: "sitTie", face: "calm" }),
+            hero(215, { face: "cry" }),
+        ]),
+    },
+    {
+        text: "trči, šutira loptu, baca grudvu, pere ruke",
+        spec: scene("plain", [
+            hero(30, { pose: "run", face: "happy" }),
+            hero(90, { pose: "kick", face: "happy" }),
+            thing("ball", 116, 128),
+            hero(160, { pose: "throw", face: "happy", hold: { prop: "snowball", s: 0.8 } }),
+            hero(215, { pose: "wash", face: "calm" }),
+        ]),
+    },
+    {
+        text: "grli, drži se za ruke, mazi macu, daje i prima",
+        spec: scene("plain", [
+            who("mama", 24, { pose: "embrace", face: "happy" }),
+            who("amina", 50, { flip: true, pose: "embrace", face: "happy" }),
+            who("haris", 96, { pose: "holdHand", face: "happy" }),
+            who("lejla", 124, { pose: "holdHand", face: "happy", flip: true }),
+            who("tarik", 170, { pose: "pet", face: "happy" }),
+            thing("cat", 198, 148, { flip: true }),
+        ]),
+    },
+    {
+        text: "crta za stolom, jede za stolom, crta stojeći, uzima",
+        spec: scene("plain", [
+            hero(40, { pose: "sitDraw", y: 140, hold: { prop: "pencil", s: 0.7, rot: 150 } }),
+            thing("table", 62, 150, { s: 0.6 }),
+            hero(120, { pose: "sitEat", y: 140, face: "chew", hold: { prop: "sandwich", s: 0.6 } }),
+            hero(200, { pose: "take", hold: { prop: "gift", hand: "both", s: 0.7 } }),
+        ]),
+    },
+    {
+        text: "spušta se niz tobogan, ljulja se, zaliva cveće, duva",
+        spec: scene("plain", [
+            thing("slide", 50, 148),
+            hero(56, { pose: "sitHold", y: 120, rot: 38, s: 0.8 }),
+            thing("swing", 130, 148),
+            hero(130, { pose: "sitHold", y: 128, s: 0.8 }),
+            hero(190, { pose: "give", hold: { prop: "wateringCan", s: 0.8 } }),
+            hero(228, { face: "blow", s: 0.8 }),
+        ]),
+    },
+];
 
 function kitPart(): Part {
     const cards: Card[] = [];
@@ -102,6 +172,13 @@ function kitPart(): Part {
         text: FACES.join(", "),
         picture: <SceneArt spec={scene("plain", FACES.map((face, i) => who("lejla", 16 + i * 26, { face, s: 0.8 })))} />,
     });
+    cards.push({
+        key: "faces-more",
+        label: "Lica uz situaciju i radnju",
+        text: MORE_FACES.join(", "),
+        picture: <SceneArt spec={{ ...scene("plain", MORE_FACES.map((face, i) => who("haris", 12 + i * 18.5, { face, s: 0.6 }))), camera: "fixed" }} />,
+    });
+    ACTIONS.forEach((action, i) => cards.push({ key: `actions-${i}`, label: "Radnje", text: action.text, picture: <SceneArt spec={action.spec} /> }));
     for (let i = 0; i < POSE_IDS.length; i += 5) {
         const poses = POSE_IDS.slice(i, i + 5);
         cards.push({
@@ -234,8 +311,42 @@ function gazePart(): Part {
     return { title: "Šta gleda?", note: "Po jedan zadatak sa svakog nivoa (sa 15. po jedan od svake vrste). Levo kako ga dete vidi, desno sa pomoći.", cards };
 }
 
+function wherePart(): Part {
+    const cards: Card[] = [];
+    PLACE_OBJECTS.forEach((object, i) => {
+        for (const relation of object.relations) {
+            const figure = FIGURES[(i + cards.length) % FIGURES.length];
+            cards.push({
+                key: `where-${object.id}-${relation}`,
+                label: `${object.name} · ${relation}`,
+                text: placeSentence(figure, relation, object),
+                picture: <WhereScene figure={figure.id} object={object.id} relation={relation} className="block h-auto w-full rounded-xl bg-white" />,
+            });
+        }
+    });
+    return { title: "Gde je?", note: "Svaki predmet u svakom položaju koji ume da prikaže.", cards };
+}
+
+function optionsPart(): Part {
+    const cards = Object.keys(OPTION_ART).map((text, i): Card => ({
+        key: `option-${i}`,
+        label: "Izbor",
+        text: genderText(text, i % 2 === 0),
+        picture: (
+            <div className="mx-auto aspect-square w-2/3 overflow-hidden rounded-xl">
+                <SceneArt spec={optionPicture(text)!} hero={storyHero(i % 2 === 0)} fill className="h-full w-full" />
+            </div>
+        ),
+    }));
+    return { title: "Izbori kao slike", note: "Svaki izbor u igrama „Šta reći?” i „Socijalne priče” (natpis je ispod slike).", cards };
+}
+
 export function galleryPart(id: GalleryPartId): Part {
     switch (id) {
+        case "options":
+            return optionsPart();
+        case "where":
+            return wherePart();
         case "gaze":
             return gazePart();
         case "uses":

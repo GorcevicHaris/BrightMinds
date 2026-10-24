@@ -18,8 +18,8 @@ import type { FeedbackKind } from "@/app/components/games/kit/ui";
 import { toCount } from "@/app/components/games/kit/utils";
 
 export type Relation = "in" | "on" | "under" | "next" | "behind" | "front" | "above" | "between";
-export type FigureId = "cat" | "dog" | "teddy" | "ball" | "chick" | "duck";
-export type ObjectId = "box" | "basket" | "table" | "chair";
+export type FigureId = "cat" | "dog" | "teddy" | "ball" | "chick" | "duck" | "bunny" | "frog";
+export type ObjectId = "box" | "basket" | "table" | "chair" | "bed";
 
 export interface Figure {
     id: FigureId;
@@ -63,6 +63,8 @@ export const FIGURES: readonly Figure[] = [
     { id: "ball", emoji: "⚽", name: "Lopta" },
     { id: "chick", emoji: "🐤", name: "Pile" },
     { id: "duck", emoji: "🦆", name: "Patka" },
+    { id: "bunny", emoji: "🐰", name: "Zeka" },
+    { id: "frog", emoji: "🐸", name: "Žaba" },
 ];
 
 export const PLACE_OBJECTS: readonly PlaceObject[] = [
@@ -70,6 +72,7 @@ export const PLACE_OBJECTS: readonly PlaceObject[] = [
     { id: "basket", name: "korpa", loc: "korpi", gen: "korpe", pair: "dve korpe", relations: ["in", "next", "front", "above", "between"] },
     { id: "table", name: "sto", loc: "stolu", gen: "stola", pair: "dva stola", relations: ["on", "under", "next", "above"] },
     { id: "chair", name: "stolica", loc: "stolici", gen: "stolice", pair: "dve stolice", relations: ["on", "under", "next"] },
+    { id: "bed", name: "krevet", loc: "krevetu", gen: "kreveta", pair: "dva kreveta", relations: ["on", "under", "next", "above"] },
 ];
 
 export function getFigure(id: unknown): Figure | undefined {
