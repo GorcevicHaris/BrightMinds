@@ -319,7 +319,8 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
             current.onerror = () => {
                 if (release()) void say(item.label);
             };
-            cutTimerRef.current = after(levelCfg.clipMs, finish);
+            // Nivo zadaje dužinu; neki snimci se puštaju kraće (vetar: pre oštećenog dela fajla)
+            cutTimerRef.current = after(Math.min(levelCfg.clipMs, item.maxMs ?? Infinity), finish);
             setPlaying(true);
 
             // Bez naglog početka: zvuk kreće tiho i pojačava se do jačine koju je izabrao roditelj
