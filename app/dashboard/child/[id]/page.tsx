@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AuthError, requireChildAccess } from "@/lib/auth";
-import { resolveSettings, type ResolvedSettings } from "@/lib/childSettings";
+import { ageInYears, resolveSettings, type ResolvedSettings } from "@/lib/childSettings";
 import { realtimeTopicFor } from "@/lib/realtimeTopic";
 import { supabaseAdmin } from "@/lib/supabase";
 import { buttonClasses } from "@/app/components/ui/Button";
@@ -17,6 +17,8 @@ export interface ChildProfile {
     last_name: string;
     gender: string | null;
     experience_points: number | null;
+    /** Uzrast u godinama (iz datuma rođenja); null = nepoznat */
+    age_years?: number | null;
 }
 
 /** Red iz baze; `settings` postoji tek posle migracije 0002. */
@@ -70,6 +72,7 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
                 last_name: row.last_name,
                 gender: row.gender ?? null,
                 experience_points: row.experience_points ?? null,
+                age_years: ageInYears(row.date_of_birth),
             };
             settings = resolveSettings(row.settings, row.date_of_birth);
         }
