@@ -440,10 +440,10 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
                                 aria-label={`${step.text}${state === "wrong" ? ", netačno" : ""}`}
                                 className={cn("min-h-0 flex-col justify-start gap-1 p-1.5 sm:gap-1.5 sm:p-2", CARD_BASIS[cards] ?? CARD_BASIS[5])}
                             >
-                                <span className="block w-full max-w-[min(100%,28dvh)] short:max-w-[min(100%,22dvh)]">
+                                <span className="block w-full max-w-[min(100%,28dvh)] short:max-w-[min(100%,20dvh)]">
                                     <StepArt spec={step.art} female={female} className="aspect-[3/2] w-full rounded-xl" />
                                 </span>
-                                {captions && <span className="line-clamp-2 text-xs font-bold leading-tight sm:text-base">{step.text}</span>}
+                                {captions && <span className="line-clamp-2 text-xs font-bold leading-tight sm:text-base short:sm:text-sm">{step.text}</span>}
                                 {/* Korak u kome dete nešto kaže: oznaka oblačića u uglu */}
                                 {step.say && <TalkBadge />}
                                 {showHand && stepIndex === shown.placed && <DemoHand />}
@@ -480,10 +480,10 @@ const SLOT_COLUMNS: Record<number, string> = {
 
 /** Mesta su manja od kartica: ne smeju da odnesu visinu koju trebaju kartice */
 const SLOT_WIDTH: Record<number, string> = {
-    2: "max-w-[min(100%,46dvh)]",
-    3: "max-w-[min(100%,66dvh)]",
-    4: "max-w-[min(100%,84dvh)]",
-    5: "max-w-[min(100%,100dvh)]",
+    2: "max-w-[min(100%,46dvh)] short:max-w-[min(100%,38dvh)]",
+    3: "max-w-[min(100%,66dvh)] short:max-w-[min(100%,54dvh)]",
+    4: "max-w-[min(100%,84dvh)] short:max-w-[min(100%,70dvh)]",
+    5: "max-w-[min(100%,100dvh)] short:max-w-[min(100%,86dvh)]",
 };
 
 /**
