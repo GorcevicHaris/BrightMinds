@@ -11,7 +11,7 @@ import { companionFrom, type AnimalBuild, type AnimalSpec } from "../figure";
 import { furMaterial } from "../materials";
 import type { PaintContext, PaintPoint } from "../paint";
 import { clumpGeometry, EAR_PROFILES, type Clump } from "../parts";
-import { asMore, bellyMask, coat, col, fbm3, goldCoat, headLocal, isHead, rainbowAt, RAINBOW, scaleOf, smoothstep } from "./common";
+import { asMore, bellyMask, coat, col, fbm3, goldCoat, headMarks, isHead, rainbowAt, RAINBOW, scaleOf, smoothstep, stripeOutline, type HeadMark } from "./common";
 import { MORE_SKINS } from "./skins.data";
 
 function zebra(fur: string, stripe: string, extra: Partial<Coat> = {}): Coat {
@@ -30,9 +30,9 @@ export const ZEBRA_COATS: Record<string, Coat> = {
 const tmp = new THREE.Color();
 
 /** Pruga: 1 u tamnoj traci (meka ivica), `phase` raste preko pruga */
-function band(phase: number, width = 0.5): number {
+function band(phase: number, width = 0.5, soft = 0.14): number {
     const s = 0.5 + 0.5 * Math.sin(phase);
-    return smoothstep(1 - width - 0.14, 1 - width + 0.14, s);
+    return smoothstep(1 - width - soft, 1 - width + soft, s);
 }
 
 function paintZebra(pp: PaintPoint, ctx: PaintContext, out: THREE.Color) {
@@ -68,16 +68,39 @@ function paintZebra(pp: PaintPoint, ctx: PaintContext, out: THREE.Color) {
         default:
             if (!isHead(pp)) return;
     }
-    const q = headLocal(ctx, p);
-    // Glava: pruge kao „V” niz čelo (šiljak ka njušci), lukovi preko obraza; oko očiju i
-    // njuška bez pruga; njuška tamna
-    const phase = (q.y + Math.abs(q.x) * 0.55) * 10.5 + n * 0.6;
-    const keep = (1 - smoothstep(0.02, 0.35, pp.muzzle ?? 0)) * smoothstep(-0.55, -0.35, q.y);
-    let eyes = 0;
-    for (const e of ctx.eyes) eyes = Math.max(eyes, 1 - smoothstep(ctx.eyeR * 1.3, ctx.eyeR * 1.9, p.distanceTo(e)));
-    out.lerp(stripe, band(phase, 0.38) * keep * (1 - eyes));
+    // Glava: pruge su oštre šare-površine (addHeadStripes); ovde samo tamna njuška
     out.lerp(col(c.muzzle), smoothstep(0.25, 0.75, pp.muzzle ?? 0));
     void shape;
+}
+
+/**
+ * Pruge na glavi kao oštre šare (tanka površina tik iznad glave, glatka ivica): „V” niz čelo
+ * ka njušci, lukovi ispod očiju i uspravne pruge sa strane. Oko očiju nema pruga.
+ * [pomak od sredine (u), visina (v), poluduzina, polusirina, nagib]
+ */
+const HEAD_STRIPES: [number, number, number, number, number][] = [
+    [0.065, 0.1, 0.075, 0.019, 0.35],
+    [0.075, 0.2, 0.085, 0.021, 0.5],
+    [0.05, 0.3, 0.05, 0.016, 0.6],
+    [0.14, 0.27, 0.06, 0.016, 0.05],
+    [0.185, 0.585, 0.08, 0.019, -0.35],
+    [0.225, 0.69, 0.06, 0.017, -0.5],
+    [0.25, 0.36, 0.09, 0.021, 1.3],
+    [0.31, 0.5, 0.085, 0.021, 1.4],
+    [0.2, 0.15, 0.07, 0.018, 0.9],
+];
+
+function addHeadStripes(b: AnimalBuild) {
+    const k = b.k;
+    const marks = b.coat.marks ?? ["#2A2830"];
+    const list: HeadMark[] = [];
+    for (const side of [1, -1] as const) {
+        for (const [i, [du, v, a, w, tilt]] of HEAD_STRIPES.entries()) {
+            const color = marks.length > 2 ? rainbowAt(marks, i / HEAD_STRIPES.length + (side > 0 ? 0 : 0.5), new THREE.Color()) : col(marks[0]).clone();
+            list.push({ center: b.head.point(0.5 + side * du, v), side, radius: stripeOutline(a * k, w * k, tilt), color });
+        }
+    }
+    b.headGroup.add(headMarks(b, list));
 }
 
 /** Uspravna griva-četka: od čela preko temena niz vrat, pruge u pramenovima */
@@ -173,7 +196,10 @@ export const ZEBRA: AnimalSpec = {
     belly: 0,
     cheeks: 0,
     earMotion: "twitch",
-    extras: addMane,
+    extras: (b) => {
+        addMane(b);
+        addHeadStripes(b);
+    },
     paint: paintZebra,
 };
 

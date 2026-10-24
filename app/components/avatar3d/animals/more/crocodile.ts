@@ -113,16 +113,16 @@ export const CROCODILE: AnimalSpec = {
     kind: "crocodile",
     skins: MORE_SKINS.crocodile,
     coats: CROC_COATS,
-    shape: { kind: asMore("crocodile"), girth: 1.06, belly: 1.1, pear: 0.2, limb: 1.08, legK: 0.9, head: { w: 0.36, h: 0.3, d: 0.36 } },
+    shape: { kind: asMore("crocodile"), girth: 1.06, belly: 1.1, pear: 0.2, limb: 1.08, legK: 0.9, head: { w: 0.36, h: 0.36, d: 0.36 } },
     ref: 0.46,
     head: {
         flat: 0.0,
-        flatTop: 0.2,
+        flatTop: 0.1,
         chin: 0.0,
         blobs: [
             // Kupole očiju na vrhu glave
-            { c: [0.085, 0.1, 0.04], r: [0.085, 0.08, 0.085], k: 0.045 },
-            { c: [-0.085, 0.1, 0.04], r: [0.085, 0.08, 0.085], k: 0.045 },
+            { c: [0.085, 0.02, 0.07], r: [0.08, 0.075, 0.085], k: 0.045 },
+            { c: [-0.085, 0.02, 0.07], r: [0.08, 0.075, 0.085], k: 0.045 },
             // Duga zaobljena njuška (malo šira na vrhu) i široka vilica
             { c: [0, -0.065, 0.17], r: [0.13, 0.072, 0.31], k: 0.07, muzzle: true },
             { c: [0, -0.05, 0.34], r: [0.11, 0.058, 0.13], k: 0.04, muzzle: true },
@@ -131,7 +131,7 @@ export const CROCODILE: AnimalSpec = {
             // Nozdrve na vrhu njuške
             { dir: [0.06, 0.05, 1], sigma: 0.07, amp: 0.006, muzzle: true, mirror: true },
         ],
-        eye: { u: 0.083, v: 0.27, r: 0.062, inset: 0.6, yaw: 0.22 },
+        eye: { u: 0.085, v: 0.41, r: 0.058, inset: 0.62, yaw: 0.22 },
         noseV: 0.44,
         mouthV: 0.58,
     },
@@ -156,9 +156,9 @@ export const CROCODILE: AnimalSpec = {
     customFoot: (b, side) => toeFoot(b, side, { toes: 4, claws: b.coat.hoof ?? "#FFF6E6", thick: 0.17 }),
     extras: addScutes,
     anchors: (a, b) => {
-        // Bez ušiju; oči su na vrhu glave — kapa naleže iznad njih; dugačka njuška
+        // Bez ušiju; oči su na kupolama iznad njuške — kapa naleže iznad njih (obod ne seče oči)
         a.ears.kind = "none";
-        a.head.brimY = Math.min(a.head.top.y - 0.02, a.eyes.left.y + a.eyes.radius * 0.35);
+        a.head.brimY = Math.max(a.head.brimY, Math.min(a.head.top.y - 0.025, a.eyes.left.y + a.eyes.radius * 1.6));
         a.head.brimR = brimRadiusAt(b, a.head.brimY);
     },
     paint: paintCroc,

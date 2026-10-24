@@ -11,7 +11,7 @@ import { merge, polyPath } from "../../engine/surface";
 import type { Coat } from "../coats";
 import type { AnimalBuild } from "../figure";
 import { col, paintGeometry, type PaintPoint } from "../paint";
-import { weightedTube } from "../parts";
+import { clumpGeometry, weightedTube, type Clump } from "../parts";
 import { scaleOf, smoothstep } from "../extra/common";
 import { cells3 } from "../extra/kit/util";
 
@@ -465,3 +465,189 @@ export function scales(p: THREE.Vector3, scale: number, seed = 9): [number, numb
 
 /** Spaja delove (bez boja) */
 export { merge };
+
+// ── Oštre šare na glavi (pruge zebre, pege) ───────────────────────────────────
+
+export interface HeadMark {
+    /** Središte (koordinate kosti glave), na ili blizu površine glave */
+    center: THREE.Vector3;
+    /** Strana lica: θ = 0 pokazuje napolje */
+    side: 1 | -1;
+    /** Obris: poluprečnik (m) za ugao θ (0 napolje, π/2 gore) */
+    radius: (theta: number) => number;
+    color: THREE.Color;
+}
+
+/**
+ * Više oštrih šara na glavi u jednoj geometriji (kao extra/decal.ts, ali sa manje podela i
+ * spojeno — dvadesetak pruga staje u par hiljada trouglova). Ivica šare je ivica geometrije,
+ * pa je oštra i na retkim temenima glave.
+ */
+export function headMarks(b: AnimalBuild, marks: readonly HeadMark[], lift = 0.0016): THREE.Mesh {
+    const head = b.head;
+    const hi = b.quality === "high";
+    const rings = hi ? 5 : 3;
+    const seg = hi ? 36 : 20;
+    const positions: number[] = [];
+    const colors: number[] = [];
+    const uvs: number[] = [];
+    const index: number[] = [];
+    const dir = new THREE.Vector3();
+    const n = new THREE.Vector3();
+    const tmp = new THREE.Vector3();
+    const p = new THREE.Vector3();
+    for (const m of marks) {
+        const start = positions.length / 3;
+        const [cu, cv] = head.uvOf(dir.copy(m.center).sub(head.center));
+        const normal = head.normal(cu, cv);
+        const up = new THREE.Vector3(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
+        const out = new THREE.Vector3().crossVectors(up, normal).normalize();
+        if (out.x * m.side < 0) out.negate();
+        const push = (q: THREE.Vector3) => {
+            const [u, v] = head.uvOf(dir.copy(q).sub(head.center));
+            head.point(u, v, tmp);
+            head.normal(u, v, n);
+            tmp.addScaledVector(n, lift);
+            positions.push(tmp.x, tmp.y, tmp.z);
+            uvs.push(u * 6, v * 6);
+            colors.push(m.color.r, m.color.g, m.color.b);
+        };
+        push(m.center);
+        for (let r = 1; r <= rings; r++) {
+            const t = r / rings;
+            for (let s = 0; s < seg; s++) {
+                const th = (s / seg) * Math.PI * 2;
+                const rr = m.radius(th) * t;
+                p.copy(m.center).addScaledVector(out, Math.cos(th) * rr).addScaledVector(up, Math.sin(th) * rr);
+                push(p);
+            }
+        }
+        // Smer obilaska zavisi od strane (ogledalo): trouglovi moraju da gledaju od glave
+        const flip = new THREE.Vector3().crossVectors(out, up).dot(normal) < 0;
+        const tri = (a: number, bb: number, c: number) => (flip ? index.push(a, c, bb) : index.push(a, bb, c));
+        for (let s = 0; s < seg; s++) tri(start, start + 1 + s, start + 1 + ((s + 1) % seg));
+        for (let r = 1; r < rings; r++) {
+            const a0 = start + 1 + (r - 1) * seg;
+            const a1 = start + 1 + r * seg;
+            for (let s = 0; s < seg; s++) {
+                const s1 = (s + 1) % seg;
+                tri(a0 + s, a1 + s, a1 + s1);
+                tri(a0 + s, a1 + s1, a0 + s1);
+            }
+        }
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    g.setIndex(index);
+    g.computeVertexNormals();
+    const mesh = new THREE.Mesh(g, b.fur);
+    mesh.name = "sare-glava";
+    mesh.renderOrder = 1;
+    return mesh;
+}
+
+/**
+ * Obris pruge: zaobljena traka (superelipsa) sa poluosama a (duž) i w, nagib; `taper` sužava
+ * spoljni kraj (θ = nagib) — pruge zebre su šire ka sredini lica.
+ */
+export function stripeOutline(a: number, w: number, tilt: number, taper = 0.35): (theta: number) => number {
+    return (theta) => {
+        const t = theta - tilt;
+        const c = Math.cos(t);
+        const s = Math.sin(t);
+        const ww = w * (1 - taper * Math.max(0, c));
+        return 1 / Math.pow(Math.pow(Math.abs(c) / a, 3) + Math.pow(Math.abs(s) / ww, 3), 1 / 3);
+    };
+}
+
+// ── Perje (rep ptice, krila) ──────────────────────────────────────────────────
+
+export interface FeatherFan {
+    /** Broj pera, dužina i širina (m, za glavu širine `ref`) */
+    count: number;
+    len: number;
+    w: number;
+    /** Ugao lepeze (rad, ukupno) i nagib unazad-nagore (rad od vertikale naniže) */
+    spread: number;
+    tilt: number;
+    /** Boje pera (redom) i boja vrha (opciono) */
+    colors: string[];
+    tip?: string;
+    /** Visina korena iznad međunožja (m) */
+    height?: number;
+    /** Duže srednje pero (papagaj) */
+    middle?: number;
+}
+
+/**
+ * Rep od perja: lepeza spljoštenih pera na kosti kukova (prolazi kroz odeću kao rep). Pera su
+ * deo „tail” (kostim koji pokriva rep ih sakriva).
+ */
+export function addFeatherTail(b: AnimalBuild, f: FeatherFan): THREE.Mesh {
+    const shape = b.shape;
+    const k = b.k;
+    const y = shape.crotchY + (f.height ?? 0.05) * k;
+    const base = new THREE.Vector3(0, y, -shape.torsoBack(y) + 0.012 * k);
+    const parts: THREE.BufferGeometry[] = [];
+    const colors: number[] = [];
+    const tipC = f.tip ? col(f.tip) : null;
+    for (let i = 0; i < f.count; i++) {
+        const t = f.count > 1 ? i / (f.count - 1) - 0.5 : 0;
+        const len = f.len * k * (1 + (f.middle ?? 0) * Math.exp(-(t * t) / 0.02)) * (1 - Math.abs(t) * 0.25);
+        const g = finGeometry(leafOutline(len, f.w * k * 0.5, 0.55), 0.004 * k, b.quality);
+        // Pero leži u ravni xy (dužina po +y): okreni ga naniže-unazad i raširi lepezu
+        g.rotateZ(Math.PI + t * f.spread);
+        g.rotateX(-f.tilt);
+        g.translate(base.x, base.y, base.z - 0.004 * Math.abs(t));
+        const c = col(f.colors[i % f.colors.length]);
+        const pos = g.getAttribute("position");
+        const p = new THREE.Vector3();
+        const cc = new THREE.Color();
+        for (let j = 0; j < pos.count; j++) {
+            p.fromBufferAttribute(pos, j);
+            const along = p.distanceTo(base) / len;
+            cc.copy(c).multiplyScalar(0.82 + 0.18 * smoothstep(0, 0.5, along));
+            if (tipC) cc.lerp(tipC, smoothstep(0.7, 0.85, along));
+            colors.push(cc.r, cc.g, cc.b);
+        }
+        parts.push(g);
+    }
+    const merged = merge(parts);
+    merged.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+    boxUv(merged);
+    const mesh = new THREE.Mesh(merged, b.fur);
+    mesh.name = "rep-perje";
+    const pivot = new THREE.Group();
+    pivot.position.copy(base);
+    mesh.position.copy(base).negate();
+    pivot.add(mesh);
+    onBone(b, "hips", pivot);
+    b.part("tail", pivot);
+    // Rep se blago njiše
+    b.onAnimate((time, _dt, live) => {
+        pivot.rotation.y = live ? Math.sin(time * 1.6) * 0.08 : 0;
+    });
+    return mesh;
+}
+
+/** Čuperak perja/krzna na temenu (deo „kosa” — kapa ga sakriva) */
+export function addCrest(b: AnimalBuild, o: { count: number; len: number; r: number; colors: string[]; v?: number; spread?: number; forward?: number; up?: number }): THREE.Mesh {
+    const head = b.head;
+    const k = b.k;
+    const clumps: Clump[] = [];
+    for (let i = 0; i < o.count; i++) {
+        const t = o.count > 1 ? i / (o.count - 1) - 0.5 : 0;
+        const v = (o.v ?? 0.05) + Math.abs(t) * 0.03;
+        const u = 0.5 + t * (o.spread ?? 0.05);
+        const nn = head.normal(u, v);
+        const dir = nn.clone().add(new THREE.Vector3(t * 0.6, o.up ?? 0.3, o.forward ?? 0.25)).normalize();
+        clumps.push({ base: head.offsetPoint(u, v, -0.006 * k), dir, len: o.len * k * (1 - Math.abs(t) * 0.5), r: o.r * k, curl: new THREE.Vector3(0, -0.4, -1).normalize(), color: o.colors[i % o.colors.length], flat: 0.5, taper: 0.6 });
+    }
+    const mesh = new THREE.Mesh(clumpGeometry(clumps, b.quality), b.fur);
+    mesh.name = "cuperak";
+    b.headGroup.add(mesh);
+    b.part("hair", mesh);
+    return mesh;
+}
