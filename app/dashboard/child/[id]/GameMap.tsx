@@ -14,6 +14,7 @@ import { useCalmMotion } from "@/app/components/avatar/motion";
 import CompanionPicture from "@/app/components/avatar3d/CompanionPicture";
 import { cn } from "@/lib/cn";
 import { MAX_LEVEL, type GameDefinition, type GameId } from "@/lib/games";
+import type { RemoteStart } from "@/lib/invite";
 import { chosenSkin, useCompanion } from "./companionState";
 import {
     PICKER_VIEW_KEY,
@@ -94,10 +95,14 @@ interface GamePickerProps extends GameMapProps {
     /** Dnevni plan traje: igra sa drugom se ne nudi (plan ima svoj red) */
     planActive?: boolean;
     /** Igra sa drugom na drugom uređaju: otvara igru baš na zajedničkom nivou */
-    onOpenLevel?: (id: GameId, level: number) => void;
+    onOpenLevel: (id: GameId, level: number) => void;
+    /** Da li „Krenimo!” sada otvara igru (isto pravilo kao `onOpenLevel`, lib/invite.ts) */
+    remoteStart: RemoteStart;
+    /** Napredak nije učitan: ponovo ga učitava („Probaj ponovo”) */
+    onRetry: () => void;
 }
 
-export function GamePicker({ ageYears, grid, planActive = false, onOpenLevel, ...map }: GamePickerProps) {
+export function GamePicker({ ageYears, grid, planActive = false, onOpenLevel, remoteStart, onRetry, ...map }: GamePickerProps) {
     const [view, setView] = usePickerView(ageYears);
     const together = useTogether();
     const remoteOn = useRemoteActive();
@@ -111,7 +116,7 @@ export function GamePicker({ ageYears, grid, planActive = false, onOpenLevel, ..
             </div>
             <RemoteEndedNotice />
             {remoteOn ? (
-                <RemoteLobby pending={map.pending} unavailable={map.unavailable} onOpenLevel={onOpenLevel} />
+                <RemoteLobby start={remoteStart} onOpenLevel={onOpenLevel} onRetry={onRetry} />
             ) : togetherOn ? (
                 <TogetherGamePicker games={map.games} unlockedFor={map.unlockedFor} pending={map.pending} unavailable={map.unavailable} onOpen={map.onOpen} />
             ) : view === "map" ? (

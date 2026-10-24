@@ -51,6 +51,7 @@ import {
     type Mood,
 } from "@/lib/games";
 import { pickerGames } from "@/lib/gameAccess";
+import { remoteStartState } from "@/lib/invite";
 import { useGameBroadcast } from "@/lib/realtime";
 import { useSpeech } from "@/lib/speech";
 import type { VoiceEmotion } from "@/lib/emotion";
@@ -348,6 +349,10 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         return () => controller.abort();
     }, [childId, preview, levelsAttempt]);
 
+    // Isto pravilo za otvaranje igre i za „Krenimo!” u igri sa drugom (lib/invite.ts): dok ne važi,
+    // dugme to i pokazuje („Sprema se…”, „Probaj ponovo”), pa dodir nikad ne prođe bez ičega
+    const startState = remoteStartState({ limitReached: clock.limitReached, loading: levelsLoading, error: levelsError });
+
     const retryLevels = () => {
         setLevelsError(false);
         setLevelsLoading(true);
@@ -378,7 +383,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
     const openGame = (id: GameId) => {
         // Dok se ne zna dokle je dete stiglo, igra bi krenula od prvog nivoa
-        if (clock.limitReached || levelsLoading || levelsError) return;
+        if (startState !== "ready") return;
         // Dok plan traje, otvaraju se odigrane igre i ona koja je na redu
         if (planActive && id !== nextPlanned && !planDone.includes(id)) return;
         playSfx("tap");
@@ -390,7 +395,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
     /** Igra sa drugom na drugom uređaju: oboje otvaraju istu igru baš na zajedničkom nivou */
     const openAtLevel = (id: GameId, wanted: number) => {
-        if (clock.limitReached || levelsLoading || levelsError) return;
+        if (startState !== "ready") return;
         const nextTier = tierAt(wanted);
         playSfx("tap");
         preloadGame(id);
@@ -629,6 +634,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     planActive={planActive}
                     onOpen={openGame}
                     onOpenLevel={openAtLevel}
+                    remoteStart={startState}
+                    onRetry={retryLevels}
                     grid={
                 <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
                     {shown.map((g, index) => {
