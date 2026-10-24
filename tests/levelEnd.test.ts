@@ -60,7 +60,8 @@ describe("level end in every game", () => {
     it("the result screen shows praise and coins even with reduced motion", () => {
         // Sloj sa konfetima se gasi uz „Manje animacija”, ali ekran sa rezultatom i pohvala ostaju
         assert.match(CONTAINER, /<CelebrationLayer disabled=\{settings\.reduceMotion\} \/>/);
-        assert.match(CONTAINER, /\{screen === "playing" && outcome && !togetherEnd && \(\s*<LevelResult/);
+        // Uz igru sa drugom (isti ili drugi uređaj) umesto ovog ekrana stoji zajednički kraj sa istom pohvalom
+        assert.match(CONTAINER, /\{screen === "playing" && outcome && !togetherEnd && !remoteEnd && \(\s*<LevelResult/);
         const ticker = CONTAINER.slice(CONTAINER.indexOf("function useCoinTicker"), CONTAINER.indexOf("function LevelResult"));
         assert.match(ticker, /if \(calm\) \{\s*queueMicrotask\(\(\) => setAdded\(earned\)\);/, "bez leta novčići se odmah dodaju brojaču");
     });
