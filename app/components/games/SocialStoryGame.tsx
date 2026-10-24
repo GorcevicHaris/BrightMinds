@@ -618,7 +618,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                             record.tried.length === 0 &&
                                             optionIndex === record.order.find((i) => decision.acceptable.includes(i));
                                         return (
-                                            <li key={optionIndex} className="flex min-w-0 flex-col items-center gap-1.5">
+                                            <li key={optionIndex} className="relative flex min-w-0 flex-col items-center gap-1.5">
                                                 <ChoiceCard
                                                     state={state}
                                                     disabled={locked}
@@ -632,7 +632,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                                     </OptionPicture>
                                                 </ChoiceCard>
                                                 {!isMonitor && (
-                                                    <span className="[&>button]:min-h-10 [&>button]:w-12">
+                                                    <span className="sm:absolute sm:right-2 sm:top-2 sm:z-10 [&>button]:min-h-10 [&>button]:w-12 sm:[&>button]:min-h-10 sm:[&>button]:w-10">
                                                         <OptionSpeaker label={`Pročitaj: ${label}`} disabled={shown.listening} onClick={() => speakOption(optionIndex)} />
                                                     </span>
                                                 )}

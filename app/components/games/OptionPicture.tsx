@@ -33,11 +33,11 @@ export function OptionPicture({ text, label, emoji, female, children }: OptionPi
         <span className="flex h-full w-full flex-col items-stretch gap-1.5">
             {picture ? (
                 // Kvadratna sličica: lik je krupniji nego u okviru 3 : 2 (višak pozadine sa strane se odseca)
-                <span aria-hidden="true" className="mx-auto block aspect-square w-full max-w-[min(100%,18dvh)] overflow-hidden rounded-xl bg-surface ring-1 ring-black/5">
+                <span aria-hidden="true" className="mx-auto block aspect-square w-full max-w-[min(100%,15dvh)] overflow-hidden rounded-xl bg-surface ring-1 ring-black/5">
                     <SceneArt spec={picture} hero={storyHero(female)} fill className="h-full w-full" />
                 </span>
             ) : (
-                <span aria-hidden="true" className="mx-auto grid aspect-square w-full max-w-[min(100%,18dvh)] place-items-center rounded-xl bg-brand-50 text-4xl leading-none">
+                <span aria-hidden="true" className="mx-auto grid aspect-square w-full max-w-[min(100%,15dvh)] place-items-center rounded-xl bg-brand-50 text-4xl leading-none">
                     {emoji}
                 </span>
             )}
