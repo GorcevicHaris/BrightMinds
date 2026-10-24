@@ -11,7 +11,7 @@ import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import {
     CelebrationLayer,
-    celebrateBig,
+    celebrateBigWhenSettled,
     CompanionPanelContext,
     flyItems,
     FLY_MS,
@@ -526,8 +526,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 saved: preview ? "ok" : "saving",
             });
             playSfx("win");
-            // Kraj nivoa je uvek uspeh: zvezdice preko celog ekrana (sloj ih ne crta kad je „Manje animacija”)
-            celebrateBig();
+            // Kraj nivoa je uvek uspeh: zvezdice preko celog ekrana (sloj ih ne crta kad je „Manje animacija”),
+            // kad se ekran sa rezultatom iscrta — inače ih na sporijem tabletu „pojede” crtanje drugara
+            celebrateBigWhenSettled();
 
             if (advance) {
                 setUnlocked((prev) => ({
@@ -1368,6 +1369,7 @@ function CompanionPanel() {
                     background
                     action={hype.action}
                     actionKey={hype.actionKey}
+                    interactive
                     className="absolute inset-0"
                 />
                 <CoinCount className="absolute left-2.5 top-2.5 px-2.5 py-1 text-base sm:text-lg" />
@@ -1664,7 +1666,8 @@ function Teacher({
     if (companion) {
         // Ceo lik (ulaz u igru, pitanje, kraj nivoa) je živ 3D prikaz u svom svetu; mali portreti su 3D slike
         if (variant === "full") {
-            return <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="full" background={background} emotion={emotion} action={action} actionKey={action} className={className} />;
+            // Prevlačenjem prsta dete okreće svog drugara (vraća se sam licem napred)
+            return <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="full" background={background} emotion={emotion} action={action} actionKey={action} interactive className={className} />;
         }
         const picture = variant === "face" ? "face" : variant === "bust" ? "bust" : variant === "scene" ? "full" : "portrait";
         return <CompanionPicture kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} variant={picture} background={background} emotion={emotion} className={className} eager />;

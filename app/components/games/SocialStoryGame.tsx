@@ -5,7 +5,6 @@ import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
     DemoHand,
-    Feedback,
     GameHud,
     GamePrompt,
     GameStage,
@@ -25,7 +24,6 @@ import {
     useTimers,
     type BaseView,
     type ChoiceState,
-    type FeedbackKind,
     type GameProps,
     useWaitHint,
     usePraise,
@@ -252,7 +250,6 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
     const isLastStep = shown.stepIndex === story.steps.length - 1;
     const canAdvance = !choosing || record.picked !== null;
     const lastTried = record.tried.length > 0 ? record.tried[record.tried.length - 1] : null;
-    const feedbackKind: FeedbackKind = record.picked !== null ? "correct" : lastTried !== null ? "wrong" : null;
     const alsoHelpful = decision && record.picked !== null ? otherHelpful(decision, record) : [];
 
     const commit = useCallback(
@@ -549,16 +546,23 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                 <>
                     <div
                         key={`${level}-${shown.stepIndex}`}
-                        className={cn("grid animate-fade-up gap-4 sm:gap-5", choosing ? "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start" : "mx-auto w-full max-w-2xl")}
+                        className={cn("grid animate-fade-up sm:gap-5", choosing ? "gap-3" : "gap-4", choosing ? "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start" : "mx-auto w-full max-w-2xl")}
                     >
                         <article className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
                             {/* Korak sa izborom na telefonu: slika je sličica pored teksta, da izbori stanu na ekran */}
                             <div className={cn(choosing && "hidden lg:block")}>
-                                <Scene emojis={step.scene} tone={story.tone} label={`${story.icon} ${story.title}`} picture={storyScene(level, shown.stepIndex)} female={female} />
+                                <Scene
+                                    emojis={step.scene}
+                                    tone={story.tone}
+                                    size={choosing ? "choice" : "page"}
+                                    label={`${story.icon} ${story.title}`}
+                                    picture={storyScene(level, shown.stepIndex)}
+                                    female={female}
+                                />
                             </div>
-                            <div className={cn("flex gap-3 px-4 py-4 sm:px-6 sm:py-5", choosing ? "flex-row items-start lg:flex-col" : "flex-col")}>
+                            <div className={cn("flex gap-3 px-4 sm:px-6 sm:py-5 short:sm:py-4", choosing ? "flex-row items-start py-3 lg:flex-col" : "flex-col py-4")}>
                                 {choosing && (
-                                    <div className="w-24 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/5 sm:w-32 lg:hidden">
+                                    <div className="w-20 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/5 sm:w-32 lg:hidden">
                                         <Scene emojis={step.scene} tone={story.tone} size="thumb" picture={storyScene(level, shown.stepIndex)} female={female} />
                                     </div>
                                 )}
@@ -569,14 +573,22 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                         {AFFIRM_LABEL}
                                     </p>
                                 )}
-                                <p className={cn("font-bold leading-snug text-ink sm:leading-relaxed", choosing ? "text-lg sm:text-xl" : "text-xl sm:text-2xl")}>{t(step.text)}</p>
+                                {/* Nizak ekran (manji tablet): zbijeniji red i nešto manja slova (i dalje bar 18 px), da stranica stane bez pomeranja */}
+                                <p
+                                    className={cn(
+                                        "font-bold leading-snug text-ink",
+                                        choosing ? "text-lg sm:text-xl short:sm:text-lg" : "text-xl sm:text-2xl sm:leading-relaxed short:sm:text-xl short:sm:leading-snug"
+                                    )}
+                                >
+                                    {t(step.text)}
+                                </p>
                                 {decision && shown.mode === "read" && (
-                                    <div className={cn("rounded-2xl border p-4", ACCENT.soft, ACCENT.border)}>
+                                    <div className={cn("rounded-2xl border p-4 short:sm:px-4 short:sm:py-3", ACCENT.soft, ACCENT.border)}>
                                         <p className={cn("text-base font-extrabold sm:text-lg", ACCENT.text)}>{IDEAS_HEADING}</p>
-                                        <ul className="mt-2 grid gap-2">
+                                        <ul className="mt-2 grid gap-2 short:sm:mt-1.5 short:sm:gap-1.5">
                                             {decision.acceptable.map((optionIndex) => (
-                                                <li key={optionIndex} className="flex items-center gap-3 text-lg font-bold leading-snug text-ink sm:text-xl">
-                                                    <span aria-hidden="true" className="grid h-11 min-w-11 shrink-0 place-items-center rounded-xl bg-surface text-2xl leading-none">
+                                                <li key={optionIndex} className="flex items-center gap-3 text-lg font-bold leading-snug text-ink sm:text-xl short:sm:text-lg">
+                                                    <span aria-hidden="true" className="grid h-11 min-w-11 shrink-0 place-items-center rounded-xl bg-surface text-2xl leading-none short:sm:h-9 short:sm:min-w-9 short:sm:text-xl">
                                                         {decision.options[optionIndex].emoji}
                                                     </span>
                                                     {t(decision.options[optionIndex].label)}
@@ -591,64 +603,22 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
 
                         {choosing && decision && (
                             <section aria-label="Pitanje i izbori" className="flex min-w-0 flex-col gap-3">
-                                <GamePrompt title={t(decision.question)} />
-
-                                <p role="status" className="flex min-h-8 items-center gap-2 text-lg font-extrabold text-ink-soft short:min-h-6 short:text-base">
-                                    {shown.listening && (
-                                        <>
-                                            <span aria-hidden="true">👂</span>
-                                            {LISTENING_TEXT}
-                                        </>
-                                    )}
-                                </p>
-
-                                <ul className={cn("grid gap-2 sm:gap-3", OPTION_GRID[record.order.length] ?? OPTION_GRID[3])}>
-                                    {record.order.map((optionIndex) => {
-                                        const option = decision.options[optionIndex];
-                                        const label = t(option.label);
-                                        const state = optionState(optionIndex, record, decision, shown.listening);
-                                        const wasTried = record.tried.includes(optionIndex);
-                                        const locked = isMonitor || shown.listening || record.picked !== null || wasTried;
-                                        const status = state === "correct" ? ", to pomaže" : wasTried ? ", već probano" : "";
-                                        const showHand =
-                                            !isMonitor &&
-                                            !shown.listening &&
-                                            isDemoStep(shown.stepIndex, shown.mode) &&
-                                            record.picked === null &&
-                                            record.tried.length === 0 &&
-                                            optionIndex === record.order.find((i) => decision.acceptable.includes(i));
-                                        return (
-                                            <li key={optionIndex} className="relative flex min-w-0 flex-col items-center gap-1.5">
-                                                <ChoiceCard
-                                                    state={state}
-                                                    disabled={locked}
-                                                    onClick={() => choose(optionIndex)}
-                                                    aria-label={`${label}${status}`}
-                                                    className="h-full w-full min-w-0 flex-1 p-1.5! sm:p-2.5!"
-                                                >
-                                                    {/* Izbor je slika: dete radi baš to; natpis je ispod */}
-                                                    <OptionPicture text={option.label} label={label} emoji={option.emoji} female={female}>
-                                                        {showHand && <DemoHand />}
-                                                    </OptionPicture>
-                                                </ChoiceCard>
-                                                {!isMonitor && (
-                                                    <span className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2 [&>button]:min-h-9 [&>button]:w-9 [&>button]:rounded-xl sm:[&>button]:min-h-10 sm:[&>button]:w-10">
-                                                        <OptionSpeaker label={`Pročitaj: ${label}`} disabled={shown.listening} onClick={() => speakOption(optionIndex)} />
-                                                    </span>
-                                                )}
-                                            </li>
-                                        );
-                                    })}
-                                </ul>
-
-                                <Feedback kind={feedbackKind} correctText={HELPS_TEXT} wrongText={record.hint ? HINT_TEXT : RETRY_TEXT} />
-
-                                <div aria-live="polite">
-                                    {record.picked !== null && (
-                                        <div className="animate-fade-up rounded-card border-2 border-emerald-200 bg-emerald-50 p-4 sm:p-5">
-                                            <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{t(decision.options[record.picked].why)}</p>
+                                {/* Odgovor stoji na mestu pitanja (ne ispod izbora): stranica tako staje na ekran bez pomeranja */}
+                                <div aria-live="polite" className="min-w-0">
+                                    {record.picked !== null ? (
+                                        <div className="animate-fade-up rounded-card border-2 border-emerald-200 bg-emerald-50 px-4 py-3 sm:px-5 sm:py-4 short:sm:py-3">
+                                            {/* Kvačica umesto posebnog reda „To pomaže.” (čitač ekrana ga i dalje čuje) */}
+                                            <p className="flex items-start gap-2.5 text-lg font-bold leading-snug text-ink sm:text-xl short:sm:text-lg">
+                                                <span aria-hidden="true" className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-emerald-600 text-sm font-black text-white">
+                                                    ✓
+                                                </span>
+                                                <span className="min-w-0">
+                                                    <span className="sr-only">{HELPS_TEXT} </span>
+                                                    {t(decision.options[record.picked].why)}
+                                                </span>
+                                            </p>
                                             {alsoHelpful.length > 0 && (
-                                                <p className="mt-2 text-base font-bold leading-snug text-ink-soft sm:text-lg">
+                                                <p className="mt-1.5 text-base font-bold leading-snug text-ink-soft sm:text-lg short:sm:text-base">
                                                     {ALSO_HEADING}{" "}
                                                     {alsoHelpful.map((optionIndex) => (
                                                         <span key={optionIndex} className="mr-2 inline-block">
@@ -659,15 +629,77 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                                 </p>
                                             )}
                                         </div>
-                                    )}
-                                    {record.picked === null && lastTried !== null && (
+                                    ) : lastTried !== null ? (
                                         <TriedNote
                                             key={lastTried}
                                             emoji={decision.options[lastTried].emoji}
                                             label={t(decision.options[lastTried].label)}
-                                            note={t(decision.options[lastTried].why)}
+                                            note={
+                                                <>
+                                                    {t(decision.options[lastTried].why)}{" "}
+                                                    <span className="text-sun-700">{record.hint ? HINT_TEXT : RETRY_TEXT}</span>
+                                                </>
+                                            }
                                         />
+                                    ) : (
+                                        <GamePrompt title={t(decision.question)} />
                                     )}
+                                </div>
+
+                                <div className="relative">
+                                    {/* Dok se korak čita, oznaka stoji preko utišanih izbora: ne zauzima svoj red, pa se ništa ne pomera */}
+                                    <p
+                                        role="status"
+                                        className={cn(
+                                            "pointer-events-none absolute left-1/2 top-1/2 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-surface px-5 py-2.5 text-lg font-extrabold text-ink-soft shadow-soft ring-1 ring-line",
+                                            !shown.listening && "invisible"
+                                        )}
+                                    >
+                                        {shown.listening && (
+                                            <>
+                                                <span aria-hidden="true">👂</span>
+                                                {LISTENING_TEXT}
+                                            </>
+                                        )}
+                                    </p>
+                                    <ul className={cn("grid gap-2 sm:gap-3", OPTION_GRID[record.order.length] ?? OPTION_GRID[3])}>
+                                        {record.order.map((optionIndex) => {
+                                            const option = decision.options[optionIndex];
+                                            const label = t(option.label);
+                                            const state = optionState(optionIndex, record, decision, shown.listening);
+                                            const wasTried = record.tried.includes(optionIndex);
+                                            const locked = isMonitor || shown.listening || record.picked !== null || wasTried;
+                                            const status = state === "correct" ? ", to pomaže" : wasTried ? ", već probano" : "";
+                                            const showHand =
+                                                !isMonitor &&
+                                                !shown.listening &&
+                                                isDemoStep(shown.stepIndex, shown.mode) &&
+                                                record.picked === null &&
+                                                record.tried.length === 0 &&
+                                                optionIndex === record.order.find((i) => decision.acceptable.includes(i));
+                                            return (
+                                                <li key={optionIndex} className="relative flex min-w-0 flex-col items-center gap-1.5">
+                                                    <ChoiceCard
+                                                        state={state}
+                                                        disabled={locked}
+                                                        onClick={() => choose(optionIndex)}
+                                                        aria-label={`${label}${status}`}
+                                                        className="h-full w-full min-w-0 flex-1 p-1.5! sm:p-2.5!"
+                                                    >
+                                                        {/* Izbor je slika: dete radi baš to; natpis je ispod */}
+                                                        <OptionPicture text={option.label} label={label} emoji={option.emoji} female={female}>
+                                                            {showHand && <DemoHand />}
+                                                        </OptionPicture>
+                                                    </ChoiceCard>
+                                                    {!isMonitor && (
+                                                        <span className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2 [&>button]:min-h-9 [&>button]:w-9 [&>button]:rounded-xl sm:[&>button]:min-h-10 sm:[&>button]:w-10">
+                                                            <OptionSpeaker label={`Pročitaj: ${label}`} disabled={shown.listening} onClick={() => speakOption(optionIndex)} />
+                                                        </span>
+                                                    )}
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
                                 </div>
                             </section>
                         )}
@@ -714,6 +746,8 @@ const SCENE_TONES: Record<SceneTone, { sky: string; ground: string }> = {
 const SCENE_SIZES = {
     page: { box: "h-32 sm:h-44 lg:h-56", main: "text-7xl sm:text-8xl", side: "text-5xl sm:text-6xl" },
     cover: { box: "h-40 sm:h-56", main: "text-7xl sm:text-8xl", side: "text-5xl sm:text-6xl" },
+    // Korak sa izborom (tablet): manja slika, da pitanje, izbori i objašnjenje stanu pored nje
+    choice: { box: "h-32 sm:h-40", main: "text-7xl", side: "text-5xl" },
     thumb: { box: "h-20 sm:h-24", main: "text-4xl", side: "text-3xl" },
 };
 
@@ -732,8 +766,9 @@ interface SceneProps {
 
 /** Najveća širina crteža: tolika da mu visina (2/3 širine) ne pređe zadati deo ekrana */
 const PICTURE_WIDTH = {
-    page: "max-w-[min(100%,30dvh)] short:max-w-[min(100%,27dvh)] lg:max-w-[min(100%,32dvh)]",
+    page: "max-w-[min(100%,30dvh)] lg:max-w-[min(100%,32dvh)] short:max-w-[min(100%,20dvh)]",
     cover: "max-w-[min(100%,42dvh)] short:max-w-[min(100%,34dvh)]",
+    choice: "max-w-[min(100%,26dvh)] short:max-w-[min(100%,22dvh)]",
     thumb: "",
 };
 
@@ -751,7 +786,7 @@ function Scene({ emojis, tone, size = "page", label, picture, female }: ScenePro
 
     if (picture) {
         return (
-            <div className={cn("relative bg-linear-to-b p-3 sm:px-5 sm:pb-4", colors.sky)}>
+            <div className={cn("relative bg-linear-to-b p-3 sm:px-5 sm:pb-4 short:sm:py-2", colors.sky)}>
                 <div className={cn("relative mx-auto w-full overflow-hidden rounded-2xl bg-surface shadow-soft ring-1 ring-black/5", PICTURE_WIDTH[size])}>
                     <SceneArt spec={picture} hero={storyHero(female)} className="h-auto w-full" />
                 </div>
@@ -799,7 +834,7 @@ function PrimaryButton({ children, onClick, disabled, className }: PrimaryButton
             onClick={onClick}
             disabled={disabled}
             className={cn(
-                "inline-flex min-h-16 items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] border-brand-700 bg-brand-500 px-8 font-display text-xl font-extrabold text-white shadow-soft transition-[transform,background-color,border-width] enabled:hover:bg-brand-600 enabled:active:translate-y-[3px] enabled:active:border-b-2 disabled:cursor-default sm:text-2xl",
+                "inline-flex min-h-14 sm:min-h-16 items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] border-brand-700 bg-brand-500 px-8 font-display text-xl font-extrabold text-white shadow-soft transition-[transform,background-color,border-width] enabled:hover:bg-brand-600 enabled:active:translate-y-[3px] enabled:active:border-b-2 disabled:cursor-default sm:text-2xl",
                 className
             )}
         >
@@ -818,7 +853,7 @@ function BackButton({ onClick, disabled }: NavButtonProps) {
             type="button"
             onClick={onClick}
             disabled={disabled}
-            className="inline-flex min-h-16 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] border-line bg-surface px-5 font-display text-lg font-extrabold text-ink-soft shadow-soft transition-[transform,background-color,border-width] enabled:hover:bg-brand-50 enabled:active:translate-y-[3px] enabled:active:border-b-2 disabled:cursor-default sm:px-6 sm:text-xl"
+            className="inline-flex min-h-14 sm:min-h-16 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] border-line bg-surface px-5 font-display text-lg font-extrabold text-ink-soft shadow-soft transition-[transform,background-color,border-width] enabled:hover:bg-brand-50 enabled:active:translate-y-[3px] enabled:active:border-b-2 disabled:cursor-default sm:px-6 sm:text-xl"
         >
             <svg className="h-6 w-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
                 <path d="M19 12H5M11 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
