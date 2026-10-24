@@ -71,4 +71,23 @@ describe("3D manifest", () => {
         }
         assert.equal(COMPANION_CATALOG.skin("girl", "x")?.price, undefined);
     });
+
+    it("pegice i brada se dopisuju samo kad nisu podrazumevane; stari id-jevi se ne menjaju", () => {
+        const boy = { ...HUMAN_DEFAULT.boy, freckles: "malo" };
+        assert.equal(humanLookId(boy), humanLookId(HUMAN_DEFAULT.boy) + ".malo");
+        assert.deepEqual(parseHumanLook("boy", humanLookId(boy)), boy);
+        const man = { ...HUMAN_DEFAULT.man, style: "talasasta", beard: "brada" };
+        assert.equal(humanLookId(man).split(".").length, 7);
+        assert.deepEqual(parseHumanLook("man", humanLookId(man)), man);
+        assert.equal(skinPrice("man", humanLookId(man)), 0);
+        // Podrazumevane vrednosti daju isti (stari) id od pet delova
+        assert.equal(humanLookId({ ...HUMAN_DEFAULT.girl, freckles: "bez", beard: "bez" }), humanLookId(HUMAN_DEFAULT.girl));
+        assert.deepEqual(parseHumanLook("girl", humanLookId(HUMAN_DEFAULT.girl) + ".bez"), HUMAN_DEFAULT.girl);
+        // Brada samo kod učitelja; nepoznate pegice ne važe
+        assert.equal(parseHumanLook("boy", humanLookId(HUMAN_DEFAULT.boy) + ".bez.brada"), undefined);
+        assert.equal(parseHumanLook("girl", humanLookId(HUMAN_DEFAULT.girl) + ".puno"), undefined);
+        // Nove frizure
+        assert.ok(parseHumanLook("boy", "svetla.plave.smedja.razbarusena.nema"));
+        assert.ok(parseHumanLook("girl", "svetla.plave.plava.ravna-razdeljak.nema"));
+    });
 });
