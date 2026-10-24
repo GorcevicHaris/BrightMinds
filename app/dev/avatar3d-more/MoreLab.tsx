@@ -42,6 +42,8 @@ interface View {
     dressed: boolean;
     yaw: number;
     quality: "high" | "low";
+    /** Tačno ovi predmeti (skripte za snimke); inače „obučen” bira kapu, duks, pantalone i patike */
+    wear?: Wear;
 }
 
 function triangles(object: THREE.Object3D): number {
@@ -96,7 +98,7 @@ export default function MoreLab() {
                 stage.setFigure(null);
                 return { tris: 0, ms: 0, registered: false };
             }
-            const dress = v.dressed ? outfit() : { wear: {}, probes: [] as Probe[] };
+            const dress = v.wear ? { wear: v.wear, probes: [] as Probe[] } : v.dressed ? outfit() : { wear: {}, probes: [] as Probe[] };
             const t0 = performance.now();
             const figure = new Figure({ kind: v.kind, skin: v.skin }, dress.wear, { quality: v.quality });
             const ms = Math.round(performance.now() - t0);

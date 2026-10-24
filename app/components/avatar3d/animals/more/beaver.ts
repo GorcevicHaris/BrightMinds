@@ -114,10 +114,10 @@ export const BEAVER: AnimalSpec = {
         inner: "fur",
     },
     tail: {
-        points: [[0, 0, 0], [0, -0.04, -0.05], [0, -0.07, -0.09]],
+        points: [[0, 0, 0], [0, -0.02, -0.06], [0, -0.035, -0.11]],
         radius: profile([[0, 0.03], [1, 0.022]]),
         motion: "flick",
-        height: 0.04,
+        height: 0.07,
         sleek: true,
     },
     hands: "hand",

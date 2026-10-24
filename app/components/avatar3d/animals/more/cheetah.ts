@@ -7,7 +7,7 @@ import { registerCompanion, shade } from "../../contract";
 import { profile } from "../../engine/surface";
 import type { Coat } from "../coats";
 import { companionFrom, type AnimalBuild, type AnimalSpec } from "../figure";
-import { asMore, coat, col, dots, fbm3, goldCoat, headMarks, rainbowAt, RAINBOW, smoothstep, stripeOutline, type HeadMark } from "./common";
+import { asMore, coat, col, dots, goldCoat, headMarks, rainbowAt, RAINBOW, smoothstep, stripeOutline, type HeadMark } from "./common";
 import { CAT_HEAD, paintBigCat } from "./bigcat";
 import { MORE_SKINS } from "./skins.data";
 
@@ -29,9 +29,8 @@ let royal = false;
 
 const paint = paintBigCat((p, head) => {
     if (royal && !head) {
-        // Kraljevski: pege se spajaju u isprekidane pruge niz leđa
-        const n = fbm3(p.x * 9, p.y * 22, p.z * 9, 3, 61);
-        return [Math.max(smoothstep(0.58, 0.62, n), dots(p, 22, 0.22, 17)), 0];
+        // Kraljevski: krupnije pege koje se spajaju u mrlje
+        return [dots(p, 17, 0.4, 29), 0];
     }
     return [dots(p, head ? 44 : 21, head ? 0.22 : 0.3, 17), 0];
 }, (pp) => {
