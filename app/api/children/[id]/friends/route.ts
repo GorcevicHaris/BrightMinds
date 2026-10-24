@@ -4,6 +4,9 @@
 // GET — roditelj ili dečja sesija tog deteta. Vraća SAMO ime (bez prezimena) i drugara
 // (lik, izgled, odeća) ostale dece istog naloga — ništa drugo (bez datuma rođenja, pola,
 // napretka, PIN-a). Rezultati zajedničke igre se čuvaju samo prijavljenom detetu.
+// Samo nalog roditelja (braća i sestre u jednoj porodici): nalog učitelja ili terapeuta
+// povezuje decu iz različitih porodica, pa je tamo spisak uvek prazan (i za dečju sesiju
+// takvog naloga) — nudi se samo drug koga odrasli upiše na uređaju („Novi drug”).
 import { NextResponse } from "next/server";
 import { COMPANION_CATALOG } from "@/app/components/avatar3d/manifest";
 import { requireChildAccess } from "@/lib/auth";
@@ -31,6 +34,8 @@ export async function GET(_request: Request, { params }: RouteContext) {
         const childId = parseIdParam((await params).id);
         // Dečja sesija nosi i nalog roditelja (vlasnika), pa su „ostala deca” ista za oba
         const session = await requireChildAccess(childId);
+        // Dečja sesija nosi ulogu vlasnika naloga, pa ista provera važi i za nju
+        if (session.role !== "parent") return NextResponse.json({ friends: [] }, { headers: { "Cache-Control": "no-store" } });
 
         const { data: links, error: linkError } = await supabaseAdmin.from("user_children").select("child_id").eq("user_id", session.userId);
         if (linkError) throw linkError;

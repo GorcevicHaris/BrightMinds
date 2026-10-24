@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
 import { GET } from "@/app/api/children/[id]/friends/route";
-import { CHILD_ID, OTHER_CHILD_ID, PARENT, STRANGER, db, idParams, jsonRequest, readJson, resetWorld, seedFamily, signInAsChild, signInAsParent } from "../setup/api";
+import { CHILD_ID, OTHER_CHILD_ID, PARENT, STRANGER, db, idParams, jsonRequest, readJson, resetWorld, seedFamily, signInAsChild, signInAsParent, type TestUser } from "../setup/api";
 
 const SIBLING_ID = 3;
 const get = (childId = CHILD_ID) => GET(jsonRequest("GET"), idParams(childId));
@@ -49,6 +49,25 @@ describe("GET /api/children/[id]/friends", () => {
         const body = await readJson(await get(OTHER_CHILD_ID));
         assert.deepEqual(body, { friends: [] });
     });
+
+    for (const role of ["teacher", "therapist"]) {
+        it(`returns an empty list for a ${role} account, whose children come from different families`, async () => {
+            const professional: TestUser = { id: 30, email: `${role}@example.com`, role };
+            db.seed("users", [{ ...professional, full_name: "Stručnjak Test" }]);
+            db.seed("user_children", [
+                { user_id: professional.id, child_id: CHILD_ID, relationship: role, is_primary: false },
+                { user_id: professional.id, child_id: OTHER_CHILD_ID, relationship: role, is_primary: false },
+                { user_id: professional.id, child_id: SIBLING_ID, relationship: role, is_primary: false },
+            ]);
+            signInAsParent(professional);
+            const asAdult = await get();
+            assert.equal(asAdult.status, 200);
+            assert.deepEqual(await readJson(asAdult), { friends: [] });
+            // Dete prijavljeno PIN-om na nalogu stručnjaka: isto prazno
+            signInAsChild(CHILD_ID, professional);
+            assert.deepEqual(await readJson(await get()), { friends: [] });
+        });
+    }
 
     it("refuses another family's child and anonymous calls", async () => {
         signInAsChild(OTHER_CHILD_ID, STRANGER);
