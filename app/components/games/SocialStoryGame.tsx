@@ -549,7 +549,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                 <>
                     <div
                         key={`${level}-${shown.stepIndex}`}
-                        className={cn("grid animate-fade-up gap-4 sm:gap-5", choosing ? "lg:grid-cols-2 lg:items-start" : "mx-auto w-full max-w-2xl")}
+                        className={cn("grid animate-fade-up gap-4 sm:gap-5", choosing ? "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start" : "mx-auto w-full max-w-2xl")}
                     >
                         <article className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
                             {/* Korak sa izborom na telefonu: slika je sličica pored teksta, da izbori stanu na ekran */}
@@ -569,7 +569,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                         {AFFIRM_LABEL}
                                     </p>
                                 )}
-                                <p className={cn("font-bold leading-snug text-ink sm:leading-relaxed", choosing ? "text-lg sm:text-xl lg:text-2xl" : "text-xl sm:text-2xl")}>{t(step.text)}</p>
+                                <p className={cn("font-bold leading-snug text-ink sm:leading-relaxed", choosing ? "text-lg sm:text-xl" : "text-xl sm:text-2xl")}>{t(step.text)}</p>
                                 {decision && shown.mode === "read" && (
                                     <div className={cn("rounded-2xl border p-4", ACCENT.soft, ACCENT.border)}>
                                         <p className={cn("text-base font-extrabold sm:text-lg", ACCENT.text)}>{IDEAS_HEADING}</p>
@@ -632,7 +632,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                                     </OptionPicture>
                                                 </ChoiceCard>
                                                 {!isMonitor && (
-                                                    <span className="sm:absolute sm:right-2 sm:top-2 sm:z-10 [&>button]:min-h-10 [&>button]:w-12 sm:[&>button]:min-h-10 sm:[&>button]:w-10">
+                                                    <span className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2 [&>button]:min-h-9 [&>button]:w-9 [&>button]:rounded-xl sm:[&>button]:min-h-10 sm:[&>button]:w-10">
                                                         <OptionSpeaker label={`Pročitaj: ${label}`} disabled={shown.listening} onClick={() => speakOption(optionIndex)} />
                                                     </span>
                                                 )}
@@ -732,7 +732,7 @@ interface SceneProps {
 
 /** Najveća širina crteža: tolika da mu visina (2/3 širine) ne pređe zadati deo ekrana */
 const PICTURE_WIDTH = {
-    page: "max-w-[min(100%,30dvh)] short:max-w-[min(100%,27dvh)] lg:max-w-[min(100%,40dvh)]",
+    page: "max-w-[min(100%,30dvh)] short:max-w-[min(100%,27dvh)] lg:max-w-[min(100%,32dvh)]",
     cover: "max-w-[min(100%,42dvh)] short:max-w-[min(100%,34dvh)]",
     thumb: "",
 };

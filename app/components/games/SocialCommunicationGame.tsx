@@ -490,7 +490,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                                         </OptionPicture>
                                     </ChoiceCard>
                                     {!isMonitor && (
-                                        <span className="sm:absolute sm:right-2 sm:top-2 sm:z-10 [&>button]:min-h-10 [&>button]:w-12 sm:[&>button]:min-h-10 sm:[&>button]:w-10">
+                                        <span className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2 [&>button]:min-h-9 [&>button]:w-9 [&>button]:rounded-xl sm:[&>button]:min-h-10 sm:[&>button]:w-10">
                                             <OptionSpeaker label={`Pročitaj: ${label}`} onClick={() => handleSpeakOption(index)} />
                                         </span>
                                     )}
