@@ -826,6 +826,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     gameId={game.id}
                     playKey={playKey}
                     stars={outcome.stars}
+                    correct={outcome.correct}
                     level={level}
                     advance={outcome.advance}
                     limitReached={clock.limitReached}
@@ -840,6 +841,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 <RemoteTogetherEnd
                     playKey={playKey}
                     stars={outcome.stars}
+                    correct={outcome.correct}
+                    total={outcome.total}
                     level={level}
                     advance={outcome.advance}
                     limitReached={clock.limitReached}

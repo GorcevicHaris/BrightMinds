@@ -276,10 +276,11 @@ export const GAMES: GameDefinition[] = [
             ring: "ring-amber-200",
             gradient: "from-amber-400 to-orange-500",
         },
-        offscreenTip: "Pri sklanjanju veša ili igračaka razvrstavajte zajedno: „Čarape ovde, majice tamo.” ili „Crvene kocke u ovu kutiju.”",
+        offscreenTip:
+            "Napravite kod kuće „čarobne kutije” i razvrstajte zajedno igračke ili pribor za jelo: „Crvene kocke ovde, plave tamo.” Sa starijim detetom uvedite pravilo: „U ovu kutiju stavljamo samo ono što koristimo za jelo.”",
         graded: true,
-        // 11. po redu: razvrstavanje po pravilu (kategorija, boja)
-        ages: { min: 4, max: 8 },
+        // 11. po redu: razvrstavanje — od iste slike (od treće godine) do boje, veličine, vrste i pravila (namena)
+        ages: { min: 3, max: 8 },
         order: 11,
     },
     {
