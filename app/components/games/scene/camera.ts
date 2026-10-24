@@ -77,7 +77,11 @@ export function sceneBounds(spec: SceneSpec): Box | null {
             const y = item.y ?? 148;
             const adult = item.fig !== "hero" && isAdult(item.fig);
             if (item.pose === "lie") boxes.push([item.x - 22 * s, y - 34 * s, item.x + 70 * s, y + 4]);
-            else boxes.push([item.x - 24 * s, y - (adult ? 128 : 82) * s, item.x + 24 * s, y + 2]);
+            else {
+                // Predmet podignut iznad glave (baca, pruža se gore) mora da ostane u kadru
+                const raised = item.hold && (item.pose === "throw" || item.pose === "up" || item.pose === "reach") ? 22 : 0;
+                boxes.push([item.x - 24 * s, y - ((adult ? 128 : 82) + raised) * s, item.x + 24 * s, y + 2]);
+            }
         } else if (isBubble(item)) {
             boxes.push([item.x - 26, item.y - 14, item.x + 26, item.y + 20]);
         } else if (isInset(item)) {
@@ -106,9 +110,11 @@ export function cameraFor(spec: SceneSpec): Camera {
     if (!box) return { zoom: 1, cx: VIEW_W / 2, cy: VIEW_H / 2 };
     const w = box[2] - box[0] + PAD * 2;
     const h = box[3] - box[1] + PAD * 2;
-    const zoom = Math.max(1, Math.min(MAX_ZOOM, VIEW_W / w, VIEW_H / h));
+    // Kvadratna sličica vidi samo srednji deo slike (VIEW_H × VIEW_H), pa se kadar bira za taj okvir
+    const frameW = spec.frame === "square" ? VIEW_H : VIEW_W;
+    const zoom = Math.max(1, Math.min(spec.maxZoom ?? MAX_ZOOM, frameW / w, VIEW_H / h));
     // Sredina se pomera samo toliko da okvir ne izađe van slike
-    const halfW = VIEW_W / 2 / zoom;
+    const halfW = frameW / 2 / zoom;
     const halfH = VIEW_H / 2 / zoom;
     const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
     const cx = clamp((box[0] + box[2]) / 2, halfW, VIEW_W - halfW);
@@ -118,6 +124,6 @@ export function cameraFor(spec: SceneSpec): Camera {
 }
 
 export function cameraTransform({ zoom, cx, cy }: Camera): string | undefined {
-    if (zoom === 1) return undefined;
+    if (zoom === 1 && cx === VIEW_W / 2 && cy === VIEW_H / 2) return undefined;
     return `translate(${VIEW_W / 2} ${VIEW_H / 2}) scale(${zoom}) translate(${-cx} ${-cy})`;
 }

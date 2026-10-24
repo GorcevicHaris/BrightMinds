@@ -1709,6 +1709,14 @@ const PROPS: Record<PropId, Draw> = {
             <path d="M-6 -21 L-14 -32 M6 -21 L14 -32" stroke={WOOD} strokeWidth={2} strokeLinecap="round" />
         </g>
     ),
+    // Krema za sunce: tuba sa suncem
+    sunscreen: () => (
+        <g>
+            <path d="M-6 0 L-7 -20 H7 L6 0Z" fill="#ffffff" {...stroke("#9aa6b2")} />
+            <rect x={-3} y={-24} width={6} height={4} rx={1} fill="#f6a23e" />
+            <circle cx={0} cy={-10} r={3.4} fill="#f4c94a" />
+        </g>
+    ),
     // Paukova mreža (bez pauka): zraci i kružne niti
     web: () => (
         <g fill="none" stroke="#9aa6b2" strokeWidth={0.9} strokeLinecap="round">

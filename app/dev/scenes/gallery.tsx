@@ -12,6 +12,7 @@ import { USE_ITEMS } from "@/app/components/games/data/usesItems";
 import { usesScene } from "@/app/components/games/data/usesScenes";
 import { FIGURES, PLACE_OBJECTS, placeSentence } from "@/app/components/games/data/whereScenes";
 import { WhereScene } from "@/app/components/games/WhereScene";
+import { OPTION_ART, optionPicture } from "@/app/components/games/data/optionPictures";
 import { getSituationsForLevel, type SocialSituation } from "@/app/components/games/data/socialSituations";
 import { emotionHero, storyHero } from "@/app/components/games/scene/heroes";
 import { genderText } from "@/app/components/games/kit/utils";
@@ -38,6 +39,7 @@ export const GALLERY_PARTS = [
     { id: "uses", label: "Čemu služi?" },
     { id: "gaze", label: "Šta gleda?" },
     { id: "where", label: "Gde je?" },
+    { id: "options", label: "Izbori" },
     { id: "kit", label: "Delovi" },
 ] as const;
 export type GalleryPartId = (typeof GALLERY_PARTS)[number]["id"];
@@ -325,8 +327,24 @@ function wherePart(): Part {
     return { title: "Gde je?", note: "Svaki predmet u svakom položaju koji ume da prikaže.", cards };
 }
 
+function optionsPart(): Part {
+    const cards = Object.keys(OPTION_ART).map((text, i): Card => ({
+        key: `option-${i}`,
+        label: "Izbor",
+        text: genderText(text, i % 2 === 0),
+        picture: (
+            <div className="mx-auto aspect-square w-2/3 overflow-hidden rounded-xl">
+                <SceneArt spec={optionPicture(text)!} hero={storyHero(i % 2 === 0)} fill className="h-full w-full" />
+            </div>
+        ),
+    }));
+    return { title: "Izbori kao slike", note: "Svaki izbor u igrama „Šta reći?” i „Socijalne priče” (natpis je ispod slike).", cards };
+}
+
 export function galleryPart(id: GalleryPartId): Part {
     switch (id) {
+        case "options":
+            return optionsPart();
         case "where":
             return wherePart();
         case "gaze":

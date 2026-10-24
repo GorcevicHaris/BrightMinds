@@ -730,6 +730,14 @@ function ChildFigure({ look, small, pose, face, back, wear, held, gaze }: BodyPr
                 <Head look={look} face={face} back={back} glasses={has("glasses")} gaze={gaze} />
                 {has("partyHat") && <path d="M-8 -15 L0 -36 L8 -15 Z" fill="#f4b73f" stroke="#d97f06" strokeWidth={1.2} />}
                 {has("beanie") && <path d="M-18.5 -9 C-19 -29 19 -29 18.5 -9 Q0 -12 -18.5 -9Z M-3.5 -25 a4 4 0 1 1 7 0" fill="#e0574f" />}
+                {/* Slušalice koje stišavaju zvuk: luk preko glave i dve velike školjke na ušima */}
+                {has("headphones") && (
+                    <g>
+                        <path d="M-19 0 C-21 -30 21 -30 19 0" fill="none" stroke="#3b4a6b" strokeWidth={4} strokeLinecap="round" />
+                        <rect x={-24} y={-6} width={9} height={15} rx={4} fill="#4d9be8" stroke="#2f6fb8" strokeWidth={1.4} />
+                        <rect x={15} y={-6} width={9} height={15} rx={4} fill="#4d9be8" stroke="#2f6fb8" strokeWidth={1.4} />
+                    </g>
+                )}
             </g>
             {armsOverHead && arms}
         </g>

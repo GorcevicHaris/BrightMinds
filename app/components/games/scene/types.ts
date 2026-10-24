@@ -153,7 +153,7 @@ export const POSE_IDS = [
 export type PoseId = (typeof POSE_IDS)[number];
 
 /** Odeća i dodaci preko osnovnog izgleda */
-export const WEAR_IDS = ["glasses", "partyHat", "beanie", "backpack", "jacket", "swim", "scarf", "medal", "plaster", "shaved"] as const;
+export const WEAR_IDS = ["glasses", "partyHat", "beanie", "backpack", "jacket", "swim", "scarf", "medal", "plaster", "shaved", "headphones"] as const;
 export type WearId = (typeof WEAR_IDS)[number];
 
 export const PROP_IDS = [
@@ -375,6 +375,7 @@ export const PROP_IDS = [
     "wateringCan",
     "drum",
     "web",
+    "sunscreen",
 ] as const;
 export type PropId = (typeof PROP_IDS)[number];
 
@@ -462,6 +463,10 @@ export interface SceneSpec {
     items: readonly SceneItem[];
     /** „fixed”: cela slika, bez približavanja (podrazumevano kamera prati likove i predmete) */
     camera?: "fixed";
+    /** Najveće približavanje (podrazumevano MAX_ZOOM); male sličice izbora smeju bliže */
+    maxZoom?: number;
+    /** „square”: slika se prikazuje kao kvadrat (srednji deo), pa kamera bira kadar za kvadrat */
+    frame?: "square";
 }
 
 /** Glavni lik, kako ga zadaje igra */
