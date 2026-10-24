@@ -31,6 +31,7 @@ import {
     Scissors,
     Shirt,
     ShoppingBag,
+    Smile,
     Sparkles,
     Target,
     Undo2,
@@ -49,6 +50,11 @@ import {
     HAIRSTYLES,
     HIJAB_COLORS,
     HIJAB_STYLES,
+    BEARDS,
+    FRECKLES,
+    NO_BEARD,
+    NO_FRECKLES,
+    hasBeardOption,
     NO_HIJAB,
     SKIN_TONES,
     hasHijabOption,
@@ -99,7 +105,7 @@ const CATEGORY_ICON: Record<CategoryId, LucideIcon | typeof PantsIcon> = {
 const CATEGORIES = CATEGORY_ORDER.filter((c) => (c.id === "sets" ? SETS.length > 0 : itemsInSlot(c.id).length > 0));
 
 type Panel = "shop" | "closet" | "look";
-type LookTab = "companion" | "tone" | "eyes" | "hair" | "style" | "hijab" | "fur";
+type LookTab = "companion" | "tone" | "eyes" | "hair" | "style" | "face" | "hijab" | "fur";
 
 /** Šta dete upravo proba: jedan predmet, ceo komplet ili posebno krzno */
 type Selection = { type: "item"; item: ItemData } | { type: "set"; set: SetData } | { type: "skin"; kind: string; skin: SkinData };
@@ -748,6 +754,7 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
               { id: "eyes", label: "Oči", Icon: Eye },
               { id: "hair", label: "Kosa", Icon: Palette },
               { id: "style", label: "Frizura", Icon: Scissors },
+              { id: "face", label: "Lice", Icon: Smile },
               ...(hasHijabOption(kind as never) ? [{ id: "hijab" as LookTab, label: "Hidžab", Icon: Sparkles }] : []),
           ]
         : [
@@ -795,6 +802,27 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
                         );
                     })}
                 </ul>
+            )}
+
+            {look && active === "face" && (
+                <div className="space-y-3">
+                    <ChipRow label="Pegice" small>
+                        {FRECKLES.map((f) => (
+                            <Chip key={f.id} small active={(look.freckles ?? NO_FRECKLES) === f.id} onClick={() => put({ freckles: f.id }, f.label)}>
+                                {f.label}
+                            </Chip>
+                        ))}
+                    </ChipRow>
+                    {hasBeardOption(kind as never) && (
+                        <ChipRow label="Brada" small>
+                            {BEARDS.map((b) => (
+                                <Chip key={b.id} small active={(look.beard ?? NO_BEARD) === b.id} onClick={() => put({ beard: b.id }, b.label)}>
+                                    {b.label}
+                                </Chip>
+                            ))}
+                        </ChipRow>
+                    )}
+                </div>
             )}
 
             {look && active === "tone" && <SwatchGrid parts={SKIN_TONES} chosen={look.tone} busy={busy} onPick={(p) => put({ tone: p.id }, p.label)} big />}

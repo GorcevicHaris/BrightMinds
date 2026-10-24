@@ -37,8 +37,8 @@ export default function SpeakingTeacher({ gender, kind, wear, skin, className }:
             )}
         >
             {isCompanionKindId(kind) ? (
-                // 3D slika drugara (izraz prati glas; slike su keširane, pa se lice menja odmah)
-                <CompanionPicture kind={kind} wear={wear} skin={skin} variant="portrait" background emotion={emotion} className="h-full w-full" eager />
+                // 3D slika celog drugara sa ljubimcem i pozadinom (izraz prati glas; slike su keširane, pa se lice menja odmah)
+                <CompanionPicture kind={kind} wear={wear} skin={skin} variant="full" background emotion={emotion} className="h-full w-full" eager />
             ) : (
                 <TeacherAvatar gender={gender} variant="face" className="h-full w-full" />
             )}
