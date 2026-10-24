@@ -1036,7 +1036,8 @@ export function RemoteTogetherEnd({ playKey, stars, level, advance, limitReached
 
                 <div className="mt-6 flex flex-col gap-3">
                     {!limitReached && !waiting && (
-                        <Button chunky size="xl" variant={nextLevel > level ? "success" : "sun"} block onClick={play}>
+                        // Na uskom telefonu manje unutrašnje margine, da natpis stane u jedan red
+                        <Button chunky size="xl" variant={nextLevel > level ? "success" : "sun"} block onClick={play} className="max-sm:px-4">
                             {nextLevel > level ? (
                                 <>
                                     Još jedan nivo zajedno

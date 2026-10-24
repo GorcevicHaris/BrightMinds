@@ -512,7 +512,8 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                                         </OptionPicture>
                                     </ChoiceCard>
                                     {!isMonitor && (
-                                        <span className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2 [&>button]:min-h-9 [&>button]:w-9 [&>button]:rounded-xl sm:[&>button]:min-h-10 sm:[&>button]:w-10">
+                                        // Zvučnik je mali da ne pokrije sliku, a nevidljiv okvir oko njega daje dodiru bar 48 px
+                                        <span className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2 [&>button]:relative [&>button]:min-h-10 [&>button]:w-10 [&>button]:rounded-xl [&>button]:after:absolute [&>button]:after:-inset-1 [&>button]:after:content-[''] sm:[&>button]:min-h-11 sm:[&>button]:w-11">
                                             <OptionSpeaker label={`Pročitaj: ${label}`} onClick={() => handleSpeakOption(index)} />
                                         </span>
                                     )}

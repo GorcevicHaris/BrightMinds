@@ -101,8 +101,9 @@ const OPTION_BASIS: Record<number, string> = {
     2: "basis-[calc(50%-0.4rem)]",
     3: "basis-[calc(33.333%-0.52rem)]",
     4: "basis-[calc(50%-0.4rem)] sm:basis-[calc(25%-0.58rem)]",
-    5: "basis-[calc(50%-0.4rem)] sm:basis-[calc(33.333%-0.52rem)]",
-    6: "basis-[calc(50%-0.4rem)] sm:basis-[calc(33.333%-0.52rem)]",
+    // Pet i šest lica i na telefonu idu u tri kolone: u dva reda staju na ekran bez skrolovanja
+    5: "basis-[calc(33.333%-0.52rem)]",
+    6: "basis-[calc(33.333%-0.52rem)]",
 };
 
 const EMPTY_VIEW: EmotionsView = {
@@ -366,6 +367,9 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
         playSfx("tap");
     };
 
+    /** Pet ili šest ponuđenih lica (teži nivoi): zbijeniji raspored izbora */
+    const many = shown.options.length >= 5;
+
     return (
         <GameStage width="narrow">
             <GameHud
@@ -419,12 +423,18 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                                     aria-disabled={inactive || undefined}
                                     aria-label={state === "correct" ? `${emotion.label}, tačno` : state === "wrong" ? `${emotion.label}, netačno` : state === "dimmed" ? `${emotion.label}, već probano` : emotion.label}
                                     onClick={() => handlePick(id)}
-                                    className={cn("grow-0 flex-col gap-1.5 px-1.5", OPTION_BASIS[shown.options.length] ?? OPTION_BASIS[4])}
+                                    className={cn(
+                                        "grow-0 flex-col gap-1.5 px-1.5",
+                                        OPTION_BASIS[shown.options.length] ?? OPTION_BASIS[4],
+                                        // Pet i šest lica na niskom tabletu i računaru: zbijenije kartice, da oba reda stanu bez skrolovanja
+                                        many && "short:sm:gap-1 short:sm:py-2"
+                                    )}
                                 >
-                                    <span className={cn("block h-20 w-20 rounded-2xl p-1 sm:h-28 sm:w-28 short:sm:h-24 short:sm:w-24", EMOTION_TINT[id])}>
+                                    <span className={cn("block h-20 w-20 shrink-0 rounded-2xl p-1 sm:h-28 sm:w-28", many ? "short:sm:h-16 short:sm:w-16" : "short:sm:h-24 short:sm:w-24", EMOTION_TINT[id])}>
                                         <EmotionFace emotion={id} className="h-full w-full" />
                                     </span>
-                                    <span className="text-base leading-tight sm:text-lg">{emotion.label}</span>
+                                    {/* U tri kolone na uskom telefonu i „Iznenađeno” staje u jedan red */}
+                                    <span className={cn("leading-tight sm:text-lg", many ? "text-sm min-[400px]:text-base short:sm:text-base" : "text-base")}>{emotion.label}</span>
                                     {showHand && <DemoHand />}
                                 </ChoiceCard>
                             );
