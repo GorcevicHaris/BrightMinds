@@ -81,6 +81,7 @@ function BannerGreeting({ firstName, onGoal }: { firstName: string; onGoal: () =
  */
 function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boolean; children: ReactNode; onCompanion: () => void }) {
     const companion = useCompanion();
+    const pressAt = useRef<{ x: number; y: number } | null>(null);
     if (!showAvatar || !companion) {
         return (
             <section className="relative overflow-hidden rounded-card bg-brand-600 text-white shadow-soft">
@@ -90,13 +91,28 @@ function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boo
         );
     }
     return (
-        <section className="relative min-h-52 overflow-hidden rounded-card bg-[#E4E6EB] text-ink shadow-soft sm:min-h-64">
-            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="wide" align={0.42} background className="absolute inset-0" />
+        <section
+            className="relative min-h-52 overflow-hidden rounded-card bg-[#E4E6EB] text-ink shadow-soft sm:min-h-64"
+            onPointerDown={(e) => {
+                pressAt.current = { x: e.clientX, y: e.clientY };
+            }}
+            onClick={(e) => {
+                // Kratak dodir na drugara otvara „Moj drugar”; prevlačenje ga samo okreće
+                const start = pressAt.current;
+                pressAt.current = null;
+                if (!(e.target instanceof HTMLCanvasElement) || !start) return;
+                if (Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) return;
+                const box = e.currentTarget.getBoundingClientRect();
+                if (e.clientX - box.left > box.width * 0.38) onCompanion();
+            }}
+        >
+            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="wide" align={0.42} background interactive className="absolute inset-0" />
             <div className="relative flex min-h-52 items-center sm:min-h-64">
                 <div className="w-[62%] p-4 sm:w-1/2 sm:p-8">
                     <div className="inline-block max-w-full rounded-2xl bg-white/88 px-4 py-3 shadow-soft backdrop-blur-sm sm:px-5 sm:py-4">{children}</div>
                 </div>
-                <button type="button" onClick={onCompanion} aria-label="Moj drugar" className="absolute inset-y-0 right-0 w-[38%] rounded-r-card sm:w-1/2" />
+                {/* Za tastaturu i čitač ekrana; prstom se drugar prevlači, a dodirom otvara (vidi onClick iznad) */}
+                <button type="button" onClick={onCompanion} aria-label="Moj drugar" className="pointer-events-none absolute inset-y-0 right-0 w-[38%] rounded-r-card focus-visible:ring-4 focus-visible:ring-brand-400 sm:w-1/2" />
             </div>
         </section>
     );
