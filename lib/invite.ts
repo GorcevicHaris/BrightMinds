@@ -207,3 +207,20 @@ export function nextTogetherLevel(level: number, mineAdvance: boolean, friendAdv
 export const FRIEND_TIMEOUT_MS = 20_000;
 /** Na koliko se šalje stanje i kad se ništa ne menja („otkucaj srca”). */
 export const HEARTBEAT_MS = 4_000;
+
+/**
+ * Da li „Krenimo!” u predvorju sada može da otvori igru. Isto pravilo čuva i otvaranje igre
+ * (GameContainer), pa dugme nikad ne izgleda spremno dok bi dodir prošao bez ičega:
+ *   • "ready"       — igra se otvara odmah;
+ *   • "loading"     — napredak deteta se još učitava („Sprema se…”);
+ *   • "unavailable" — napredak nije učitan (dugme nudi „Probaj ponovo”);
+ *   • "rest"        — dnevno vreme igre je isteklo.
+ */
+export type RemoteStart = "ready" | "loading" | "unavailable" | "rest";
+
+export function remoteStartState({ limitReached, loading, error }: { limitReached: boolean; loading: boolean; error: boolean }): RemoteStart {
+    if (limitReached) return "rest";
+    if (error) return "unavailable";
+    if (loading) return "loading";
+    return "ready";
+}

@@ -34,6 +34,7 @@ import {
     nextTogetherLevel,
     parseRemoteState,
     type RemotePhase,
+    type RemoteStart,
     type RemoteState,
 } from "@/lib/invite";
 import { useInviteChannel, type InviteRole } from "@/lib/inviteChannel";
@@ -685,13 +686,44 @@ export function RemoteEndedNotice() {
     );
 }
 
-interface LobbyProps {
-    pending?: boolean;
-    unavailable?: boolean;
-    onOpenLevel?: (id: GameId, level: number) => void;
+interface StartButtonProps {
+    /** Isto pravilo kao otvaranje igre u GameContainer-u (lib/invite.ts, `remoteStartState`) */
+    start: RemoteStart;
+    onStart: () => void;
+    onRetry: () => void;
 }
 
-export function RemoteLobby({ pending = false, unavailable = false, onOpenLevel }: LobbyProps) {
+/**
+ * „Krenimo!” — dodir uvek otvori igru, ili dugme jasno pokaže da još nije spremno: dok se
+ * napredak učitava piše „Sprema se…”, a kad se nije učitao dugme samo nudi „Probaj ponovo”.
+ * Tih dodir bez ičega bi dete zbunio (i pomislilo bi da je pogrešilo).
+ */
+export function RemoteStartButton({ start, onStart, onRetry }: StartButtonProps) {
+    if (start === "unavailable") {
+        return (
+            <Button chunky size="xl" variant="sun" className="sm:flex-1" onClick={onRetry}>
+                <RotateCcw className="h-6 w-6" aria-hidden="true" />
+                Probaj ponovo
+            </Button>
+        );
+    }
+    const ready = start === "ready";
+    const loading = start === "loading";
+    return (
+        <Button chunky size="xl" variant="success" className="sm:flex-1" disabled={!ready} aria-busy={loading || undefined} onClick={ready ? onStart : undefined}>
+            {loading ? <Spinner className="h-6 w-6" /> : <Play className="h-6 w-6" fill="currentColor" aria-hidden="true" />}
+            {loading ? "Sprema se…" : start === "rest" ? "Gotovo za danas" : "Krenimo!"}
+        </Button>
+    );
+}
+
+interface LobbyProps {
+    start: RemoteStart;
+    onOpenLevel: (id: GameId, level: number) => void;
+    onRetry: () => void;
+}
+
+export function RemoteLobby({ start, onOpenLevel, onRetry }: LobbyProps) {
     const remote = useRemote();
     const [error, setError] = useState<string | null>(null);
     if (!remote?.session) return null;
@@ -784,10 +816,7 @@ export function RemoteLobby({ pending = false, unavailable = false, onOpenLevel 
                 <p className="text-base font-semibold text-ink-soft">Svako igra na svom uređaju, u isto vreme.</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
-                <Button chunky size="xl" variant="success" className="sm:flex-1" disabled={pending || unavailable || !onOpenLevel} onClick={() => onOpenLevel?.(session.game, session.level)}>
-                    <Play className="h-6 w-6" fill="currentColor" aria-hidden="true" />
-                    Krenimo!
-                </Button>
+                <RemoteStartButton start={start} onStart={() => onOpenLevel(session.game, session.level)} onRetry={onRetry} />
                 <Button size="xl" variant="secondary" onClick={remote.end}>
                     <X className="h-6 w-6" aria-hidden="true" />
                     Završi igru sa drugom
