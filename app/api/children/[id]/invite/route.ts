@@ -3,7 +3,8 @@
 // Sve tri radnje traže pristup detetu domaćinu (roditelj ili dečja sesija tog deteta koja i
 // dalje važi — requireChildAccess).
 // GET    — stanje poziva: čeka se drug (sa kodom), drug je ušao (ime i drugar druga) ili ga nema
-// POST   — novi poziv za igru i nivo: kod od četiri sličice (važi 10 minuta) i tajni kanal;
+// POST   — novi poziv za igru, nivo i način igre (`mode`: "together" ili "versus"; bez njega
+//          „zajedno”, kao stari klijenti): kod od četiri sličice (važi 10 minuta) i tajni kanal;
 //          stari poziv (ako postoji) prestaje da važi
 // DELETE — „Završi igru sa drugom”: poziv se briše
 import { NextResponse } from "next/server";
@@ -11,6 +12,7 @@ import { requireChildAccess } from "@/lib/auth";
 import { MAX_LEVEL } from "@/lib/games";
 import { INVITE_CODE_TTL_MS, inviteStatus, isRemoteGame, type StoredInvite } from "@/lib/invite";
 import { getClientIp, takeAttempts } from "@/lib/rateLimit";
+import { parsePlayMode } from "@/lib/versus";
 import {
     CREATE_IP_RULE,
     CREATE_RULE,
@@ -59,7 +61,8 @@ export async function POST(request: Request, { params }: RouteContext) {
         await requireChildAccess(childId);
         const body = await readJsonObject(request);
         const level = body.level;
-        if (!isRemoteGame(body.game) || typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > MAX_LEVEL) {
+        const mode = parsePlayMode(body.mode);
+        if (!isRemoteGame(body.game) || typeof level !== "number" || !Number.isInteger(level) || level < 1 || level > MAX_LEVEL || !mode) {
             throw new HttpError(400, "Neispravan zahtev");
         }
         const game = body.game;
@@ -81,6 +84,7 @@ export async function POST(request: Request, { params }: RouteContext) {
             hostFirstName: firstNameOf(row),
             game,
             level,
+            mode,
             createdAt: new Date(now).toISOString(),
         }));
         return NextResponse.json({ invite: invite ? hostView(childId, invite, now) : null }, { headers: NO_STORE });

@@ -10,6 +10,11 @@
 //
 // Igre se ne menjaju: red se čita iz stanja koje igra ionako šalje posle svakog poteza
 // (GameEventTapProvider u lib/realtime.ts → turnIndexFor u lib/playTogether.ts).
+//
+// „Takmičenje” (izbor pre igre; „Zajedno” je podrazumevano — playVersus.tsx, lib/versus.ts):
+// smena je ista (jedan zadatak jedno, sledeći drugo, „Na redu je: Lejla”), ali svako skuplja
+// svoje zvezdice — tačan odgovor u svom redu je jedna zvezdica. Pre igre kratak ekran „VS”,
+// a na kraju oba drugara, nežno ime pobednika i pohvala za trud.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
@@ -36,7 +41,10 @@ import {
 } from "@/lib/playTogether";
 import { GameEventTapProvider } from "@/lib/realtime";
 import type { GameUpdate } from "@/lib/types";
+import { genderOf, type Gender, type PlayMode } from "@/lib/versus";
 import { chosenSkin, useCompanion } from "./companionState";
+// Takmičenje (playVersus.tsx): izbor načina igre, ekran „VS”, zvezdice i kraj sa pobednikom
+import { ModeChoice, ScorePill, VersusEnd, VsIntro } from "./playVersus";
 // Drug na drugom uređaju (playRemote.tsx): pozivanje i ulazak kod druga kreću iz istog prozora
 import { RemoteChoices, RemoteGuestEntry, RemoteHostPicker, useRemoteActive } from "./playRemote";
 
@@ -65,7 +73,26 @@ interface TogetherValue {
     scores: Record<string, number>;
     /** Beleži zvezdice nivoa (jednom po partiji) */
     addLevel: (key: string, stars: number) => void;
+    /** Pol prijavljenog deteta (samo za gramatiku pohvale) */
+    gender: Gender;
+    /** „Zajedno” (podrazumevano) ili „Takmičenje” */
+    mode: PlayMode;
+    setMode: (mode: PlayMode) => void;
+    /** Takmičenje u partiji koja traje: zvezdice svakog igrača i čiji je red */
+    versus: VersusTally;
+    versusReset: (turn: number) => void;
+    versusPoint: (player: number, points: number) => void;
+    versusTurn: (player: number) => void;
 }
+
+interface VersusTally {
+    /** [prijavljeno dete, drug] */
+    scores: [number, number];
+    /** Ko je sada na redu (0 = prijavljeno dete) */
+    turn: number;
+}
+
+const EMPTY_TALLY: VersusTally = { scores: [0, 0], turn: 0 };
 
 const TogetherContext = createContext<TogetherValue | null>(null);
 
@@ -86,6 +113,8 @@ export function TogetherProvider({ childId, childName, gender, preview = false, 
     const companion = useCompanion();
     const [friend, setFriend] = useState<TogetherPlayer | null>(null);
     const [scores, setScores] = useState<Record<string, number>>({});
+    const [mode, setMode] = useState<PlayMode>("together");
+    const [versus, setVersus] = useState<VersusTally>(EMPTY_TALLY);
 
     const host = useMemo<TogetherPlayer>(
         () => ({
@@ -101,19 +130,51 @@ export function TogetherProvider({ childId, childName, gender, preview = false, 
     const choose = useCallback((next: TogetherPlayer) => {
         setFriend(next);
         setScores({});
+        // Svaka nova igra sa drugom počinje zajedno; takmičenje se bira posebno
+        setMode("together");
     }, []);
     const stop = useCallback(() => {
         setFriend(null);
         setScores({});
+        setMode("together");
     }, []);
     const addLevel = useCallback((key: string, stars: number) => {
         setScores((prev) => (key in prev ? prev : { ...prev, [key]: stars }));
     }, []);
+    const versusReset = useCallback((turn: number) => setVersus({ scores: [0, 0], turn }), []);
+    const versusPoint = useCallback((player: number, points: number) => {
+        if (points <= 0 || (player !== 0 && player !== 1)) return;
+        setVersus((prev) => {
+            const next: [number, number] = [...prev.scores];
+            next[player] += points;
+            return { ...prev, scores: next };
+        });
+    }, []);
+    const versusTurn = useCallback((player: number) => setVersus((prev) => (prev.turn === player ? prev : { ...prev, turn: player })), []);
+    const childGender = genderOf(gender);
 
     const value = useMemo<TogetherValue>(() => {
         const list = Object.values(scores);
-        return { childId, preview, host, friend, choose, stop, totalStars: list.reduce((a, b) => a + b, 0), levels: list.length, scores, addLevel };
-    }, [childId, preview, host, friend, choose, stop, scores, addLevel]);
+        return {
+            childId,
+            preview,
+            host,
+            friend,
+            choose,
+            stop,
+            totalStars: list.reduce((a, b) => a + b, 0),
+            levels: list.length,
+            scores,
+            addLevel,
+            gender: childGender,
+            mode,
+            setMode,
+            versus,
+            versusReset,
+            versusPoint,
+            versusTurn,
+        };
+    }, [childId, preview, host, friend, choose, stop, scores, addLevel, childGender, mode, versus, versusReset, versusPoint, versusTurn]);
 
     return <TogetherContext value={value}>{children}</TogetherContext>;
 }
@@ -355,6 +416,7 @@ export function TogetherGamePicker({ games, unlockedFor, pending = false, unavai
     const together = useTogether();
     if (!together?.friend) return null;
     const { host, friend } = together;
+    const versus = together.mode === "versus";
     // Samo igre u kojima smena ima smisla (i koje su inače ponuđene)
     const shown = TOGETHER_GAMES.filter((id) => games.some((g) => g.id === id)).map((id) => getGame(id));
 
@@ -367,15 +429,18 @@ export function TogetherGamePicker({ games, unlockedFor, pending = false, unavai
                 </div>
                 <div className="min-w-0 flex-1">
                     <p className="font-display text-xl font-extrabold leading-tight text-ink sm:text-2xl">
-                        {host.name} i {friend.name}
+                        {host.name} {versus ? "VS" : "i"} {friend.name}
                     </p>
-                    <p className="text-base font-semibold text-ink-soft">Igrate na smenu. Izaberite igru.</p>
+                    <p className="text-base font-semibold text-ink-soft">{versus ? "Igrate na smenu. Svako skuplja svoje zvezdice." : "Igrate na smenu. Izaberite igru."}</p>
                 </div>
                 <Button variant="secondary" onClick={together.stop}>
                     <X className="h-5 w-5" aria-hidden="true" />
                     Kraj igre sa drugom
                 </Button>
             </div>
+
+            {/* Zajedno ili takmičenje: bira dete ili odrasli, „Zajedno” je podrazumevano */}
+            <ModeChoice mode={together.mode} onChange={together.setMode} />
 
             {/* Kartica „Sačekaj svoj red”: deca je upoznaju pre igre, pa je u igri prepoznaju */}
             <WaitCard />
@@ -443,27 +508,52 @@ interface TurnLayerProps {
  * Omotač igre u zajedničkoj igri: traka „Sada igra …” iznad igre i kratka zaštita pri smeni.
  * Van zajedničke igre (ili u igri bez smene) samo prikazuje igru. Ključ omotača je partija
  * (igra–nivo–pokušaj), kao i same igre.
+ *
+ * U takmičenju: pre igre kratak ekran „VS”, traka kaže „Na redu je: Lejla” i pokazuje zvezdice
+ * oba igrača, a tačan odgovor se upisuje onome ko je bio na redu.
  */
 export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
     const together = useTogether();
     const active = Boolean(together?.friend) && isTogetherGame(gameId);
+    const versus = active && together?.mode === "versus";
     const [turn, setTurn] = useState(0);
     const [guard, setGuard] = useState(0);
     const turnRef = useRef(0);
     // Na svakom sledećem nivou prvi igra onaj ko je na prethodnom počinjao drugi (omotač se
     // pravi iznova za svaku partiju, pa se broj nivoa čita jednom, na početku)
     const [offset] = useState(() => (together?.levels ?? 0) % 2);
+    // Ekran „VS” samo na početku partije u takmičenju
+    const [intro, setIntro] = useState(versus);
+    const correctRef = useRef(0);
+    const versusRef = useRef(versus);
+    useEffect(() => {
+        versusRef.current = versus;
+    }, [versus]);
+
+    const versusReset = together?.versusReset;
+    const versusPoint = together?.versusPoint;
+    const versusTurn = together?.versusTurn;
+    useEffect(() => {
+        if (versus) versusReset?.(offset);
+    }, [versus, versusReset, offset]);
 
     const onUpdate = useCallback(
         (update: GameUpdate) => {
             if (update.event === "completed") return;
+            // Takmičenje: novi tačni odgovori pripadaju onome ko je bio na redu pre ovog poteza
+            const correct = update.data?.correctCount;
+            if (versusRef.current && typeof correct === "number" && Number.isFinite(correct) && correct > correctRef.current) {
+                versusPoint?.((turnRef.current + offset) % 2, Math.round(correct - correctRef.current));
+                correctRef.current = correct;
+            }
             const index = turnIndexFor(gameId, update.data);
             if (index === null || index === turnRef.current) return;
             turnRef.current = index;
             setTurn(index);
             setGuard(Date.now());
+            if (versusRef.current) versusTurn?.((index + offset) % 2);
         },
-        [gameId]
+        [gameId, offset, versusPoint, versusTurn]
     );
 
     useEffect(() => {
@@ -477,10 +567,25 @@ export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
     const now = (turn + offset) % 2;
     const waiting = 1 - now;
 
+    if (versus && intro) {
+        return (
+            <div className="relative flex flex-1 flex-col">
+                <VsIntro players={[together.host, together.friend]} gameTitle={getGame(gameId).title} onDone={() => setIntro(false)} />
+            </div>
+        );
+    }
+
     return (
         <GameEventTapProvider value={onUpdate}>
             <div className="relative flex flex-1 flex-col gap-2 sm:gap-3">
-                <TurnStrip key={now} player={players[now]} look={LOOKS[now]} other={players[waiting]} otherLook={LOOKS[waiting]} />
+                <TurnStrip
+                    key={now}
+                    player={players[now]}
+                    look={LOOKS[now]}
+                    other={players[waiting]}
+                    otherLook={LOOKS[waiting]}
+                    scores={versus ? [together.versus.scores[now], together.versus.scores[waiting]] : null}
+                />
                 <div className={cn("relative flex flex-1 flex-col rounded-[1.75rem] border-4 border-dashed p-1 transition-colors", LOOKS[now].border)}>
                     {children}
                     {guard > 0 && <div className="absolute inset-0 z-30" aria-hidden="true" />}
@@ -490,20 +595,34 @@ export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
     );
 }
 
-function TurnStrip({ player, look, other, otherLook }: { player: TogetherPlayer; look: (typeof LOOKS)[number]; other: TogetherPlayer; otherLook: (typeof LOOKS)[number] }) {
+interface TurnStripProps {
+    player: TogetherPlayer;
+    look: (typeof LOOKS)[number];
+    other: TogetherPlayer;
+    otherLook: (typeof LOOKS)[number];
+    /** Takmičenje: zvezdice [ko je na redu, ko čeka]; null = zajednička igra */
+    scores?: [number, number] | null;
+}
+
+function TurnStrip({ player, look, other, otherLook, scores = null }: TurnStripProps) {
     const calm = useCalmMotion();
+    const versus = scores !== null;
     return (
         <div className="flex items-stretch gap-2 sm:gap-3" role="status" aria-live="polite">
-            <div className={cn("flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-2.5 py-2 text-white shadow-soft sm:px-4", look.solid, !calm && "animate-pop")}>
-                <PlayerPicture player={player} look={look} className="h-12 w-12 bg-white sm:h-16 sm:w-16" />
-                <span className="min-w-0">
-                    <span className="block text-xs font-extrabold uppercase tracking-wide text-white/85 sm:text-sm">
-                        <span aria-hidden="true">{look.mark} </span>Tvoj red
+            <div className={cn("flex min-w-0 flex-1 items-center rounded-2xl px-2.5 py-2 text-white shadow-soft sm:gap-3 sm:px-4", versus ? "gap-2" : "gap-3", look.solid, !calm && "animate-pop")}>
+                <PlayerPicture player={player} look={look} className={cn("h-12 w-12 bg-white sm:h-16 sm:w-16", versus && "max-[400px]:h-10 max-[400px]:w-10")} />
+                <span className="min-w-0 flex-1">
+                    <span className={cn("block text-xs font-extrabold uppercase text-white/85 sm:text-sm", versus ? "truncate max-[400px]:text-[0.7rem] max-[400px]:tracking-tight" : "tracking-wide")}>
+                        <span className={cn(versus && "max-[400px]:hidden")} aria-hidden="true">
+                            {look.mark}{" "}
+                        </span>
+                        {versus ? "Na redu je:" : "Tvoj red"}
                     </span>
-                    <span className="block truncate font-display text-lg font-extrabold leading-tight sm:text-2xl">Sada igra {player.name}</span>
+                    <span className="block truncate font-display text-lg font-extrabold leading-tight sm:text-2xl">{versus ? player.name : `Sada igra ${player.name}`}</span>
                 </span>
+                {versus && <ScorePill name={player.name} stars={scores[0]} className="bg-white px-2 text-base max-[400px]:px-1.5 sm:px-2.5 sm:text-lg" />}
             </div>
-            <div className="flex shrink-0 items-center gap-2 rounded-2xl border-2 border-line bg-surface px-2 py-1.5 sm:px-3">
+            <div className={cn("flex shrink-0 items-center gap-2 rounded-2xl border-2 border-line bg-surface px-2 py-1.5 sm:px-3", versus && "max-[400px]:gap-1.5 max-[400px]:px-1.5")}>
                 <span className="relative shrink-0">
                     <PlayerPicture player={other} look={otherLook} dim className="h-10 w-10 sm:h-12 sm:w-12" />
                     {/* Kartica „Sačekaj svoj red” u malom: ruka, i kad za tekst nema mesta */}
@@ -511,14 +630,15 @@ function TurnStrip({ player, look, other, otherLook }: { player: TogetherPlayer;
                         <Hand className="h-3.5 w-3.5" />
                     </span>
                 </span>
-                <span className="hidden min-w-0 min-[480px]:block">
+                <span className={cn("hidden min-w-0", versus ? "sm:block" : "min-[480px]:block")}>
                     <span className="block max-w-28 truncate text-sm font-extrabold text-ink sm:max-w-36">{other.name}</span>
                     <span className="flex items-center gap-1 text-xs font-extrabold text-sky-700 sm:text-sm">
                         <Hand className="h-4 w-4" aria-hidden="true" />
                         Sačekaj svoj red
                     </span>
                 </span>
-                <span className="sr-only min-[480px]:hidden">{other.name}: sačekaj svoj red</span>
+                <span className={cn("sr-only", versus ? "sm:hidden" : "min-[480px]:hidden")}>{other.name}: sačekaj svoj red</span>
+                {versus && <ScorePill name={other.name} stars={scores[1]} className="px-2 text-base max-[400px]:px-1.5 sm:px-2.5 sm:text-lg" />}
             </div>
         </div>
     );
@@ -531,6 +651,8 @@ interface TogetherEndProps {
     /** Ključ partije (igra–nivo–pokušaj): zvezdice se broje jednom */
     playKey: string;
     stars: number;
+    /** Tačni odgovori u nivou (takmičenje: ono što traka nije stigla da upiše ide onome ko je na redu) */
+    correct?: number;
     level: number;
     advance: boolean;
     limitReached: boolean;
@@ -546,7 +668,7 @@ export function useTogetherEnd(gameId: GameId | null | undefined): boolean {
     return Boolean(together?.friend) && isTogetherGame(gameId);
 }
 
-export function TogetherEnd({ playKey, stars, level, advance, limitReached, saved, onNext, onRetry, onLeave }: TogetherEndProps) {
+export function TogetherEnd({ playKey, stars, correct = 0, level, advance, limitReached, saved, onNext, onRetry, onLeave }: TogetherEndProps) {
     const together = useTogether();
     const addLevel = together?.addLevel;
     useEffect(() => {
@@ -560,6 +682,27 @@ export function TogetherEnd({ playKey, stars, level, advance, limitReached, save
 
     if (!together?.friend) return null;
     const { host, friend } = together;
+
+    // Takmičenje: oba drugara sa svojim zvezdicama, pobednik i pohvala za trud (playVersus.tsx)
+    if (together.mode === "versus") {
+        const scores: [number, number] = [...together.versus.scores];
+        const missing = Math.max(0, correct - scores[0] - scores[1]);
+        scores[together.versus.turn === 1 ? 1 : 0] += missing;
+        return (
+            <VersusEnd
+                seats={[
+                    { player: host, gender: together.gender, score: scores[0], badge: <CoinsBadge coins={stars * COINS_PER_STAR} /> },
+                    { player: friend, score: scores[1], badge: <PraiseBadge /> },
+                ]}
+                limitReached={limitReached}
+                saved={saved}
+                onRematch={onRetry}
+                onLeave={onLeave}
+                adultNote={<>takmičenje je samo za zabavu. Novčići i nivo idu detetu koje je prijavljeno ({host.name}); drug dobija pohvalu.</>}
+            />
+        );
+    }
+
     // Zbir svih zajedničkih nivoa; ovaj nivo se ubraja i pre nego što se upiše (prvo crtanje)
     const sum = together.totalStars + (playKey in together.scores ? 0 : stars);
     const praise = togetherPraise([host.name, friend.name], sum);
@@ -627,5 +770,24 @@ export function TogetherEnd({ playKey, stars, level, advance, limitReached, save
                 </p>
             </div>
         </div>
+    );
+}
+
+/** Novčići za ovaj nivo (ispod drugara deteta) */
+export function CoinsBadge({ coins }: { coins: number }) {
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-sun-100 px-3 py-1 text-base font-extrabold text-sun-700 ring-1 ring-sun-300">
+            + {coins} <CoinIcon className="h-5 w-5" />
+            <span className="sr-only">novčića</span>
+        </span>
+    );
+}
+
+/** „Bravo!” za druga */
+export function PraiseBadge() {
+    return (
+        <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-3 py-1 text-base font-extrabold text-orange-700 ring-1 ring-orange-300">
+            <span aria-hidden="true">👏</span> Bravo!
+        </span>
     );
 }
