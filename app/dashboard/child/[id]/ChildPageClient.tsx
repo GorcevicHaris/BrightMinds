@@ -20,6 +20,7 @@ import CompanionStage from "@/app/components/avatar3d/CompanionStage";
 import CompanionRoom from "./CompanionRoom";
 import { chosenSkin, CompanionProvider, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
+import { TogetherProvider } from "./playTogether";
 import type { ChildProfile } from "./page";
 
 type View = "games" | "companion" | "progress";
@@ -219,16 +220,20 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                             <BannerGreeting firstName={firstName} onGoal={() => setView("companion")} />
                         </GreetingBanner>
 
-                        <GameContainer
-                            childId={child.id}
-                            childName={firstName}
-                            gender={gender}
-                            watched={watched}
-                            onExperienceChange={setPoints}
-                            onOverlayChange={setGameOpen}
-                            preview={preview}
-                            previewUnlocked={previewUnlocked}
-                        />
+                        {/* „Igraj sa drugom” (playTogether.tsx): stanje traje dok je dete na ovoj strani */}
+                        <TogetherProvider childId={child.id} childName={firstName} gender={gender} preview={preview}>
+                            <GameContainer
+                                childId={child.id}
+                                childName={firstName}
+                                gender={gender}
+                                watched={watched}
+                                onExperienceChange={setPoints}
+                                onOverlayChange={setGameOpen}
+                                preview={preview}
+                                previewUnlocked={previewUnlocked}
+                                ageYears={child.age_years ?? null}
+                            />
+                        </TogetherProvider>
 
                         {/* Priče koje je odrasli napisao baš za ovo dete (ne prikazuje se ako ih nema) */}
                         <CustomStoryShelf childId={child.id} gender={gender} offline={preview} />
