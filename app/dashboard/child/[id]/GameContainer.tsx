@@ -11,7 +11,7 @@ import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import {
     CelebrationLayer,
-    celebrateBig,
+    celebrateBigWhenSettled,
     CompanionPanelContext,
     flyItems,
     FLY_MS,
@@ -524,8 +524,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 saved: preview ? "ok" : "saving",
             });
             playSfx("win");
-            // Kraj nivoa je uvek uspeh: zvezdice preko celog ekrana (sloj ih ne crta kad je „Manje animacija”)
-            celebrateBig();
+            // Kraj nivoa je uvek uspeh: zvezdice preko celog ekrana (sloj ih ne crta kad je „Manje animacija”),
+            // kad se ekran sa rezultatom iscrta — inače ih na sporijem tabletu „pojede” crtanje drugara
+            celebrateBigWhenSettled();
 
             if (advance) {
                 setUnlocked((prev) => ({
