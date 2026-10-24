@@ -21,3 +21,20 @@ describe("pozdravni baner sa drugarom", () => {
         assert.match(overlay, /pointer-events-auto[^"]*rounded-2xl/);
     });
 });
+
+describe("drugar u uglu dok dete skroluje", () => {
+    const page = SOURCE.slice(SOURCE.indexOf("function ChildPage("));
+
+    it("pojavljuje se samo kad je baner van ekrana, na igrama, i nikad preko otvorene igre", () => {
+        assert.match(page, /view === "games" && showAvatar && bannerAway && !gameOpen && \(\s*<FloatingCompanion/);
+        assert.match(page, /new IntersectionObserver/);
+        assert.match(page, /sectionRef=\{setBanner\}/);
+    });
+
+    it("dodir otvara „Moj drugar”, a drugar stoji iznad donje navigacije na telefonu", () => {
+        const floating = SOURCE.slice(SOURCE.indexOf("function FloatingCompanion"), SOURCE.indexOf("function ChildPage("));
+        assert.match(floating, /aria-label="Moj drugar"/);
+        assert.match(floating, /bottom-\[calc\(5\.25rem\+env\(safe-area-inset-bottom\)\)\]/);
+        assert.match(floating, /<CompanionStage[^>]*framing="portrait"/);
+    });
+});

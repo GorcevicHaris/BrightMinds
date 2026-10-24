@@ -70,10 +70,11 @@ export default function ChildPageClient({ realtimeTopic = null, ...props }: Prop
 function BannerGreeting({ firstName, onGoal }: { firstName: string; onGoal: () => void }) {
     return (
         <>
-            <h1 className="text-2xl font-extrabold leading-tight sm:text-4xl">Zdravo, {firstName}!</h1>
-            <p className="mt-1 text-base font-semibold text-ink-soft sm:text-lg">Izaberi igru.</p>
+            {/* Na telefonu sitnije, da kartica ne zaklanja drugara */}
+            <h1 className="text-lg font-extrabold leading-tight min-[400px]:text-xl sm:text-4xl">Zdravo, {firstName}!</h1>
+            <p className="mt-0.5 text-sm font-semibold text-ink-soft sm:mt-1 sm:text-lg">Izaberi igru.</p>
             {/* Cilj deteta („Radim za”) — samo kad je izabran */}
-            <GoalChip onClick={onGoal} className="mt-3" />
+            <GoalChip onClick={onGoal} className="mt-2 sm:mt-3" />
         </>
     );
 }
@@ -83,7 +84,7 @@ function BannerGreeting({ firstName, onGoal }: { firstName: string; onGoal: () =
  * pozadina ili mirni svetlosivi svet), široko kadriran — drugar desno, pozdrav levo.
  * Dodir na drugara otvara „Moj drugar”.
  */
-function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boolean; children: ReactNode; onCompanion: () => void }) {
+function GreetingBanner({ showAvatar, children, onCompanion, sectionRef }: { showAvatar: boolean; children: ReactNode; onCompanion: () => void; sectionRef?: (el: HTMLElement | null) => void }) {
     const companion = useCompanion();
     const pressAt = useRef<{ x: number; y: number } | null>(null);
     if (!showAvatar || !companion) {
@@ -96,6 +97,7 @@ function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boo
     }
     return (
         <section
+            ref={sectionRef}
             className="relative min-h-52 overflow-hidden rounded-card bg-[#E4E6EB] text-ink shadow-soft sm:min-h-64"
             onPointerDown={(e) => {
                 pressAt.current = { x: e.clientX, y: e.clientY };
@@ -110,16 +112,36 @@ function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boo
                 if (e.clientX - box.left > box.width * 0.38) onCompanion();
             }}
         >
-            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="wide" align={0.42} background interactive className="absolute inset-0" />
+            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="wide" align={0.4} background interactive className="absolute inset-0" />
             {/* Sloj sa pozdravom propušta dodire do drugara (platno ispod); hvata ih samo kartica pozdrava */}
             <div className="pointer-events-none relative flex min-h-52 items-center sm:min-h-64">
-                <div className="w-[62%] p-4 sm:w-1/2 sm:p-8">
-                    <div className="pointer-events-auto inline-block max-w-full rounded-2xl bg-white/88 px-4 py-3 shadow-soft backdrop-blur-sm sm:px-5 sm:py-4">{children}</div>
+                <div className="w-[54%] p-3 sm:w-1/2 sm:p-8">
+                    <div className="pointer-events-auto inline-block max-w-full rounded-2xl bg-white/88 px-3 py-2 shadow-soft backdrop-blur-sm sm:px-5 sm:py-4">{children}</div>
                 </div>
                 {/* Za tastaturu i čitač ekrana; prstom se drugar prevlači, a dodirom otvara (vidi onClick iznad) */}
                 <button type="button" onClick={onCompanion} aria-label="Moj drugar" className="pointer-events-none absolute inset-y-0 right-0 w-[38%] rounded-r-card focus-visible:ring-4 focus-visible:ring-brand-400 sm:w-1/2" />
             </div>
         </section>
+    );
+}
+
+/**
+ * Drugar u uglu dok je pozdravni baner van ekrana (dete skroluje mapu igara), da je uvek uz dete.
+ * Živi prikaz se pravi tek tada, pa preuzima zajedničko 3D platno; kad se baner vrati, ovaj
+ * prikaz nestaje i platno se vraća baneru. Dodir otvara „Moj drugar”.
+ */
+function FloatingCompanion({ onOpen }: { onOpen: () => void }) {
+    const companion = useCompanion();
+    if (!companion) return null;
+    return (
+        <button
+            type="button"
+            onClick={onOpen}
+            aria-label="Moj drugar"
+            className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-3 z-30 h-28 w-24 animate-pop overflow-hidden rounded-3xl border-2 border-white bg-[#E4E6EB] shadow-lift focus-visible:ring-4 focus-visible:ring-brand-400 md:bottom-6 md:right-6 md:h-36 md:w-28"
+        >
+            <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="portrait" background className="pointer-events-none absolute inset-0" />
+        </button>
     );
 }
 
@@ -133,6 +155,19 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, 
     const [isLeaving, setIsLeaving] = useState(false);
     const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const watched = useWatcherPresence(!preview);
+    // Pozdravni baner van ekrana → drugar prelazi u ugao (FloatingCompanion)
+    const [banner, setBanner] = useState<HTMLElement | null>(null);
+    const [bannerAway, setBannerAway] = useState(false);
+    useEffect(() => {
+        if (!banner) return;
+        // Gornjih 64 px pokriva zaglavlje; baner je „otišao” kad se vidi manje od četvrtine
+        const observer = new IntersectionObserver(([entry]) => setBannerAway(entry.intersectionRatio < 0.25), { rootMargin: "-64px 0px 0px 0px", threshold: [0, 0.25, 0.5] });
+        observer.observe(banner);
+        return () => {
+            observer.disconnect();
+            setBannerAway(false);
+        };
+    }, [banner]);
 
     const firstName = child.first_name || "Druže";
     const gender = child.gender ?? undefined;
@@ -241,7 +276,7 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, 
                 {view === "games" ? (
                     <div className="space-y-6 sm:space-y-8">
                         {/* Pozdrav + drugar */}
-                        <GreetingBanner showAvatar={showAvatar} onCompanion={() => setView("companion")}>
+                        <GreetingBanner showAvatar={showAvatar} onCompanion={() => setView("companion")} sectionRef={setBanner}>
                             <BannerGreeting firstName={firstName} onGoal={() => setView("companion")} />
                         </GreetingBanner>
 
@@ -283,6 +318,15 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, 
                     </div>
                 )}
             </main>
+
+            {view === "games" && showAvatar && bannerAway && !gameOpen && (
+                <FloatingCompanion
+                    onOpen={() => {
+                        setView("companion");
+                        window.scrollTo({ top: 0 });
+                    }}
+                />
+            )}
 
             {/* Donja navigacija — telefon. Dugmad su iznad same ivice ekrana, gde deca često naslanjaju dlan. */}
             <nav inert={gameOpen} className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 pb-[max(env(safe-area-inset-bottom),0.5rem)] backdrop-blur md:hidden" aria-label="Glavna navigacija">
