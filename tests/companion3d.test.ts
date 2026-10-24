@@ -49,7 +49,9 @@ describe("3D drugar: nove mogućnosti", () => {
             const result = applyCompanionAction(base, { action: "choose", kind }, 0, COMPANION_CATALOG);
             assert.ok(result.ok, kind);
         }
-        assert.equal(applyCompanionAction(base, { action: "choose", kind: "dragon" }, 0, COMPANION_CATALOG).ok, false);
+        // Zmaj je sada pravi drugar (animals/more); nepoznata vrsta se i dalje odbija
+        assert.ok(applyCompanionAction(base, { action: "choose", kind: "dragon" }, 0, COMPANION_CATALOG).ok);
+        assert.equal(applyCompanionAction(base, { action: "choose", kind: "grifon" }, 0, COMPANION_CATALOG).ok, false);
     });
 
     it("izgled čoveka je besplatan: koža, oči, kosa, frizura i hidžab, bez kupovine", () => {
