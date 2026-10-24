@@ -33,6 +33,7 @@ import {
     type GameId,
     type Mood,
 } from "@/lib/games";
+import { pickerGames } from "@/lib/gameAccess";
 import { useGameBroadcast } from "@/lib/realtime";
 import { useSpeech } from "@/lib/speech";
 import type { VoiceEmotion } from "@/lib/emotion";
@@ -550,7 +551,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             return <RestCard childName={childName} onExtend={() => clock.addMinutes(ADULT_EXTRA_MINUTES)} />;
         }
         // Sa planom: prikazujemo samo igre iz plana, redom. Kad je plan završen, dete bira samo.
-        const shown = planActive ? plan.map((id) => getGame(id)) : GAMES;
+        const shown = planActive ? plan.map((id) => getGame(id)) : pickerGames(settings, unlocked);
         return (
             <section aria-labelledby="games-heading" className="space-y-4 sm:space-y-5">
                 {plan.length > 0 && <PlanStrip plan={plan} done={planDone} current={nextPlanned} />}
@@ -565,7 +566,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         </Button>
                     </div>
                 )}
-                {/* Mapa ili kartice (GameMap.tsx) — posle spajanja: sortGamesForChild / availableGames */}
+                {/* Mapa ili kartice (GameMap.tsx); igre su već poređane po uzrastu i bez zaključanih (pickerGames) */}
                 <GamePicker
                     ageYears={ageYears}
                     games={shown}

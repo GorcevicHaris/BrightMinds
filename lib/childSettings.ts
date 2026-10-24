@@ -50,7 +50,34 @@ export interface ChildSettings {
      * Vizuelni raspored čini igru predvidljivom: šta radim, koliko i šta je posle.
      */
     plan: GameId[];
+    /**
+     * Igre koje roditelj nije uključio (dete ih ne vidi). Čuva se spisak ISKLJUČENIH, a ne
+     * uključenih: igra dodata kasnije je tako podrazumevano dostupna. Prazno = sve igre.
+     */
+    disabledGames: GameId[];
+    /**
+     * „Otključavanje redom”: igre se otvaraju jedna za drugom, redom učenja za uzrast
+     * deteta — sledeća kad dete završi 3. nivo prethodne (videti lib/gameAccess.ts).
+     */
+    unlockInOrder: boolean;
+    /** Blag dnevni podsetnik na početnom ekranu (bez obaveštenja i mejlova) */
+    reminder: ReminderSettings;
 }
+
+/** Dani u nedelji kao u ISO kalendaru: 1 = ponedeljak … 7 = nedelja */
+export type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export const WEEKDAYS: Weekday[] = [1, 2, 3, 4, 5, 6, 7];
+
+export interface ReminderSettings {
+    /** Podrazumevano isključeno */
+    enabled: boolean;
+    /** Vreme dana „HH:MM” (Beograd) posle kog se podsetnik prikazuje ako dete danas nije igralo */
+    time: string;
+    /** Dani u kojima važi; prazno se ne čuva (tada podsetnik ne bi imao smisla) */
+    days: Weekday[];
+}
+
+export const DEFAULT_REMINDER: ReminderSettings = { enabled: false, time: "17:00", days: [...WEEKDAYS] };
 
 export interface BandPreset {
     label: string;
@@ -132,6 +159,9 @@ export function defaultSettings(band: AgeBand): ChildSettings {
         // Deca mlađa od ~5–6 godina ne mogu pouzdano da ocene svoje raspoloženje na skali
         moodCheck: band === "young" ? "off" : "three",
         plan: [],
+        disabledGames: [],
+        unlockInOrder: false,
+        reminder: { ...DEFAULT_REMINDER, days: [...DEFAULT_REMINDER.days] },
     };
 }
 
@@ -152,6 +182,31 @@ function sanitizePlan(value: unknown): GameId[] {
         if (plan.length === MAX_PLAN_GAMES) break;
     }
     return plan;
+}
+
+/** Isključene igre: samo poznate, bez ponavljanja. Ako bi bile isključene sve, ne isključuje se nijedna. */
+function sanitizeDisabledGames(value: unknown): GameId[] {
+    if (!Array.isArray(value)) return [];
+    const valid = new Set<string>(GAMES.map((g) => g.id));
+    const disabled: GameId[] = [];
+    for (const item of value) {
+        if (typeof item === "string" && valid.has(item) && !disabled.includes(item as GameId)) disabled.push(item as GameId);
+    }
+    return disabled.length >= GAMES.length ? [] : disabled;
+}
+
+const TIME_OF_DAY = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function sanitizeReminder(value: unknown): ReminderSettings {
+    const source = isRecord(value) ? value : {};
+    const days = Array.isArray(source.days)
+        ? WEEKDAYS.filter((day) => (source.days as unknown[]).includes(day))
+        : [...DEFAULT_REMINDER.days];
+    return {
+        enabled: bool(source.enabled, DEFAULT_REMINDER.enabled) && days.length > 0,
+        time: typeof source.time === "string" && TIME_OF_DAY.test(source.time) ? source.time : DEFAULT_REMINDER.time,
+        days: days.length > 0 ? days : [...DEFAULT_REMINDER.days],
+    };
 }
 
 function bool(value: unknown, fallback: boolean): boolean {
@@ -183,8 +238,15 @@ export function sanitizeSettings(raw: unknown, ageBand: AgeBand): ChildSettings 
         waitHint: bool(source.waitHint, base.waitHint),
         sessionMinutes: pick<ChildSettings["sessionMinutes"]>(source.sessionMinutes, [0, 10, 15, 20, 30], base.sessionMinutes),
         moodCheck: pick<MoodCheck>(source.moodCheck, ["off", "three"], base.moodCheck),
-        plan: sanitizePlan(source.plan),
+        // Isključena igra ne može biti u planu: plan bi inače čekao igru koju dete ne vidi
+        ...withoutDisabledInPlan(sanitizePlan(source.plan), sanitizeDisabledGames(source.disabledGames)),
+        unlockInOrder: bool(source.unlockInOrder, base.unlockInOrder),
+        reminder: sanitizeReminder(source.reminder),
     };
+}
+
+function withoutDisabledInPlan(plan: GameId[], disabledGames: GameId[]): { plan: GameId[]; disabledGames: GameId[] } {
+    return { plan: plan.filter((id) => !disabledGames.includes(id)), disabledGames };
 }
 
 /**
@@ -196,7 +258,9 @@ export function settingsOverrides(settings: ChildSettings, ageBand: AgeBand): Pa
     const base = defaultSettings(settings.band ?? ageBand);
     const overrides: Partial<Record<keyof ChildSettings, unknown>> = {};
     for (const key of Object.keys(settings) as (keyof ChildSettings)[]) {
-        const same = key === "plan" ? settings.plan.join(",") === base.plan.join(",") : settings[key] === base[key];
+        const value = settings[key];
+        // Nizovi i objekti (plan, isključene igre, podsetnik) se porede po sadržaju
+        const same = typeof value === "object" && value !== null ? JSON.stringify(value) === JSON.stringify(base[key]) : value === base[key];
         if (!same) overrides[key] = settings[key];
     }
     return overrides as Partial<ChildSettings>;
@@ -208,10 +272,32 @@ export interface ResolvedSettings extends ChildSettings {
     preset: BandPreset;
     /** Najviše ponuđenih odgovora posle primene uzrasta i izbora roditelja */
     choiceLimit: number;
+    /**
+     * Uzrast po kome se ređaju igre: navršene godine, ali u granicama uzrasne grupe koju je
+     * roditelj izabrao (dete od 7 godina u grupi „Mlađi” dobija igre kao dete od 4).
+     * null = uzrast nije poznat i grupa nije izabrana.
+     */
+    playAge: number | null;
+}
+
+/** Granice uzrasnih grupa u godinama (isto kao u `bandForAge` i `BAND_PRESETS`). */
+const BAND_AGES: Record<AgeBand, { min: number; max: number }> = {
+    young: { min: 3, max: 4 },
+    middle: { min: 5, max: 6 },
+    older: { min: 7, max: 10 },
+};
+
+/** Uzrast za redosled igara: godine deteta, svedene na izabranu grupu kad je roditelj izabrao drugu. */
+export function playAgeFor(age: number | null, band: AgeBand | null): number | null {
+    if (!band) return age;
+    const range = BAND_AGES[band];
+    if (age === null) return range.min;
+    return Math.min(Math.max(age, range.min), range.max);
 }
 
 export function resolveSettings(raw: unknown, dateOfBirth: string | null | undefined): ResolvedSettings {
-    const ageBand = bandForAge(ageInYears(dateOfBirth));
+    const age = ageInYears(dateOfBirth);
+    const ageBand = bandForAge(age);
     const settings = sanitizeSettings(raw, ageBand);
     const activeBand = settings.band ?? ageBand;
     const preset = BAND_PRESETS[activeBand];
@@ -220,6 +306,7 @@ export function resolveSettings(raw: unknown, dateOfBirth: string | null | undef
         activeBand,
         preset,
         choiceLimit: settings.maxChoices === 0 ? preset.maxChoices : settings.maxChoices,
+        playAge: playAgeFor(age, settings.band),
     };
 }
 
