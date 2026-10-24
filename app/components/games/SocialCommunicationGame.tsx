@@ -42,6 +42,7 @@ import {
     type SocialSituation,
 } from "./data/socialSituations";
 import { socialScene } from "./data/socialScenes";
+import { OPTION_GRID, OptionPicture } from "./OptionPicture";
 import { SceneArt } from "./scene/SceneArt";
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
@@ -456,7 +457,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                         subtitle={situation.ask}
                     />
 
-                    <ul key={`options-${shown.round}`} aria-label="Ponuđeni izbori" className="grid animate-fade gap-3">
+                    <ul key={`options-${shown.round}`} aria-label="Ponuđeni izbori" className={cn("grid animate-fade gap-2 sm:gap-3", OPTION_GRID[shown.order.length] ?? OPTION_GRID[3])}>
                         {shown.order.map((index) => {
                             const firstHelpful = shown.order.find((i) => situation.acceptable.includes(i));
                             const showHand = !isMonitor && level === 1 && shown.round === 1 && shown.optionsShown && shown.picked === null && shown.tried.length === 0;
@@ -466,27 +467,25 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                             const inactive = shown.picked !== null || shown.finished || shown.tried.includes(index);
                             const status = state === "correct" ? " To pomaže." : shown.tried.includes(index) ? " Već probano." : "";
                             return (
-                                <li key={index} className="flex items-stretch gap-2">
+                                <li key={index} className="flex min-w-0 flex-col items-center gap-1.5">
                                     <ChoiceCard
                                         state={state}
                                         disabled={isMonitor}
                                         aria-disabled={inactive || undefined}
                                         aria-label={`${label}${status}`}
                                         onClick={() => handlePick(index)}
-                                        className={cn("min-w-0 flex-1", inactive && "cursor-default")}
+                                        className={cn("h-full w-full min-w-0 flex-1 p-1.5! sm:p-2.5!", inactive && "cursor-default")}
                                     >
-                                        <span className="flex w-full items-center gap-3 text-left sm:gap-4">
-                                            <span
-                                                aria-hidden="true"
-                                                className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 text-3xl leading-none sm:h-14 sm:w-14 sm:text-4xl"
-                                            >
-                                                {option.emoji}
-                                            </span>
-                                            <span className="min-w-0 flex-1 text-lg leading-snug sm:text-xl">{label}</span>
-                                        </span>
-                                        {showHand && index === firstHelpful && <DemoHand />}
+                                        {/* Izbor je slika: dete radi ili kaže baš to; natpis je ispod */}
+                                        <OptionPicture text={option.text} label={label} emoji={option.emoji} female={female}>
+                                            {showHand && index === firstHelpful && <DemoHand />}
+                                        </OptionPicture>
                                     </ChoiceCard>
-                                    {!isMonitor && <OptionSpeaker label={`Pročitaj: ${label}`} onClick={() => handleSpeakOption(index)} />}
+                                    {!isMonitor && (
+                                        <span className="[&>button]:min-h-10 [&>button]:w-12">
+                                            <OptionSpeaker label={`Pročitaj: ${label}`} onClick={() => handleSpeakOption(index)} />
+                                        </span>
+                                    )}
                                 </li>
                             );
                         })}

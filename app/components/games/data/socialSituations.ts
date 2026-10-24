@@ -874,16 +874,16 @@ function toSituation({ good, other, ...base }: Draft): SocialSituation {
 }
 
 /**
- * Situacija koja se ponavlja: laka težina nudi 1 + 1 izbor, srednja 1 + 2, teška 2 + 2.
- * Broj ponuđenih izbora raste (2 → 3 → 4), pa nijedna težina nije lakša od prethodne;
- * na teškoj dete uz to uči da više od jednog odgovora može da pomogne.
+ * Izbori po težini (svaki izbor je slika sa kratkim natpisom, pa ih je malo): laka težina nudi
+ * 1 + 1 izbor, srednja 1 + 2, teška 2 + 1. Od srednje težine su na ekranu tri slike; na teškoj
+ * dete uz to uči da više od jednog odgovora može da pomogne.
  */
 function forTier(draft: Draft, tier: number, repeated = true): SocialSituation {
     return toSituation({
         ...draft,
         id: repeated ? draft.id + tier * REPEATED_PER_TIER : draft.id,
         good: draft.good.slice(0, tier === TIER_COUNT - 1 ? 2 : 1),
-        other: draft.other.slice(0, tier === 0 ? 1 : 2),
+        other: draft.other.slice(0, tier === 1 ? 2 : 1),
     });
 }
 
@@ -894,7 +894,7 @@ function forTier(draft: Draft, tier: number, repeated = true): SocialSituation {
 function buildLevel(level: number): SocialSituation[] {
     const tier = Math.floor((level - 1) / GROUP_COUNT);
     const [first, ...rest] = GROUPS[(level - 1) % GROUP_COUNT].map((draft) => forTier(draft, tier));
-    return [first, toSituation(ADVOCACY[level - 1]), forTier(FRESH[level - 1], tier, false), ...rest];
+    return [first, forTier(ADVOCACY[level - 1], tier, false), forTier(FRESH[level - 1], tier, false), ...rest];
 }
 
 /** Situacije po nivoima 1–15 (ID-jevi 1–45 se ponavljaju na tri težine; 46–75 su jedinstvene). */
