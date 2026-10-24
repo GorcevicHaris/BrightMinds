@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ageInYears, resolveSettings, type ResolvedSettings } from "@/lib/childSettings";
 import { realtimeTopicFor } from "@/lib/realtimeTopic";
+import { companionPayload, type CompanionPayload } from "@/lib/companionPayload";
 import { reminderDue } from "@/lib/reminder";
 import { supabaseAdmin } from "@/lib/supabase";
 import { childrenWhoPlayedToday } from "@/app/api/_lib/children";
@@ -59,6 +60,8 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
 
     let child: ChildProfile | null = null;
     let settings: ResolvedSettings = resolveSettings(null, null);
+    // Drugar odmah uz stranicu: bez njega bi se na sekund pokazao podrazumevani drugar
+    let companion: CompanionPayload | undefined;
     try {
         // select("*") da upit radi i pre migracije koja dodaje kolonu `settings`
         const { data } = await supabaseAdmin.from("children").select("*").eq("id", childId).maybeSingle();
@@ -73,6 +76,7 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
                 age_years: ageInYears(row.date_of_birth),
             };
             settings = resolveSettings(row.settings, row.date_of_birth);
+            companion = companionPayload(row.settings, row.gender ?? null, row.experience_points ?? null);
         }
     } catch {
         child = null;
@@ -95,5 +99,5 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
         }
     }
 
-    return <ChildPageClient child={child} viewer={viewer} settings={settings} realtimeTopic={realtimeTopicFor(child.id)} reminder={reminder} />;
+    return <ChildPageClient child={child} viewer={viewer} settings={settings} realtimeTopic={realtimeTopicFor(child.id)} reminder={reminder} companion={companion} />;
 }

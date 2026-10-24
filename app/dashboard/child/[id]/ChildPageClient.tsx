@@ -13,6 +13,7 @@ import { Button, buttonClasses } from "@/app/components/ui/Button";
 import { Modal } from "@/app/components/ui/Modal";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
 import type { ResolvedSettings } from "@/lib/childSettings";
+import type { CompanionPayload } from "@/lib/companionPayload";
 import { cn } from "@/lib/cn";
 import { RealtimeTopicProvider, useWatcherPresence } from "@/lib/realtime";
 import { speak, stopSpeaking } from "@/lib/speech";
@@ -40,6 +41,8 @@ interface Props {
     previewUnlocked?: number;
     /** Dnevni podsetnik (samo kad ga je roditelj uključio): da li je dete danas igralo i da li je sada vreme */
     reminder?: { playedToday: boolean; initialDue: boolean };
+    /** Drugar i novčići sa servera, poslati uz stranicu (bez treptaja podrazumevanog drugara) */
+    companion?: CompanionPayload;
 }
 
 const TABS: { id: View; label: string; Icon: typeof Gamepad2 }[] = [
@@ -48,7 +51,7 @@ const TABS: { id: View; label: string; Icon: typeof Gamepad2 }[] = [
     { id: "progress", label: "Napredak", Icon: Trophy },
 ];
 
-export default function ChildPageClient({ realtimeTopic = null, ...props }: Props) {
+export default function ChildPageClient({ realtimeTopic = null, companion, ...props }: Props) {
     return (
         <RealtimeTopicProvider value={realtimeTopic}>
             <CompanionProvider
@@ -56,6 +59,7 @@ export default function ChildPageClient({ realtimeTopic = null, ...props }: Prop
                 gender={props.child.gender ?? undefined}
                 preview={props.preview}
                 previewPoints={props.child.experience_points ?? 0}
+                initial={companion}
             >
                 {/* Drug na drugom uređaju (playRemote.tsx): traje i dok dete gleda „Moj drugar” ili „Napredak” */}
                 <RemoteProvider childId={props.child.id} childName={props.child.first_name || "Druže"} gender={props.child.gender ?? undefined} preview={props.preview}>
@@ -307,8 +311,8 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, 
                     </div>
                 ) : view === "companion" ? (
                     <div className="space-y-5 sm:space-y-6">
-                        {/* Na telefonu naslov samo za čitač ekrana: ekran pripada drugaru i predmetima */}
-                        <h1 className="text-2xl font-extrabold text-ink max-sm:sr-only sm:text-3xl">Moj drugar</h1>
+                        {/* Naslov samo za čitač ekrana: ceo ekran pripada drugaru i predmetima */}
+                        <h1 className="sr-only">Moj drugar</h1>
                         <CompanionRoom gender={gender} />
                     </div>
                 ) : (
