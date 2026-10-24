@@ -46,6 +46,22 @@ export function celebrateBig() {
     window.dispatchEvent(new CustomEvent(EVENT, { detail: { big: true } }));
 }
 
+/** Najduže čekanje da se ekran sa rezultatom iscrta pre konfeta (ms) */
+const SETTLE_MAX_MS = 900;
+
+/**
+ * Slavlje na kraju nivoa, ali tek kad se ekran sa rezultatom iscrta. Isti trenutak kad nivo
+ * završi gradi i ekran sa rezultatom (ceo drugar u 3D); na sporijem tabletu to zauzme pregledač
+ * i do sekunde, pa bi kratka kiša konfeta (1,5 s) prošla nevidljiva. Zato konfeti kreću kad se
+ * pregledač oslobodi (najkasnije posle SETTLE_MAX_MS), posle dva iscrtana kadra.
+ */
+export function celebrateBigWhenSettled() {
+    if (typeof window === "undefined") return;
+    const start = () => window.requestAnimationFrame(() => window.requestAnimationFrame(() => celebrateBig()));
+    if (typeof window.requestIdleCallback === "function") window.requestIdleCallback(start, { timeout: SETTLE_MAX_MS });
+    else window.setTimeout(start, 120);
+}
+
 /** Mesta velikog slavlja, u delovima širine i visine ekrana */
 const BIG_SPOTS = [
     [0.3, 0.35],
