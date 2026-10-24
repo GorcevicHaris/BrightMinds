@@ -1,13 +1,16 @@
 "use client";
 
-// Igra „Razvrstaj”: jedan predmet je u sredini, ispod su dve do četiri korpe. Dete dodirne
-// pravu korpu (bez prevlačenja — lakše za malu decu i slabiju motoriku), a predmet „uskoči”
-// u nju; u korpi ostaje sve što je već razvrstano, pa dete vidi kako se korpe pune.
-// Nivoi 1–5: po boji i obliku, 6–10: po vrsti, 11–15: manje tipični predmeti i pravila
-// („šta se jede”, „leto ili zima”, „gde živi”). Pomoć na korpama se povlači: primer u korpi →
-// slika i natpis → samo natpis (pravilo se kaže jednom, na početku).
+// Igra „Razvrstaj” („čarobne kutije”): jedan predmet je u sredini, ispod su dve do četiri korpe.
+// Dete dodirne pravu korpu (lakše za malu decu i slabiju motoriku) ili prevuče predmet prstom
+// do nje; predmet „uskoči” u korpu, a u korpi ostaje sve što je već razvrstano, pa dete vidi
+// kako se korpe pune. Spušten pored korpe, predmet se vraća na svoje mesto.
+// Nivoi 1–5: ista slika, boja, oblik, veliko i malo; 6–10: oblik, vrste i četiri korpe;
+// 11–15: manje tipični predmeti i pravila („šta se jede”, „čemu služi”, „gde se kreće”).
+// Pomoć na korpama se povlači: primer u korpi → slika i natpis → samo natpis (pravilo se kaže
+// jednom, na početku). U nivoima boja je svaka korpa obojena: „crvena kutija”, „plava kutija”.
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useCalmMotion } from "@/app/components/avatar/motion";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     ChoiceCard,
@@ -46,6 +49,7 @@ import {
     type SortKind,
     type SortLevel,
     type SortShape,
+    type SortSize,
     type SortSupport,
 } from "@/app/components/games/data/sortingItems";
 import { cn } from "@/lib/cn";
@@ -73,12 +77,20 @@ export interface SortingView extends BaseView {
 
 const GAME = getGame("sorting");
 const WRONG_FEEDBACK_MS = 1400;
+/** Pomeraj posle kog dodir postaje prevlačenje (manji pokret je dodir) */
+const DRAG_START_PX = 8;
+/** Povratak predmeta na mesto kad je spušten pored korpe */
+const SNAP_BACK_MS = 220;
+/** Mali predmet je oko 45 % velikog */
+const BIG_ITEM = "clamp(3.5rem,11dvh,6.5rem)";
 
 function capitalized(text: string): string {
     return text.charAt(0).toLocaleUpperCase("sr") + text.slice(1);
 }
 
 function instructionFor(kind: SortingView["kind"], intro?: string): string {
+    if (kind === "same") return "Nađi istu sliku.";
+    if (kind === "size") return "Veliko ili malo?";
     if (kind === "color") return "Stavi u korpu iste boje.";
     if (kind === "rule" && intro) return intro;
     return kind === "shape" ? "Stavi u korpu istog oblika." : "Stavi u pravu korpu.";
@@ -126,14 +138,39 @@ function ShapeGlyph({ shape, fill, className }: { shape: SortShape; fill: string
     );
 }
 
+/** Sličica veličine na korpi: nacrtan veliki ili mali kvadrat (emodži bi na svakom uređaju bio drugačiji) */
+function SizeGlyph({ size, className }: { size: SortSize; className?: string }) {
+    return (
+        <svg viewBox="0 0 100 100" className={className} aria-hidden="true">
+            <g fill="#94a3b8" stroke="rgba(0,0,0,0.18)" strokeWidth="4" strokeLinejoin="round">
+                {size === "big" ? <rect x="6" y="6" width="88" height="88" rx="12" /> : <rect x="28" y="52" width="44" height="44" rx="7" />}
+            </g>
+        </svg>
+    );
+}
+
 /** Predmet: emodži ili nacrtan oblik */
-function ItemPicture({ item, className }: { item: SortItem; className: string }) {
+function ItemPicture({ item, className, style }: { item: SortItem; className: string; style?: CSSProperties }) {
     if (item.shape && item.color) return <ShapeGlyph shape={item.shape} fill={colorHex(item.color)} className={className} />;
     return (
-        <span className={className} aria-hidden="true">
+        <span className={className} style={style} aria-hidden="true">
             {item.emoji}
         </span>
     );
+}
+
+/** Veličina emodžija u korpi: veliki i mali predmet se i tu jasno razlikuju */
+function placedClass(item: SortItem): string {
+    if (item.shape) return "h-6 w-6 sm:h-7 sm:w-7";
+    if (item.size === "big") return "text-[1.875rem] sm:text-[2.25rem]";
+    if (item.size === "small") return "text-[0.85rem] sm:text-[1rem]";
+    return "";
+}
+
+/** „Čarobna kutija” u nivoima boja: blaga podloga i ivica u boji korpe (dok nema odgovora) */
+function tintStyle(swatch: string | undefined, state: ChoiceState): CSSProperties | undefined {
+    if (!swatch || state === "correct" || state === "wrong") return undefined;
+    return { backgroundColor: `${swatch}1f`, borderColor: swatch };
 }
 
 function emptyView(kind: SortingView["kind"], totalRounds: number): SortingView {
@@ -180,7 +217,7 @@ function mergeMonitor(state: Partial<SortingView> | null | undefined): SortingVi
         promptedCount: toCount(state.promptedCount, 0),
         round: Math.min(Math.max(toCount(state.round, 1), 1), totalRounds),
         totalRounds,
-        kind: state.kind === "category" || state.kind === "shape" || state.kind === "rule" ? state.kind : "color",
+        kind: state.kind === "same" || state.kind === "size" || state.kind === "category" || state.kind === "shape" || state.kind === "rule" ? state.kind : "color",
         support: state.support === "model" || state.support === "text" ? state.support : "label",
         modelIds: Array.isArray(state.modelIds) ? state.modelIds.filter((id): id is string => typeof id === "string" && Object.values(placed).some((list) => list?.includes(id))) : [],
         itemId: item ? item.id : "",
@@ -209,6 +246,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
     const sayThen = useSayThen(say, after);
     const praise = usePraise();
     const guard = useInputGuard();
+    const calm = useCalmMotion();
 
     // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju samo jednom, ovde
     const [plan] = useState<SortLevel>(() =>
@@ -338,6 +376,78 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
         say(`${instructionFor(current.kind, plan.intro)} ${itemPrompt(current.kind, item)}`);
     };
 
+    // ── Prevlačenje: predmet se pomera za prstom; spušten na korpu je isto što i dodir korpe ──
+    const drag = useRef<{ pointerId: number; startX: number; startY: number; moved: boolean } | null>(null);
+    const picture = useRef<HTMLDivElement | null>(null);
+    const [dragging, setDragging] = useState(false);
+    const [over, setOver] = useState<BasketId | null>(null);
+
+    const basketAt = (x: number, y: number): BasketId | null => {
+        // Predmet je pod prstom, pa se traži korpa ispod njega
+        const el = document.elementsFromPoint(x, y).find((node) => node instanceof HTMLElement && node.closest("[data-sort-basket]"));
+        const id = el?.closest<HTMLElement>("[data-sort-basket]")?.dataset.sortBasket;
+        return id && isBasketId(id) ? id : null;
+    };
+
+    const movePicture = (dx: number, dy: number, animate: boolean) => {
+        const el = picture.current;
+        if (!el) return;
+        el.style.transition = animate && !calm ? `transform ${SNAP_BACK_MS}ms ease-out` : "";
+        // Dok se nosi, predmet je nešto manji: korpa ispod njega ostaje vidljiva
+        el.style.transform = dx || dy ? `translate(${dx}px, ${dy}px) scale(0.7)` : "";
+    };
+
+    const endDrag = () => {
+        drag.current = null;
+        setDragging(false);
+        setOver(null);
+    };
+
+    const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const current = viewRef.current;
+        if (isMonitor || finishedRef.current || current.feedback === "correct" || (event.pointerType === "mouse" && event.button !== 0)) return;
+        try {
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+        } catch {
+            /* bez hvatanja: događaji i dalje stižu dok je prst nad predmetom */
+        }
+        drag.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, moved: false };
+    };
+
+    const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const current = drag.current;
+        if (!current || current.pointerId !== event.pointerId) return;
+        const dx = event.clientX - current.startX;
+        const dy = event.clientY - current.startY;
+        if (!current.moved) {
+            if (Math.hypot(dx, dy) < DRAG_START_PX) return;
+            current.moved = true;
+            setDragging(true);
+        }
+        movePicture(dx, dy, false);
+        const target = basketAt(event.clientX, event.clientY);
+        setOver((previous) => (previous === target ? previous : target));
+    };
+
+    const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+        const current = drag.current;
+        if (!current || current.pointerId !== event.pointerId) return;
+        const target = current.moved ? basketAt(event.clientX, event.clientY) : null;
+        endDrag();
+        if (target) handlePick(target);
+        // Tačno: predmet je „uskočio” u korpu (vidi se tamo), pa ovde nestaje; inače se vraća na mesto
+        const done = viewRef.current.feedback === "correct" && viewRef.current.picked === target;
+        if (done && picture.current) {
+            picture.current.style.visibility = "hidden";
+            movePicture(0, 0, false);
+        } else movePicture(0, 0, true);
+    };
+
+    const onPointerCancel = () => {
+        endDrag();
+        movePicture(0, 0, true);
+    };
+
     const shown = isMonitor ? mergeMonitor(monitorState) : view;
     const item = getSortItem(shown.itemId);
     const score = isMonitor || settings.preset.showPoints ? shown.score : undefined;
@@ -367,22 +477,30 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
             />
 
             <PlayArea accent={GAME.accent}>
-                {/* Predmet koji se razvrstava: veliki, u sredini; posle tačnog odgovora „uskoči” u korpu */}
+                {/* Predmet koji se razvrstava: veliki, u sredini; može se i prevući do korpe. Posle tačnog
+                    odgovora „uskoči” u korpu, a isprekidan okvir ostaje kao prazno mesto */}
                 <div
                     key={`${shown.round}-${item.id}`}
+                    onPointerDown={onPointerDown}
+                    onPointerMove={onPointerMove}
+                    onPointerUp={onPointerUp}
+                    onPointerCancel={onPointerCancel}
                     className={cn(
-                        "mb-4 grid shrink-0 place-items-center rounded-3xl border-4 border-dashed border-brand-200 bg-white/80 sm:mb-6 short:sm:mb-3",
-                        solved ? "animate-fade" : "animate-pop"
+                        "relative mb-4 grid shrink-0 touch-none select-none place-items-center rounded-3xl border-4 border-dashed border-brand-200 bg-white/80 sm:mb-6 short:sm:mb-3",
+                        solved ? "animate-fade" : "animate-pop",
+                        !isMonitor && !solved && "cursor-grab",
+                        dragging && "z-30 cursor-grabbing"
                     )}
                     style={{ width: "clamp(5.5rem, 16dvh, 10rem)", height: "clamp(5.5rem, 16dvh, 10rem)" }}
                 >
-                    <ItemPicture
-                        item={item}
-                        className={cn(
-                            item.shape ? "h-[70%] w-[70%]" : "text-[clamp(3.5rem,11dvh,6.5rem)] leading-none",
-                            solved && "opacity-30"
-                        )}
-                    />
+                    <div ref={picture} className={cn("pointer-events-none grid h-full w-full place-items-center", dragging && "drop-shadow-xl")}>
+                        <ItemPicture
+                            item={item}
+                            className={cn(item.shape ? "h-[70%] w-[70%]" : "leading-none", solved && "opacity-30")}
+                            // Isti predmet je veliki ili mali: mali je oko 45 % velikog
+                            style={item.shape ? undefined : { fontSize: item.size === "small" ? `calc(${BIG_ITEM} * 0.45)` : BIG_ITEM }}
+                        />
+                    </div>
                 </div>
                 {/* U nivoima oblika naziv bi odao odgovor, pa se ne prikazuje (mesto ostaje, da se ništa ne pomera) */}
                 <p className="-mt-2 mb-4 min-h-7 text-center font-display text-xl font-extrabold text-ink sm:mb-6 sm:min-h-8 sm:text-2xl short:sm:mb-3" aria-live="polite">
@@ -398,14 +516,17 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                         const basket = basketFor(id);
                         const state = basketState(shown, item, id);
                         const placed = (shown.placed[id] ?? []).map((placedId) => getSortItem(placedId)).filter((placedItem): placedItem is SortItem => placedItem !== undefined);
+                        const tint = shown.kind === "color" ? basket.swatch : undefined;
                         return (
                             <ChoiceCard
                                 key={id}
-                                state={state}
+                                data-sort-basket={id}
+                                state={over === id && state === "idle" ? "selected" : state}
                                 disabled={isMonitor || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(id)}
                                 aria-label={`Korpa: ${basket.label}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
-                                className="min-h-28 flex-col gap-1.5 px-1.5 sm:min-h-44 sm:gap-2 sm:px-3 short:sm:min-h-32"
+                                style={tintStyle(tint, state)}
+                                className={cn("min-h-28 flex-col gap-1.5 px-1.5 sm:min-h-44 sm:gap-2 sm:px-3 short:sm:min-h-32", over === id && "ring-4 ring-brand-300")}
                             >
                                 {/* Na telefonu je sličica iznad naziva, da i „Životinje” stanu u uzanu korpu */}
                                 <span className={cn("flex flex-col items-center gap-1 leading-tight sm:flex-row sm:gap-2", shown.support === "text" ? "text-lg sm:text-2xl" : "text-base sm:text-xl")}>
@@ -415,29 +536,46 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                                     ) : basket.shape ? (
                                         // Oblik na korpi je siv: korpa traži oblik, a ne boju
                                         <ShapeGlyph shape={basket.shape} fill="#94a3b8" className="h-7 w-7 shrink-0 sm:h-8 sm:w-8" />
+                                    ) : basket.size ? (
+                                        <SizeGlyph size={basket.size} className="h-10 w-10 shrink-0 sm:h-12 sm:w-12" />
                                     ) : (
-                                        <span aria-hidden="true" className="text-2xl sm:text-3xl">
+                                        // Kod iste slike je slika na korpi ono što se traži, pa je veća
+                                        <span aria-hidden="true" className={shown.kind === "same" ? "text-4xl leading-none sm:text-5xl" : "text-2xl sm:text-3xl"}>
                                             {basket.emoji}
                                         </span>
                                     )}
                                     {basket.label}
                                 </span>
                                 {/* Korpa: ono što je već razvrstano */}
-                                <span aria-hidden="true" className="flex min-h-10 w-full flex-wrap content-end items-end justify-center gap-0.5 rounded-b-2xl border-x-4 border-b-4 border-amber-700/60 bg-amber-100/70 px-1 pb-1 pt-2 text-xl leading-none sm:min-h-12 sm:text-2xl">
-                                    {placed.map((placedItem, i) => (
-                                        <span
-                                            key={placedItem.id}
-                                            title={shown.modelIds.includes(placedItem.id) ? "Primer" : undefined}
-                                            className={cn(
-                                                "inline-grid place-items-center",
-                                                // Primer je uokviren isprekidano: to je stavio učitelj, ne dete
-                                                shown.modelIds.includes(placedItem.id) && "rounded-lg bg-white/80 outline-2 outline-offset-1 outline-dashed outline-amber-500",
-                                                i === placed.length - 1 && solved && shown.picked === id && "animate-pop"
-                                            )}
-                                        >
-                                            <ItemPicture item={placedItem} className={placedItem.shape ? "h-6 w-6 sm:h-7 sm:w-7" : ""} />
-                                        </span>
-                                    ))}
+                                <span
+                                    aria-hidden="true"
+                                    className={cn(
+                                        "flex w-full flex-wrap content-end items-end justify-center gap-0.5 rounded-b-2xl border-x-4 border-b-4 border-amber-700/60 bg-amber-100/70 px-1 pb-1 pt-2 text-xl leading-none sm:text-2xl",
+                                        // Veliki predmet je i u korpi veći: obe korpe su iste visine
+                                        shown.kind === "size" ? "min-h-12 sm:min-h-16" : "min-h-10 sm:min-h-12"
+                                    )}
+                                    // U nivoima boja je i dno korpe u njenoj boji
+                                    style={tint ? { borderColor: `${tint}99`, backgroundColor: `${tint}26` } : undefined}
+                                >
+                                    {placed.map((placedItem, i) => {
+                                        // Primer je uvek prvi u korpi (kod iste slike su i zadaci isti predmet)
+                                        const isModel = i === 0 && shown.modelIds.includes(placedItem.id);
+                                        return (
+                                            <span
+                                                // Kod iste slike isti predmet je u korpi više puta
+                                                key={`${placedItem.id}-${i}`}
+                                                title={isModel ? "Primer" : undefined}
+                                                className={cn(
+                                                    "inline-grid place-items-center",
+                                                    // Primer je uokviren isprekidano: to je stavio učitelj, ne dete
+                                                    isModel && "rounded-lg bg-white/80 outline-2 outline-offset-1 outline-dashed outline-amber-500",
+                                                    i === placed.length - 1 && solved && shown.picked === id && "animate-pop"
+                                                )}
+                                            >
+                                                <ItemPicture item={placedItem} className={placedClass(placedItem)} />
+                                            </span>
+                                        );
+                                    })}
                                 </span>
                                 {showHand && belongsTo(item, id) && <DemoHand />}
                             </ChoiceCard>

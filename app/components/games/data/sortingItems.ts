@@ -1,10 +1,13 @@
 // Sadržaj igre „Razvrstaj”: predmeti, korpe i raspored po nivoima.
 //
 // Napredovanje prati redosled iz programa rane podrške (VB-MAPP, vizuelna percepcija):
-// prvo razvrstavanje po JEDNOM vidljivom svojstvu (boja ili oblik — oboje oko treće godine),
-// pa po VRSTI (voće, životinje…), pa tri i četiri korpe i manje „tipični” predmeti, a na kraju
-// po PRAVILU koje se ne vidi na prvi pogled (šta se jede, šta je za leto, šta leti).
-// Oblici su u raznim bojama: dete mora da gleda oblik, a ne boju.
+// najpre ISTA SLIKA (jabuka uz jabuku — najranije slaganje, VP-MTS 1, oko druge i treće godine,
+// pa može i dete koje još ne zna boje), zatim JEDNO vidljivo svojstvo (boja, oblik, veliko i
+// malo — oko treće godine), pa po VRSTI (voće, životinje…), tri i četiri korpe i manje
+// „tipični” predmeti, a na kraju po PRAVILU koje se ne vidi na prvi pogled: šta se jede, čemu
+// predmet služi (za jelo, za pranje, za crtanje — razvrstavanje po nameni), gde se kreće.
+// Oblici su u raznim bojama: dete mora da gleda oblik, a ne boju. Veliko i malo je uvek isti
+// predmet, samo nacrtan u dve veličine (mali je oko 45 % velikog).
 //
 // Pomoć se povlači (od najviše ka najmanje pomoći):
 //   • model: u svakoj korpi je već jedan razvrstan predmet kao primer, a na korpi su slika i natpis;
@@ -18,15 +21,27 @@
 //    postoje samo u množini (farmerke, makaze, sanke), jer bi „Farmerke je plava” bilo pogrešno.
 //  • Predmet nikad ne pripada dvema korpama istog nivoa (test to proverava).
 //  • Uz pravilo „šta se jede” nema životinja („Pas se ne jede.” ne pišemo).
+//  • Pravilo „leto / zima” trenutno nije u rasporedu nivoa, ali podaci ostaju (stanje sa
+//    monitora iz starije verzije aplikacije i dalje ima smisla).
 
 export type SortColor = "red" | "yellow" | "green" | "blue";
 export type SortCategory = "fruit" | "animals" | "vehicles" | "clothes" | "toys" | "music" | "school";
 export type SortShape = "circle" | "square" | "triangle" | "star";
-/** Pravila: jede se / ne jede se, leto / zima, u vazduhu / u vodi / na zemlji */
-export type SortRuleKey = "eat" | "noEat" | "summer" | "winter" | "air" | "water" | "land";
-export type SortRuleGroup = "eat" | "season" | "where";
-export type SortKind = "color" | "shape" | "category" | "rule";
-export type BasketId = `color:${SortColor}` | `shape:${SortShape}` | `category:${SortCategory}` | `rule:${SortRuleKey}`;
+export type SortSize = "big" | "small";
+/** Namena: za jelo, za pranje, za crtanje */
+export type SortUse = "meal" | "wash" | "draw";
+/** Pravila: jede se / ne jede se, leto / zima, u vazduhu / u vodi / na zemlji, namena */
+export type SortRuleKey = "eat" | "noEat" | "summer" | "winter" | "air" | "water" | "land" | SortUse;
+export type SortRuleGroup = "eat" | "season" | "where" | "use";
+/** `same`: ista slika (korpa sa slikom jabuke prima jabuku); `size`: veliko ili malo */
+export type SortKind = "same" | "color" | "shape" | "size" | "category" | "rule";
+export type BasketId =
+    | `same:${string}`
+    | `color:${SortColor}`
+    | `shape:${SortShape}`
+    | `size:${SortSize}`
+    | `category:${SortCategory}`
+    | `rule:${SortRuleKey}`;
 /** Koliko pomoći ima na korpama: primer u korpi, slika i natpis, samo natpis */
 export type SortSupport = "model" | "label" | "text";
 
@@ -51,6 +66,10 @@ export interface SortItem {
     /** Pravilo „gde”: u vazduhu, u vodi, na zemlji; `goes` = šta radi („leti”, „plovi po vodi”) */
     where?: "air" | "water" | "land";
     goes?: string;
+    /** Veliko / malo: isti predmet je u nizu dvaput, veliki i mali */
+    size?: SortSize;
+    /** Pravilo „čemu služi” */
+    use?: SortUse;
 }
 
 export interface Basket {
@@ -63,9 +82,10 @@ export interface Basket {
     yes: (item: SortItem) => string;
     /** Posle pogrešne korpe: „Banana nije crvena.”, „Lopta se ne jede.” */
     no: (item: SortItem) => string;
-    /** Boja korpe (krug na natpisu), oblik ili sličica vrste */
+    /** Boja korpe (krug na natpisu i boja „čarobne kutije”), oblik, veličina ili sličica */
     swatch?: string;
     shape?: SortShape;
+    size?: SortSize;
     emoji?: string;
 }
 
@@ -92,6 +112,11 @@ const SHAPE_WORDS: Record<SortShape, { label: string; noun: string }> = {
     star: { label: "Zvezda", noun: "zvezda" },
 };
 
+const SIZE_WORDS: Record<SortSize, { label: string; forms: Record<Gender, string> }> = {
+    big: { label: "Veliko", forms: { m: "veliki", f: "velika", n: "veliko" } },
+    small: { label: "Malo", forms: { m: "mali", f: "mala", n: "malo" } },
+};
+
 const CATEGORY_WORDS: Record<SortCategory, { label: string; emoji: string; noun: string }> = {
     fruit: { label: "Voće", emoji: "🧺", noun: "voće" },
     animals: { label: "Životinje", emoji: "🐾", noun: "životinja" },
@@ -111,6 +136,9 @@ const RULE_WORDS: Record<SortRuleKey, { label: string; emoji: string; yes: (item
     air: { label: "U vazduhu", emoji: "☁️", yes: (item) => item.goes ?? "leti", no: "ne leti" },
     water: { label: "U vodi", emoji: "🌊", yes: (item) => item.goes ?? "pliva", no: "ne pliva" },
     land: { label: "Na zemlji", emoji: "🌳", yes: (item) => item.goes ?? "ide po zemlji", no: "ne ide po zemlji" },
+    meal: { label: "Za jelo", emoji: "😋", yes: () => "je za jelo", no: "nije za jelo" },
+    wash: { label: "Za pranje", emoji: "🛁", yes: () => "je za pranje", no: "nije za pranje" },
+    draw: { label: "Za crtanje", emoji: "🖼️", yes: () => "je za crtanje", no: "nije za crtanje" },
 };
 
 /** Pravila po grupama (korpe jednog nivoa sa pravilom) i šta glas kaže jednom, na početku */
@@ -118,6 +146,7 @@ export const RULE_GROUPS: Record<SortRuleGroup, { keys: readonly SortRuleKey[]; 
     eat: { keys: ["eat", "noEat"], intro: "Šta se jede, a šta se ne jede?" },
     season: { keys: ["summer", "winter"], intro: "Šta je za leto, a šta za zimu?" },
     where: { keys: ["air", "water", "land"], intro: "Šta leti u vazduhu, šta je u vodi, a šta ide po zemlji?" },
+    use: { keys: ["meal", "wash", "draw"], intro: "Čime jedemo, čime se peremo, a čime crtamo?" },
 };
 
 /** Pravilo koje važi za ove korpe (za natpis na monitoru, gde plan nivoa nije poznat) */
@@ -128,6 +157,30 @@ export function ruleIntro(baskets: readonly BasketId[]): string | undefined {
 
 export function basketFor(id: BasketId): Basket {
     const [kind, key] = id.split(":") as [SortKind, string];
+    if (kind === "same") {
+        // Na korpi je slika predmeta; naziv je u nominativu, pa nema promene po rodu
+        const model = getSortItem(key);
+        const name = model?.name ?? "";
+        return {
+            id,
+            label: capitalized(name),
+            emoji: model?.emoji,
+            describe: () => name,
+            yes: (item) => `Ista slika: ${item.name}.`,
+            no: () => "To nije ista slika.",
+        };
+    }
+    if (kind === "size") {
+        const word = SIZE_WORDS[key as SortSize];
+        return {
+            id,
+            label: word.label,
+            size: key as SortSize,
+            describe: (item) => word.forms[item.g],
+            yes: (item) => `${capitalized(item.name)} je ${word.forms[item.g]}.`,
+            no: (item) => `${capitalized(item.name)} nije ${word.forms[item.g]}.`,
+        };
+    }
     if (kind === "color") {
         const word = COLOR_WORDS[key as SortColor];
         return {
@@ -170,6 +223,8 @@ export function isBasketId(value: unknown): value is BasketId {
     if (typeof value !== "string") return false;
     const [kind, key] = value.split(":");
     return (
+        (kind === "same" && SAME_IDS.includes(key)) ||
+        (kind === "size" && key in SIZE_WORDS) ||
         (kind === "color" && key in COLOR_WORDS) ||
         (kind === "shape" && key in SHAPE_WORDS) ||
         (kind === "category" && key in CATEGORY_WORDS) ||
@@ -179,12 +234,15 @@ export function isBasketId(value: unknown): value is BasketId {
 
 export function belongsTo(item: SortItem, basket: BasketId): boolean {
     const [kind, key] = basket.split(":");
+    if (kind === "same") return item.id === key;
+    if (kind === "size") return item.size === key;
     if (kind === "color") return item.color === key;
     if (kind === "shape") return item.shape === key;
     if (kind === "category") return item.category === key;
     if (key === "eat") return item.eat === true;
     if (key === "noEat") return item.eat === false;
     if (key === "summer" || key === "winter") return item.season === key;
+    if (key === "meal" || key === "wash" || key === "draw") return item.use === key;
     return item.where === key;
 }
 
@@ -202,8 +260,32 @@ const SHAPE_ITEMS: SortItem[] = (Object.keys(SHAPE_WORDS) as SortShape[]).flatMa
     }))
 );
 
+/**
+ * Veliko / malo: predmeti koji su na slici celi i zbijeni (bez dugačkih i „scena”), pa se
+ * veličina jasno vidi. Svaki je u nizu dvaput: veliki i mali. Ovi predmeti nemaju boju ni
+ * vrstu — u drugim nivoima se ne pojavljuju.
+ */
+const SIZE_BASES: readonly { key: string; emoji: string; name: string; g: Gender }[] = [
+    { key: "ball", emoji: "⚽", name: "lopta", g: "f" },
+    { key: "apple", emoji: "🍎", name: "jabuka", g: "f" },
+    { key: "house", emoji: "🏠", name: "kuća", g: "f" },
+    { key: "car", emoji: "🚗", name: "auto", g: "m" },
+    { key: "teddy", emoji: "🧸", name: "meda", g: "m" },
+    { key: "balloon", emoji: "🎈", name: "balon", g: "m" },
+    { key: "egg", emoji: "🥚", name: "jaje", g: "n" },
+    { key: "chick", emoji: "🐤", name: "pile", g: "n" },
+];
+
+const SIZE_ITEMS: SortItem[] = SIZE_BASES.flatMap((base) =>
+    (Object.keys(SIZE_WORDS) as SortSize[]).map((size) => ({ id: `size-${base.key}-${size}`, emoji: base.emoji, name: base.name, g: base.g, size }))
+);
+
+/** Ista slika: predmeti koji se jasno razlikuju i oblikom i bojom (dve korpe su uvek dva različita) */
+const SAME_IDS: readonly string[] = ["apple-red", "banana", "ball", "car", "dog", "teddy", "fish", "frog"];
+
 export const SORT_ITEMS: readonly SortItem[] = [
     ...SHAPE_ITEMS,
+    ...SIZE_ITEMS,
     // Boje (lako): predmeti koji su na svakom telefonu iste, jasne boje
     { id: "apple-red", emoji: "🍎", name: "jabuka", g: "f", color: "red", category: "fruit", eat: true },
     { id: "strawberry", emoji: "🍓", name: "jagoda", g: "f", color: "red", category: "fruit", eat: true },
@@ -256,10 +338,10 @@ export const SORT_ITEMS: readonly SortItem[] = [
     { id: "trumpet", emoji: "🎺", name: "truba", g: "f", category: "music" },
     { id: "violin", emoji: "🎻", name: "violina", g: "f", category: "music" },
     { id: "piano", emoji: "🎹", name: "klavir", g: "m", category: "music" },
-    { id: "pencil", emoji: "✏️", name: "olovka", g: "f", category: "school", eat: false },
+    { id: "pencil", emoji: "✏️", name: "olovka", g: "f", category: "school", eat: false, use: "draw" },
     { id: "backpack", emoji: "🎒", name: "ranac", g: "m", category: "school" },
     { id: "notebook", emoji: "📓", name: "sveska", g: "f", category: "school" },
-    { id: "crayon", emoji: "🖍️", name: "bojica", g: "f", category: "school" },
+    { id: "crayon", emoji: "🖍️", name: "bojica", g: "f", category: "school", use: "draw" },
 
     // Vrste (teško): manje tipični predstavnici
     { id: "coconut", emoji: "🥥", name: "kokos", g: "m", category: "fruit", hard: true },
@@ -299,6 +381,19 @@ export const SORT_ITEMS: readonly SortItem[] = [
     { id: "fish", emoji: "🐟", name: "riba", g: "f", where: "water", goes: "pliva u vodi" },
     { id: "octopus", emoji: "🐙", name: "hobotnica", g: "f", where: "water", goes: "pliva u vodi" },
     { id: "dolphin", emoji: "🐬", name: "delfin", g: "m", where: "water", goes: "pliva u vodi" },
+
+    // Samo za pravilo „čemu služi” (olovka i bojica su gore, uz školski pribor)
+    { id: "spoon", emoji: "🥄", name: "kašika", g: "f", use: "meal" },
+    { id: "fork", emoji: "🍴", name: "viljuška", g: "f", use: "meal" },
+    { id: "plate", emoji: "🍽️", name: "tanjir", g: "m", use: "meal" },
+    { id: "bowl", emoji: "🥣", name: "činija", g: "f", use: "meal" },
+    { id: "soap", emoji: "🧼", name: "sapun", g: "m", use: "wash" },
+    { id: "toothbrush", emoji: "🪥", name: "četkica za zube", g: "f", use: "wash" },
+    { id: "sponge", emoji: "🧽", name: "sunđer", g: "m", use: "wash" },
+    { id: "shampoo", emoji: "🧴", name: "šampon", g: "m", use: "wash" },
+    { id: "shower", emoji: "🚿", name: "tuš", g: "m", use: "wash" },
+    { id: "paintbrush", emoji: "🖌️", name: "kičica", g: "f", use: "draw" },
+    { id: "palette", emoji: "🎨", name: "paleta", g: "f", use: "draw" },
 ];
 
 // ── Nivoi ─────────────────────────────────────────────────────────────────────
@@ -327,22 +422,23 @@ const rule = (level: number, kind: SortKind, baskets: number, rounds: number, su
 });
 
 const RULES: readonly LevelRule[] = [
-    // Lako: jedno vidljivo svojstvo — boja, pa oblik; prvo sa primerom u korpi
-    rule(1, "color", 2, 5, "model"),
-    rule(2, "shape", 2, 5, "model"),
-    rule(3, "color", 3, 6, "label"),
-    rule(4, "shape", 3, 6, "label"),
-    rule(5, "color", 4, 6, "label"),
-    // Srednje: vrste (voće, životinje, vozila…), primer pa slika na korpi; više korpi
-    rule(6, "category", 2, 6, "model"),
-    rule(7, "category", 2, 6, "label"),
-    rule(8, "category", 3, 7, "model"),
-    rule(9, "category", 3, 7, "label"),
+    // Lako: ista slika (od treće godine), pa jedno vidljivo svojstvo — boja, oblik, veliko i malo;
+    // svako novo svojstvo prvo sa primerom u korpi, pa tri korpe sa slikom
+    rule(1, "same", 2, 5, "model"),
+    rule(2, "color", 2, 5, "model"),
+    rule(3, "shape", 2, 5, "model"),
+    rule(4, "size", 2, 6, "model"),
+    rule(5, "color", 3, 6, "label"),
+    // Srednje: oblik sa tri korpe, pa vrste (voće, životinje, vozila…) i četiri korpe
+    rule(6, "shape", 3, 6, "label"),
+    rule(7, "category", 2, 6, "model"),
+    rule(8, "category", 3, 7, "label"),
+    rule(9, "color", 4, 8, "label"),
     rule(10, "category", 4, 8, "label"),
     // Teško: manje tipični predmeti, pa pravila koja se ne vide na prvi pogled (rečena jednom)
     rule(11, "category", 3, 8, "label", { hard: true }),
     rule(12, "rule", 2, 6, "model", { group: "eat" }),
-    rule(13, "rule", 2, 8, "text", { group: "season" }),
+    rule(13, "rule", 3, 8, "model", { group: "use" }),
     rule(14, "rule", 3, 8, "text", { group: "where" }),
     rule(15, "category", 4, 8, "text", { hard: true }),
 ];
@@ -352,6 +448,7 @@ export const SORT_MAX_LEVEL = 15;
 const COLORS: readonly SortColor[] = ["red", "yellow", "green", "blue"];
 const CATEGORIES: readonly SortCategory[] = ["fruit", "animals", "vehicles", "clothes", "toys", "music", "school"];
 const SHAPES: readonly SortShape[] = ["circle", "square", "triangle", "star"];
+const SIZES: readonly SortSize[] = ["big", "small"];
 
 export interface SortRound {
     itemId: string;
@@ -364,7 +461,7 @@ export interface SortLevel {
     support: SortSupport;
     baskets: BasketId[];
     rounds: SortRound[];
-    /** Primeri koji su na početku već u korpama (samo uz `support: "model"`) */
+    /** Primeri koji su na početku već u korpama (samo uz `support: "model"`); kod iste slike je primer isti predmet kao zadaci */
     models: Partial<Record<BasketId, string>>;
     /** Pravilo koje glas kaže jednom, na početku (samo za „rule”) */
     intro?: string;
@@ -380,7 +477,8 @@ export function ruleForLevel(level: number): LevelRule {
  * testovi stalan niz). `maxBaskets` i `maxRounds` dolaze iz podešavanja uzrasta.
  * Korpe ostaju iste tokom celog nivoa (dete ne traži novo mesto u svakom zadatku), a
  * predmeti su ravnomerno raspoređeni po korpama i ne ponavljaju se. Primer u korpi je
- * predmet koji se posle ne pojavljuje kao zadatak.
+ * predmet koji se posle ne pojavljuje kao zadatak. Izuzetak je ista slika: tu je cela poenta
+ * da se isti predmet ponavlja.
  */
 export function buildSortLevel(level: number, { maxBaskets, maxRounds, random = Math.random }: { maxBaskets: number; maxRounds: number; random?: () => number }): SortLevel {
     const current = ruleForLevel(level);
@@ -395,11 +493,25 @@ export function buildSortLevel(level: number, { maxBaskets, maxRounds, random = 
         return copy;
     };
 
-    const all: readonly string[] =
-        current.kind === "color" ? COLORS : current.kind === "shape" ? SHAPES : current.kind === "rule" ? RULE_GROUPS[current.group ?? "eat"].keys : CATEGORIES;
+    const all: readonly string[] = {
+        same: SAME_IDS,
+        color: COLORS,
+        shape: SHAPES,
+        size: SIZES,
+        category: CATEGORIES,
+        rule: RULE_GROUPS[current.group ?? "eat"].keys,
+    }[current.kind];
     // Pravila se ne biraju nasumice: ide cela grupa (ili onoliko korpi koliko uzrast dozvoljava)
     const keys = current.kind === "rule" ? all.slice(0, basketCount) : shuffle<string>(all).slice(0, basketCount);
     const baskets = keys.map((key) => `${current.kind}:${key}` as BasketId);
+
+    if (current.kind === "same") {
+        // Ista slika: isti predmet dolazi više puta; u svakoj korpi je od početka jedan takav
+        const rounds = Array.from({ length: roundCount }, (_, i) => ({ itemId: keys[i % keys.length], baskets }));
+        const models: SortLevel["models"] = {};
+        if (current.support === "model") baskets.forEach((basket, i) => (models[basket] = keys[i]));
+        return { kind: current.kind, support: current.support, baskets, rounds: shuffle(rounds), models };
+    }
 
     // Predmet ide samo u jednu korpu ovog nivoa; na lakšim nivoima bez manje tipičnih predmeta
     const pools = baskets.map((basket) =>
