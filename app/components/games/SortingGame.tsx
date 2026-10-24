@@ -479,27 +479,36 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
             <PlayArea accent={GAME.accent}>
                 {/* Predmet koji se razvrstava: veliki, u sredini; može se i prevući do korpe. Posle tačnog
                     odgovora „uskoči” u korpu, a isprekidan okvir ostaje kao prazno mesto */}
-                <div
-                    key={`${shown.round}-${item.id}`}
-                    onPointerDown={onPointerDown}
-                    onPointerMove={onPointerMove}
-                    onPointerUp={onPointerUp}
-                    onPointerCancel={onPointerCancel}
-                    className={cn(
-                        "relative mb-4 grid shrink-0 touch-none select-none place-items-center rounded-3xl border-4 border-dashed border-brand-200 bg-white/80 sm:mb-6 short:sm:mb-3",
-                        solved ? "animate-fade" : "animate-pop",
-                        !isMonitor && !solved && "cursor-grab",
-                        dragging && "z-30 cursor-grabbing"
+                <div className="mb-4 flex items-center gap-3 sm:mb-6 sm:gap-5 short:sm:mb-3">
+                    {/* Veliko / malo: pored predmeta bledo stoji isti predmet u drugoj veličini, da dete ima
+                        sa čim da poredi (sam predmet na ekranu nije ni veliki ni mali) */}
+                    {shown.kind === "size" && item.size && (
+                        <div aria-hidden="true" className="pointer-events-none grid shrink-0 place-items-center opacity-35 grayscale-[30%]" style={{ width: "clamp(5.5rem, 16dvh, 10rem)", height: "clamp(5.5rem, 16dvh, 10rem)" }}>
+                            <ItemPicture item={{ ...item, size: item.size === "big" ? "small" : "big" }} className="leading-none" style={{ fontSize: item.size === "big" ? `calc(${BIG_ITEM} * 0.45)` : BIG_ITEM }} />
+                        </div>
                     )}
-                    style={{ width: "clamp(5.5rem, 16dvh, 10rem)", height: "clamp(5.5rem, 16dvh, 10rem)" }}
-                >
-                    <div ref={picture} className={cn("pointer-events-none grid h-full w-full place-items-center", dragging && "drop-shadow-xl")}>
-                        <ItemPicture
-                            item={item}
-                            className={cn(item.shape ? "h-[70%] w-[70%]" : "leading-none", solved && "opacity-30")}
-                            // Isti predmet je veliki ili mali: mali je oko 45 % velikog
-                            style={item.shape ? undefined : { fontSize: item.size === "small" ? `calc(${BIG_ITEM} * 0.45)` : BIG_ITEM }}
-                        />
+                    <div
+                        key={`${shown.round}-${item.id}`}
+                        onPointerDown={onPointerDown}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={onPointerUp}
+                        onPointerCancel={onPointerCancel}
+                        className={cn(
+                            "relative grid shrink-0 touch-none select-none place-items-center rounded-3xl border-4 border-dashed border-brand-200 bg-white/80",
+                            solved ? "animate-fade" : "animate-pop",
+                            !isMonitor && !solved && "cursor-grab",
+                            dragging && "z-30 cursor-grabbing"
+                        )}
+                        style={{ width: "clamp(5.5rem, 16dvh, 10rem)", height: "clamp(5.5rem, 16dvh, 10rem)" }}
+                    >
+                        <div ref={picture} className={cn("pointer-events-none grid h-full w-full place-items-center", dragging && "drop-shadow-xl")}>
+                            <ItemPicture
+                                item={item}
+                                className={cn(item.shape ? "h-[70%] w-[70%]" : "leading-none", solved && "opacity-30")}
+                                // Isti predmet je veliki ili mali: mali je oko 45 % velikog
+                                style={item.shape ? undefined : { fontSize: item.size === "small" ? `calc(${BIG_ITEM} * 0.45)` : BIG_ITEM }}
+                            />
+                        </div>
                     </div>
                 </div>
                 {/* U nivoima oblika naziv bi odao odgovor, pa se ne prikazuje (mesto ostaje, da se ništa ne pomera) */}
