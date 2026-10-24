@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { LETTER_GLYPHS } from "@/app/components/games/data/letterGlyphs";
+import { DIGIT_GLYPHS, numberGlyph } from "@/app/components/games/data/numbersItems";
 import {
     DOT_LENGTH,
     SLIP_LENGTH,
@@ -22,7 +23,7 @@ import {
 } from "@/app/components/games/data/tracing";
 import { outcomeFor, scoreSolved, traceResult, type ScoredView } from "@/app/components/games/data/traceScore";
 
-const ALL_GLYPHS: [string, Glyph][] = Object.entries(LETTER_GLYPHS);
+const ALL_GLYPHS: [string, Glyph][] = [...Object.entries(LETTER_GLYPHS), ...Object.entries(DIGIT_GLYPHS)];
 
 /** Prst koji ide tačno po potezu (gusto), uz malo podrhtavanje `wobble` */
 function fingerAlong(points: readonly Pt[], wobble = 0, step = 2.5): Pt[] {
@@ -61,7 +62,7 @@ describe("stroke data", () => {
         }
     });
 
-    it("puts the strokes of joined glyphs (DŽ, LJ, NJ) side by side", () => {
+    it("puts the strokes of joined glyphs (DŽ, LJ, NJ, 10–20) side by side", () => {
         const joined = joinGlyphs({ strokes: [line(0, 0, 0, 100)] }, { strokes: [line(0, 0, 0, 100)] }, 12);
         assert.deepEqual(joined.strokes[1][0], [12, 0]);
         for (const key of ["DŽ", "LJ", "NJ", "dž", "lj", "nj"]) {
@@ -70,6 +71,11 @@ describe("stroke data", () => {
             const lastMin = Math.min(...glyph.strokes[glyph.strokes.length - 1].map(([x]) => x));
             assert.ok(lastMin > firstMax - 30, `${key}`);
         }
+        for (let n = 0; n <= 20; n += 1) assert.ok(numberGlyph(n), `broj ${n}`);
+        assert.equal(numberGlyph(10)!.strokes.length, DIGIT_GLYPHS["1"].strokes.length + DIGIT_GLYPHS["0"].strokes.length);
+        assert.equal(numberGlyph(21), undefined);
+        assert.equal(numberGlyph(-1), undefined);
+        assert.equal(numberGlyph(2.5), undefined);
     });
 
     it("draws an arc counter-clockwise when the angle goes down (like writing O)", () => {
@@ -111,8 +117,8 @@ describe("path matcher", () => {
     });
 
     it("does not finish a stroke when the finger jumps straight to its end", () => {
-        for (const key of ["O", "C", "S", "G", "o", "З"]) {
-            const s = LETTER_GLYPHS[key].strokes[0];
+        for (const key of ["O", "C", "S", "G", "o", "0", "8", "З"]) {
+            const s = (LETTER_GLYPHS[key] ?? DIGIT_GLYPHS[key]).strokes[0];
             const sampled = sampleStroke(s);
             const start = s[0];
             const end = s[s.length - 1];
@@ -125,8 +131,8 @@ describe("path matcher", () => {
     });
 
     it("does not count a stroke traced in the wrong direction", () => {
-        for (const key of ["L", "T", "Z", "C", "S"]) {
-            const s = LETTER_GLYPHS[key].strokes[0];
+        for (const key of ["L", "T", "Z", "C", "S", "2", "7"]) {
+            const s = (LETTER_GLYPHS[key] ?? DIGIT_GLYPHS[key]).strokes[0];
             const sampled = sampleStroke(s);
             const backwards = [...fingerAlong(s)].reverse();
             const result = tracePath(sampled, backwards, TOLERANCE.thick);

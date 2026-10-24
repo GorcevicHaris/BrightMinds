@@ -117,6 +117,7 @@ const GAME_SERIES: Record<GameId, Series> = {
     counting: { swatch: "bg-yellow-500", color: "var(--color-yellow-500)" },
     gaze: { swatch: "bg-blue-600", color: "var(--color-blue-600)" },
     letters: { swatch: "bg-rose-600", color: "var(--color-rose-600)" },
+    numbers: { swatch: "bg-green-600", color: "var(--color-green-600)" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */
