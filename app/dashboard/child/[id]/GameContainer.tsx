@@ -660,7 +660,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 </button>
             </header>
 
-            <div className="scroll-soft relative flex flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
+            <div className="scroll-soft relative isolate flex flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
                 {screen === "tiers" && <LevelMap game={game} unlocked={maxUnlocked} teacher={settings.avatar ? gender : null} onChoose={chooseTier} />}
 
                 {screen === "mood-before" && (
@@ -1260,25 +1260,25 @@ function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
     const status = !open ? tier.lockedHint : done === LEVELS_PER_TIER ? "Sve završeno" : done === 0 ? tier.hint : `Završeno ${done} od ${LEVELS_PER_TIER}`;
 
     return (
-        <li className={cn("@container rounded-2xl px-2 py-2 @md:p-3", open ? tier.look.soft : "bg-canvas")}>
-            <div className="flex items-center gap-2 @md:gap-4">
-                <div className="flex w-14 shrink-0 flex-col items-center gap-0.5 @md:w-40 @md:flex-row @md:gap-3 @xl:w-48">
+        <li className={cn("@container rounded-2xl px-2 py-2 @sm:p-3", open ? tier.look.soft : "bg-canvas")}>
+            <div className="flex items-center gap-2 @sm:gap-4">
+                <div className="flex w-14 shrink-0 flex-col items-center gap-0.5 @sm:w-40 @sm:flex-row @sm:gap-3 @xl:w-48">
                     <span
                         className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center gap-px rounded-xl border-2 border-b-4 @md:h-12 @md:w-12 @md:rounded-2xl @xl:h-14 @xl:w-14",
+                            "flex h-10 w-10 shrink-0 items-center justify-center gap-px rounded-xl border-2 border-b-4 @sm:h-12 @sm:w-12 @sm:rounded-2xl @xl:h-14 @xl:w-14",
                             open ? cn(tier.look.solid, tier.look.edge, "text-white") : "border-line bg-surface text-ink-faint"
                         )}
                         aria-hidden="true"
                     >
                         {open ? (
-                            Array.from({ length: tier.stars }, (_, i) => <Star key={i} className={tier.stars === 3 ? "h-3 w-3 @md:h-3.5 @md:w-3.5" : "h-3.5 w-3.5 @md:h-4 @md:w-4"} fill="currentColor" strokeWidth={0} />)
+                            Array.from({ length: tier.stars }, (_, i) => <Star key={i} className={tier.stars === 3 ? "h-3 w-3 @sm:h-3.5 @sm:w-3.5" : "h-3.5 w-3.5 @sm:h-4 @sm:w-4"} fill="currentColor" strokeWidth={0} />)
                         ) : (
                             <Lock className="h-5 w-5" />
                         )}
                     </span>
-                    <div className="min-w-0 text-center @md:text-left">
-                        <h3 className={cn("font-display text-xs font-extrabold leading-tight @md:text-lg @xl:text-xl", open ? "text-ink" : "text-ink-faint")}>{tier.label}</h3>
-                        <p className={cn("hidden text-sm font-bold leading-tight @md:block", open ? tier.look.text : "text-ink-faint")}>{status}</p>
+                    <div className="min-w-0 text-center @sm:text-left">
+                        <h3 className={cn("font-display text-xs font-extrabold leading-tight @sm:text-lg @xl:text-xl", open ? "text-ink" : "text-ink-faint")}>{tier.label}</h3>
+                        <p className={cn("hidden text-sm font-bold leading-tight @sm:block", open ? tier.look.text : "text-ink-faint")}>{status}</p>
                     </div>
                 </div>
 
@@ -1303,7 +1303,7 @@ function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
                                     onClick={() => onChoose(tier, level)}
                                     aria-label={`${tier.label}, nivo ${i + 1}${isDone ? ", završen" : isNext ? ", sledeći" : ", zaključan"}`}
                                     className={cn(
-                                        "relative grid h-11 w-11 place-items-center rounded-full border-2 border-b-4 font-display text-lg font-extrabold transition-[transform,border-width] @md:h-12 @md:w-12 @xl:h-14 @xl:w-14 @xl:text-xl",
+                                        "relative grid h-11 w-11 place-items-center rounded-full border-2 border-b-4 font-display text-lg font-extrabold transition-[transform,border-width] @sm:h-12 @sm:w-12 @xl:h-14 @xl:w-14 @xl:text-xl",
                                         isDone && cn(tier.look.solid, tier.look.edge, "text-white active:translate-y-[2px] active:border-b-2"),
                                         isNext && cn("bg-surface ring-4 active:translate-y-[2px] active:border-b-2", tier.look.edge, tier.look.text, tier.look.ring, "animate-soft-pulse"),
                                         locked && "cursor-not-allowed border-line bg-surface text-ink-faint"
@@ -1337,7 +1337,7 @@ function CompanionPanel() {
     const { speaking } = useVoiceState();
     if (!companion) return null;
     return (
-        <aside aria-label="Tvoj drugar" className="relative w-[clamp(11rem,27vw,24rem)] shrink-0">
+        <aside aria-label="Tvoj drugar" className="relative w-[clamp(12rem,30vw,26rem)] shrink-0">
             <div
                 data-hype-target=""
                 className={cn(
@@ -1400,7 +1400,7 @@ function MoodPicker({ title, teacher = null, onSelect }: MoodPickerProps) {
             )}
         >
             {hero && (
-                <div className={cn("relative h-[38dvh] min-h-52 overflow-hidden rounded-card shadow-lift ring-1 ring-line sm:h-[42dvh] md:landscape:h-[min(72dvh,38rem)]", STAGE_BG)}>
+                <div className={cn("relative h-[44dvh] min-h-52 overflow-hidden rounded-card shadow-lift ring-1 ring-line sm:h-[44dvh] short:h-[36dvh] md:landscape:h-[min(72dvh,38rem)]", STAGE_BG)}>
                     <Teacher gender={teacher ?? undefined} variant="full" emotion="curious" className="absolute inset-0 h-full w-full" />
                 </div>
             )}
@@ -1537,7 +1537,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
             >
                 {/* Ceo drugar sa svim što je dete kupilo, u svom svetu: kraj nivoa je trenutak nagrade */}
                 {hero && (
-                    <div ref={stageRef} className={cn("relative h-[34dvh] min-h-48 shrink-0 sm:h-[38dvh] md:landscape:h-auto md:landscape:min-h-[24rem] md:landscape:w-[46%]", STAGE_BG)}>
+                    <div ref={stageRef} className={cn("relative h-[32dvh] min-h-44 shrink-0 sm:h-[38dvh] md:landscape:h-auto md:landscape:min-h-[24rem] md:landscape:w-[46%]", STAGE_BG)}>
                         {/* Kad se pojave zvezdice drugar navija (pročitana priča: mali skok) */}
                         <Teacher gender={teacher} variant="full" action={outcome.practice ? "hop" : "cheer"} className="absolute inset-0 h-full w-full" />
                         <CoinCount
@@ -1546,7 +1546,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                         />
                     </div>
                 )}
-                <div className="min-h-0 flex-1 overflow-y-auto p-5 text-center sm:p-8 md:landscape:flex md:landscape:flex-col md:landscape:justify-center">
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3 pt-4 text-center sm:p-8 md:landscape:flex md:landscape:flex-col md:landscape:justify-center">
                     {outcome.practice ? (
                         // Pročitana priča nije „rezultat”: bez zvezdica koje bi izgledale kao slaba ocena
                         <p className="mb-3 text-6xl animate-pop" aria-hidden="true">
