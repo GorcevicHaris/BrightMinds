@@ -20,6 +20,7 @@ import CompanionStage from "@/app/components/avatar3d/CompanionStage";
 import CompanionRoom from "./CompanionRoom";
 import { chosenSkin, CompanionProvider, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
+import LockedGameHint from "./LockedGameHint";
 import type { ChildProfile } from "./page";
 
 type View = "games" | "companion" | "progress";
@@ -229,6 +230,9 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked }
                             preview={preview}
                             previewUnlocked={previewUnlocked}
                         />
+
+                        {/* „Otključavanje redom”: sledeća zaključana igra i šta treba završiti da se otvori */}
+                        <LockedGameHint childId={child.id} settings={settings} gameOpen={gameOpen} preview={preview} previewUnlocked={previewUnlocked} />
 
                         {/* Priče koje je odrasli napisao baš za ovo dete (ne prikazuje se ako ih nema) */}
                         <CustomStoryShelf childId={child.id} gender={gender} offline={preview} />

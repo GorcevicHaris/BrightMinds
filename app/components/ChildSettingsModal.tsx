@@ -13,12 +13,14 @@ import {
     bandForAge,
     MAX_PLAN_GAMES,
     defaultSettings,
+    playAgeFor,
     sanitizeSettings,
     type AgeBand,
     type ChildSettings,
 } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
-import { GAMES, type GameId } from "@/lib/games";
+import { UNLOCK_AFTER_LEVEL } from "@/lib/gameAccess";
+import { GAMES, ageLabel, sortGamesForChild, type GameId } from "@/lib/games";
 
 interface Props {
     childId: number;
@@ -66,6 +68,17 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
             if (prev.plan.length >= MAX_PLAN_GAMES) return prev;
             return { ...prev, plan: [...prev.plan, id] };
         });
+
+    // Igre redom kojim ih dete vidi (uzrast i težina); isključena igra izlazi i iz plana
+    const sortedGames = sortGamesForChild(GAMES, playAgeFor(ageInYears(dateOfBirth), settings.band));
+    const toggleGame = (id: GameId) =>
+        setSettings((prev) => {
+            if (prev.disabledGames.includes(id)) return { ...prev, disabledGames: prev.disabledGames.filter((g) => g !== id) };
+            // Bar jedna igra ostaje uključena
+            if (prev.disabledGames.length >= GAMES.length - 1) return prev;
+            return { ...prev, disabledGames: [...prev.disabledGames, id], plan: prev.plan.filter((g) => g !== id) };
+        });
+    const enabledInOrder = sortedGames.filter((game) => !settings.disabledGames.includes(game.id));
 
     const eraseResults = async () => {
         setEraseState("working");
@@ -199,11 +212,60 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                         </Section>
 
                         <Section
+                            title="Koje igre dete vidi"
+                            hint="Poređane su kako ih dete vidi: prvo igre za njegov uzrast, od najlakše. Isključenu igru dete ne vidi."
+                        >
+                            <ul className="grid gap-2 sm:grid-cols-2">
+                                {sortedGames.map((game) => {
+                                    const enabled = !settings.disabledGames.includes(game.id);
+                                    const position = enabledInOrder.indexOf(game);
+                                    const last = enabled && enabledInOrder.length === 1;
+                                    return (
+                                        <li key={game.id}>
+                                            <button
+                                                type="button"
+                                                role="switch"
+                                                aria-checked={enabled}
+                                                disabled={last}
+                                                title={last ? "Bar jedna igra ostaje uključena" : undefined}
+                                                onClick={() => toggleGame(game.id)}
+                                                className={cn(
+                                                    "flex min-h-12 w-full items-center gap-2 rounded-xl border-2 px-3 py-2 text-left text-sm font-extrabold transition-colors disabled:cursor-not-allowed",
+                                                    enabled ? "border-brand-200 bg-surface text-ink hover:border-brand-400" : "border-line bg-canvas text-ink-faint hover:border-brand-200"
+                                                )}
+                                            >
+                                                <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-lg text-base", enabled ? "bg-brand-50" : "bg-surface grayscale")} aria-hidden="true">
+                                                    {settings.unlockInOrder && enabled ? <span className="text-sm text-brand-700">{position + 1}.</span> : game.icon}
+                                                </span>
+                                                <span className="min-w-0 flex-1 truncate">{game.title}</span>
+                                                <span className="shrink-0 text-xs font-bold text-ink-faint">{ageLabel(game)}</span>
+                                                <span
+                                                    className={cn("relative h-5 w-9 shrink-0 rounded-full transition-colors", enabled ? "bg-brand-600" : "bg-line")}
+                                                    aria-hidden="true"
+                                                >
+                                                    <span className={cn("absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-[left]", enabled ? "left-[1.125rem]" : "left-0.5")} />
+                                                </span>
+                                            </button>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            <div className="mt-2">
+                                <Switch
+                                    label="Otključavanje redom"
+                                    description={`Igre se otvaraju jedna za drugom, redom sa spiska iznad: sledeća kad dete završi ${UNLOCK_AFTER_LEVEL}. nivo prethodne. Igre koje je dete već igralo ostaju otvorene, kao i igre iz plana.`}
+                                    checked={settings.unlockInOrder}
+                                    onChange={(v) => set("unlockInOrder", v)}
+                                />
+                            </div>
+                        </Section>
+
+                        <Section
                             title="Plan igre „prvo–zatim”"
                             hint={`Izaberite do ${MAX_PLAN_GAMES} igre redom kojim će ih dete igrati. Dete vidi raspored i zna šta je sada, šta posle i kada je kraj. Bez plana dete bira samo.`}
                         >
                             <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                                {GAMES.map((game) => {
+                                {enabledInOrder.map((game) => {
                                     const position = settings.plan.indexOf(game.id);
                                     const selected = position >= 0;
                                     const full = !selected && settings.plan.length >= MAX_PLAN_GAMES;
@@ -303,43 +365,45 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                 )}
 
                 {tab === "calm" && (
-                    <Section title="Mir i tempo">
-                        <Switch
-                            label="Manje animacija"
-                            description="Gasi kretanje na ekranu. Učitelj ostaje, ali miruje."
-                            checked={settings.reduceMotion}
-                            onChange={(v) => set("reduceMotion", v)}
-                        />
-                        <Switch
-                            label="Učitelj na ekranu"
-                            description="Lik koji čita zadatke: izraz lica prati ton rečenice."
-                            checked={settings.avatar}
-                            onChange={(v) => set("avatar", v)}
-                        />
-                        <div className="mt-2 grid gap-4 sm:grid-cols-2">
-                            <Select
-                                label="Dnevno vreme igre"
-                                hint="Igra se završava mirno, na kraju nivoa."
-                                value={settings.sessionMinutes}
-                                onChange={(e) => set("sessionMinutes", Number(e.target.value) as ChildSettings["sessionMinutes"])}
-                            >
-                                <option value={10}>10 minuta</option>
-                                <option value={15}>15 minuta</option>
-                                <option value={20}>20 minuta</option>
-                                <option value={30}>30 minuta</option>
-                                <option value={0}>Bez ograničenja</option>
-                            </Select>
-                            <Select
-                                label="Pitanje „Kako si?”"
-                                hint="Detetov izbor lica, ne merenje. Kod dece mlađe od 6 godina nije pouzdano."
-                                value={settings.moodCheck}
-                                onChange={(e) => set("moodCheck", e.target.value as ChildSettings["moodCheck"])}
-                            >
-                                <option value="off">Isključeno</option>
-                                <option value="three">Tri lica, može da se preskoči</option>
-                            </Select>
-                        </div>
-                    </Section>
+                    <>
+                        <Section title="Mir i tempo">
+                            <Switch
+                                label="Manje animacija"
+                                description="Gasi kretanje na ekranu. Učitelj ostaje, ali miruje."
+                                checked={settings.reduceMotion}
+                                onChange={(v) => set("reduceMotion", v)}
+                            />
+                            <Switch
+                                label="Učitelj na ekranu"
+                                description="Lik koji čita zadatke: izraz lica prati ton rečenice."
+                                checked={settings.avatar}
+                                onChange={(v) => set("avatar", v)}
+                            />
+                            <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                                <Select
+                                    label="Dnevno vreme igre"
+                                    hint="Igra se završava mirno, na kraju nivoa."
+                                    value={settings.sessionMinutes}
+                                    onChange={(e) => set("sessionMinutes", Number(e.target.value) as ChildSettings["sessionMinutes"])}
+                                >
+                                    <option value={10}>10 minuta</option>
+                                    <option value={15}>15 minuta</option>
+                                    <option value={20}>20 minuta</option>
+                                    <option value={30}>30 minuta</option>
+                                    <option value={0}>Bez ograničenja</option>
+                                </Select>
+                                <Select
+                                    label="Pitanje „Kako si?”"
+                                    hint="Detetov izbor lica, ne merenje. Kod dece mlađe od 6 godina nije pouzdano."
+                                    value={settings.moodCheck}
+                                    onChange={(e) => set("moodCheck", e.target.value as ChildSettings["moodCheck"])}
+                                >
+                                    <option value="off">Isključeno</option>
+                                    <option value="three">Tri lica, može da se preskoči</option>
+                                </Select>
+                            </div>
+                        </Section>
+                    </>
                 )}
 
                 {tab === "data" && (

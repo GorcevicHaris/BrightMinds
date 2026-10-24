@@ -6,10 +6,13 @@
 //         tabele poseta, uz već sačuvane partije (logIds).
 import { NextResponse } from "next/server";
 import { requireChildAccess } from "@/lib/auth";
+import { resolveSettings } from "@/lib/childSettings";
+import { isGameAvailable } from "@/lib/gameAccess";
 import {
     ACTIVITY_IDS,
     MAX_LEVEL,
     MOODS,
+    getGameByActivityId,
     isGradedActivity,
     starsForGame,
     successLevelFor,
@@ -17,7 +20,8 @@ import {
 } from "@/lib/games";
 import { noResult, supabaseAdmin, withSchemaFallback } from "@/lib/supabase";
 import { asInt, asIntArray, asNumber, oneOf } from "@/lib/validation";
-import { isLevelPassed, PLAY_SESSIONS_MEMO, PLAY_SESSIONS_TABLE } from "../../_lib/children";
+import { isLevelPassed, PLAY_SESSIONS_MEMO, PLAY_SESSIONS_TABLE, type ChildRow } from "../../_lib/children";
+import { readUnlockedLevels } from "../../_lib/levels";
 import { errorResponse, HttpError, readJsonObject, requireSession } from "../../_lib/http";
 
 const MOOD_VALUES: readonly Mood[] = MOODS.map((mood) => mood.value);
@@ -25,6 +29,7 @@ const MOOD_VALUES: readonly Mood[] = MOODS.map((mood) => mood.value);
 const POINTS_PER_STAR = 5;
 const MAX_AWARD_RETRIES = 3;
 const INVALID_RESULT = "Neispravni podaci o rezultatu";
+export const GAME_LOCKED = "Ova igra je još zaključana";
 
 function readChildId(body: Record<string, unknown>): number {
     const childId = asInt(body.childId, { min: 1 });
@@ -89,6 +94,26 @@ function parseCompletedGame(body: Record<string, unknown>): CompletedGame {
         // Neupotrebljiva vrednost se tretira kao da nije poslata: otvara se nova poseta.
         sessionId: asInt(body.sessionId, { min: 1 }),
     };
+}
+
+/**
+ * Igra mora biti otvorena detetu (lib/gameAccess.ts): roditelj je nije isključio, a uz
+ * „Otključavanje redom” dete je završilo 3. nivo prethodne igre. Klijent zaključanu igru
+ * ni ne prikazuje — ovo sprečava da se ona otvori zaobilazno. Napredak se čita samo kada je
+ * otključavanje redom uključeno. `select("*")`: kolona `settings` možda ne postoji (0002).
+ */
+async function assertGameOpen(childId: number, activityId: number): Promise<void> {
+    const game = getGameByActivityId(activityId);
+    if (!game) return;
+    const { data, error } = await supabaseAdmin.from("children").select("*").eq("id", childId).limit(1);
+    if (error) throw error;
+    const row = ((data ?? []) as ChildRow[])[0];
+    if (!row) return;
+
+    const settings = resolveSettings(row.settings, row.date_of_birth);
+    if (settings.disabledGames.length === 0 && !settings.unlockInOrder) return;
+    const progress = settings.unlockInOrder ? await readUnlockedLevels(childId) : {};
+    if (!isGameAvailable(settings, progress, game.id)) throw new HttpError(403, GAME_LOCKED);
 }
 
 /**
@@ -193,6 +218,7 @@ export async function POST(request: Request) {
         const childId = readChildId(body);
         const session = await requireChildAccess(childId);
         const game = parseCompletedGame(body);
+        await assertGameOpen(childId, game.activityId);
 
         // Zvezdice zavise samo od SAMOSTALNO tačnih odgovora; završen nivo donosi bar jednu.
         // Aktivnost bez ocenjivanih zadataka (npr. priča u režimu samo čitanja) je završena i

@@ -11,6 +11,7 @@ import {
     defaultSettings,
     resolveSettings,
     sanitizeSettings,
+    settingsOverrides,
     type AgeBand,
 } from "@/lib/childSettings";
 import { GAMES } from "@/lib/games";
@@ -171,6 +172,8 @@ describe("sanitizeSettings", () => {
             sessionMinutes: 30,
             moodCheck: "off",
             plan: ["emotions", "shapes"],
+            disabledGames: ["memory", "counting"],
+            unlockInOrder: true,
         };
         assert.deepEqual(sanitizeSettings(valid, "young"), valid);
     });
@@ -340,5 +343,32 @@ describe("playAge (age used to order the games)", () => {
         assert.equal(resolveSettings({ band: "older" }, born(5)).playAge, 7);
         assert.equal(resolveSettings({ band: "middle" }, born(6)).playAge, 6);
         assert.equal(resolveSettings({ band: "middle" }, null).playAge, 5);
+    });
+});
+
+describe("game access settings", () => {
+    it("default to every game and no unlocking in order (older saved settings too)", () => {
+        const settings = sanitizeSettings({ script: "cyrillic" }, "middle");
+        assert.deepEqual(settings.disabledGames, []);
+        assert.equal(settings.unlockInOrder, false);
+    });
+
+    it("keep only known games once, and never switch off every game", () => {
+        assert.deepEqual(sanitizeSettings({ disabledGames: ["memory", "chess", "memory", 4] }, "middle").disabledGames, ["memory"]);
+        assert.deepEqual(sanitizeSettings({ disabledGames: GAMES.map((game) => game.id) }, "middle").disabledGames, []);
+        assert.deepEqual(sanitizeSettings({ disabledGames: "memory" }, "middle").disabledGames, []);
+        assert.equal(sanitizeSettings({ unlockInOrder: "yes" }, "middle").unlockInOrder, false);
+    });
+
+    it("take a switched-off game out of the daily plan", () => {
+        const settings = sanitizeSettings({ plan: ["shapes", "memory"], disabledGames: ["memory"] }, "middle");
+        assert.deepEqual(settings.plan, ["shapes"]);
+    });
+
+    it("are stored only when changed", () => {
+        const base = sanitizeSettings({}, "middle");
+        assert.deepEqual(settingsOverrides(base, "middle"), {});
+        const changed = sanitizeSettings({ disabledGames: ["memory"], unlockInOrder: true }, "middle");
+        assert.deepEqual(settingsOverrides(changed, "middle"), { disabledGames: ["memory"], unlockInOrder: true });
     });
 });

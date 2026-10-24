@@ -50,6 +50,16 @@ export interface ChildSettings {
      * Vizuelni raspored čini igru predvidljivom: šta radim, koliko i šta je posle.
      */
     plan: GameId[];
+    /**
+     * Igre koje roditelj nije uključio (dete ih ne vidi). Čuva se spisak ISKLJUČENIH, a ne
+     * uključenih: igra dodata kasnije je tako podrazumevano dostupna. Prazno = sve igre.
+     */
+    disabledGames: GameId[];
+    /**
+     * „Otključavanje redom”: igre se otvaraju jedna za drugom, redom učenja za uzrast
+     * deteta — sledeća kad dete završi 3. nivo prethodne (videti lib/gameAccess.ts).
+     */
+    unlockInOrder: boolean;
 }
 
 export interface BandPreset {
@@ -132,6 +142,8 @@ export function defaultSettings(band: AgeBand): ChildSettings {
         // Deca mlađa od ~5–6 godina ne mogu pouzdano da ocene svoje raspoloženje na skali
         moodCheck: band === "young" ? "off" : "three",
         plan: [],
+        disabledGames: [],
+        unlockInOrder: false,
     };
 }
 
@@ -152,6 +164,17 @@ function sanitizePlan(value: unknown): GameId[] {
         if (plan.length === MAX_PLAN_GAMES) break;
     }
     return plan;
+}
+
+/** Isključene igre: samo poznate, bez ponavljanja. Ako bi bile isključene sve, ne isključuje se nijedna. */
+function sanitizeDisabledGames(value: unknown): GameId[] {
+    if (!Array.isArray(value)) return [];
+    const valid = new Set<string>(GAMES.map((g) => g.id));
+    const disabled: GameId[] = [];
+    for (const item of value) {
+        if (typeof item === "string" && valid.has(item) && !disabled.includes(item as GameId)) disabled.push(item as GameId);
+    }
+    return disabled.length >= GAMES.length ? [] : disabled;
 }
 
 function bool(value: unknown, fallback: boolean): boolean {
@@ -183,8 +206,14 @@ export function sanitizeSettings(raw: unknown, ageBand: AgeBand): ChildSettings 
         waitHint: bool(source.waitHint, base.waitHint),
         sessionMinutes: pick<ChildSettings["sessionMinutes"]>(source.sessionMinutes, [0, 10, 15, 20, 30], base.sessionMinutes),
         moodCheck: pick<MoodCheck>(source.moodCheck, ["off", "three"], base.moodCheck),
-        plan: sanitizePlan(source.plan),
+        // Isključena igra ne može biti u planu: plan bi inače čekao igru koju dete ne vidi
+        ...withoutDisabledInPlan(sanitizePlan(source.plan), sanitizeDisabledGames(source.disabledGames)),
+        unlockInOrder: bool(source.unlockInOrder, base.unlockInOrder),
     };
+}
+
+function withoutDisabledInPlan(plan: GameId[], disabledGames: GameId[]): { plan: GameId[]; disabledGames: GameId[] } {
+    return { plan: plan.filter((id) => !disabledGames.includes(id)), disabledGames };
 }
 
 /**
@@ -196,7 +225,9 @@ export function settingsOverrides(settings: ChildSettings, ageBand: AgeBand): Pa
     const base = defaultSettings(settings.band ?? ageBand);
     const overrides: Partial<Record<keyof ChildSettings, unknown>> = {};
     for (const key of Object.keys(settings) as (keyof ChildSettings)[]) {
-        const same = key === "plan" ? settings.plan.join(",") === base.plan.join(",") : settings[key] === base[key];
+        const value = settings[key];
+        // Nizovi i objekti (plan, isključene igre, podsetnik) se porede po sadržaju
+        const same = typeof value === "object" && value !== null ? JSON.stringify(value) === JSON.stringify(base[key]) : value === base[key];
         if (!same) overrides[key] = settings[key];
     }
     return overrides as Partial<ChildSettings>;
