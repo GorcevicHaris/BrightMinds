@@ -15,7 +15,8 @@ export type GameId =
     | "where"
     | "uses"
     | "counting"
-    | "gaze";
+    | "gaze"
+    | "letters";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -31,7 +32,8 @@ export type GameType =
     | "where"
     | "uses"
     | "counting"
-    | "gaze";
+    | "gaze"
+    | "letters";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -344,6 +346,28 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip:
             "Sedite jedno pored drugog, pogledajte u neku igračku i pitajte: „Šta ja gledam?” Pokažite i rukom ako treba. Ne tražite da vas dete gleda u oči — dovoljno je da prati gde gledate.",
+        graded: true,
+    },
+    {
+        id: "letters",
+        gameType: "letters",
+        activityId: 15,
+        title: "Slova",
+        description: "Piši slova prstom",
+        skill: "Slova i pisanje",
+        icon: "🔤",
+        image: "/images/slova.svg",
+        accent: {
+            solid: "bg-rose-500",
+            edge: "border-rose-700",
+            soft: "bg-rose-50",
+            text: "text-rose-700",
+            border: "border-rose-200",
+            ring: "ring-rose-200",
+            gradient: "from-rose-400 to-orange-400",
+        },
+        offscreenTip:
+            "Pišite slova prstom po pesku, brašnu ili po leđima deteta, krupno i polako, i recite: „M kao mačka.” Prvo vi napišete, pa dete preko vašeg slova, pa samostalno. Dobro je početi od slova iz detetovog imena.",
         graded: true,
     },
 ];

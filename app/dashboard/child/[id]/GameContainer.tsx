@@ -62,6 +62,7 @@ const GAME_LOADERS = {
     uses: () => import("@/app/components/games/UsesGame"),
     counting: () => import("@/app/components/games/CountingGame"),
     gaze: () => import("@/app/components/games/GazeGame"),
+    letters: () => import("@/app/components/games/LettersGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -78,6 +79,7 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     uses: dynamic(GAME_LOADERS["uses"], { ssr: false, loading: GameLoading }),
     counting: dynamic(GAME_LOADERS["counting"], { ssr: false, loading: GameLoading }),
     gaze: dynamic(GAME_LOADERS["gaze"], { ssr: false, loading: GameLoading }),
+    letters: dynamic(GAME_LOADERS["letters"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {
