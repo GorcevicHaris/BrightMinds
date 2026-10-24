@@ -8,6 +8,7 @@ export { playSfx, type Sfx } from "./sfx";
 export { demoRounds, finiteOr, genderText, hintDue, isFemale, offeredOptions, shuffle, toCount, toIndexList } from "./utils";
 export {
     GameTeacherContext,
+    CompanionPanelContext,
     DemoHand,
     useBubbleTail,
     GameStage,
@@ -26,4 +27,6 @@ export {
 } from "./ui";
 export { usePraise } from "./praise";
 export { CelebrationLayer, celebrate, celebrateBig } from "./Celebration";
+export { announcePraise, flyItems, useWideScreen, FLY_MS } from "./hype";
+export { useCompanionHype, HypeBubble, HypePlus, type CompanionHype } from "./CompanionCheer";
 export { GamePauseContext, useGamePaused } from "./pause";

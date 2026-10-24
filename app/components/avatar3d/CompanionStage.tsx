@@ -29,7 +29,8 @@ export interface CompanionStageProps {
     align?: number;
     /** Stalna emocija umesto one iz glasa */
     emotion?: VoiceEmotion;
-    action?: CompanionAction;
+    /** Jednokratni pokret; „wave” (mahanje na pozdrav) postoji samo u 3D */
+    action?: CompanionAction | "wave";
     actionKey?: number | string;
     /** Okretanje prevlačenjem (prodavnica) */
     interactive?: boolean;
@@ -161,7 +162,7 @@ export default function CompanionStage({ kind, skin, wear = {}, framing = "full"
     if (engineState.status === "none" || failed || (engine && !supported)) {
         return (
             <div className={className} role={label ? "img" : undefined} aria-label={label}>
-                <Companion kind={kind} wear={wear} skin={skin} variant="full" action={action} actionKey={actionKey} still={still} className="h-full w-full" />
+                <Companion kind={kind} wear={wear} skin={skin} variant="full" action={action === "wave" ? undefined : action} actionKey={actionKey} still={still} className="h-full w-full" />
             </div>
         );
     }

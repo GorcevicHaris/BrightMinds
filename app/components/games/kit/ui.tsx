@@ -5,7 +5,9 @@ import { cn } from "@/lib/cn";
 import { IDLE_HINT_MS, useIdle } from "./useIdle";
 import type { GameAccent } from "@/lib/games";
 import SpeakingTeacher from "../../avatar/SpeakingTeacher";
+import { useCalmMotion } from "../../avatar/motion";
 import { useChildSettings } from "../../ChildSettingsProvider";
+import { HypeBubble, HypePlus, useCompanionHype } from "./CompanionCheer";
 
 /**
  * Ko čita zadatke detetu. Postavlja ga strana na kojoj dete igra; bez njega
@@ -13,6 +15,12 @@ import { useChildSettings } from "../../ChildSettingsProvider";
  */
 /** Ko govori u igri: pol deteta (glas) i pratilac koga je dete izabralo, sa odećom i izgledom (boja, frizura) */
 export const GameTeacherContext = React.createContext<{ gender?: string; kind?: string; wear?: Partial<Record<string, string>>; skin?: string } | null>(null);
+
+/**
+ * True kad drugar stoji u velikom panelu pored igre (položen tablet, računar). Tada ga traka
+ * napretka ne crta (jedan drugar na ekranu, jedno živo platno), a uputstvo nema repić oblačića.
+ */
+export const CompanionPanelContext = React.createContext(false);
 
 // ── GameStage ─────────────────────────────────────────────────────────────────
 // Okvir igre: centrira sadržaj, drži istu širinu i razmake u svim igrama.
@@ -111,13 +119,41 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
 }
 
 /**
- * Učitelj koji čita zadatke: veliko lice na početku trake, izraz prati ton rečenice, usta se
- * pomeraju dok govori. Dok govori, oko njega svetli prsten — jasno je ko se obraća detetu.
+ * Drugar koji čita zadatke, na početku trake (telefon, uspravan tablet): živ portret do pojasa,
+ * u svom svetu; izraz i usta prate glas, a dok govori oko njega svetli prsten. Na tačan odgovor
+ * zvezdice doleću do njega, on skoči, kratko poraste, pokaže „+1” i u oblačiću kaže pohvalu.
+ * Portret malo viri iz trake (veći je od nje), da traka ne uzme mesto igri.
  */
 function HudTeacher() {
     const teacher = React.useContext(GameTeacherContext);
-    if (!teacher) return null;
-    return <SpeakingTeacher gender={teacher.gender} kind={teacher.kind} wear={teacher.wear} skin={teacher.skin} className="-my-1 h-16 w-12 sm:h-20 sm:w-16 short:sm:h-16 short:sm:w-12" />;
+    const panel = React.useContext(CompanionPanelContext);
+    const settings = useChildSettings();
+    const calm = useCalmMotion();
+    const hype = useCompanionHype(calm);
+    if (!teacher || panel || !settings.avatar) return null;
+    return (
+        <span
+            data-hype-target=""
+            className={cn(
+                "relative z-30 -my-4 h-24 w-20 shrink-0 origin-top-left sm:-my-5 sm:h-32 sm:w-[6.5rem] short:-my-3 short:h-20 short:w-16 short:sm:-my-3 short:sm:h-20 short:sm:w-16",
+                !calm && "transition-transform duration-300 ease-out",
+                hype.excited && "scale-[1.35]"
+            )}
+        >
+            <SpeakingTeacher
+                gender={teacher.gender}
+                kind={teacher.kind}
+                wear={teacher.wear}
+                skin={teacher.skin}
+                live
+                action={hype.action}
+                actionKey={hype.actionKey}
+                className="h-full w-full shadow-soft"
+            />
+            <HypePlus hype={hype} calm={calm} className="absolute -right-4 -top-3 px-2 py-0.5 text-base" />
+            <HypeBubble hype={hype} calm={calm} tail="left" className="absolute left-full top-1 ml-3 px-3 py-1.5 text-base sm:text-lg" />
+        </span>
+    );
 }
 
 // ── SpeakButton ───────────────────────────────────────────────────────────────
@@ -210,13 +246,14 @@ const ILLUSTRATION_WIDTH = {
  * Dodaje se kartici koja stoji odmah ispod `GameHud` (boja ivice repića prati `border-color` kartice).
  */
 const BUBBLE_TAIL =
-    "relative before:absolute before:-top-[9px] before:left-8 before:h-4 before:w-4 before:rotate-45 before:rounded-tl-[4px] before:border-l before:border-t before:border-inherit before:bg-surface sm:before:left-11";
+    "relative before:absolute before:-top-[9px] before:left-10 before:h-4 before:w-4 before:rotate-45 before:rounded-tl-[4px] before:border-l before:border-t before:border-inherit before:bg-surface sm:before:left-[3.85rem] short:before:left-8 short:sm:before:left-8";
 
 /** Klase za repić oblačića — prazno kad učitelj nije na ekranu (npr. roditeljski prikaz). */
 export function useBubbleTail(): string {
     const settings = useChildSettings();
     const teacher = React.useContext(GameTeacherContext);
-    return teacher !== null && settings.avatar ? BUBBLE_TAIL : "";
+    const panel = React.useContext(CompanionPanelContext);
+    return teacher !== null && settings.avatar && !panel ? BUBBLE_TAIL : "";
 }
 
 export function GamePrompt({ title, subtitle, visual, illustration, compact = false, className }: GamePromptProps) {
