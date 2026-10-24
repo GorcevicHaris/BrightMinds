@@ -120,6 +120,8 @@ const GAME_SERIES: Record<GameId, Series> = {
     numbers: { swatch: "bg-green-600", color: "var(--color-green-600)" },
     food: { swatch: "bg-red-600", color: "var(--color-red-600)" },
     puzzle: { swatch: "bg-purple-600", color: "var(--color-purple-600)" },
+    inset: { swatch: "bg-slate-600", color: "var(--color-slate-600)" },
+    clock: { swatch: "bg-stone-600", color: "var(--color-stone-600)" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */

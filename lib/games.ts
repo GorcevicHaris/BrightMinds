@@ -19,7 +19,9 @@ export type GameId =
     | "letters"
     | "numbers"
     | "food"
-    | "puzzle";
+    | "puzzle"
+    | "inset"
+    | "clock";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -39,7 +41,9 @@ export type GameType =
     | "letters"
     | "numbers"
     | "food"
-    | "puzzle";
+    | "puzzle"
+    | "inset"
+    | "clock";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -501,6 +505,56 @@ export const GAMES: GameDefinition[] = [
         // Slaganje slike od delova: od dve polovine do 16 delova, za sve uzraste
         ages: { min: 3, max: 10 },
         order: 17,
+    },
+    {
+        id: "clock",
+        gameType: "clock",
+        activityId: 18,
+        title: "Sat",
+        description: "Složi brojeve i sat, pa pogodi koliko je sati",
+        skill: "Brojevi, redosled i vreme",
+        icon: "🕒",
+        image: "/images/sat.svg",
+        accent: {
+            solid: "bg-stone-500",
+            edge: "border-stone-700",
+            soft: "bg-stone-50",
+            text: "text-stone-700",
+            border: "border-stone-200",
+            ring: "ring-stone-200",
+            gradient: "from-amber-300 to-orange-600",
+        },
+        offscreenTip:
+            "Na pravom satu pokažite malu kazaljku: „Mala kazaljka je na sedmici — sedam sati, vreme za doručak.” Vežite sat za svakodnevne stvari (crtani u pet, spavanje u osam). Brojte stepenice ili dugmiće i stavite pored njih broj od papira.",
+        graded: true,
+        // 19. po redu: brojevi redom na satu i čitanje vremena — posle brojanja i brojeva
+        ages: { min: 4, max: 9 },
+        order: 19,
+    },
+    {
+        id: "inset",
+        gameType: "inset",
+        activityId: 19,
+        title: "Umetaljka",
+        description: "Svaki oblik u svoju rupu",
+        skill: "Oblici i spretnost ruku",
+        icon: "🔶",
+        image: "/images/umetaljka.svg",
+        accent: {
+            solid: "bg-slate-500",
+            edge: "border-slate-700",
+            soft: "bg-slate-50",
+            text: "text-slate-700",
+            border: "border-slate-200",
+            ring: "ring-slate-200",
+            gradient: "from-sky-400 to-indigo-500",
+        },
+        offscreenTip:
+            "Drvena umetaljka, kutija sa otvorima ili poklopci tegli: neka dete proba koji oblik gde ulazi. Imenujte oblik dok ga drži („To je trougao.”), a kad ne ulazi, recite mirno: „Okreni ga.” Kasnije tražite predmete po senci: šolja, ključ, jabuka.",
+        graded: true,
+        // 18. po redu: uparivanje oblika sa rupom, rukom i okom — posle slaganja slike
+        ages: { min: 3, max: 7 },
+        order: 18,
     },
 ];
 
