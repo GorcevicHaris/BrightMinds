@@ -2,6 +2,8 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import {
     answerFor,
+    modelFor,
+    modelSteps,
     boardCount,
     buildCountingLevel,
     choosesGroup,
@@ -84,6 +86,29 @@ describe("counting game grammar", () => {
             ["fish", 13, "trinaest riba"],
             ["car", 2, "dva auta"],
             ["star", 20, "dvadeset zvezda"],
+            // Nove imenice: nepravilne množine i srednji rod
+            ["chick", 1, "jedno pile"],
+            ["chick", 2, "dva pileta"],
+            ["chick", 5, "pet pilića"],
+            ["rabbit", 3, "tri zeca"],
+            ["rabbit", 6, "šest zečeva"],
+            ["sheep", 2, "dve ovce"],
+            ["sheep", 5, "pet ovaca"],
+            ["mouse", 7, "sedam miševa"],
+            ["snail", 4, "četiri puža"],
+            ["snail", 9, "devet puževa"],
+            ["heart", 1, "jedno srce"],
+            ["heart", 3, "tri srca"],
+            ["heart", 8, "osam srca"],
+            ["bell", 2, "dva zvona"],
+            ["cherry", 5, "pet trešanja"],
+            ["mushroom", 6, "šest pečuraka"],
+            ["mushroom", 2, "dve pečurke"],
+            ["lemon", 2, "dva limuna"],
+            ["gift", 11, "jedanaest poklona"],
+            ["bee", 1, "jedna pčela"],
+            ["frog", 12, "dvanaest žaba"],
+            ["carrot", 3, "tri šargarepe"],
         ];
         for (const [id, count, expected] of cases) assert.equal(countPhrase(count, noun(id)), expected);
     });
@@ -101,6 +126,9 @@ describe("counting game grammar", () => {
         assert.equal(questionFor(round({ kind: "plus1", noun: "dog", a: 4, answer: 5, choices: [4, 5, 6] })), "Dolazi još jedan pas. Koliko je sada pasa?");
         assert.equal(questionFor(round({ kind: "minus1", noun: "balloon", a: 4, answer: 3, choices: [2, 3, 4] })), "Jedan balon odlazi. Koliko je sada balona?");
         assert.equal(questionFor(round({ kind: "add", noun: "apple", a: 2, b: 1, answer: 3, choices: [2, 3, 4] })), "Koliko je jabuka zajedno?");
+        assert.equal(questionFor(round({ kind: "plus1", noun: "chick", a: 4, answer: 5, choices: [4, 5, 6] })), "Dolazi još jedno pile. Koliko je sada pilića?");
+        assert.equal(questionFor(round({ kind: "minus1", noun: "sheep", a: 4, answer: 3, choices: [2, 3, 4] })), "Jedna ovca odlazi. Koliko je sada ovaca?");
+        assert.equal(questionFor(round({ kind: "match", noun: "heart", answer: 2, choices: [1, 2, 3] })), "Gde su dva srca?");
 
         assert.equal(answerFor(round({ kind: "count", noun: "apple", a: 3, answer: 3 })), "Tri jabuke.");
         assert.equal(answerFor(round({ kind: "count", noun: "egg", a: 1, answer: 1, choices: [1, 2] })), "Jedno jaje.");
@@ -249,6 +277,35 @@ describe("counting along as the hint", () => {
             hintSteps(round({ kind: "match", answer: 2, choices: [3, 2, 1] })).map((step) => step.key),
             ["g2", "g2"]
         );
+    });
+});
+
+describe("counting along as a model before the answer", () => {
+    it("counts together on the first levels and fades: voice → lights only → none", () => {
+        assert.deepEqual(
+            LEVELS.map((level) => countingRule(level).model),
+            ["voice", "voice", "lights", "lights", ...Array(11).fill("none")]
+        );
+        // Model je samo kad se broji na tabli
+        assert.equal(modelFor(1, round({})), "voice");
+        assert.equal(modelFor(3, round({})), "lights");
+        assert.equal(modelFor(2, round({ kind: "most", answer: 4, choices: [2, 4] })), "none");
+        assert.equal(modelFor(6, round({})), "none");
+    });
+
+    it("lights every object but leaves the last number to the child (cardinality)", () => {
+        const steps = modelSteps(round({ a: 3, answer: 3 }), "voice");
+        assert.deepEqual(
+            steps.map((step) => [step.lit, step.word]),
+            [
+                [1, "Jedan."],
+                [2, "Dva."],
+                [3, ""],
+            ]
+        );
+        assert.ok(modelSteps(round({ a: 4, answer: 4, choices: [3, 4, 5] }), "lights").every((step) => step.word === ""));
+        assert.equal(modelSteps(round({ a: 4, answer: 4, choices: [3, 4, 5] }), "lights").length, 4);
+        assert.deepEqual(modelSteps(round({}), "none"), []);
     });
 });
 
