@@ -37,6 +37,7 @@ import { decisionCount, storyForLevel, type SceneTone, type Story, type StoryDec
 import { storyScene } from "./data/storyScenes";
 import { storyHero } from "./scene/heroes";
 import { SceneArt } from "./scene/SceneArt";
+import { OPTION_GRID, OptionPicture } from "./OptionPicture";
 import type { SceneSpec } from "./scene/types";
 
 // ── Stanje igre ───────────────────────────────────────────────────────────────
@@ -601,7 +602,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                     )}
                                 </p>
 
-                                <ul className="grid gap-3 short:gap-2">
+                                <ul className={cn("grid gap-2 sm:gap-3", OPTION_GRID[record.order.length] ?? OPTION_GRID[3])}>
                                     {record.order.map((optionIndex) => {
                                         const option = decision.options[optionIndex];
                                         const label = t(option.label);
@@ -617,27 +618,23 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                             record.tried.length === 0 &&
                                             optionIndex === record.order.find((i) => decision.acceptable.includes(i));
                                         return (
-                                            <li key={optionIndex} className="flex items-stretch gap-2">
+                                            <li key={optionIndex} className="flex min-w-0 flex-col items-center gap-1.5">
                                                 <ChoiceCard
                                                     state={state}
                                                     disabled={locked}
                                                     onClick={() => choose(optionIndex)}
                                                     aria-label={`${label}${status}`}
-                                                    className="min-w-0 flex-1 short:min-h-16 short:sm:py-2.5"
+                                                    className="h-full w-full min-w-0 flex-1 p-1.5! sm:p-2.5!"
                                                 >
-                                                    <span className="flex w-full items-center gap-3 text-left sm:gap-4">
-                                                        <span
-                                                            aria-hidden="true"
-                                                            className="grid h-12 min-w-12 shrink-0 place-items-center rounded-2xl bg-brand-50 px-1.5 text-3xl leading-none sm:h-14 sm:min-w-14 sm:text-4xl"
-                                                        >
-                                                            {option.emoji}
-                                                        </span>
-                                                        <span className="min-w-0 flex-1 text-base leading-snug sm:text-lg">{label}</span>
-                                                    </span>
-                                                    {showHand && <DemoHand />}
+                                                    {/* Izbor je slika: dete radi baš to; natpis je ispod */}
+                                                    <OptionPicture text={option.label} label={label} emoji={option.emoji} female={female}>
+                                                        {showHand && <DemoHand />}
+                                                    </OptionPicture>
                                                 </ChoiceCard>
                                                 {!isMonitor && (
-                                                    <OptionSpeaker label={`Pročitaj: ${label}`} disabled={shown.listening} onClick={() => speakOption(optionIndex)} />
+                                                    <span className="[&>button]:min-h-10 [&>button]:w-12">
+                                                        <OptionSpeaker label={`Pročitaj: ${label}`} disabled={shown.listening} onClick={() => speakOption(optionIndex)} />
+                                                    </span>
                                                 )}
                                             </li>
                                         );

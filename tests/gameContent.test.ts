@@ -78,11 +78,14 @@ describe("social situations", () => {
         }
     });
 
-    it("offers 2 choices on easy, 3 on medium and 4 on hard levels for the repeated and the new situations", () => {
+    it("offers few picture choices: 1 + 1 on easy, 1 + 2 on medium and 2 + 1 on hard levels", () => {
         for (const { level, situation } of SITUATIONS) {
-            if (situation.id > 45 && situation.id <= 60) continue;
-            const expected = level <= 5 ? 2 : level <= 10 ? 3 : 4;
-            assert.equal(situation.options.length, expected, `situation ${situation.id} on level ${level}`);
+            const helpful = situation.acceptable.length;
+            const other = situation.options.length - helpful;
+            const [good, less] = level <= 5 ? [1, 1] : level <= 10 ? [1, 2] : [2, 1];
+            assert.equal(helpful, Math.min(good, helpful), `situation ${situation.id} on level ${level}`);
+            assert.ok(helpful <= good && other === less, `situation ${situation.id} on level ${level}: ${helpful} + ${other}`);
+            assert.ok(situation.options.length <= 3);
         }
     });
 
@@ -168,13 +171,14 @@ describe("social stories", () => {
         }
     });
 
-    it("offers two less helpful choices from level 6 on, so later stories ask for more", () => {
+    it("offers few picture choices: 1 + 1 on levels 1–5, 1 + 2 on 6–10 and 2 + 1 on 11–15", () => {
         for (const { level, story } of STORIES) {
             for (const step of story.steps) {
                 if (!step.decision) continue;
-                const others = step.decision.options.length - step.decision.acceptable.length;
-                if (level >= 6) assert.equal(others, 2, `level ${level}: ${step.decision.question}`);
-                else assert.equal(others, 1, `level ${level}: ${step.decision.question}`);
+                const helpful = step.decision.acceptable.length;
+                const others = step.decision.options.length - helpful;
+                const expected = level <= 5 ? [1, 1] : level <= 10 ? [1, 2] : [2, 1];
+                assert.deepEqual([helpful, others], expected, `level ${level}: ${step.decision.question}`);
             }
         }
     });
