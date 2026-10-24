@@ -1,5 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { basketFor, belongsTo, buildSortLevel, getSortItem, isBasketId, ruleForLevel, ruleIntro, SORT_ITEMS, SORT_MAX_LEVEL, type BasketId } from "@/app/components/games/data/sortingItems";
 import { BAND_PRESETS } from "@/lib/childSettings";
 
@@ -248,5 +250,15 @@ describe("sorting game content", () => {
                 }
             }
         }
+    });
+});
+
+describe("veliko / malo ima sa čim da se poredi", () => {
+    it("pored predmeta stoji isti predmet u drugoj veličini (bledo, nije za dodir)", () => {
+        const source = readFileSync(path.join(process.cwd(), "app/components/games/SortingGame.tsx"), "utf8");
+        const ghost = source.slice(source.indexOf('shown.kind === "size" && item.size && ('), source.indexOf("key={`${shown.round}-${item.id}`}"));
+        assert.match(ghost, /aria-hidden="true"/);
+        assert.match(ghost, /pointer-events-none/);
+        assert.match(ghost, /size: item\.size === "big" \? "small" : "big"/);
     });
 });
