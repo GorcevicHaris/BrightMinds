@@ -47,7 +47,8 @@ export default function LoginPage() {
                         aria-controls={`panel-${m.id}`}
                         onClick={() => setMode(m.id)}
                         className={cn(
-                            "flex min-h-14 items-center justify-center gap-2 rounded-xl px-2 text-sm font-extrabold transition-colors sm:text-base",
+                            // Na uskom ekranu ikonica stoji iznad naziva, pa se „Roditelj / Učitelj” ne lomi u dva reda
+                            "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-1.5 text-sm font-extrabold leading-tight transition-colors min-[400px]:flex-row min-[400px]:gap-2 sm:text-base",
                             mode === m.id
                                 ? m.id === "child"
                                     ? "bg-sun-400 text-ink"
@@ -234,7 +235,7 @@ function ParentLogin() {
                             onClick={() => setShowPassword((v) => !v)}
                             aria-label={showPassword ? "Sakrij lozinku" : "Prikaži lozinku"}
                             aria-pressed={showPassword}
-                            className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint transition-colors hover:bg-brand-50 hover:text-ink"
+                            className="-mr-1.5 grid h-11 w-11 place-items-center rounded-lg text-ink-faint transition-colors hover:bg-brand-50 hover:text-ink"
                         >
                             {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                         </button>
@@ -248,7 +249,7 @@ function ParentLogin() {
 
             <p className="mt-6 text-center text-sm font-semibold text-ink-soft">
                 Nemate nalog?{" "}
-                <Link href="/register" className="font-extrabold text-brand-600 underline-offset-4 hover:underline">
+                <Link href="/register" className="-my-3 inline-block py-3 font-extrabold text-brand-600 underline-offset-4 hover:underline">
                     Registrujte se
                 </Link>
             </p>

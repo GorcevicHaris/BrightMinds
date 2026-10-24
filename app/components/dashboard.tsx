@@ -286,7 +286,7 @@ export default function Dashboard() {
                 <p className="max-w-3xl text-xs font-medium text-ink-faint">
                     Bright Minds je vežbanka uz podršku odraslih. Nije terapija ni dijagnostički alat i ne zamenjuje logopeda,
                     defektologa ili psihologa. Veštine se najbolje prenose u svakodnevni život kada ih dete vežba i van ekrana, sa vama.{" "}
-                    <Link href="/privatnost" className="font-bold text-brand-700 underline-offset-4 hover:underline">
+                    <Link href="/privatnost" className="py-3 font-bold text-brand-700 underline-offset-4 hover:underline">
                         Podaci i privatnost
                     </Link>
                 </p>
@@ -415,7 +415,7 @@ function ChildCard({ child, onEdit, onConfigure, onStories, onDelete }: ChildCar
                     <button
                         type="button"
                         onClick={onEdit}
-                        className="inline-flex items-center gap-1.5 rounded-lg text-sun-700 underline-offset-4 hover:underline"
+                        className="-my-2 inline-flex min-h-11 items-center gap-1.5 rounded-lg text-sun-700 underline-offset-4 hover:underline"
                     >
                         <KeyRound className="h-4 w-4" aria-hidden="true" />
                         Postavi tajni kod
@@ -493,17 +493,17 @@ function CardMenu({ name, onEdit, onDelete }: { name: string; onEdit: () => void
                 aria-haspopup="menu"
                 aria-expanded={open}
                 aria-controls={open ? menuId : undefined}
-                className="grid h-10 w-10 place-items-center rounded-xl text-ink-faint transition-colors hover:bg-brand-50 hover:text-ink"
+                className="grid h-11 w-11 place-items-center rounded-xl text-ink-faint transition-colors hover:bg-brand-50 hover:text-ink"
             >
                 <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
             </button>
             {open && (
                 <div id={menuId} role="menu" className="absolute right-0 top-full z-20 mt-1 w-48 animate-fade-up rounded-xl border border-line bg-surface p-1.5 shadow-pop">
-                    <button type="button" role="menuitem" onClick={() => choose(onEdit)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold text-ink hover:bg-brand-50">
+                    <button type="button" role="menuitem" onClick={() => choose(onEdit)} className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold text-ink hover:bg-brand-50">
                         <Pencil className="h-4 w-4 text-ink-soft" aria-hidden="true" />
                         Izmeni profil
                     </button>
-                    <button type="button" role="menuitem" onClick={() => choose(onDelete)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold text-rose-600 hover:bg-rose-50">
+                    <button type="button" role="menuitem" onClick={() => choose(onDelete)} className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold text-rose-600 hover:bg-rose-50">
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
                         Obriši profil
                     </button>
@@ -625,7 +625,8 @@ function ChildFormModal({ child, onClose, onSaved }: ChildFormModalProps) {
                 title="Tajni kod deteta"
                 description="Izaberite po jednu sličicu iz svake grupe. Dete ih bira istim redom pri prijavi."
                 footer={
-                    <>
+                    // Na telefonu oba dugmeta u jednom redu, da mreža sličica ima više mesta
+                    <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
                         <Button variant="secondary" onClick={() => setPickingPin(false)}>
                             Nazad
                         </Button>
@@ -638,7 +639,7 @@ function ChildFormModal({ child, onClose, onSaved }: ChildFormModalProps) {
                         >
                             Sačuvaj kod
                         </Button>
-                    </>
+                    </div>
                 }
             >
                 <VisualPinPad value={draftPin} onChange={setDraftPin} />

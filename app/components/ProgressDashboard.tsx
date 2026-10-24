@@ -428,7 +428,7 @@ function Segmented<T extends string>({ label, value, options, onChange }: Segmen
                     aria-pressed={option.value === value}
                     onClick={() => onChange(option.value)}
                     className={cn(
-                        "min-h-9 rounded-lg px-3 text-sm font-bold transition-colors",
+                        "min-h-11 rounded-lg px-3 text-sm font-bold transition-colors",
                         option.value === value ? "bg-surface text-ink shadow-soft" : "text-ink-soft hover:text-ink"
                     )}
                 >
@@ -482,7 +482,7 @@ function ParentView({ data, onRefresh, isRefreshing }: ParentViewProps) {
                 <GameFilterControl value={filter} onChange={setFilter} />
                 <div className="flex shrink-0 items-center gap-2">
                     <p className="mr-auto text-xs font-semibold text-ink-faint">Ažurirano u {updatedAt}</p>
-                    <Button variant="secondary" size="sm" onClick={onRefresh} isLoading={isRefreshing} aria-label="Osveži podatke" title={`Ažurirano u ${updatedAt}. Osveži podatke.`}>
+                    <Button variant="secondary" size="sm" className="min-w-11" onClick={onRefresh} isLoading={isRefreshing} aria-label="Osveži podatke" title={`Ažurirano u ${updatedAt}. Osveži podatke.`}>
                         {!isRefreshing && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
                         <span className="hidden sm:inline">Osveži</span>
                     </Button>
@@ -552,7 +552,7 @@ function GameFilterControl({ value, onChange }: { value: GameFilter; onChange: (
                         aria-pressed={option.value === value}
                         onClick={() => onChange(option.value)}
                         className={cn(
-                            "inline-flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 text-sm font-bold transition-colors",
+                            "inline-flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 text-sm font-bold transition-colors",
                             option.value === value ? "bg-brand-600 text-white shadow-soft" : "text-ink-soft hover:bg-brand-50 hover:text-ink"
                         )}
                     >
@@ -857,7 +857,7 @@ function MasteryStatusLine({ game, progress }: { game: GameDefinition; progress:
                     aria-controls={noteId}
                     aria-label={`${game.title}: šta znači oznaka „Savladano”?`}
                     onClick={() => setIsExplained((value) => !value)}
-                    className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-brand-50 hover:text-ink"
+                    className="-my-1 grid h-11 w-11 shrink-0 place-items-center rounded-full text-ink-soft transition-colors hover:bg-brand-50 hover:text-ink"
                 >
                     <Info className="h-4 w-4" aria-hidden="true" />
                 </button>

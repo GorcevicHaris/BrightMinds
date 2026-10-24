@@ -172,7 +172,9 @@ export function Switch({ label, description, checked, onChange, disabled }: Swit
                 disabled={disabled}
                 onClick={() => onChange(!checked)}
                 className={cn(
+                    // Nevidljivi rub proširuje polje za dodir na 44 px, a prekidač ostaje iste veličine
                     "relative mt-0.5 inline-flex h-8 w-14 shrink-0 items-center rounded-full border-2 transition-colors disabled:opacity-50",
+                    "before:absolute before:-inset-2 before:content-['']",
                     checked ? "border-brand-600 bg-brand-600" : "border-line bg-brand-100"
                 )}
             >

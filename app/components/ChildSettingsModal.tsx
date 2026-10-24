@@ -121,6 +121,8 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
         setIsSaving(false);
     };
 
+    const resetToRecommended = () => setSettings(defaultSettings(ageBand));
+
     return (
         <Modal
             open
@@ -129,8 +131,9 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
             title={`Podešavanja: ${childName}`}
             description="Prilagodite igru detetu. Preporuke su prema uzrastu; sve možete promeniti."
             footer={
-                <>
-                    <Button variant="ghost" onClick={() => setSettings(defaultSettings(ageBand))} disabled={isSaving}>
+                // Na telefonu dva dugmeta u jednom redu: podnožje ne sme da pojede prostor za podešavanja
+                <div className="grid grid-cols-2 gap-3 sm:flex sm:justify-end">
+                    <Button variant="ghost" onClick={resetToRecommended} disabled={isSaving} className="max-sm:hidden">
                         Vrati preporučeno
                     </Button>
                     <Button variant="secondary" onClick={onClose} disabled={isSaving}>
@@ -139,7 +142,7 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                     <Button onClick={save} isLoading={isSaving}>
                         Sačuvaj
                     </Button>
-                </>
+                </div>
             }
         >
             <div className="space-y-5">
@@ -301,7 +304,7 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                                 })}
                             </ul>
                             {settings.plan.length > 0 && (
-                                <button type="button" onClick={() => set("plan", [])} className="mt-2 min-h-9 rounded-lg px-2 text-sm font-extrabold text-brand-700 hover:bg-brand-50">
+                                <button type="button" onClick={() => set("plan", [])} className="mt-2 min-h-11 rounded-lg px-2 text-sm font-extrabold text-brand-700 hover:bg-brand-50">
                                     Ukloni plan
                                 </button>
                             )}
@@ -360,7 +363,7 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                                     step={0.1}
                                     value={settings.volume}
                                     onChange={(e) => set("volume", Number(e.target.value))}
-                                    className="mt-2 h-2 w-full cursor-pointer accent-brand-600"
+                                    className="mt-1 h-11 w-full cursor-pointer accent-brand-600"
                                 />
                             </div>
                         </Section>
@@ -491,6 +494,13 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                         </p>
                     </Section>
                 )}
+
+                {/* Na telefonu je ovo dugme ovde, ispod podešavanja, a ne u podnožju */}
+                <div className="border-t border-line pt-4 sm:hidden">
+                    <Button variant="ghost" block onClick={resetToRecommended} disabled={isSaving}>
+                        Vrati preporučeno
+                    </Button>
+                </div>
             </div>
         </Modal>
     );
