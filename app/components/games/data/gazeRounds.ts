@@ -4,13 +4,14 @@
 // to Mind-Read”): u šta neko gleda, to i želi; ko je video, taj zna.
 //
 // Napredovanje (od jače ka slabijoj pomoći, kao u učenju zajedničke pažnje):
-//   1–2   lik pokazuje rukom, okreće glavu i oči; dva predmeta na suprotnim stranama
-//   3–5   glava i oči, bez pokazivanja; dva predmeta
-//   6–10  glava i oči; tri, pa četiri predmeta (i gore i dole)
-//   11–12 samo oči (glava ostaje pravo); tri, pa četiri predmeta
-//   13    „Šta Amina želi?” — pogled pokazuje šta lik želi
-//   14    „Ko zna šta je u kutiji?” — ko je pogledao, taj zna
-//   15    sve izmešano, želja samo po očima
+//   1–2   lik pokazuje rukom (ka predmetu gore ruka ide uvis), okreće glavu i oči; dva, pa tri predmeta
+//   3–5   glava i oči, bez pokazivanja; dva, tri, pa četiri predmeta
+//   6–7   glava se okreće samo upola, oči jasno; tri, pa četiri predmeta
+//   8–10  samo oči (glava ostaje pravo); dva, tri, pa četiri predmeta
+//   11–12 „Šta Amina želi?” — pogled pokazuje šta lik želi (glava i oči, pa samo oči)
+//   13–14 „Ko zna šta je u kutiji?” — ko je pogledao, taj zna (glava i oči, pa samo oči)
+//   15    sve izmešano, samo oči
+// Svaka nova vrsta zadatka (želja, znanje) počinje jačim znakom (glava i oči), pa ide samo oči.
 //
 // Pravila pisanja:
 //  • Rečenice su kratke i doslovne, u sadašnjem vremenu, pa ne zavise od roda lika:
@@ -101,6 +102,12 @@ export const GAZE_OBJECTS: readonly GazeObject[] = [
     o("cat", "cat", "Mače", "mače", [-18, -29, 17, 1], 1.4, { wanted: false }),
     o("cup", "cup", "Šolja", "šolju", [-7, -15, 10, 1], 2.3, { wanted: false, tone: "#3fbf8a" }),
     o("bird", "bird", "Ptica", "pticu", [-11, -16, 13, 1], 2.2, { wanted: false }),
+    o("balloon", "balloon", "Balon", "balon", [-9, -41, 9, 1], 1.2, { tone: "#e8605a" }),
+    o("iceCream", "iceCream", "Sladoled", "sladoled", [-7, -21, 7, 1], 2.2),
+    o("puzzle", "puzzle", "Slagalica", "slagalicu", [-21, -29, 21, 1], 1.3),
+    o("crayons", "crayons", "Bojice", "bojice", [-12, -21, 12, 1], 2, { plural: true }),
+    o("clock", "clock", "Sat", "sat", [-12, -23, 12, 1], 2, { wanted: false }),
+    o("flowers", "flowers", "Cveće", "cveće", [-14, -27, 14, 1], 1.7, { wanted: false }),
 ];
 
 /** Ono u šta gleda dete koje NE gleda u kutiju (zadatak „Ko zna?”): daleko, gore */
@@ -108,6 +115,8 @@ export const FAR_OBJECTS: readonly GazeObject[] = [
     o("butterfly", "butterfly", "Leptir", "leptira", [-11, -17, 11, 1], 2.2, { wanted: false }),
     o("kite", "kite", "Zmaj", "zmaja", [-11, -41, 11, 11], 1.2, { wanted: false }),
     o("birdFar", "bird", "Ptica", "pticu", [-11, -16, 13, 1], 2.2, { wanted: false }),
+    o("plane", "plane", "Avion", "avion", [-32, -29, 33, 5], 0.75, { wanted: false }),
+    o("sun", "sun", "Sunce", "sunce", [-18, -32, 18, 4], 1.2, { wanted: false }),
 ];
 
 export function getGazeObject(id: unknown): GazeObject | undefined {
@@ -138,11 +147,16 @@ export function slotSide(slot: SlotId): "left" | "right" {
 
 /** look = „Šta gleda …?”, want = „Šta … želi?”, know = „Ko zna šta je u kutiji?” */
 export type GazeKind = "look" | "want" | "know";
-/** Koliko pogled pomaže: rukom pokazuje + glava i oči, glava i oči, samo oči */
-export type GazeCue = "point" | "head" | "eyes";
+/** Koliko pogled pomaže: rukom pokazuje + glava i oči, glava i oči, glava upola, samo oči */
+export type GazeCue = "point" | "head" | "turn" | "eyes";
 
 const KINDS: readonly GazeKind[] = ["look", "want", "know"];
-const CUES: readonly GazeCue[] = ["point", "head", "eyes"];
+const CUES: readonly GazeCue[] = ["point", "head", "turn", "eyes"];
+
+/** Koliko se glava okreće ka predmetu (1 = sasvim, 0 = samo oči) */
+export function headTurn(cue: GazeCue): number {
+    return cue === "eyes" ? 0 : cue === "turn" ? 0.5 : 1;
+}
 
 interface Task {
     kind: GazeKind;
@@ -160,24 +174,30 @@ interface LevelRule {
 }
 
 const RULES: readonly LevelRule[] = [
-    // Lako: dva predmeta daleko jedan od drugog; prvo lik i pokazuje rukom
-    { first: 1, last: 2, tasks: [{ kind: "look", cue: "point", objects: 2 }], rounds: 5 },
-    { first: 3, last: 5, tasks: [{ kind: "look", cue: "head", objects: 2 }], rounds: 5 },
-    // Srednje: glava i oči, tri pa četiri predmeta
-    { first: 6, last: 7, tasks: [{ kind: "look", cue: "head", objects: 3 }], rounds: 6 },
-    { first: 8, last: 10, tasks: [{ kind: "look", cue: "head", objects: 4 }], rounds: 6 },
-    // Teško: samo oči, pa želja i znanje
-    { first: 11, last: 11, tasks: [{ kind: "look", cue: "eyes", objects: 3 }], rounds: 6 },
-    { first: 12, last: 12, tasks: [{ kind: "look", cue: "eyes", objects: 4 }], rounds: 6 },
-    { first: 13, last: 13, tasks: [{ kind: "want", cue: "head", objects: 3 }], rounds: 6 },
-    { first: 14, last: 14, tasks: [{ kind: "know", cue: "head", objects: 2 }], rounds: 6 },
+    // Lako: lik pokazuje rukom, pa samo okreće glavu; dva do četiri predmeta
+    { first: 1, last: 1, tasks: [{ kind: "look", cue: "point", objects: 2 }], rounds: 5 },
+    { first: 2, last: 2, tasks: [{ kind: "look", cue: "point", objects: 3 }], rounds: 5 },
+    { first: 3, last: 3, tasks: [{ kind: "look", cue: "head", objects: 2 }], rounds: 5 },
+    { first: 4, last: 4, tasks: [{ kind: "look", cue: "head", objects: 3 }], rounds: 6 },
+    { first: 5, last: 5, tasks: [{ kind: "look", cue: "head", objects: 4 }], rounds: 6 },
+    // Srednje: glava se okreće sve manje, pa samo oči
+    { first: 6, last: 6, tasks: [{ kind: "look", cue: "turn", objects: 3 }], rounds: 6 },
+    { first: 7, last: 7, tasks: [{ kind: "look", cue: "turn", objects: 4 }], rounds: 6 },
+    { first: 8, last: 8, tasks: [{ kind: "look", cue: "eyes", objects: 2 }], rounds: 6 },
+    { first: 9, last: 9, tasks: [{ kind: "look", cue: "eyes", objects: 3 }], rounds: 6 },
+    { first: 10, last: 10, tasks: [{ kind: "look", cue: "eyes", objects: 4 }], rounds: 6 },
+    // Teško: pogled i misli — šta lik želi, ko zna; pa sve izmešano
+    { first: 11, last: 11, tasks: [{ kind: "want", cue: "head", objects: 3 }], rounds: 6 },
+    { first: 12, last: 12, tasks: [{ kind: "want", cue: "eyes", objects: 3 }], rounds: 6 },
+    { first: 13, last: 13, tasks: [{ kind: "know", cue: "head", objects: 2 }], rounds: 6 },
+    { first: 14, last: 14, tasks: [{ kind: "know", cue: "eyes", objects: 2 }], rounds: 6 },
     {
         first: 15,
         last: 15,
         tasks: [
             { kind: "look", cue: "eyes", objects: 4 },
             { kind: "want", cue: "eyes", objects: 3 },
-            { kind: "know", cue: "head", objects: 2 },
+            { kind: "know", cue: "eyes", objects: 2 },
         ],
         rounds: 6,
     },
