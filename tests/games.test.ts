@@ -1,5 +1,7 @@
 // lib/games.ts — spisak igara, zvezdice i pravilo „nivo se polaže”.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, it } from "node:test";
 import {
     ACTIVITY_IDS,
@@ -184,6 +186,21 @@ describe("moods", () => {
         assert.equal(getMood("ecstatic"), undefined);
         assert.equal(getMood(null), undefined);
         assert.equal(getMood(undefined), undefined);
+    });
+});
+
+describe("moods shown to parents and children", () => {
+    it("say „Tužno”, never „Loše”, on both scales", () => {
+        for (const mood of [...MOODS, ...MOODS_THREE]) assert.doesNotMatch(mood.label, /lo[šs]e/i, mood.value);
+        assert.equal(MOODS_THREE.find((mood) => mood.value === "upset")?.label, "Tužno");
+        assert.equal(MOODS.find((mood) => mood.value === "very_upset")?.label, "Tužno");
+    });
+
+    it("are not spelled out as „Loše” anywhere on the parent's screens", () => {
+        const parentScreens = ["app/components/ProgressDashboard.tsx", "app/components/LiveMonitor.tsx", "app/components/dashboard.tsx", "lib/progress.ts", "app/dev/progress-data/route.ts"];
+        for (const file of parentScreens) {
+            assert.doesNotMatch(readFileSync(path.join(process.cwd(), file), "utf8"), /["'„]Lo[šs]e/, file);
+        }
     });
 });
 
