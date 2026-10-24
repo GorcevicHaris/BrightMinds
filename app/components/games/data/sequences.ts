@@ -13,7 +13,8 @@
 //    na drugo mesto u rečenici: „Probudim se.” → „Prvo se probudim”. Takvi koraci imaju
 //    i oblik za prepričavanje (`retell`).
 
-import { art, draw, holdD, holdP, me, prop, who, type ArtItem, type StepArtSpec } from "@/app/components/games/sequence/art";
+import { art, draw, holdD, holdP, me, prop, who, type ArtItem, type DrawId, type StepArtSpec } from "@/app/components/games/sequence/art";
+import type { PropId } from "@/app/components/games/scene/types";
 
 export interface SequenceStep {
     text: string;
@@ -21,6 +22,12 @@ export interface SequenceStep {
     art: StepArtSpec;
     /** Oblik posle „prvo / zatim / na kraju”, kad se reči moraju premestiti (malim slovom, bez tačke) */
     retell?: string;
+    /**
+     * Korak u kome dete nešto kaže (komunikacija ugrađena u rutinu): kratka rečenica koju dete
+     * uči da kaže baš u tom trenutku — „Dobro jutro!”, „Molim vas, jedan hleb.”, „Boli me ovde.”
+     * Na slici dete govori (oblačić), a glas rečenicu i pročita.
+     */
+    say?: string;
 }
 
 export interface Sequence {
@@ -30,6 +37,9 @@ export interface Sequence {
 }
 
 const s = (text: string, picture: StepArtSpec, retell?: string): SequenceStep => (retell ? { text, art: picture, retell } : { text, art: picture });
+
+/** Korak u kome dete govori: „Kažem mami: „Dobro jutro!””; `who` je kome (ili prazno) */
+const talk = (lead: string, script: string, picture: StepArtSpec): SequenceStep => ({ text: `${lead}: „${script}”`, art: picture, say: script });
 
 // ── Slike ─────────────────────────────────────────────────────────────────────
 // Krupan kadar: dete od glave do pojasa (stopala su ispod slike), predmet u rukama.
@@ -67,6 +77,19 @@ const eatAtTable = (food: ArtItem) => art("kitchen", [me(120, Y - 6, { pose: "mo
 
 // Igranje u sobi
 const SHELF_X = 196;
+
+/**
+ * Oblačić govora: vrh repića je kod usta (x, y), a u oblačiću je sličica onoga što dete kaže
+ * (srce = hvala, sunce = dobro jutro / dobar dan, hleb, upitnik…).
+ */
+function bubble(x: number, y: number, icon: { p?: PropId; d?: DrawId; rot?: number }, iconScale = 1.2): ArtItem[] {
+    const cx = x + 28.6;
+    const options = { s: iconScale, ...(icon.rot ? { rot: icon.rot } : {}) };
+    return [draw("talk", x, y, { s: 1.3 }), icon.p ? prop(icon.p, cx, y - 25, options) : draw(icon.d ?? "coin", cx, y - 25, options)];
+}
+/** Dete govori (krupno, usta otvorena), oblačić desno od glave */
+const speaking = (x: number, options: Parameters<typeof me>[2] = {}) => me(x, Y, { face: "talk", ...options });
+const MOUTH = (x: number) => [x + 14, 86] as const;
 
 export const SEQUENCES: readonly Sequence[] = [
     // ── Dva koraka ────────────────────────────────────────────────────────────
@@ -148,6 +171,24 @@ export const SEQUENCES: readonly Sequence[] = [
         steps: [
             s("Operem jabuku.", art("kitchen", [BASIN, TAP, STREAM, draw("hands", 104, 140, { s: 1.7 }), prop("apple", 104, 124, { s: 1.6 })])),
             s("Pojedem jabuku.", art("kitchen", [me(120, Y, { pose: "mouth", hold: holdP("apple", { s: 1, dx: 4, dy: 11 }), face: "happy" })])),
+        ],
+    },
+
+    // Komunikacija u rutini (dva koraka)
+    {
+        id: "gift-thanks",
+        title: "Poklon",
+        steps: [
+            s("Baka mi da poklon.", art("living", [who("baka", 172, 214, { s: 1.6, pose: "give", flip: true, hold: holdP("gift", { s: 1.2 }), face: "happy" }), me(70, Y, { at: [130, 120], face: "happy" })]), "mi baka da poklon"),
+            talk("Kažem baki", "Hvala!", art("living", [who("baka", 196, 214, { s: 1.6, face: "happy" }), speaking(70, { pose: "hold", hold: holdP("gift", { s: 1.1 }) }), ...bubble(...MOUTH(70), { p: "heart" }, 1.3)])),
+        ],
+    },
+    {
+        id: "kindergarten-hello",
+        title: "Dobar dan",
+        steps: [
+            s("Uđem u vrtić.", art("street", [prop("school", 166, 132, { s: 1.4 }), me(66, Y, { pose: "walk", wear: ["backpack"], at: [166, 90] })])),
+            talk("Kažem vaspitačici", "Dobar dan!", art("classroom", [who("teacher", 196, 214, { s: 1.6, pose: "wave", face: "happy", at: [80, 90] }), speaking(64, { pose: "wave" }), ...bubble(...MOUTH(64), { p: "sun" }, 0.8)])),
         ],
     },
 
@@ -270,6 +311,35 @@ export const SEQUENCES: readonly Sequence[] = [
         ],
     },
 
+    // Komunikacija u rutini (tri koraka)
+    {
+        id: "good-morning",
+        title: "Dobro jutro",
+        steps: [
+            s("Mama me probudi.", art("bedroom", [prop("bed", 112, 156, { s: 2.2 }), { f: "me", x: 48, y: 116, s: 2.2, pose: "lie", face: "calm" }, who("mama", 196, 200, { s: 1.4, pose: "wave", face: "happy", at: [60, 100] })]), "me mama probudi"),
+            talk("Kažem mami", "Dobro jutro!", art("bedroom", [speaking(70, { pose: "sit", s: 1.6 }), prop("bed", 100, 172, { s: 2 }), who("mama", 200, 200, { s: 1.4, face: "happy", at: [80, 90] }), ...bubble(...MOUTH(70), { p: "sun" }, 0.8)])),
+            s("Ustanem iz kreveta.", art("bedroom", [prop("bed", 150, 160, { s: 1.8 }), me(66, Y, { pose: "up", face: "happy" })])),
+        ],
+    },
+    {
+        id: "ask-help",
+        title: "Pomoć",
+        steps: [
+            s("Ne mogu da otvorim kutiju.", art("room", [me(120, Y, { pose: "hold", hold: holdD("boxClosed", { s: 1.3, dy: 6 }), face: "worried", at: [120, 140] })])),
+            talk("Kažem tati", "Pomozi mi, molim te.", art("room", [who("tata", 196, 214, { s: 1.6, at: [80, 90] }), speaking(66, { pose: "hold", hold: holdD("boxClosed", { s: 1.1, dy: 6 }) }), ...bubble(...MOUTH(66), { p: "question" }, 1.1)])),
+            s("Tata mi otvori kutiju.", art("room", [who("tata", 160, 214, { s: 1.6, pose: "hold", hold: holdP("boxOpen", { s: 0.9 }), face: "happy" }), me(60, Y, { face: "happy", at: [150, 110] })]), "mi tata otvori kutiju"),
+        ],
+    },
+    {
+        id: "swing-turn",
+        title: "Ljuljaška",
+        steps: [
+            s("Drug se ljulja na ljuljašci.", art("playground", [prop("swing", 160, 156, { s: 1.8 }), who("boy2", 160, 132, { s: 1.4, pose: "sit", face: "happy" }), me(56, Y, { at: [160, 90] })]), "se drug ljulja na ljuljašci"),
+            talk("Pitam druga", "Mogu li ja posle?", art("playground", [prop("swing", 176, 156, { s: 1.8 }), who("boy2", 176, 132, { s: 1.4, pose: "sit", at: [70, 80] }), speaking(64), ...bubble(...MOUTH(64), { p: "question" }, 1.1)])),
+            s("Ljuljam se ja.", art("playground", [prop("swing", 120, 156, { s: 1.8 }), { f: "me", x: 120, y: 132, s: 1.4, pose: "sit", face: "happy" }, who("boy2", 200, 166, { s: 1.4, face: "happy", at: [120, 90] })]), "se ljuljam ja"),
+        ],
+    },
+
     // ── Četiri koraka ─────────────────────────────────────────────────────────
     {
         id: "wash-hands",
@@ -367,6 +437,28 @@ export const SEQUENCES: readonly Sequence[] = [
         ],
     },
 
+    // Komunikacija u rutini (četiri koraka)
+    {
+        id: "tummy-ache",
+        title: "Boli me stomak",
+        steps: [
+            s("Boli me stomak.", art("bedroom", [me(120, Y, { pose: "belly", face: "sad" })]), "me boli stomak"),
+            s("Idem kod doktora.", art("clinic", [prop("doorOpen", 176, 152, { s: 1.4 }), who("mama", 70, 156, { s: 1.15, pose: "walk" }), me(110, 156, { s: 1.15, pose: "walk", face: "sad" })])),
+            talk("Kažem doktoru", "Boli me ovde.", art("clinic", [who("doctor", 196, 214, { s: 1.6, at: [80, 120] }), speaking(64, { pose: "belly" }), ...bubble(...MOUTH(64), { p: "arrow", rot: 120 }, 1)])),
+            s("Doktor me pregleda.", art("clinic", [who("doctor", 160, 214, { s: 1.6, pose: "give", flip: true, hold: holdP("stethoscope", { s: 1.2 }), at: [80, 100] }), me(74, Y, { face: "calm", at: [150, 70] })]), "me doktor pregleda"),
+        ],
+    },
+    {
+        id: "play-together",
+        title: "Igra sa drugarima",
+        steps: [
+            s("Drugari se igraju loptom.", art("park", [who("amar", 130, 166, { s: 1.4, pose: "give", face: "happy", at: [190, 120] }), prop("ball", 168, 130, { s: 1.8 }), who("ajla", 206, 166, { s: 1.4, pose: "up", face: "happy", flip: true })]), "se drugari igraju loptom"),
+            talk("Pitam drugare", "Mogu li i ja da se igram?", art("park", [who("amar", 170, 166, { s: 1.4, at: [70, 80] }), who("ajla", 212, 166, { s: 1.4, at: [70, 80] }), speaking(64), ...bubble(...MOUTH(64), { p: "ball" }, 1.4)])),
+            talk("Drugari kažu", "Može!", art("park", [who("amar", 160, 166, { s: 1.4, face: "talk", pose: "wave" }), ...bubble(176, 82, { p: "heart" }, 1.3), me(60, Y, { face: "happy", at: [160, 90] })])),
+            s("Igramo se zajedno.", art("park", [me(70, Y, { pose: "up", face: "happy" }), prop("ball", 132, 70, { s: 2 }), who("amar", 196, 166, { s: 1.4, pose: "up", face: "happy" })]), "se igramo zajedno"),
+        ],
+    },
+
     // ── Pet koraka ────────────────────────────────────────────────────────────
     {
         id: "garden",
@@ -415,6 +507,17 @@ export const SEQUENCES: readonly Sequence[] = [
             s("Slažem kocke jednu na drugu.", art("room", [me(84, 168, { pose: "sitReach", at: [156, 120] }), prop("blocks", 156, 156, { s: 1.8 })])),
             s("Kula je gotova.", art("room", [draw("tower", 160, 158, { s: 1.6 }), me(76, Y, { pose: "up", face: "proud" })]), "je kula gotova"),
             s("Vratim kocke u kutiju.", art("room", [me(76, Y, { pose: "give", hold: holdD("block", { s: 1.2 }), at: [140, 130] }), prop("toyBox", 146, 160, { s: 1.8 }), prop("blocksFallen", 206, 156, { s: 1.4 })])),
+        ],
+    },
+    {
+        id: "bakery",
+        title: "Pekara",
+        steps: [
+            s("Mama mi da novac.", art("street", [who("mama", 172, 214, { s: 1.6, pose: "give", flip: true, face: "happy" }), me(70, Y, { pose: "give", hold: holdD("coin", { s: 1.4 }), at: [130, 110] })]), "mi mama da novac"),
+            s("Uđem u pekaru.", art("shop", [prop("doorOpen", 120, 152, { s: 1.4 }), me(120, 156, { s: 1.15, pose: "walk", hold: holdD("coin", { s: 1 }) }), prop("bread", 196, 100, { s: 2 })])),
+            talk("Kažem prodavačici", "Molim vas, jedan hleb.", art("shop", [who("seller", 190, 170, { s: 1.15, flip: true, at: [80, 80] }), prop("register", 190, 170, { s: 1.5 }), speaking(64), ...bubble(...MOUTH(64), { p: "bread" }, 1.3)])),
+            s("Dobijem hleb.", art("shop", [who("seller", 190, 170, { s: 1.15, flip: true, face: "happy" }), prop("register", 190, 170, { s: 1.5 }), me(70, Y, { pose: "hold", hold: holdP("bread", { s: 1.3 }), face: "happy", at: [150, 80] })])),
+            talk("Kažem", "Hvala, doviđenja!", art("shop", [who("seller", 196, 170, { s: 1.15, flip: true, pose: "wave", face: "happy" }), prop("register", 196, 170, { s: 1.5 }), speaking(64, { pose: "wave", hold: holdP("bread", { s: 1.1, hand: "l" }) }), ...bubble(...MOUTH(64), { p: "heart" }, 1.3)])),
         ],
     },
     {
@@ -515,7 +618,19 @@ export function buildSequenceLevel(level: number, { maxSteps, random = Math.rand
     }
     const longest = Math.max(...lengths);
     const shorter = shuffle(SEQUENCES.filter((sequence) => sequence.steps.length < longest && !picked.includes(sequence))).sort((a, b) => b.steps.length - a.steps.length);
-    return [...picked, ...shorter].slice(0, current.rounds);
+    const chosen = [...picked, ...shorter].slice(0, current.rounds);
+    // U svakom nivou je bar jedna rutina u kojoj dete nešto kaže (kad takva postoji za tu dužinu)
+    if (!chosen.some(hasTalk)) {
+        const talking = shuffle(SEQUENCES.filter((sequence) => hasTalk(sequence) && lengths.includes(sequence.steps.length)));
+        const slot = chosen.findIndex((sequence) => talking.some((other) => other.steps.length === sequence.steps.length));
+        if (slot >= 0) chosen[slot] = talking.find((other) => other.steps.length === chosen[slot].steps.length)!;
+    }
+    return shuffle(chosen);
+}
+
+/** Rutina sa korakom u kome dete nešto kaže */
+export function hasTalk(sequence: Sequence): boolean {
+    return sequence.steps.some((step) => step.say !== undefined);
 }
 
 export function getSequence(id: string): Sequence | undefined {

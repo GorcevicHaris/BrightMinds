@@ -562,6 +562,21 @@ const DRAWINGS: Record<DrawId, (tone?: string) => ReactNode> = {
             <path d="M-1.5 -46 Q0 -25 -1.5 -4" stroke="#ffffff" strokeWidth={1.4} opacity={0.7} />
         </g>
     ),
+    /** Oblačić govora (repić dole levo, vrh repića je u 0, 0); u oblačić se stavlja sličica onoga što dete kaže */
+    talk: () => (
+        <g>
+            <path d="M0 0 L6 -12 L14 -10Z" fill="#ffffff" {...line("#8a82f7", 1.6)} />
+            <rect x={-2} y={-42} width={48} height={32} rx={14} fill="#ffffff" {...line("#8a82f7", 1.8)} />
+            <path d="M5 -11 L13 -11" stroke="#ffffff" strokeWidth={2.4} />
+        </g>
+    ),
+    boxClosed: () => (
+        <g>
+            <rect x={-16} y={-18} width={32} height={18} rx={2} fill="#e3b06a" {...line("#a8783a")} />
+            <rect x={-18} y={-22} width={36} height={6} rx={2} fill="#eec080" {...line("#a8783a")} />
+            <path d="M0 -22 V0" stroke="#a8783a" strokeWidth={1.4} />
+        </g>
+    ),
     block: (tone = "#e8605a") => (
         <g>
             <rect x={-6} y={-12} width={12} height={12} rx={1.5} fill={tone} {...line("#00000033", 1)} />

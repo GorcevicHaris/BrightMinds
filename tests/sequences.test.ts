@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { buildSequenceLevel, SEQUENCES, SEQUENCE_MAX_LEVEL, sequenceRule } from "@/app/components/games/data/sequences";
+import { buildSequenceLevel, hasTalk, SEQUENCES, SEQUENCE_MAX_LEVEL, sequenceRule } from "@/app/components/games/data/sequences";
 import { DRAW_IDS, isArtFigure, type StepArtSpec } from "@/app/components/games/sequence/art";
 import { hasDrawing } from "@/app/components/games/sequence/drawings";
 import { hasBackground } from "@/app/components/games/scene/backgrounds";
@@ -38,7 +38,7 @@ describe("sequence game content", () => {
             const pictures = sequence.steps.map((step) => JSON.stringify(step.art));
             assert.equal(new Set(pictures).size, pictures.length, `${sequence.id}: repeated picture`);
             for (const step of sequence.steps) {
-                assert.match(step.text, /^[A-ZČĆŽŠĐ].*\.$/u, `${sequence.id}: ${step.text}`);
+                assert.match(step.text, /^[A-ZČĆŽŠĐ].*(\.|[.!?]”)$/u, `${sequence.id}: ${step.text}`);
                 assert.ok(step.art.items.length > 0, `${sequence.id}: ${step.text} has no picture`);
             }
         }
@@ -81,7 +81,7 @@ describe("sequence game content", () => {
         for (const sequence of SEQUENCES) {
             for (const step of sequence.steps) {
                 const second = step.text.replace(/\.$/, "").split(/\s+/)[1];
-                if (["se", "ga", "mu", "me", "je"].includes(second ?? "")) {
+                if (["se", "ga", "mu", "me", "mi", "je"].includes(second ?? "")) {
                     assert.ok(step.retell, `${sequence.id}: „${step.text}” needs a retell form`);
                     assert.ok(step.retell.startsWith(second + " "), `${sequence.id}: „${step.retell}”`);
                 }
@@ -94,6 +94,37 @@ describe("sequence game content", () => {
             for (const text of [sequence.title, ...sequence.steps.map((step) => step.text)]) {
                 assert.doesNotMatch(text, /\b(levo|desno|gore|dole|dodirni|klikni|pritisni)\b/iu, text);
                 assert.doesNotMatch(text, /(lijep|mjest|bijel|dijete|cvijet|vrijeme|prije|poslije|dvije|sjed)/u, text);
+            }
+        }
+    });
+});
+
+describe("communication inside routines", () => {
+    it("has at least six routines with a step where the child says a short sentence, of every length", () => {
+        const talking = SEQUENCES.filter(hasTalk);
+        assert.ok(talking.length >= 6, `${talking.length}`);
+        assert.deepEqual(new Set(talking.map((sequence) => sequence.steps.length)), new Set([2, 3, 4, 5]));
+        for (const sequence of talking) {
+            for (const step of sequence.steps.filter((item) => item.say)) {
+                // Rečenica je u navodnicima u tekstu koraka (glas je pročita), a na slici dete govori (oblačić)
+                assert.ok(step.text.endsWith(`„${step.say}”`), `${sequence.id}: ${step.text}`);
+                assert.match(step.say!, /^[A-ZČĆŽŠĐ].*[.!?]$/u, step.say);
+                assert.ok(step.say!.split(/\s+/).length <= 7, `${sequence.id}: the script is short`);
+                assert.ok(step.art.items.some((item) => !isArtFigure(item) && item.d === "talk"), `${sequence.id}: no speech bubble`);
+            }
+        }
+        // Konkretne rečenice iz svakodnevice
+        const scripts = talking.flatMap((sequence) => sequence.steps.map((step) => step.say).filter(Boolean));
+        for (const script of ["Dobro jutro!", "Molim vas, jedan hleb.", "Boli me ovde.", "Hvala!"]) assert.ok(scripts.includes(script), script);
+    });
+
+    it("puts a routine with a sentence to say in every level, for every age band", () => {
+        for (const band of ["young", "middle", "older"] as const) {
+            for (const level of LEVELS) {
+                for (const seed of [0.13, 0.5, 0.91]) {
+                    const built = buildSequenceLevel(level, { maxSteps: BAND_PRESETS[band].maxChoices, random: () => seed });
+                    assert.ok(built.some(hasTalk), `${band}, level ${level}`);
+                }
             }
         }
     });

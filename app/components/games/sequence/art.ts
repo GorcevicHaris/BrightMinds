@@ -93,6 +93,8 @@ export const DRAW_IDS = [
     "hand",
     "hands",
     "bigStream",
+    "talk",
+    "boxClosed",
 ] as const;
 export type DrawId = (typeof DRAW_IDS)[number];
 

@@ -92,10 +92,16 @@ function upperFirst(text: string): string {
     return text.charAt(0).toLocaleUpperCase("sr") + text.slice(1);
 }
 
-/** „Prvo obučem čarape.” — reči se/ga/mu/me/je ostaju na drugom mestu (`retell`) */
+/** „Prvo obučem čarape.” — reči se/ga/mu/me/je ostaju na drugom mestu (`retell`); rečenica sa navodnicima ostaje cela */
 export function retellPart(sequence: Sequence, index: number): string {
     const step = sequence.steps[index];
-    return `${upperFirst(positionWord(index, sequence.steps.length))} ${step.retell ?? lowerFirst(step.text.replace(/\.$/, ""))}.`;
+    const body = step.retell ?? lowerFirst(step.text.replace(/\.$/, ""));
+    return `${upperFirst(positionWord(index, sequence.steps.length))} ${body}${/[.!?”]$/.test(body) ? "" : "."}`;
+}
+
+/** Kad dete složi korak u kome nešto kaže: glas pročita korak i blago ponudi da i dete kaže rečenicu */
+function placedText(step: Sequence["steps"][number]): string {
+    return step.say ? `${step.text} Možeš i ti da kažeš: ${step.say}` : step.text;
 }
 
 /** Uputstvo za novi niz; kad je prvi korak dat kao primer, glas ga i imenuje */
@@ -281,7 +287,7 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
                 // Korak je na mestu: kratko se imenuje, pa pitanje za sledeće mesto
                 commit({ ...current, placed, wrong: [], picked: null, feedback: null, hint: false, helped }, `Na mestu ${placed}: ${sequence.steps[step].text}`);
                 playSfx("tap");
-                say(`${sequence.steps[step].text} ${questionFor(placed, total)}`);
+                say(`${placedText(sequence.steps[step])} ${questionFor(placed, total)}`);
                 return;
             }
             // Ceo niz je složen
@@ -438,6 +444,8 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
                                     <StepArt spec={step.art} female={female} className="aspect-[3/2] w-full rounded-xl" />
                                 </span>
                                 {captions && <span className="line-clamp-2 text-xs font-bold leading-tight sm:text-base">{step.text}</span>}
+                                {/* Korak u kome dete nešto kaže: oznaka oblačića u uglu */}
+                                {step.say && <TalkBadge />}
                                 {showHand && stepIndex === shown.placed && <DemoHand />}
                             </ChoiceCard>
                         );
@@ -448,6 +456,17 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
             {/* Kratko, da se raspored ne pomeri; ceo niz se čuje i vidi u mestima iznad */}
             <Feedback kind={shown.feedback} correctText="Složeno!" wrongText="Netačno. To dolazi kasnije." />
         </GameStage>
+    );
+}
+
+/** Mala oznaka „ovde se nešto kaže” na kartici koraka sa rečenicom */
+function TalkBadge() {
+    return (
+        <span aria-hidden="true" className="absolute -left-1.5 -top-1.5 z-10 grid h-7 w-7 place-items-center rounded-full bg-brand-500 text-white shadow-soft ring-2 ring-white sm:h-8 sm:w-8">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 sm:h-5 sm:w-5" fill="currentColor">
+                <path d="M4 5h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10l-5 4v-4H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z" />
+            </svg>
+        </span>
     );
 }
 
