@@ -419,6 +419,8 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip:
             "Pišite slova prstom po pesku, brašnu ili po leđima deteta, krupno i polako, i recite: „M kao mačka.” Prvo vi napišete, pa dete preko vašeg slova, pa samostalno. Dobro je početi od slova iz detetovog imena.",
+        ages: { min: 4, max: 10 },
+        order: 14,
         graded: true,
     },
     {
@@ -441,6 +443,8 @@ export const GAMES: GameDefinition[] = [
         },
         offscreenTip:
             "Tražite brojeve oko sebe: na liftu, satu, tablici kola, kalendaru — i pitajte: „Koji je ovo broj?” Pišite broj prstom po stolu i pored njega stavite toliko dugmića ili kockica. Na stepenicama brojite i pitajte: „Koji broj dolazi posle tri?”",
+        ages: { min: 4, max: 8 },
+        order: 15,
         graded: true,
     },
 ];
