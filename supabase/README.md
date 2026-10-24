@@ -122,8 +122,8 @@ pamti Supabase API (`notify pgrst, 'reload schema'`), pa nove kolone važe odmah
   fascikle supabase/migrations.” Čitanje radi i vraća prazna podešavanja, pa
   igra koristi preporuke za uzrast deteta;
 - **broj odgovora uz pomoć se ne čuva** — partija se i dalje snima sa svim
-  ostalim podacima (nivo, zvezdice, samostalno tačni i ukupni odgovori), a u
-  izvozu u CSV kolona „Uz pomoć” ostaje prazna.
+  ostalim podacima (nivo, zvezdice, samostalno tačni i ukupni odgovori), a
+  statistika ne prikazuje odgovore „uz pomoć”.
 
 Otključavanje nivoa ne zavisi od ove migracije: nivo otključava sledeći kada je
 dete bar polovinu zadataka rešilo samostalno (`correct_count / total_count`,
@@ -221,7 +221,6 @@ odeljka 7 migracije):
 | `user_children`: po `child_id` | `user_children_child_idx` (0001) |
 | `progress_logs`: statistika — `child_id`, `activity_id IN (…)`, najnovije prvo | `progress_logs_child_completed_idx` (0001) |
 | `progress_logs`: pogled `child_game_progress` i otključani nivoi bez pogleda — `child_id`, `activity_id` | `progress_logs_child_activity_idx` (0001) |
-| `progress_logs`: izvoz — `child_id`, strana po `id` | indeksi iz 0001 za filter; redosled u memoriji (redak, ručno pokrenut posao) |
 | `progress_logs`: odvezivanje partija kad se obriše poseta (`session_id`) | **novo** `progress_logs_session_idx` |
 | `progress_logs`: pražnjenje `recorded_by` kad se obriše nalog | **novo** `progress_logs_recorded_by_idx` |
 | `play_sessions`: po `id` (+ `child_id`) | primarni ključ |
@@ -242,7 +241,7 @@ ga planer upita ne koristi. Nije dodat ni indeks nad `progress_logs.activity_id`
   upisuje uz zapise te posete (`POST /api/activities/complete` tada vraća
   `sessionId: null`);
 - otključani nivoi se računaju čitanjem zapisa, po jedan upit za svaku igru;
-- statistika i izvoz čitaju raspoloženje iz zapisa.
+- statistika čita raspoloženje iz zapisa.
 
 Posle migracije stari zapisi i dalje važe: statistika raspoloženja broji **jedan
 izbor po poseti** za nove zapise, a po partiji samo za starije zapise bez posete.

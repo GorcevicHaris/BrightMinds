@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BookOpenText, Database, Gamepad2, Leaf } from "lucide-react";
 import { Alert } from "./ui/Card";
-import { Button, buttonClasses } from "./ui/Button";
+import { Button } from "./ui/Button";
 import { Select, Switch } from "./ui/Field";
 import { Modal } from "./ui/Modal";
 import {
@@ -343,11 +343,8 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                 )}
 
                 {tab === "data" && (
-                    <Section title="Podaci" hint="Rezultati igara pripadaju vama i detetu: možete ih preuzeti ili trajno obrisati.">
+                    <Section title="Podaci" hint="Rezultati igara pripadaju vama i detetu: možete ih trajno obrisati.">
                         <div className="flex flex-wrap items-center gap-2">
-                            <a href={`/api/children/${childId}/export`} download className={buttonClasses({ variant: "secondary", size: "sm" })}>
-                                Preuzmi rezultate (CSV)
-                            </a>
                             {!confirmErase ? (
                                 <Button variant="ghost" size="sm" onClick={() => setConfirmErase(true)} disabled={eraseState === "working"}>
                                     Obriši sve rezultate

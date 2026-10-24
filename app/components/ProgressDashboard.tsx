@@ -8,8 +8,8 @@
 // Aplikacija je vežbanka, ne terapija: nijedan tekst ovde ne sme da tvrdi suprotno.
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CalendarDays, Circle, CircleCheck, CircleDashed, Clock3, Download, Gamepad2, Info, Lightbulb, RefreshCw, Star, Target, type LucideIcon } from "lucide-react";
-import { Button, buttonClasses } from "@/app/components/ui/Button";
+import { CalendarDays, Circle, CircleCheck, CircleDashed, Clock3, Gamepad2, Info, Lightbulb, RefreshCw, Star, Target, type LucideIcon } from "lucide-react";
+import { Button } from "@/app/components/ui/Button";
 import { Alert, Card } from "@/app/components/ui/Card";
 import { Select } from "@/app/components/ui/Field";
 import { cn } from "@/lib/cn";
@@ -232,7 +232,7 @@ export default function ProgressDashboard({ childId, childName, audience = "pare
                 ) : isChild ? (
                     <ChildView data={data} childName={childName} />
                 ) : (
-                    <ParentView data={data} childId={childId} onRefresh={reload} isRefreshing={isLoading} />
+                    <ParentView data={data} onRefresh={reload} isRefreshing={isLoading} />
                 )}
             </div>
             {!isChild && (
@@ -457,12 +457,11 @@ const countChoices = (counts: MoodCounts) => MOODS.reduce((sum, mood) => sum + c
 
 interface ParentViewProps {
     data: ProgressResponse;
-    childId: number;
     onRefresh: () => void;
     isRefreshing: boolean;
 }
 
-function ParentView({ data, childId, onRefresh, isRefreshing }: ParentViewProps) {
+function ParentView({ data, onRefresh, isRefreshing }: ParentViewProps) {
     const [filter, setFilter] = useState<GameFilter>("all");
     const selected = filter === "all" ? undefined : data.games.find((game) => game.gameId === filter);
     const sessions =
@@ -480,15 +479,6 @@ function ParentView({ data, childId, onRefresh, isRefreshing }: ParentViewProps)
                 <GameFilterControl value={filter} onChange={setFilter} />
                 <div className="flex shrink-0 items-center gap-2">
                     <p className="mr-auto text-xs font-semibold text-ink-faint">Ažurirano u {updatedAt}</p>
-                    <a
-                        href={`/api/children/${childId}/export`}
-                        download
-                        title="Preuzmi sve rezultate kao tabelu (CSV)"
-                        className={buttonClasses({ variant: "secondary", size: "sm" })}
-                    >
-                        <Download className="h-4 w-4" aria-hidden="true" />
-                        CSV
-                    </a>
                     <Button variant="secondary" size="sm" onClick={onRefresh} isLoading={isRefreshing} aria-label="Osveži podatke" title={`Ažurirano u ${updatedAt}. Osveži podatke.`}>
                         {!isRefreshing && <RefreshCw className="h-4 w-4" aria-hidden="true" />}
                         <span className="hidden sm:inline">Osveži</span>

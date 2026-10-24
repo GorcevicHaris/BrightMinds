@@ -6,7 +6,6 @@ import jwt from "jsonwebtoken";
 import * as complete from "@/app/api/activities/complete/route";
 import * as me from "@/app/api/auth/me/route";
 import * as logout from "@/app/api/auth/logout/route";
-import * as childExport from "@/app/api/children/[id]/export/route";
 import * as progress from "@/app/api/children/[id]/progress/route";
 import * as child from "@/app/api/children/[id]/route";
 import * as settings from "@/app/api/children/[id]/settings/route";
@@ -54,7 +53,6 @@ const PARENT_ONLY: Endpoint[] = [
     { name: "DELETE /api/children/[id]", call: (id) => child.DELETE(jsonRequest("DELETE"), idParams(id)) },
     { name: "PUT /api/children/[id]/settings", call: (id) => settings.PUT(jsonRequest("PUT", { settings: { script: "cyrillic" } }), idParams(id)) },
     { name: "DELETE /api/children/[id]/progress", call: (id) => progress.DELETE(jsonRequest("DELETE"), idParams(id)) },
-    { name: "GET /api/children/[id]/export", call: (id) => childExport.GET(jsonRequest("GET"), idParams(id)) },
     { name: "POST /api/children/[id]/stories", call: (id) => stories.POST(jsonRequest("POST", storyBody), idParams(id)) },
     { name: "PUT /api/children/[id]/stories/[storyId]", call: (id) => story.PUT(jsonRequest("PUT", storyBody), storyParams(id)) },
     { name: "DELETE /api/children/[id]/stories/[storyId]", call: (id) => story.DELETE(jsonRequest("DELETE"), storyParams(id)) },

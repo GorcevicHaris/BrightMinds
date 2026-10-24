@@ -1,7 +1,7 @@
 // app/api/_lib/children.ts
 // Zajednički deo ruta za decu: oblik odgovora, provera ulaza, jedinstvenost PIN-a
 // i čitanje zapisa partija (progress_logs) i poseta (play_sessions) koje dele
-// rute za nivoe, statistiku i izvoz.
+// rute za nivoe i statistiku.
 import { ADVANCE_RATIO } from "@/lib/games";
 import { isUniqueViolation, noResult, supabaseAdmin, withSchemaFallback, type DbAttemptResult } from "@/lib/supabase";
 import {
@@ -199,7 +199,7 @@ export interface ProgressLogRow {
 }
 
 /**
- * Kolone zapisa partije koje čitaju statistika i izvoz (bez child_id i
+ * Kolone zapisa partije koje čita statistika (bez child_id i
  * recorded_by, koji su poznati iz upita). Baza bez migracije 0004 nema
  * session_id/passed — tada se čita `*` (videti `selectProgressLogs`).
  */
@@ -226,7 +226,7 @@ export const PLAY_SESSIONS_TABLE = "play_sessions";
 /** Ključ pod kojim `withSchemaFallback` pamti da tabela poseta ne postoji. */
 export const PLAY_SESSIONS_MEMO = "play_sessions";
 
-/** Raspoloženje jedne posete — ono što statistici i izvozu treba od `play_sessions`. */
+/** Raspoloženje jedne posete — ono što statistici treba od `play_sessions`. */
 export interface PlaySessionRow {
     id: number;
     mood_before: string | null;
