@@ -24,8 +24,9 @@ export interface FacePose {
 }
 
 export const FACE_POSES: Record<FaceExpression, FacePose> = {
-    neutral: { browY: 0, browTilt: 0, browLeft: 0, eye: 1, lid: 0.1, smile: 0.35, width: 1.0, open: 0, tilt: 0 },
-    happy: { browY: 0.0028, browTilt: 0.03, browLeft: 0, eye: 0.97, lid: 0.45, smile: 1, width: 1.36, open: 0.52, tilt: 0 },
+    // Mirno lice je blag zatvoren osmeh (ne ravna linija) sa opuštenim kapcima
+    neutral: { browY: 0, browTilt: 0.02, browLeft: 0, eye: 1, lid: 0.05, smile: 0.86, width: 1.05, open: 0, tilt: 0 },
+    happy: { browY: 0.0028, browTilt: 0.04, browLeft: 0, eye: 0.97, lid: 0.45, smile: 1, width: 1.3, open: 0.62, tilt: 0 },
     proud: { browY: 0.005, browTilt: 0.05, browLeft: 0, eye: 0.9, lid: 0.62, smile: 1, width: 1.38, open: 0.46, tilt: -0.03 },
     gentle: { browY: 0.001, browTilt: 0.08, browLeft: 0, eye: 0.92, lid: 0.3, smile: 0.7, width: 1, open: 0, tilt: 0.07 },
     curious: { browY: 0.002, browTilt: 0, browLeft: 0.005, eye: 1.06, lid: 0, smile: 0.3, width: 0.82, open: 0.08, tilt: -0.08 },

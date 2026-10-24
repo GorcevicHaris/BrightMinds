@@ -226,18 +226,20 @@ export function denimColor(): THREE.Texture {
 
 /** Dužica oka na sferi (ekvidistantna projekcija kao SphereGeometry): zenica gleda u +z */
 export function irisTexture(color: string): THREE.Texture {
-    return cached(`iris-${color}`, () => {
+    return cached(`iris2-${color}`, () => {
         const w = 512;
         const h = 256;
         const [el, ctx] = canvas(w, h);
         const image = ctx.createImageData(w, h);
         const base = new THREE.Color(color);
-        const dark = base.clone().multiplyScalar(0.5);
-        const light = base.clone().lerp(new THREE.Color("#FFFFFF"), 0.45);
-        const sclera = new THREE.Color("#F2EDE7");
+        const dark = base.clone().multiplyScalar(0.42);
+        const light = base.clone().lerp(new THREE.Color("#FFFFFF"), 0.5);
+        const ring = base.clone().multiplyScalar(0.18);
+        const pupil = new THREE.Color("#0C080A");
+        const sclera = new THREE.Color("#FBF9F6");
         const tmp = new THREE.Color();
         const IRIS = 0.66;
-        const PUPIL = 0.19;
+        const PUPIL = 0.17;
         for (let y = 0; y < h; y++) {
             const theta = ((y + 0.5) / h) * Math.PI;
             for (let x = 0; x < w; x++) {
@@ -248,24 +250,26 @@ export function irisTexture(color: string): THREE.Texture {
                 const angle = Math.acos(Math.max(-1, Math.min(1, dz)));
                 const around = Math.atan2(dy, dx);
                 if (angle < PUPIL) {
-                    tmp.set("#0E0A0C");
+                    tmp.copy(pupil);
                 } else if (angle < IRIS) {
                     const t = (angle - PUPIL) / (IRIS - PUPIL);
-                    const fibers = 0.5 + 0.5 * Math.sin(around * 38 + Math.sin(around * 7) * 2);
-                    tmp.copy(light).lerp(base, Math.min(1, t * 1.5)).lerp(dark, Math.pow(t, 4) * 0.6);
-                    // Tamni limbalni prsten na ivici dužice
-                    tmp.lerp(dark.clone().multiplyScalar(0.55), smoothstep01((t - 0.82) / 0.18) * 0.85);
-                    tmp.multiplyScalar(0.88 + fibers * 0.2 * (1 - t));
-                    // Tamniji gornji deo dužice (senka kapka) — oko deluje dublje
-                    if (dy > 0) tmp.multiplyScalar(1 - dy * 0.3);
+                    const fibers = 0.5 + 0.5 * Math.sin(around * 42 + Math.sin(around * 7) * 2.2);
+                    // Svetliji prsten oko zenice, čista boja u sredini, tamniji spoljni deo
+                    tmp.copy(light).lerp(base, smoothstep01(t * 1.7)).lerp(dark, Math.pow(t, 3) * 0.55);
+                    tmp.multiplyScalar(0.9 + fibers * 0.18 * (1 - t * 0.6));
+                    // Donji deo dužice svetliji (svetlo „ulazi” u oko), gornji u senci kapka
+                    if (dy < 0) tmp.lerp(light, Math.min(0.4, -dy * 0.55) * (1 - t));
+                    else tmp.multiplyScalar(1 - dy * 0.32);
+                    // Jasan tamni limbalni prsten na ivici dužice
+                    tmp.lerp(ring, smoothstep01((t - 0.8) / 0.16) * 0.92);
                     // Mekan prelaz ka zenici
-                    if (angle < PUPIL + 0.03) tmp.lerp(new THREE.Color("#0E0A0C"), 1 - (angle - PUPIL) / 0.03);
+                    if (angle < PUPIL + 0.025) tmp.lerp(pupil, 1 - (angle - PUPIL) / 0.025);
                 } else {
-                    const edge = Math.min(1, (angle - IRIS) / 0.05);
-                    tmp.copy(dark).lerp(sclera, edge);
-                    // Belo oka blago sivi ka uglovima, a pod gornjim kapkom je meka senka
-                    tmp.multiplyScalar(1 - Math.max(0, angle - 1.0) * 0.1);
-                    if (dy > 0.25) tmp.multiplyScalar(1 - (dy - 0.25) * 0.28);
+                    const edge = smoothstep01((angle - IRIS) / 0.04);
+                    tmp.copy(ring).lerp(sclera, edge);
+                    // Belo oka: čisto, samo blago toplije i tamnije ka uglovima i pod kapkom
+                    tmp.multiplyScalar(1 - Math.max(0, angle - 1.05) * 0.08);
+                    if (dy > 0.3) tmp.multiplyScalar(1 - (dy - 0.3) * 0.2);
                 }
                 const k = (y * w + x) * 4;
                 image.data[k] = tmp.r * 255;
@@ -277,6 +281,60 @@ export function irisTexture(color: string): THREE.Texture {
         ctx.putImageData(image, 0, 0);
         const texture = new THREE.CanvasTexture(el);
         texture.colorSpace = THREE.SRGBColorSpace;
+        texture.anisotropy = 4;
+        return texture;
+    });
+}
+
+/**
+ * Crtež lica u (u, v) glave (beo = bez promene, množi boju kože): pegice preko nosa i
+ * gornjeg dela obraza. `level` 1 = malo, 2 = više. Raspored je stalan (isti svaki put).
+ */
+export function faceTexture(skin: string, level: number): THREE.Texture {
+    return cached(`face-${skin}-${level}`, () => {
+        const w = 1024;
+        const h = 512;
+        const [el, ctx] = canvas(w, h);
+        const image = ctx.createImageData(w, h);
+        image.data.fill(255);
+        // Pegica je tamnija i toplija od kože; na tamnoj koži jedva primetna (kao u stvarnosti)
+        const tone = new THREE.Color(skin);
+        const hsl = { h: 0, s: 0, l: 0 };
+        tone.getHSL(hsl);
+        const strength = 0.25 + 0.4 * smoothstep01((hsl.l - 0.3) / 0.45);
+        const ink = [1 - strength * 0.85, 1 - strength * 1.05, 1 - strength * 1.15].map((c) => Math.max(0.2, c));
+        const count = level >= 2 ? 64 : 34;
+        let placed = 0;
+        for (let i = 0; placed < count && i < count * 40; i++) {
+            const a = hash(i, 3, 91);
+            const b = hash(i, 7, 93);
+            const pick = hash(i, 11, 97);
+            // Obrazi (dve grupe) i most nosa; u = 0,5 je sredina lica
+            const zone = pick < 0.2 ? 0 : pick < 0.6 ? 1 : -1;
+            const u = zone === 0 ? 0.5 + (a - 0.5) * 0.07 : 0.5 + zone * (0.045 + a * 0.085);
+            const v = zone === 0 ? 0.6 + b * 0.035 : 0.6 + b * 0.065 + Math.abs(u - 0.5) * 0.12;
+            // Gušće bliže nosu, ređe ka spolja
+            if (hash(i, 13, 99) > 1 - Math.abs(u - 0.5) * 3.2 && zone !== 0) continue;
+            placed++;
+            const r = 1.2 + hash(i, 17, 101) * 1.2;
+            const alpha = 0.45 + hash(i, 19, 103) * 0.35;
+            const cx = u * w;
+            const cy = v * h;
+            for (let py = Math.floor(cy - r - 1); py <= Math.ceil(cy + r + 1); py++) {
+                for (let px = Math.floor(cx - r - 1); px <= Math.ceil(cx + r + 1); px++) {
+                    const dist = Math.hypot(px + 0.5 - cx, py + 0.5 - cy);
+                    const k = alpha * (1 - smoothstep01((dist - r * 0.5) / (r * 0.6)));
+                    if (k <= 0 || px < 0 || py < 0 || px >= w || py >= h) continue;
+                    const o = (py * w + px) * 4;
+                    for (let c = 0; c < 3; c++) image.data[o + c] = Math.min(image.data[o + c], 255 * (1 - k * (1 - ink[c])));
+                }
+            }
+        }
+        ctx.putImageData(image, 0, 0);
+        const texture = new THREE.CanvasTexture(el);
+        texture.colorSpace = THREE.SRGBColorSpace;
+        // Crta se u (u, v) kako jeste: v = 0 je teme (gornji red slike)
+        texture.flipY = false;
         texture.anisotropy = 4;
         return texture;
     });

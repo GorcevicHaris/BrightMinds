@@ -117,7 +117,7 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
 function HudTeacher() {
     const teacher = React.useContext(GameTeacherContext);
     if (!teacher) return null;
-    return <SpeakingTeacher gender={teacher.gender} kind={teacher.kind} wear={teacher.wear} skin={teacher.skin} className="-my-1 h-14 w-14 sm:h-[4.5rem] sm:w-[4.5rem] short:sm:h-16 short:sm:w-16" />;
+    return <SpeakingTeacher gender={teacher.gender} kind={teacher.kind} wear={teacher.wear} skin={teacher.skin} className="-my-1 h-16 w-12 sm:h-20 sm:w-16 short:sm:h-16 short:sm:w-12" />;
 }
 
 // ── SpeakButton ───────────────────────────────────────────────────────────────

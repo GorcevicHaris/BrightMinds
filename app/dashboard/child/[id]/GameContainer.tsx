@@ -1042,8 +1042,8 @@ function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
             className="absolute inset-0 z-20 flex animate-fade flex-col items-center justify-center gap-6 bg-gradient-to-b from-sky-50 to-brand-50 p-6 text-center outline-none"
         >
             {teacher !== null && (
-                <span className="grid h-20 w-20 place-items-end overflow-hidden rounded-3xl bg-white/70 ring-2 ring-white">
-                    <Teacher gender={teacher ?? undefined} variant="portrait" emotion="gentle" className="h-full w-full" />
+                <span className="grid h-40 w-32 place-items-end overflow-hidden rounded-3xl bg-white/70 ring-2 ring-white sm:h-52 sm:w-40">
+                    <Teacher gender={teacher ?? undefined} variant="scene" emotion="gentle" className="h-full w-full" />
                 </span>
             )}
             <h2 className="font-display text-3xl font-extrabold text-ink sm:text-4xl">Pauza</h2>
@@ -1103,8 +1103,8 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-3">
                             {teacher !== null && (
-                                <span className={cn("grid h-16 w-16 shrink-0 place-items-end overflow-hidden rounded-2xl ring-1 sm:h-20 sm:w-20", game.accent.soft, game.accent.ring)}>
-                                    <Teacher gender={teacher} variant="portrait" className="h-full w-full" />
+                                <span className={cn("grid h-28 w-[5.5rem] shrink-0 place-items-end overflow-hidden rounded-2xl ring-1 sm:h-36 sm:w-28", game.accent.soft, game.accent.ring)}>
+                                    <Teacher gender={teacher} variant="scene" className="h-full w-full" />
                                 </span>
                             )}
                             <div className="min-w-0">
@@ -1248,8 +1248,8 @@ function MoodPicker({ title, teacher = null, onSelect }: MoodPickerProps) {
     return (
         <div className="mx-auto flex w-full max-w-2xl flex-1 animate-fade-up flex-col items-center justify-center text-center xl:max-w-4xl">
             {teacher !== null && (
-                <span className="mb-3 grid h-20 w-20 place-items-end overflow-hidden rounded-3xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-24 sm:w-24">
-                    <Teacher gender={teacher ?? undefined} variant="portrait" emotion="curious" className="h-full w-full" />
+                <span className="mb-3 grid h-32 w-[6.5rem] place-items-end overflow-hidden rounded-3xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-40 sm:w-32 short:h-24 short:w-20">
+                    <Teacher gender={teacher ?? undefined} variant="scene" emotion="curious" className="h-full w-full" />
                 </span>
             )}
             <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">{title}</h2>
@@ -1435,7 +1435,7 @@ function Teacher({
     className,
 }: {
     gender?: string;
-    variant?: "bust" | "face" | "full" | "portrait";
+    variant?: "bust" | "face" | "full" | "portrait" | "scene";
     emotion?: TeacherEmotion;
     action?: CompanionMove;
     /** false: bez pozadine iz prodavnice (crta je mesto oko drugara, preko cele širine) */
@@ -1448,7 +1448,8 @@ function Teacher({
         if (variant === "full") {
             return <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="full" background={background} emotion={emotion} action={action} actionKey={action} className={className} />;
         }
-        return <CompanionPicture kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} variant={variant === "face" ? "face" : variant === "bust" ? "bust" : "portrait"} background={background} emotion={emotion} className={className} eager />;
+        const picture = variant === "face" ? "face" : variant === "bust" ? "bust" : variant === "scene" ? "full" : "portrait";
+        return <CompanionPicture kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} variant={picture} background={background} emotion={emotion} className={className} eager />;
     }
-    return <TeacherAvatar gender={gender} variant={variant} emotion={emotion} action={action} className={className} />;
+    return <TeacherAvatar gender={gender} variant={variant === "scene" ? "full" : variant} emotion={emotion} action={action} className={className} />;
 }
