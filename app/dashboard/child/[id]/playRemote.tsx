@@ -27,7 +27,6 @@ import { COINS_PER_STAR } from "@/lib/companion";
 import { cn } from "@/lib/cn";
 import { MAX_LEVEL, getGame, type GameDefinition, type GameId } from "@/lib/games";
 import {
-    EMPTY_REMOTE_STATE,
     FRIEND_TIMEOUT_MS,
     HEARTBEAT_MS,
     isRemoteGame,
@@ -615,17 +614,9 @@ export function RemoteGuestEntry({ onDone, onBack }: { onDone: () => void; onBac
             <p className="min-h-6 text-center text-base font-extrabold text-sun-700" role="status" aria-live="polite">
                 {status === "checking" ? "Proveravam…" : message}
             </p>
-            <div className="flex flex-wrap gap-3">
-                <Button size="lg" variant="secondary" onClick={onBack}>
-                    Nazad
-                </Button>
-                {value.length > 0 && status !== "checking" && (
-                    <Button size="lg" variant="ghost" onClick={() => setValue([])}>
-                        <RotateCcw className="h-5 w-5" aria-hidden="true" />
-                        Ispočetka
-                    </Button>
-                )}
-            </div>
+            <Button size="lg" variant="secondary" onClick={onBack}>
+                Nazad
+            </Button>
         </div>
     );
 }
@@ -642,7 +633,7 @@ function CodePictures({ code }: { code: string[] }) {
                         <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-600 text-base font-extrabold text-white" aria-hidden="true">
                             {index + 1}
                         </span>
-                        <span className="relative block h-20 w-20 overflow-hidden rounded-2xl border-4 border-brand-500 bg-white shadow-soft min-[400px]:h-24 min-[400px]:w-24 sm:h-32 sm:w-32">
+                        <span className="relative block h-16 w-16 overflow-hidden rounded-2xl border-4 border-brand-500 bg-white shadow-soft min-[400px]:h-20 min-[400px]:w-20 sm:h-32 sm:w-32">
                             {item ? <Image src={item.image} alt={item.name} fill sizes="128px" className="object-cover" /> : null}
                         </span>
                         <span className="max-w-24 truncate text-sm font-extrabold text-ink sm:max-w-32 sm:text-base">{item?.name}</span>
