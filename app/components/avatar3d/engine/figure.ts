@@ -58,6 +58,11 @@ const BASE_ITEMS: Record<string, Partial<Record<"outfit" | "bottom" | "feet", st
     boy: { outfit: "majica-pruge", bottom: "farmerke", feet: "plave-patike" },
     woman: { outfit: "bordo-majica-dugi-rukav", bottom: "siroke-farmerke", feet: "krem-patike" },
     man: { outfit: "plava-polo-majica", bottom: "teget-pantalone", feet: "crno-bele-patike" },
+    // Porodica: tinejdžeri (duks/majica, farmerke, patike), nana (kardigan, duga suknja), dedo (košulja i prsluk)
+    teengirl: { outfit: "plavosivi-duks", bottom: "siroke-farmerke", feet: "bele-patike" },
+    teenboy: { outfit: "crna-majica", bottom: "tamne-farmerke", feet: "crno-bele-patike" },
+    grandma: { outfit: "beli-kardigan", bottom: "duga-suknja", feet: "mokasine" },
+    grandpa: { outfit: "kosulja-prsluk", bottom: "bez-pantalone", feet: "mokasine" },
 };
 
 /** Osnovna odeća čoveka (prototip motora) kad je mesto prazno — lik nikad nije neobučen */
@@ -66,6 +71,10 @@ const BASE: Record<string, Partial<Record<"outfit" | "bottom" | "feet", [string,
     boy: { outfit: ["majica", 1], bottom: ["trenerka", 1], feet: ["patike", 0] },
     woman: { outfit: ["dzemper", 1], bottom: ["farmerke", 2], feet: ["patike", 0] },
     man: { outfit: ["kosulja", 1], bottom: ["farmerke", 0], feet: ["patike", 3] },
+    teengirl: { outfit: ["dzemper", 1], bottom: ["farmerke", 2], feet: ["patike", 0] },
+    teenboy: { outfit: ["majica", 1], bottom: ["farmerke", 0], feet: ["patike", 0] },
+    grandma: { outfit: ["dzemper", 1], bottom: ["farmerke", 2], feet: ["patike", 0] },
+    grandpa: { outfit: ["kosulja", 1], bottom: ["farmerke", 0], feet: ["patike", 3] },
 };
 
 const PROTO = new Map<string, Item3D>(ITEMS_3D.map((item) => [item.id, item]));

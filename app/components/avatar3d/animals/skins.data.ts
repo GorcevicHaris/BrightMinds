@@ -6,10 +6,12 @@
 
 import type { AnimalKind, SkinData } from "../data";
 import { EXTRA_SKINS } from "./extra/skins.data";
+import { MORE_SKINS } from "./more/skins.data";
 
-/** Glavne vrste (ANIMAL_KINDS) i dodatne vrste (extra/skins.data.ts, #2b) */
+/** Glavne vrste (ANIMAL_KINDS), dodatne vrste (extra/skins.data.ts, #2b) i još životinja (more/skins.data.ts) */
 export const ANIMAL_SKINS: Record<AnimalKind, readonly SkinData[]> & Readonly<Record<string, readonly SkinData[]>> = {
     ...EXTRA_SKINS,
+    ...MORE_SKINS,
     cat: [
         { id: "narandzasta", label: "Narandžasta", price: 0 },
         { id: "siva", label: "Siva", price: 0 },

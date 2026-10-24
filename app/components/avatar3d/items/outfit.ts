@@ -141,6 +141,61 @@ registerItems("outfit", withBudgets([
     full("kostim-detektiva", (t) => C.detective(t)),
     full("kostim-naucnika", (t) => C.scientist(t)),
     full("kostim-bastovana", (t) => C.gardener(t)),
+    // ── Novo: porodica, škola, sport, praznik, zima, kiša, spavanje ──
+    item("zuta-majica-cvet", (t) => tee(t, { body: { color: "#FFD966" }, print: print("cvet-beli", T.flower("#FFFFFF", "#F2A516"), 0.9) })),
+    item("zelena-majica-drvo", (t) => tee(t, { body: { color: "#7CC98A" }, print: print("drvo-tamno", T.tree("#2E7D4F"), 0.9) })),
+    item("narandzasta-majica-riba", (t) => tee(t, { body: { color: "#FFA45C" }, print: print("riba-plava", T.fish("#3D86E0"), 0.95) })),
+    item("plava-majica-oblaci", (t) => tee(t, { body: { color: "#8CC8F2", map: patternTexture("oblaci-majica", "#8CC8F2", T.cloud("#FFFFFF"), { tile: 0.075, scale: 0.15 }) } })),
+    item("lila-majica-dugi-rukav", (t) => tee(t, { body: { color: "#C7B3EC", kind: "rib" }, sleeve: "long", neck: "scoop", print: print("srce-lila", T.heart("#8E77E6"), 0.5) })),
+    item("majica-sapice", (t) => tee(t, { body: { color: "#F4E3C8", map: patternTexture("sapice-majica", "#F4E3C8", T.paw("#A8703F"), { tile: 0.07, scale: 0.13, rotate: true }) }, trim: "#A8703F" })),
+    item("zelena-polo-majica", (t) => polo(t, { body: { color: "#3E9E6A" }, collar: "#FFFFFF", buttons: "#FFFFFF" })),
+    item("karirana-flanelska-kosulja", (t) => shirt(t, { body: { color: "#8A5A30", map: checkTexture("#9A6A40", "#4E3020", 0.06, "#E8C890"), kind: "fleece" } })),
+    item("plava-karirana-kosulja", (t) => shirt(t, { body: { color: "#4F86C6", map: checkTexture("#4F86C6", "#24426E", 0.055) } })),
+    item("skolska-kosulja-prsluk", (t) => {
+        shirt(t, { body: { color: "#FFFFFF" }, pocket: false, buttons: "#E8E8EC" });
+        vest(t, { body: { color: "#2E3A66", kind: "knit" }, buttons: "#FFFFFF", open: 0.14, trim: "#B8323A" });
+    }),
+    item("zuti-duks", (t) => hoodie(t, { body: { color: "#F7C948" }, strings: "#FFFFFF" })),
+    item("narandzasti-duks-rajsferslus", (t) => hoodie(t, { body: { color: "#F28B3C" }, zip: true })),
+    item("lila-duks-srce", (t) => hoodie(t, { body: { color: "#B9A2F2" }, print: print("srce-belo", T.heart("#FFFFFF"), 0.7) })),
+    item("dzemper-pletenica", (t) => sweater(t, { body: { color: "#EFE4CC" }, rib: "#DCCBA8", cable: true })),
+    item("bordo-dzemper", (t) => sweater(t, { body: { color: "#8E2F3A" }, rib: "#6E222C" })),
+    item("skolski-dzemper", (t) => sweater(t, { body: { color: "#2E3A66" }, rib: "#B8323A" })),
+    item("lila-kardigan", (t) => cardigan(t, { body: { color: "#B7A3D9" }, under: { color: "#FFFFFF" }, buttons: "#F2E2B0" })),
+    item("zeleni-kardigan", (t) => cardigan(t, { body: { color: "#5E9C76" }, under: { color: "#F4EFE4" }, buttons: "#8A5A30" })),
+    full("duga-svecana-haljina", (t) => dress(t, { body: { color: "#1F7A5C", kind: "satin" }, accent: "#E3B754", sleeve: "long", length: "maxi", bow: false })),
+    full("duga-lila-haljina", (t) => dress(t, { body: { color: "#C7B3EC", map: patternTexture("cvetici-lila", "#C7B3EC", T.flower("#FFFFFF", "#F2A516"), { tile: 0.06, scale: 0.13 }) }, accent: "#8E77E6", sleeve: "long", length: "maxi" })),
+    item("crveni-kaput", (t) => coat(t, { body: { color: "#C93A3F" }, length: "knee", buttons: "double", hood: true, accent: "#2A2A30" }), { thumb: { focus: "full", alone: false } }),
+    item("zuta-zimska-jakna", (t) => puffer(t, { body: { color: "#F7C948" } })),
+    item("ljubicasta-zimska-jakna", (t) => puffer(t, { body: { color: "#8E77E6" }, trim: "#6F58C4" })),
+    item("teget-pernata-jakna", (t) => pufferJacket(t, { body: { color: "#26304F" } })),
+    item("plava-kabanica", (t) => raincoat(t, { body: { color: "#3D86E0" }, trim: "#2C6BC0" }), { thumb: { focus: "full", alone: false } }),
+    item("zelena-kabanica", (t) => raincoat(t, { body: { color: "#4FBF6A" }, trim: "#2E9A50" }), { thumb: { focus: "full", alone: false } }),
+    item("roze-kabanica", (t) => raincoat(t, { body: { color: "#F78FB3" }, trim: "#E0709A" }), { thumb: { focus: "full", alone: false } }),
+    item("crveno-beli-dres", (t) => jersey(t, { body: { color: "#D94040", map: stripeTexture("#D94040", "#FFFFFF", 0.06, 0.45, true) }, trim: "#FFFFFF", number: printNumber("9", "#FFFFFF", "#9E2A2E") })),
+    item("plavo-beli-dres", (t) => jersey(t, { body: { color: "#2F6FC4", map: stripeTexture("#2F6FC4", "#FFFFFF", 0.06, 0.45, true) }, trim: "#FFFFFF", number: printNumber("5", "#FFFFFF", "#1F4A94") })),
+    item("zuti-dres", (t) => jersey(t, { body: { color: "#F7C948" }, trim: "#2E9A50", number: printNumber("11", "#2E9A50", "#FFFFFF"), front: motifTexture("lopta", T.soccer()) })),
+    item("teget-dres", (t) => jersey(t, { body: { color: "#26304F" }, trim: "#E3B754", neck: "crew", number: printNumber("8", "#FFFFFF", "#141A2E"), front: motifTexture("zvezda-zlatna", T.star("#E3B754")) })),
+    full("teget-trenerka", (t) => tracksuit(t, { color: "#2E3A66", stripe: "#FFD15C" })),
+    full("zelena-trenerka", (t) => tracksuit(t, { color: "#2E9A50", stripe: "#FFFFFF" })),
+    item("crvena-sportska-jakna", (t) => C.trackJacket(t, "#C93A3F", "#FFFFFF")),
+    full("pidzama-dino", (t) => pajamas(t, { body: { color: "#BFE3B0", map: patternTexture("dino-pidzama", "#BFE3B0", T.dino("#3E9E6A"), { tile: 0.08, scale: 0.15 }) }, piping: "#3E9E6A" })),
+    full("pidzama-pruge", (t) => pajamas(t, { body: { color: "#FFFFFF", map: stripeTexture("#FFFFFF", "#7FA7D9", 0.04, 0.4) }, piping: "#2E3A66" })),
+    full("pidzama-mace", (t) => pajamas(t, { body: { color: "#FFD9B8", map: patternTexture("mace-pidzama", "#FFD9B8", T.cat("#F28B3C"), { tile: 0.08, scale: 0.15 }) }, piping: "#F28B3C" })),
+    full("roze-spavacica", (t) => dress(t, { body: { color: "#FFC9D9", map: patternTexture("srca-spavacica", "#FFC9D9", T.heart("#FFFFFF"), { tile: 0.06, scale: 0.12, rotate: true }) }, accent: "#FFFFFF", sleeve: "long", length: "maxi", bow: false, flare: 0.9 })),
+    item("skolski-sako", (t) => {
+        shirtFront(t, "#FFFFFF", LAYER.top - 0.002);
+        C.blazer(t, "#7A1F2B");
+    }),
+    item("svecani-prsluk", (t) => {
+        shirt(t, { body: { color: "#FFFFFF" }, pocket: false, buttons: "#E8E8EC" });
+        vest(t, { body: { color: "#7A1F2B", kind: "satin" }, buttons: "#E3B754", open: 0.16, trim: "#E3B754" });
+    }),
+    item("bela-svecana-tunika", (t) => tee(t, { body: { color: "#FBF8F1", kind: "satin" }, sleeve: "long", length: 0.12, trim: "#E3B754" })),
+    full("zlatna-abaja", (t) => abaya(t, { body: { color: "#F2E6CF" }, accent: "#C9A55A" })),
+    full("zelena-abaja", (t) => abaya(t, { body: { color: "#2F7A5B" }, accent: "#E3B754" })),
+    full("ljubicasta-abaja", (t) => abaya(t, { body: { color: "#6E4FA8" }, accent: "#E8D29A" })),
+    full("plava-abaja", (t) => abaya(t, { body: { color: "#3F6FA8" }, accent: "#F2E2B0" })),
 ]));
 
 /** Manja gustina za kostime od više slojeva (da ostanu ≤ 24k trouglova) */
@@ -151,6 +206,9 @@ function withBudgets(list: ItemBuilder[]): ItemBuilder[] {
         "kostim-princa": 0.9, "kostim-astronauta": 0.95, "kostim-detektiva": 0.78, "kostim-naucnika": 0.8, "kostim-bastovana": 0.9,
         "teget-sako": 0.92, "beli-kardigan": 0.8, "zuti-kardigan": 0.8, "beli-pernati-prsluk": 0.8, "sivi-pernati-prsluk": 0.8,
         "teksas-jakna": 0.92, "dugi-kaput": 0.92, "dugi-teget-kaput": 0.92,
+        // Novo
+        "skolska-kosulja-prsluk": 0.85, "svecani-prsluk": 0.85, "lila-kardigan": 0.8, "zeleni-kardigan": 0.8, "dzemper-pletenica": 0.95,
+        "crveni-kaput": 0.88, "skolski-sako": 0.92,
     };
     return list.map((b) => {
         const k = budget[b.id];

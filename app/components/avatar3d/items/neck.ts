@@ -413,6 +413,13 @@ registerItems("neck", [
     neck("mindjuse-alke", (_n, ctx) => earrings(ctx, "hoop"), { withHijab: "hide", thumb: { focus: "face" } }),
     neck("mindjuse-srce", (_n, ctx) => earrings(ctx, "heart"), { withHijab: "hide", thumb: { focus: "face" } }),
     neck("ogrlica-kamencici", (n) => pendant(n, new THREE.OctahedronGeometry(0.01 * n.k, 0).scale(1, 1.3, 0.6), gem("#7FD3F7"), gold())),
+    // ── Novo: šalovi, marama, školska kravata, mašna, srebrna medalja ──
+    neck("crveni-sal", (n) => scarf(n, fabric("#C93A3F", "knit", { normalScale: 0.9 }), fabric("#B8323A", "knit", { normalScale: 0.9 }), fabric("#FFFFFF", "knit"))),
+    neck("zuti-sal", (n) => scarf(n, fabric("#F7C948", "knit", { normalScale: 0.9 }), fabric("#EBB83A", "knit", { normalScale: 0.9 }), fabric("#F2A516", "knit"))),
+    neck("zelena-marama", (n) => bandana(n, patterned("marama-zelena", dotsTexture("#3E9E6A", "#FFFFFF", 0.022, 0.12)), fabric("#3E9E6A", "cotton")), { withHijab: "hide" }),
+    neck("skolska-kravata", (n) => tie(n, patterned("kravata-skolska", tieStripes("#2E3A66", "#B8323A"), "satin"), fabric("#26304F", "satin"))),
+    neck("plava-leptir-masna", (n) => bowTie(n, fabric("#3D86E0", "satin", { roughness: 0.42 }), fabric("#2C6BC0", "satin")), { withHijab: "hide" }),
+    neck("srebrna-medalja", (n) => medal(n, "#2E9A50", "#FFFFFF", starShape(0.0155 * n.k, 0.0066 * n.k, 0.0018 * n.k), metal("#D5DCE6"))),
 ]);
 
 /** Pruge duge za šal (ponavljanje po dužini) */

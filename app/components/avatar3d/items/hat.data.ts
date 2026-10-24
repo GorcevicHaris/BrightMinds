@@ -47,4 +47,13 @@ export const ITEMS: readonly ItemData[] = [
     { id: "zelena-opustena-kapa", slot: "hat", label: "Maslinasta opuštena kapa", price: 6, group: "kape" },
     { id: "traka-za-kosu", slot: "hat", label: "Traka za kosu", price: 3, group: "za-kosu" },
     { id: "traka-marama", slot: "hat", label: "Traka-marama sa čvorom", price: 4, group: "za-kosu" },
+    // ── Novo (porodica, škola, sport, praznik, zima, kiša, spavanje) ──
+    { id: "bela-kapica", slot: "hat", label: "Bela kapica (takija)", price: 6, group: "kape" },
+    { id: "vezena-kapica", slot: "hat", label: "Vezena krem kapica", price: 7, group: "kape" },
+    { id: "teget-kapica", slot: "hat", label: "Teget kapica", price: 6, group: "kape" },
+    { id: "zuta-zimska-kapa", slot: "hat", label: "Žuta zimska kapa", price: 6, group: "kape" },
+    { id: "teget-zimska-kapa", slot: "hat", label: "Teget zimska kapa", price: 6, group: "kape" },
+    { id: "zuta-kapa-siltom", slot: "hat", label: "Žuta kapa sa šiltom", price: 6, group: "kape" },
+    { id: "lila-opustena-kapa", slot: "hat", label: "Lila opuštena kapa", price: 6, group: "kape" },
+    { id: "roze-traka-za-kosu", slot: "hat", label: "Roze traka za kosu", price: 3, group: "za-kosu" },
 ];

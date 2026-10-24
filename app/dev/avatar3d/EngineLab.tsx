@@ -10,7 +10,7 @@ import * as THREE from "three";
 import "@/app/components/avatar3d/engine/human";
 import "@/app/components/avatar3d/items";
 import "@/app/components/avatar3d/animals";
-import { isHumanKind, type CompanionKind, type Wear } from "@/app/components/avatar3d/data";
+import { HUMAN_KINDS, isHumanKind, type CompanionKind, type Wear } from "@/app/components/avatar3d/data";
 import { Figure } from "@/app/components/avatar3d/engine/figure";
 import { liveRenderer } from "@/app/components/avatar3d/engine/live";
 import { StageScene, type Framing } from "@/app/components/avatar3d/engine/scene";
@@ -33,7 +33,7 @@ export default function EngineLab() {
         const live = liveRenderer();
         if (!host || !live) return;
         const params = new URLSearchParams(window.location.search);
-        const kinds = (params.get("kinds") ?? "girl,boy,woman,man").split(",") as CompanionKind[];
+        const kinds = (params.get("kinds") ?? HUMAN_KINDS.join(",")).split(",") as CompanionKind[];
         const looks = (params.get("looks") ?? "").split(",");
         const poses = (params.get("pose") ?? "").split(",");
         const wear = parseWear(params.get("wear"));

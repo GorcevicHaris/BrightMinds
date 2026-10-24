@@ -8,7 +8,7 @@ import { footFn, torsoPoint } from "./body";
 import { hairCrown } from "./hair";
 import { Kit, SIDES, type GarmentContext, type Side } from "./kit";
 import { fabricMaterial, gemMaterial, glossyMaterial, leatherMaterial, lensMaterial, metalMaterial, skinMaterial } from "./materials";
-import { torsoWeights, type BodyShape } from "./rig";
+import { torsoWeights, youthOf, type BodyShape } from "./rig";
 import { buildSurface, polyPath, ringTube, smoothstep, taperedTube, type SurfaceFn } from "./surface";
 
 const gauss = (x: number, mu: number, s: number) => Math.exp(-((x - mu) ** 2) / (2 * s * s));
@@ -229,7 +229,7 @@ function hijab(kit: Kit<GarmentContext>, sw: Swatch) {
     const { head, rig, look } = kit.ctx;
     const shape = rig.shape;
     const cloth = fabricMaterial(sw.hex, "cotton", { roughness: 0.7, sheen: 0.8, sheenLift: 0.3, normalScale: 0.3, side: THREE.DoubleSide });
-    const child = shape.kind === "girl" || shape.kind === "boy";
+    const child = youthOf(shape.kind) > 0.5;
     // Otvor za lice: elipsa u (θ, v)
     const tw = child ? 1.1 : 1.04;
     const vc = 0.6;

@@ -33,8 +33,27 @@ export const SLOT_LABELS: Record<Slot, string> = {
 
 export type CompanionKind = CompanionKindId;
 
-export const HUMAN_KINDS = ["girl", "boy", "woman", "man"] as const;
+/** Ljudi, porodica: tinejdžeri, nana i dedo (isti motor i ista sidra kao ostali ljudi) */
+export const FAMILY_KINDS = ["teengirl", "teenboy", "grandma", "grandpa"] as const;
+export type FamilyKind = (typeof FAMILY_KINDS)[number];
+
+export const HUMAN_KINDS = ["girl", "boy", "woman", "man", ...FAMILY_KINDS] as const;
 export type HumanKind = (typeof HUMAN_KINDS)[number];
+
+/** Uzrast lika: lice (oči, nos, obrazi), građa i ponuda frizura zavise od njega */
+export type HumanAge = "child" | "teen" | "adult" | "senior";
+
+/** Osobine ljudskog lika: žensko (hidžab, trepavice) i uzrast */
+export const HUMAN_TRAITS: Record<HumanKind, { female: boolean; age: HumanAge }> = {
+    girl: { female: true, age: "child" },
+    boy: { female: false, age: "child" },
+    woman: { female: true, age: "adult" },
+    man: { female: false, age: "adult" },
+    teengirl: { female: true, age: "teen" },
+    teenboy: { female: false, age: "teen" },
+    grandma: { female: true, age: "senior" },
+    grandpa: { female: false, age: "senior" },
+};
 
 /** Osnovne životinje (animals/<vrsta>.ts, izgledi u animals/skins.data.ts) */
 export const ANIMAL_KINDS = ["cat", "dog", "bunny", "bear", "fox", "lion", "penguin", "unicorn"] as const;
@@ -46,6 +65,20 @@ export const EXTRA_ANIMAL_KINDS = [
     "pony", "frog", "hedgehog", "raccoon", "deer", "sheep", "hamster", "squirrel",
 ] as const;
 export type ExtraAnimalKind = (typeof EXTRA_ANIMAL_KINDS)[number];
+
+// ── Još životinja (animals/more/, izgledi u animals/more/skins.data.ts) ──
+/** Još životinja: vuk, zebra, nilski konj, krokodil, kengur… (redom kao u lib/companion.ts) */
+export const MORE_ANIMAL_KINDS = [
+    "wolf", "zebra", "hippo", "crocodile", "kangaroo", "cow", "pig", "goat", "duck",
+    "chicken", "parrot", "flamingo", "seal", "dolphin", "turtle", "beaver", "otter",
+    "mole", "alpaca", "rhino", "fennec", "cheetah", "leopard", "mouse", "bat", "dragon",
+] as const;
+export type MoreAnimalKind = (typeof MORE_ANIMAL_KINDS)[number];
+
+export function isMoreAnimalKind(kind: string): kind is MoreAnimalKind {
+    return (MORE_ANIMAL_KINDS as readonly string[]).includes(kind);
+}
+// ── kraj: još životinja ──
 
 export function isHumanKind(kind: string): kind is HumanKind {
     return (HUMAN_KINDS as readonly string[]).includes(kind);
@@ -65,6 +98,12 @@ export const COMPANION_LABELS: Record<CompanionKind, string> = {
     boy: "Dečak",
     woman: "Učiteljica",
     man: "Učitelj",
+    // ── Ljudi, porodica ──
+    teengirl: "Tinejdžerka",
+    teenboy: "Tinejdžer",
+    grandma: "Nana",
+    grandpa: "Dedo",
+    // ── Životinje ──
     cat: "Mačka",
     dog: "Pas",
     bunny: "Zeka",
@@ -89,6 +128,34 @@ export const COMPANION_LABELS: Record<CompanionKind, string> = {
     sheep: "Ovčica",
     hamster: "Hrčak",
     squirrel: "Veverica",
+    // ── Još životinja (animals/more/) ──
+    wolf: "Vuk",
+    zebra: "Zebra",
+    hippo: "Nilski konj",
+    crocodile: "Krokodil",
+    kangaroo: "Kengur",
+    cow: "Kravica",
+    pig: "Prase",
+    goat: "Kozica",
+    duck: "Patka",
+    chicken: "Kokica",
+    parrot: "Papagaj",
+    flamingo: "Flamingo",
+    seal: "Foka",
+    dolphin: "Delfin",
+    turtle: "Kornjača",
+    beaver: "Dabar",
+    otter: "Vidra",
+    mole: "Krtica",
+    alpaca: "Alpaka",
+    rhino: "Nosorog",
+    fennec: "Pustinjska lisica",
+    cheetah: "Gepard",
+    leopard: "Leopard",
+    mouse: "Mišić",
+    bat: "Slepi miš",
+    dragon: "Zmaj",
+    // ── kraj: još životinja ──
 };
 
 /** Proporcije tela: kroj odeće i kadar kamere zavise od njih */

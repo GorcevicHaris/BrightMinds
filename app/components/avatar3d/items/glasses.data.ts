@@ -25,4 +25,8 @@ export const ITEMS: readonly ItemData[] = [
     // Novo u 3D
     { id: "crne-suncane-naocare", slot: "glasses", label: "Crne sunčane naočare", price: 7, group: "naocare" },
     { id: "ovalne-suncane-naocare", slot: "glasses", label: "Ovalne sunčane naočare", price: 7, group: "naocare" },
+    // ── Novo (porodica, škola, sport, praznik, zima, kiša, spavanje) ──
+    { id: "naocare-za-citanje", slot: "glasses", label: "Naočare za čitanje", price: 5, group: "naocare" },
+    { id: "crvene-naocare", slot: "glasses", label: "Crvene naočare", price: 4, group: "naocare" },
+    { id: "zelene-suncane-naocare", slot: "glasses", label: "Zelene sunčane naočare", price: 6, group: "naocare" },
 ];

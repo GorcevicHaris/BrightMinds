@@ -26,4 +26,11 @@ export const ITEMS: readonly ItemData[] = [
     { id: "ogrlica-kamencici", slot: "neck", label: "Ogrlica sa kamenčićem", price: 7, group: "ogrlice" },
     { id: "mindjuse-alke", slot: "neck", label: "Minđuše alke", price: 6, group: "mindjuse" },
     { id: "mindjuse-srce", slot: "neck", label: "Minđuše sa srcem", price: 6, group: "mindjuse" },
+    // ── Novo (porodica, škola, sport, praznik, zima, kiša, spavanje) ──
+    { id: "crveni-sal", slot: "neck", label: "Crveni šal", price: 5, group: "marame" },
+    { id: "zuti-sal", slot: "neck", label: "Žuti šal", price: 5, group: "marame" },
+    { id: "zelena-marama", slot: "neck", label: "Zelena marama", price: 4, group: "marame" },
+    { id: "skolska-kravata", slot: "neck", label: "Školska kravata", price: 4, group: "masne" },
+    { id: "plava-leptir-masna", slot: "neck", label: "Plava leptir-mašna", price: 3, group: "masne" },
+    { id: "srebrna-medalja", slot: "neck", label: "Srebrna medalja sa zvezdom", price: 9, group: "ogrlice" },
 ];
