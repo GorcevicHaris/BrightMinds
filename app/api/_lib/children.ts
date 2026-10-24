@@ -87,6 +87,16 @@ export function storedSettings(row: Pick<ChildRow, "settings">): Record<string, 
     return isRecord(row.settings) ? row.settings : {};
 }
 
+/**
+ * Podešavanja za prikaz (roditeljski panel, GET podešavanja): bez poziva za igru sa drugom
+ * (`invite` — kod i ključ kanala, lib/invite.ts), koji nisu podešavanja i ne izlaze odavde.
+ */
+export function publicSettings(row: Pick<ChildRow, "settings">): Record<string, unknown> {
+    const { invite: _invite, ...rest } = storedSettings(row);
+    void _invite;
+    return rest;
+}
+
 /** Eksplicitno mapiranje — interne kolone (npr. last_login_at) ne izlaze iz API-ja. */
 export function toChild(row: ChildRow): Child {
     return {
@@ -100,7 +110,7 @@ export function toChild(row: ChildRow): Child {
         streak: row.streak ?? 0,
         experience_points: row.experience_points ?? 0,
         created_at: row.created_at ?? null,
-        settings: storedSettings(row),
+        settings: publicSettings(row),
     };
 }
 
