@@ -315,7 +315,8 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
             <GamePrompt
                 key={`prompt-${shown.round}`}
                 className="animate-fade-up"
-                compact
+                // Uz četiri slike (dva reda na telefonu) slika je manja, da sve stane bez pomeranja
+                compact={count > 3}
                 illustration={<FoodScene key={solved ? "eat" : "ask"} animal={picture.animal} food={picture.food} mode={picture.mode} calm={calm} className="block h-auto w-full" />}
                 title={question}
             />
@@ -340,9 +341,9 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
                                 className={cn("animate-pop flex-col gap-1 px-1.5 sm:gap-2", count <= 3 ? "min-h-32 sm:min-h-52" : "min-h-28 sm:min-h-48")}
                             >
                                 {animals ? (
-                                    <AnimalPicture id={id as AnimalId} className={cn("aspect-square w-auto", count <= 3 ? "h-[clamp(4.5rem,15dvh,9.5rem)]" : "h-[clamp(3.5rem,10dvh,7.5rem)]")} />
+                                    <AnimalPicture id={id as AnimalId} className={cn("aspect-square w-auto", count <= 3 ? "h-[clamp(4.5rem,15dvh,9.5rem)]" : "h-[clamp(3.5rem,11.5dvh,8rem)]")} />
                                 ) : (
-                                    <FoodPicture id={id as FoodId} className={cn("aspect-square w-auto", count <= 3 ? "h-[clamp(4.5rem,14dvh,9rem)]" : "h-[clamp(3.25rem,9.5dvh,7rem)]")} />
+                                    <FoodPicture id={id as FoodId} className={cn("aspect-square w-auto", count <= 3 ? "h-[clamp(4.5rem,14dvh,9rem)]" : "h-[clamp(3.25rem,10.5dvh,7.5rem)]")} />
                                 )}
                                 {/* Natpis je za odrasle i decu koja čitaju */}
                                 <span className="text-base leading-tight sm:text-xl">{name}</span>
@@ -423,7 +424,12 @@ function FeedBoard({ view, hinted, calm, disabled, onSelect, onGive }: FeedBoard
 
     const onPointerDown = (event: ReactPointerEvent<HTMLButtonElement>, food: string) => {
         if (disabled || view.fed.includes(food) || (event.pointerType === "mouse" && event.button !== 0)) return;
-        event.currentTarget.setPointerCapture?.(event.pointerId);
+        // Prst „drži” hranu i kad izađe iz kartice (na nekim pregledačima hvatanje nije moguće — tada bez njega)
+        try {
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+        } catch {
+            /* bez hvatanja: događaji i dalje stižu dok je prst nad karticom */
+        }
         drag.current = { food, pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, moved: false };
         point.current = { x: event.clientX, y: event.clientY };
     };
@@ -492,12 +498,17 @@ function FeedBoard({ view, hinted, calm, disabled, onSelect, onGive }: FeedBoard
                 })}
             </div>
 
-            <div role="group" aria-label="Hrana" className="flex flex-wrap items-center justify-center gap-3 rounded-card border-2 border-dashed border-line bg-surface/70 p-2 sm:gap-5 sm:p-3">
+            <div
+                role="group"
+                aria-label="Hrana"
+                className={cn("mx-auto grid w-full gap-3 rounded-card border-2 border-dashed border-line bg-surface/70 p-2 sm:gap-5 sm:p-3", count === 2 ? "max-w-xs grid-cols-2 sm:max-w-sm" : "max-w-sm grid-cols-3 sm:max-w-md")}
+            >
                 {view.choices.map((id) => {
                     const food = getFood(id);
                     if (!food) return null;
                     const fed = view.fed.includes(id);
-                    if (fed) return <span key={id} aria-hidden="true" className="h-[clamp(4rem,11dvh,7.5rem)] w-[clamp(4rem,11dvh,7.5rem)] rounded-tile border-2 border-dashed border-line/70" />;
+                    // Prazno mesto u korpi: ostale hrane ostaju gde su bile
+                    if (fed) return <span key={id} aria-hidden="true" className="min-h-20 rounded-tile border-2 border-dashed border-line/70" />;
                     const selected = view.selected === id;
                     const state: ChoiceState = selected ? "selected" : hinted?.food === id ? "hint" : "idle";
                     return (
@@ -512,7 +523,7 @@ function FeedBoard({ view, hinted, calm, disabled, onSelect, onGive }: FeedBoard
                             onPointerMove={onPointerMove}
                             onPointerUp={onPointerUp}
                             onPointerCancel={reset}
-                            className={cn("min-h-0 w-auto touch-none flex-col gap-0.5 p-1.5 sm:p-2", dragging === id && "opacity-40")}
+                            className={cn("touch-none flex-col gap-0.5 p-1.5 sm:p-2", dragging === id && "opacity-40")}
                         >
                             <FoodPicture id={food.id} className="pointer-events-none h-[clamp(3rem,8.5dvh,6rem)] w-[clamp(3rem,8.5dvh,6rem)]" />
                             <span className="pointer-events-none text-sm leading-tight sm:text-base">{food.name}</span>

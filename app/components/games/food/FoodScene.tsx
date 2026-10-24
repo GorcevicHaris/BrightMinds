@@ -69,12 +69,12 @@ export function AnimalEating({ animal, food, mode, calm }: { animal: AnimalId; f
     const [mx, my] = art.mouth;
     const animate = eating && !calm;
     // Hrana malo ispod usta, da se lice i dalje vidi
-    const size = animal === "bee" || animal === "bird" || animal === "chicken" ? 24 : 28;
+    const size = animal === "bee" || animal === "bird" || animal === "chicken" ? 28 : 34;
     return (
         <g>
             <g className={animate ? "fj-chew" : undefined}>{art.draw(eating)}</g>
             {eating && (
-                <g transform={`translate(${mx} ${my + size * 0.28})`}>
+                <g transform={`translate(${mx} ${my + size * 0.12})`}>
                     <g className={animate ? "fj-food" : undefined}>
                         <FoodAt id={food} x={0} y={0} size={size} />
                     </g>

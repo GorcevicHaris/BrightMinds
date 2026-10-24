@@ -32,6 +32,9 @@ import {
     type FoodRound,
     type FoodView,
 } from "@/app/components/games/data/foodItems";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import FoodGame from "@/app/components/games/FoodGame";
 import { ANIMAL_ART } from "@/app/components/games/food/animals";
 import { FOOD_ART } from "@/app/components/games/food/foods";
 import { existsSync, readFileSync } from "node:fs";
@@ -401,6 +404,39 @@ describe("food game live monitor state", () => {
         assert.deepEqual(feed.wrong, ["bamboo>rabbit"]);
         // Pitanje se ponovo gradi iz podataka, pa monitor prikazuje isti tekst kao dete
         assert.equal(roundQuestion(feed), "Daj svakoj životinji njenu hranu.");
+    });
+});
+
+describe("food game on the parent's live monitor", () => {
+    const render = (monitorState: Partial<FoodView>) =>
+        renderToStaticMarkup(createElement(FoodGame, { childId: 0, level: 13, isMonitor: true, monitorState, onComplete: () => {} }));
+
+    it("draws the question with the same pictures the child sees", () => {
+        const html = render({ kind: "what", animal: "rabbit", answer: "carrot", choices: ["carrot", "bone"], round: 2, totalRounds: 5 });
+        assert.match(html, /Šta jede zeka\?/);
+        assert.match(html, /aria-label="Šargarepa"/);
+        assert.match(html, /aria-label="Kost"/);
+    });
+
+    it("draws the feeding board with the animal that has already eaten", () => {
+        const html = render({
+            kind: "feed",
+            choices: ["bamboo", "carrot"],
+            pairs: [
+                { animal: "panda", food: "bamboo" },
+                { animal: "rabbit", food: "carrot" },
+            ],
+            fed: ["carrot"],
+            round: 3,
+            totalRounds: 8,
+        });
+        assert.match(html, /aria-label="Zeka, zeka jede šargarepu\."/);
+        assert.match(html, /aria-label="Bambus"/);
+        assert.doesNotMatch(html, /aria-label="Šargarepa"/);
+    });
+
+    it("waits quietly when the state is garbage", () => {
+        assert.match(render({ kind: "feed", choices: ["pizza"] } as never), /Čekamo prvo pitanje/);
     });
 });
 
