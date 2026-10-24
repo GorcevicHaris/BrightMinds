@@ -53,4 +53,17 @@ export const SETS: readonly SetData[] = [
     { id: "plivanje", label: "Plivanje", items: { glasses: "plivacke-naocare", outfit: "kupaci-dugi", feet: "peraja", hand: "lopta", pet: "patkica", background: "plaza" } },
     { id: "jesenja-setnja", label: "Jesenja šetnja", items: { neck: "sal", outfit: "zuti-kardigan", bottom: "karirana-suknja", feet: "cizme-krzno", hand: "suncokret", background: "suma" } },
     { id: "slikarka", label: "Mala umetnica", items: { hat: "traka-cvet", outfit: "teksas-kombinezon", feet: "crvene-patike", hand: "bojica", background: "livada" } },
+    // ── Novo: škola, praznik, planinarenje, more, sport, muzika, zima, kiša, porodica ──
+    { id: "skolska-uniforma", label: "Školska uniforma", items: { neck: "skolska-kravata", outfit: "skolska-kosulja-prsluk", bottom: "sive-pantalone", feet: "crne-mokasine", back: "zeleni-ranac", hand: "globus", background: "grad" } },
+    { id: "bajram", label: "Bajram", items: { outfit: "zlatna-abaja", neck: "ogrlica-perle", feet: "bele-sandale-cvet", hand: "fenjer", background: "vasar" } },
+    { id: "praznik", label: "Praznik", items: { hat: "vezena-kapica", outfit: "svecani-prsluk", bottom: "teget-pantalone", feet: "crne-mokasine", hand: "poklon", background: "vasar" } },
+    { id: "planinar", label: "Planinar", items: { hat: "zuta-kapa-siltom", outfit: "plava-karirana-kosulja", bottom: "planinarske-pantalone", feet: "planinarske-cipele", back: "planinarski-ranac", hand: "stap-za-planinarenje", background: "suma" } },
+    { id: "letovanje", label: "Letovanje", items: { glasses: "zelene-suncane-naocare", outfit: "narandzasta-majica-riba", bottom: "zuti-sportski-sorc", feet: "plave-sandale", hand: "fudbalska-lopta", pet: "ribica", background: "plaza" } },
+    { id: "sportista", label: "Sportista", items: { neck: "srebrna-medalja", outfit: "crveno-beli-dres", bottom: "crveni-sportski-sorc", feet: "crveno-bele-patike", hand: "fudbalska-lopta", background: "park" } },
+    { id: "muzicar-2", label: "Mali bend", items: { hat: "lila-opustena-kapa", glasses: "crvene-naocare", outfit: "lila-duks-srce", bottom: "teget-trenerke", feet: "lila-patike", hand: "ukulele", background: "vasar" } },
+    { id: "zimska-carolija", label: "Zimska čarolija", items: { hat: "zuta-zimska-kapa", neck: "zuti-sal", outfit: "ljubicasta-zimska-jakna", bottom: "tamne-farmerke", feet: "sive-cizme-krzno", background: "zimski-dan" } },
+    { id: "kisna-setnja", label: "Kišna šetnja", items: { outfit: "zelena-kabanica", bottom: "farmerke", feet: "zelene-gumene-cizme", hand: "roze-kisobran", pet: "patkica", background: "park" } },
+    { id: "laku-noc-dino", label: "Laku noć, dinosauruse", items: { outfit: "pidzama-dino", feet: "papuce-zabice", hand: "knjiga-prica", background: "soba" } },
+    { id: "kod-nane", label: "Kod nane", items: { glasses: "naocare-za-citanje", outfit: "lila-kardigan", bottom: "duga-bez-suknja", feet: "bordo-mokasine", hand: "crvena-knjiga", background: "livada" } },
+    { id: "sa-dedom", label: "Šetnja sa dedom", items: { hat: "teget-kapica", glasses: "naocare-za-citanje", outfit: "karirana-flanelska-kosulja", bottom: "smedje-pantalone", feet: "crne-mokasine", hand: "autic", background: "park" } },
 ];

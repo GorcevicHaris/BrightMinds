@@ -69,4 +69,16 @@ registerItems("bottom", [
     skirtItem("duga-cvetna-suknja", { cloth: { color: "#F2A7C0", map: patternTexture("cvet-roze", "#F2A7C0", MOTIFS.flower("#FFFFFF", "#F2A516"), { tile: 0.075, scale: 0.2 }) }, style: "maxi" }),
     skirtItem("ljubicasta-duga-suknja", { cloth: { color: "#8E77E6", kind: "satin" }, style: "maxi", trim: "#E3B754" }),
     skirtItem("suknja-na-volane", { cloth: { color: "#7ED6F2", map: patternTexture("cvet-plavi", "#7ED6F2", MOTIFS.flower("#FFFFFF", "#FFD15C"), { tile: 0.07, scale: 0.2 }) }, style: "tiered", length: "midi" }),
+    // ── Novo: škola, sport, planinarenje, duge suknje ──
+    trousers("sive-pantalone", { cloth: { color: "#7E848F", kind: "cotton" }, stitch: "#666B75" }),
+    trousers("smedje-pantalone", { cloth: { color: "#7A5638", kind: "cotton" }, stitch: "#5E3F27" }),
+    trousers("planinarske-pantalone", { cloth: { color: "#8C7B5E", kind: "cotton" }, fit: "cargo", stitch: "#6E5F45", cuff: true }),
+    trousers("teget-trenerke", { cloth: { color: "#2E3A66", kind: "fleece" }, fit: "jogger", stripe: "#FFD15C" }),
+    trousers("crveni-sportski-sorc", { cloth: { color: "#D94040", kind: "mesh" }, length: 0.38, elastic: true, stripe: "#FFFFFF", pockets: false }),
+    trousers("zuti-sportski-sorc", { cloth: { color: "#F7C948", kind: "mesh" }, length: 0.38, elastic: true, stripe: "#2E9A50", pockets: false }),
+    skirtItem("siva-plisirana-suknja", { cloth: { color: "#8A8F99", kind: "felt" }, style: "pleated", length: "knee" }),
+    skirtItem("teget-plisirana-suknja", { cloth: { color: "#2E3A66", kind: "felt" }, style: "pleated", length: "knee" }),
+    skirtItem("duga-teget-suknja", { cloth: { color: "#2E3A66", kind: "satin" }, style: "maxi" }),
+    skirtItem("duga-bez-suknja", { cloth: { color: "#D8C3A0", kind: "cotton" }, style: "maxi", trim: "#B89A6E" }),
+    skirtItem("duga-zelena-suknja", { cloth: { color: "#4E8C6A", kind: "satin" }, style: "maxi" }),
 ]);

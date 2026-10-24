@@ -1,11 +1,11 @@
-// Novi ljudski drugari (tinejdžerka, tinejdžer, nana, dedo) i novi izgledi: drugari su na
+// Novi ljudski drugari (tinejdžerka, tinejdžer, nana, dedo), novi izgledi i nova roba: drugari su na
 // spisku i u motoru, izgled je uvek besplatan, stari id-jevi izgleda važe kao pre, a svaka
 // frizura, brada i hidžab se sagrade na svakom čoveku (sa kapom i bez) bez NaN koordinata.
 import { describe, it, before } from "node:test";
 import assert from "node:assert/strict";
 import { installFakeCanvas } from "./setup/fakeCanvas";
 import { COMPANION_LABELS, FAMILY_KINDS, HUMAN_KINDS, HUMAN_TRAITS, isHumanKind } from "@/app/components/avatar3d/data";
-import { skinPrice } from "@/app/components/avatar3d/manifest";
+import { ITEMS, SETS, getItem, getSet, skinPrice } from "@/app/components/avatar3d/manifest";
 import {
     BEARDS,
     EYE_COLORS,
@@ -38,8 +38,10 @@ const OLD_HAIR = ["crna", "smedja", "kestenjasta", "plava", "rida", "seda"];
 
 type Human = typeof import("@/app/components/avatar3d/engine/human");
 type Contract = typeof import("@/app/components/avatar3d/contract");
+type Harness = typeof import("@/app/components/avatar3d/items/dev/harness");
 let human: Human;
 let contract: Contract;
+let harness: Harness;
 
 function finite(object: { traverse: (f: (o: unknown) => void) => void }, label: string) {
     object.traverse((o) => {
@@ -54,6 +56,9 @@ describe("3D porodica: tinejdžeri, nana i dedo", () => {
     before(async () => {
         contract = await import("@/app/components/avatar3d/contract");
         human = await import("@/app/components/avatar3d/engine/human");
+        harness = await import("@/app/components/avatar3d/items/dev/harness");
+        await import("@/app/components/avatar3d/items/index");
+        await import("@/app/components/avatar3d/animals/index");
     });
 
     it("novi drugari su na spisku, odmah posle ljudi, sa nazivima i u motoru", () => {
@@ -157,4 +162,68 @@ describe("3D porodica: tinejdžeri, nana i dedo", () => {
         assert.ok(height("grandma") < height("woman") && height("grandma") > height("teengirl") - 0.1);
         assert.ok(height("grandpa") < height("man"));
     });
+
+    it("novi predmeti prodavnice: uniforma, sport, praznik, zima, kiša, spavanje, obuća, kape, ruke, leđa", () => {
+        assert.ok(ITEMS.length >= 437, `ukupno ${ITEMS.length}`);
+        for (const [id, slot] of NEW_SAMPLE) {
+            const item = getItem(id);
+            assert.equal(item?.slot, slot, id);
+            assert.ok(Number.isInteger(item!.price) && item!.price >= 3 && item!.price <= 30, id);
+            assert.ok(contract.itemBuilder(id), `${id} nema 3D crtež`);
+        }
+        // Kapica (takija) je kapa; svečane abaje i duge haljine pokrivaju noge (skromno)
+        assert.equal(getItem("bela-kapica")?.group, "kape");
+        for (const id of ["zlatna-abaja", "zelena-abaja", "duga-svecana-haljina", "duga-lila-haljina"]) assert.deepEqual(getItem(id)?.hides, ["bottom"], id);
+    });
+
+    it("novi kompleti (škola, Bajram, praznik, planinar, letovanje, sportista, mali bend…) koriste prave predmete", () => {
+        const ids = ["skolska-uniforma", "bajram", "praznik", "planinar", "letovanje", "sportista", "muzicar-2", "zimska-carolija", "kisna-setnja", "laku-noc-dino", "kod-nane", "sa-dedom"];
+        for (const id of ids) {
+            const set = getSet(id);
+            assert.ok(set, id);
+            for (const [slot, item] of Object.entries(set.items)) assert.equal(getItem(item!)?.slot, slot, `${id}/${item}`);
+        }
+        assert.ok(SETS.length >= 58);
+    });
+
+    it("novi kompleti se obuku na tinejdžerku, dedu i druge životinje (slon, žirafa, sova, dinosaurus, ježić, žaba) bez NaN", () => {
+        const sets = ["skolska-uniforma", "bajram", "praznik", "planinar", "sportista", "zimska-carolija", "kisna-setnja", "kod-nane"];
+        for (const kind of ["teengirl", "grandpa", "elephant", "giraffe", "owl", "dinosaur", "hedgehog", "frog"] as const) {
+            const plain = harness.buildTestFigure(kind, { hat: false });
+            const hatted = harness.buildTestFigure(kind, { hat: true });
+            for (const id of sets) {
+                for (const [slot, item] of Object.entries(getSet(id)!.items)) {
+                    if (slot === "pet" || slot === "background") continue;
+                    const worn = harness.wearItem(slot === "hat" ? hatted : plain, item!, { [slot]: item }, "low");
+                    assert.ok(worn, `${item} na ${kind}`);
+                    for (const object of worn.objects) finite(object, `${item} na ${kind}`);
+                    harness.takeOff(worn);
+                }
+            }
+        }
+    });
+
+    it("kape se nose preko hidžaba nane i tinejdžerke (takija, zimska kapa, šilt)", () => {
+        for (const kind of ["grandma", "teengirl"] as const) {
+            const figure = harness.buildTestFigure(kind, { hat: true, hijab: HIJAB_COLORS[0].hex });
+            assert.ok(figure.hijab, kind);
+            for (const id of ["bela-kapica", "zuta-zimska-kapa", "zuta-kapa-siltom", "roze-traka-za-kosu"]) {
+                const worn = harness.wearItem(figure, id, { hat: id }, "low");
+                assert.ok(worn, `${id} na ${kind}`);
+                for (const object of worn.objects) finite(object, `${id} na ${kind}`);
+                harness.takeOff(worn);
+            }
+        }
+    });
 });
+
+/** Uzorak novih predmeta po mestu (svaki mora postojati, imati crtež i stalnu cenu) */
+const NEW_SAMPLE: [string, string][] = [
+    ["skolska-kosulja-prsluk", "outfit"], ["skolski-dzemper", "outfit"], ["skolski-sako", "outfit"], ["crveno-beli-dres", "outfit"], ["teget-trenerka", "outfit"],
+    ["zlatna-abaja", "outfit"], ["svecani-prsluk", "outfit"], ["duga-svecana-haljina", "outfit"], ["zuta-zimska-jakna", "outfit"], ["plava-kabanica", "outfit"],
+    ["pidzama-dino", "outfit"], ["lila-kardigan", "outfit"], ["siva-plisirana-suknja", "bottom"], ["duga-teget-suknja", "bottom"], ["planinarske-pantalone", "bottom"],
+    ["planinarske-cipele", "feet"], ["mint-patike", "feet"], ["zelene-gumene-cizme", "feet"], ["plave-sandale", "feet"], ["crne-mokasine", "feet"],
+    ["bela-kapica", "hat"], ["vezena-kapica", "hat"], ["zuta-zimska-kapa", "hat"], ["naocare-za-citanje", "glasses"], ["skolska-kravata", "neck"], ["crveni-sal", "neck"],
+    ["fudbalska-lopta", "hand"], ["ukulele", "hand"], ["tamburin", "hand"], ["fenjer", "hand"], ["globus", "hand"], ["stap-za-planinarenje", "hand"],
+    ["planinarski-ranac", "back"], ["krila-flaminga", "back"], ["zeleni-ranac", "back"],
+];

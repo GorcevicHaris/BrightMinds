@@ -45,6 +45,11 @@ const clearLens = () => glass("#E8F2FF", 0.14);
 /** Okrugle naočare */
 const round = (hex: string) => (e: EyeFit) => spectacles(e, ellipse(e.er * 1.12, e.er * 1.08), hex, clearLens());
 
+/** Naočare za čitanje (nana, dedo): uske „polumesec” sočiva, malo niže na nosu, tanak zlatni okvir */
+function readingGlasses(e: EyeFit) {
+    spectacles(e, squircle(e.er * 1.18, e.er * 0.72, 3.4, 48, 0.18), "#B08A4A", clearLens(), { w: 0.06, d: 0.08, dy: -e.er * 0.32, frameMat: metal("#C9A55A") });
+}
+
 function squareGlasses(e: EyeFit) {
     spectacles(e, squircle(e.er * 1.22, e.er * 0.95, 4.2), "#2FA36B", glass("#DCF5E7", 0.18));
 }
@@ -321,4 +326,8 @@ registerItems("glasses", [
     item("maska-leptira", butterflyMask),
     item("crne-suncane-naocare", blackSquareShades),
     item("ovalne-suncane-naocare", ovalShades),
+    // ── Novo ──
+    item("naocare-za-citanje", readingGlasses),
+    item("crvene-naocare", round("#C93A3F")),
+    item("zelene-suncane-naocare", sunglasses("#2E9A50", "#1F3D2A")),
 ]);

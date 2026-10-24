@@ -279,9 +279,11 @@ function patent(s: Shoe, ctx: ItemContext) {
     s.laces(up, 3, plastic("#14121A", 0.5), null, { z0: s.toeZ * 0.12, z1: s.toeZ * 0.38, spread: 0.18, bow: true, lift: 0.0015 });
 }
 
-function loafer(s: Shoe, ctx: ItemContext) {
-    const brown = leather("#9A6236");
-    const { up } = lowShoe(s, ctx, { material: brown, rim: leather("#7A4A28"), sole: rubber("#5C3A25", 0.6), sock: "#E8DCC6", cut: 0.01 });
+/** Mokasine (podrazumevano smeđe; nove boje: crne, bordo) */
+function loafer(s: Shoe, ctx: ItemContext, hex = "#9A6236", sock = "#E8DCC6") {
+    const brown = leather(hex);
+    const rimHex = hex === "#9A6236" ? "#7A4A28" : darker(hex, 0.22);
+    const { up } = lowShoe(s, ctx, { material: brown, rim: leather(rimHex), sole: rubber(hex === "#9A6236" ? "#5C3A25" : darker(hex, 0.4), 0.6), sock, cut: 0.01 });
     // Mokasinski šav u obliku slova U preko prstiju i kaišić preko risa
     const stitch = fabric("#E9C58A", "cotton");
     const u: THREE.Vector3[] = [];
@@ -295,7 +297,7 @@ function loafer(s: Shoe, ctx: ItemContext) {
         const q = -1 + (i / 8) * 2;
         strap.push(s.at(up, q * 0.9, Math.PI * 0.3, 0.0022));
     }
-    s.tube(strap, 0.003 * s.k, leather("#7A4A28"), 16, 5, 0.4);
+    s.tube(strap, 0.003 * s.k, leather(rimHex), 16, 5, 0.4);
     const coin = new THREE.CylinderGeometry(0.0035 * s.k, 0.0035 * s.k, 0.0012, 12);
     const c = s.at(up, 0, Math.PI * 0.3, 0.0045);
     coin.rotateX(Math.PI / 2 - 0.5);
@@ -529,6 +531,20 @@ function kneeBoot(s: Shoe) {
     onShaft(s, extra, 0.86, s.side * Math.PI / 2, buckle, gold(), 0.003);
 }
 
+/** Planinarske cipele: do iznad članka, debeo nazubljen đon, kožni prednji deo i pertle */
+function hikingBoot(s: Shoe) {
+    const k = s.k;
+    const suede = fabric("#8C6A48", "felt", { roughness: 0.9, sheen: 0.55 });
+    const { up, extra } = boot(s, { main: suede, sole: rubber("#3A3A40", 0.8), top: 0.8, soleH: 0.026, rim: fabric("#C9473F", "rib"), rimR: 0.0045 });
+    // Kožna kapica preko prstiju i pete
+    s.patch(up, -1.3, 1.3, (th) => Math.PI * (0.3 + 0.16 * (th / 1.3) ** 2), () => Math.PI * 0.62, 0.0012, leather("#5C3A25"), 18, 6);
+    s.laces(up, 4, plastic("#C9473F", 0.6), metal("#C9A661"), { z0: s.s.legR(1) * 1.1, z1: s.toeZ * 0.55, bow: true });
+    // Jezičak za navlačenje pozadi
+    const tab = new THREE.CapsuleGeometry(0.0035 * k, 0.01 * k, 3, 8);
+    tab.scale(1.5, 1, 0.5);
+    onShaft(s, extra, 0.8, Math.PI, tab, fabric("#C9473F", "rib"), 0.003);
+}
+
 // ── Klizaljke, rolšue, peraja ───────────────────────────────────────────────
 
 function iceSkate(s: Shoe) {
@@ -744,5 +760,20 @@ registerItems("feet", [
     sneakers("crno-bele-patike", "#FAFAF7", "#2A2733", { sole: "#FFFFFF", toe: "#FFFFFF", panel: "#2A2733" }),
     shoe("cizme-krzno", (s) => shearlingBoot(s, "#D2A878")),
     shoe("roze-cizme-krzno", (s) => shearlingBoot(s, "#F2B3C6")),
+    // ── Novo: više boja patika, planinarske cipele, čizme, mokasine, sandale ──
+    sneakers("mint-patike", "#9FE2C8", "#62C7A4", { sole: "#FFFFFF", toe: "#FFFFFF" }),
+    sneakers("lila-patike", "#C7B3EC", "#9F86DB", { sole: "#FFFFFF", toe: "#FFFFFF", lace: "#FFFFFF" }),
+    sneakers("sive-patike", "#A7ADB8", "#7E848F", { sole: "#FFFFFF", toe: "#F2F2F2" }),
+    sneakers("crveno-bele-patike", "#FAFAF7", "#D94040", { sole: "#FFFFFF", toe: "#FFFFFF", panel: "#D94040" }),
+    sneakers("zuto-plave-patike", "#F7C948", "#2F6FC4", { sole: "#FFFFFF", panel: "#2F6FC4", lace: "#FFFFFF" }),
+    sneakers("plave-kopacke", "#2F6FC4", "#FFFFFF", { mesh: true, sole: "#FFFFFF", outsole: "#2A2733", toe: "#1F4A94", studs: true, sock: "#2F6FC4", sockTop: 0.42 }, 0.006),
+    shoe("planinarske-cipele", hikingBoot),
+    shoe("zelene-gumene-cizme", (s) => rainBoot(s, "#4FBF6A")),
+    shoe("roze-cizme-tufne", (s) => rainBoot(s, "#F78FB3", "#FFFFFF")),
+    shoe("sive-cizme-krzno", (s) => shearlingBoot(s, "#A7A2A0")),
+    shoe("crne-mokasine", (s, ctx) => loafer(s, ctx, "#2E2A2E", "#2E3A66")),
+    shoe("bordo-mokasine", (s, ctx) => loafer(s, ctx, "#7A2A34")),
+    shoe("plave-sandale", (s, ctx) => sandal(s, ctx, "#3D86E0"), { covers: [] }),
+    shoe("bele-sandale-cvet", (s, ctx) => sandal(s, ctx, "#F4F1EA", "#F78FB3"), { covers: [] }),
 ]);
 
