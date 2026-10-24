@@ -7,8 +7,11 @@
 
 import type { GameId } from "./games";
 
-/** Igre u kojima smena posle svakog zadatka ima smisla (kratki zadaci, jasan kraj poteza). */
-export const TOGETHER_GAMES: readonly GameId[] = ["memory", "counting", "gaze", "where"];
+/**
+ * Igre u kojima smena posle svakog zadatka ima smisla (kratki zadaci, jasan kraj poteza).
+ * U „Umetaljci” i „Satu” zadatak je jedan komad, pa igrači istu tablu slažu na smenu.
+ */
+export const TOGETHER_GAMES: readonly GameId[] = ["memory", "counting", "gaze", "where", "inset", "clock"];
 
 export function isTogetherGame(id: GameId | null | undefined): boolean {
     return Boolean(id) && TOGETHER_GAMES.includes(id as GameId);
