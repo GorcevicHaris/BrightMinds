@@ -29,7 +29,7 @@ import {
     usePraise,
 } from "@/app/components/games/kit";
 import type { BaseView, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
-import { buildColoringPlan, type ColoringPlan, type ColoringTask } from "@/app/components/games/data/coloringLevels";
+import { buildColoringPlan, colorNumber, type ColoringPlan, type ColoringTask } from "@/app/components/games/data/coloringLevels";
 import { COLOR_BY_ID, colorSentence, PAPER, VERB, type PaintColor, type Picture, type Zone } from "@/app/components/games/data/coloringPictures";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
@@ -102,7 +102,7 @@ function initialView(plan: ColoringPlan): ColoringView {
         fills,
         color: mode === "free" ? plan.palette[0] : null,
         options: mode === "verbal" ? (plan.tasks[0]?.options ?? []) : plan.palette,
-        suggest: mode === "copy" ? nextSuggestion(plan, fills) : null,
+        suggest: mode === "copy" || mode === "number" ? nextSuggestion(plan, fills) : null,
         resolved: [],
         tries: [],
         wrongColors: [],
@@ -182,6 +182,15 @@ const TEXT_FREE_STEPS = "Izaberi boju i oboji sliku.";
 const TEXT_COPY = "Oboji sliku kao na primeru.";
 const TEXT_COPY_REQUEST = "Pogledaj primer, pa oboji sliku isto.";
 const TEXT_OTHER_COLOR = "Na primeru je druga boja.";
+const TEXT_NUMBERS = "Svaki broj je jedna boja. Oboji sliku po brojevima.";
+const TEXT_LOOK_NUMBER = "Pogledaj broj i nađi tu boju.";
+
+/** "Broj 2 je plava boja." */
+function numberSentence(plan: ColoringPlan, zone: Zone): string {
+    const color = COLOR_BY_ID[zone.c];
+    const number = colorNumber(plan, zone.c);
+    return color && number ? `Broj ${number} je ${color.nom} boja.` : TEXT_LOOK_NUMBER;
+}
 
 /** "Na primeru je krov crven." */
 function modelSentence(zone: Zone): string {
@@ -192,12 +201,15 @@ function modelSentence(zone: Zone): string {
 /** Tačno: imenuje se obojeni deo. Prva greška: poziv na novi pokušaj. Svaka sledeća: ponavlja se šta tražimo. */
 function feedbackText(view: ColoringView, plan: ColoringPlan, task: ColoringTask | undefined, lastZone: Zone | undefined): string {
     if (view.feedback === "pick") return TEXT_PICK;
-    if (plan.level.mode === "copy") {
+    if (plan.level.mode === "copy" || plan.level.mode === "number") {
         if (view.feedback === "correct" && lastZone) {
             const color = COLOR_BY_ID[lastZone.c];
             return color ? colorSentence(lastZone, color) : TEXT_DONE;
         }
-        if (view.feedback === "mismatch" && lastZone) return view.tries.length < 2 ? TEXT_OTHER_COLOR : modelSentence(lastZone);
+        if (view.feedback === "mismatch" && lastZone) {
+            if (plan.level.mode === "number") return view.tries.length < 2 ? TEXT_LOOK_NUMBER : numberSentence(plan, lastZone);
+            return view.tries.length < 2 ? TEXT_OTHER_COLOR : modelSentence(lastZone);
+        }
         return TEXT_DONE;
     }
     const zone = task ? plan.picture.zones.find((z) => z.id === task.zone) : undefined;
@@ -290,7 +302,9 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     const task = mode === "verbal" && plan.tasks.length > 0 ? plan.tasks[Math.min(Math.max(shown.round, 1), plan.tasks.length) - 1] : undefined;
     const taskZone = zoneById(task?.zone);
     const taskColor = task ? COLOR_BY_ID[task.color] : undefined;
-    const suggestZone = mode === "copy" ? zoneById(shown.suggest) : undefined;
+    /** Po primeru i po brojevima: boji se slobodnim redom, a jedan deo se predlaže */
+    const copyLike = mode === "copy" || mode === "number";
+    const suggestZone = copyLike ? zoneById(shown.suggest) : undefined;
     const suggestColor = suggestZone ? COLOR_BY_ID[suggestZone.c] : undefined;
     const lastZone = zoneById(lastZoneId);
 
@@ -298,9 +312,11 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     let instruction: string;
     if (mode === "verbal") instruction = taskZone && taskColor ? `Oboji ${taskZone.acc} ${taskColor.inst} bojom` : `Oboji ${picture.acc}`;
     else if (mode === "copy") instruction = "Oboji kao na primeru";
+    else if (mode === "number") instruction = "Oboji po brojevima";
     else instruction = `Oboji ${picture.acc} kako želiš`;
     /** Ono što se izgovara na početku i na dugme „Ponovi” */
-    const prompt = mode === "verbal" ? `${instruction}.` : mode === "copy" ? (modelOnRequest ? TEXT_COPY_REQUEST : TEXT_COPY) : `${instruction}. ${TEXT_FREE_STEPS}`;
+    const prompt =
+        mode === "verbal" ? `${instruction}.` : mode === "copy" ? (modelOnRequest ? TEXT_COPY_REQUEST : TEXT_COPY) : mode === "number" ? TEXT_NUMBERS : `${instruction}. ${TEXT_FREE_STEPS}`;
     /** Jedan korak po korak: prvo boja, pa deo slike */
     const step =
         mode === "verbal" && taskZone && taskColor
@@ -404,8 +420,10 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         // Boja se uvek i izgovori: naziv ne zavisi od toga da li dete razlikuje nijanse.
         // Kad je to tražena (ili istaknuta) boja, glas odmah kaže i drugi korak — mlađa deca teško
         // pamte uputstvo u dva koraka.
-        const nextZone = mode === "verbal" ? (task && id === task.color ? taskZone : undefined) : mode === "copy" && (plan.level.showZone || current.hint) && suggestZone?.c === id ? suggestZone : undefined;
+        const nextZone = mode === "verbal" ? (task && id === task.color ? taskZone : undefined) : copyLike && (plan.level.showZone || current.hint) && suggestZone?.c === id ? suggestZone : undefined;
+        const number = mode === "number" ? colorNumber(plan, id) : 0;
         if (color && nextZone) say(`${color.nom} boja. Sada oboji ${nextZone.acc}.`);
+        else if (color && number) say(`Broj ${number}, ${color.nom} boja.`);
         else if (color) say(`${color.nom} boja.`);
         if (current.color === id) return;
         playSfx("tap");
@@ -621,7 +639,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     const tapZone = (zone: Zone) => {
         if (!interactive || guard.blocked() || lockedRef.current) return;
         if (mode === "verbal") paintVerbal(zone);
-        else if (mode === "copy") paintCopy(zone);
+        else if (copyLike) paintCopy(zone);
         else paintFree(zone);
     };
 
@@ -682,11 +700,13 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
           ? plan.level.showZone || shown.hint
               ? taskZone
               : undefined
-          : mode === "copy" && (plan.level.showZone || shown.hint)
+          : copyLike && (plan.level.showZone || shown.hint)
             ? suggestZone
             : undefined;
     /** Boja koja je istaknuta u paleti */
-    const hintedColor = !playing ? undefined : mode === "verbal" ? (shown.hint ? task?.color : undefined) : mode === "copy" && (plan.level.showColor || shown.hint) ? suggestZone?.c : undefined;
+    const hintedColor = !playing ? undefined : mode === "verbal" ? (shown.hint ? task?.color : undefined) : copyLike && (plan.level.showColor || shown.hint) ? suggestZone?.c : undefined;
+    /** Po brojevima (najlakši nivo): kad je boja izabrana, označeni su svi još neobojeni delovi sa njenim brojem */
+    const matchesOf = playing && mode === "number" && plan.level.showMatches && shown.color ? shown.color : null;
     /** Kratko pokazivanje traženog dela kad se izgovori uputstvo (po uputstvu) */
     const demoZone = playing && demo.on && mode === "verbal" && plan.level.pulseZone ? taskZone : undefined;
     /** Ruka (prvi deo prvog nivoa): prvo na boju, pa na deo */
@@ -715,7 +735,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
             </>
         );
     } else {
-        const lastColor = lastZone ? COLOR_BY_ID[shown.fills[lastZone.id]] : undefined;
+        // Po primeru i po brojevima natpis potvrđuje samo deo obojen kako treba (pogrešnu boju ne imenuje kao gotovu)
+        const lastColor = lastZone && (!copyLike || shown.fills[lastZone.id] === lastZone.c) ? COLOR_BY_ID[shown.fills[lastZone.id]] : undefined;
         const text = lastZone && lastColor ? colorSentence(lastZone, lastColor) : `${instruction}.`;
         caption = (
             <>
@@ -772,7 +793,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                         {/* Oznake i nevidljiva šira ivica (mali deo se lakše pogađa prstom) crtaju se
                             odmah iznad svog dela, pa ih delovi koji ga prekrivaju i dalje prekrivaju. */}
                         {playing && mode === "verbal" && shown.wrongZones.includes(zone.id) && <path d={zone.d} fill={OUTLINE} fillOpacity={0.16} pointerEvents="none" />}
-                        {outlined?.id === zone.id && (
+                        {(outlined?.id === zone.id || (matchesOf !== null && zone.c === matchesOf && shown.fills[zone.id] !== zone.c && !(zone.id in plan.prefilled))) && (
                             <path
                                 d={zone.d}
                                 fill="none"
@@ -817,6 +838,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                 );
             })}
             <PictureExtras picture={picture} />
+            {mode === "number" && <ZoneNumbers plan={plan} fills={shown.fills} />}
             {handOn === "zone" && suggestZone && <ZoneHand zoneId={suggestZone.id} picture={picture} />}
         </svg>
     );
@@ -926,7 +948,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
                 {/* Boje i alat */}
                 <div className={cn("flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-3 shadow-soft", mode === "free" ? "sm:w-72" : "sm:w-60 lg:w-64")}>
-                    <p className={cn("hidden px-1 font-display text-base font-extrabold sm:block", accent.text)}>Boje</p>
+                    <p className={cn("hidden px-1 font-display text-base font-extrabold sm:block", accent.text)}>{mode === "number" ? "Brojevi i boje" : "Boje"}</p>
                     <div
                         className={cn(
                             "grid gap-2.5 sm:gap-3",
@@ -943,6 +965,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                 tried={playing && mode === "verbal" && shown.wrongColors.includes(color.id)}
                                 hinted={hintedColor === color.id && shown.color !== color.id}
                                 hand={handOn === "color" && suggestZone?.c === color.id}
+                                number={mode === "number" ? colorNumber(plan, color.id) : 0}
                                 disabled={!interactive}
                                 onPick={() => pickColor(color.id)}
                             />
@@ -1083,17 +1106,19 @@ interface SwatchProps {
     hinted: boolean;
     /** Ruka pokazuje ovu boju (prvi deo prvog nivoa) */
     hand: boolean;
+    /** Po brojevima: broj ove boje (0 = bez broja) */
+    number: number;
     disabled: boolean;
     onPick: () => void;
 }
 
-function Swatch({ color, count, named, selected, tried, hinted, hand, disabled, onPick }: SwatchProps) {
+function Swatch({ color, count, named, selected, tried, hinted, hand, number, disabled, onPick }: SwatchProps) {
     return (
         <button
             type="button"
             disabled={disabled || tried}
             onClick={onPick}
-            aria-label={`${color.nom} boja`}
+            aria-label={number ? `Broj ${number}: ${color.nom} boja` : `${color.nom} boja`}
             aria-pressed={selected}
             title={color.nom}
             className="relative flex flex-col items-center gap-1.5 rounded-2xl disabled:cursor-default"
@@ -1105,15 +1130,25 @@ function Swatch({ color, count, named, selected, tried, hinted, hand, disabled, 
                     count <= 4 ? "h-16" : count <= 6 ? "h-12 sm:h-14" : "h-11 sm:h-14",
                     selected && "ring-4 ring-ink ring-offset-2 ring-offset-surface",
                     // Istaknuta boja: stalni prsten (vidi se i bez animacija) i blag puls
-                    hinted && "animate-soft-pulse ring-4 ring-brand-400 ring-offset-2 ring-offset-surface",
+                    // (obris, a ne prsten: puls i prsten oba crtaju senku, pa bi puls „pojeo” prsten)
+                    hinted && "animate-soft-pulse outline-4 outline-offset-2 outline-brand-500",
                     tried && "opacity-30"
                 )}
                 style={{ background: color.hex }}
             >
+                {number > 0 && (
+                    <span aria-hidden="true" className={cn("font-display text-3xl font-extrabold leading-none", color.light ? "text-ink" : "text-white")}>
+                        {number}
+                    </span>
+                )}
                 {selected && (
                     <svg
                         viewBox="0 0 24 24"
-                        className={cn("h-7 w-7 animate-pop", color.light ? "text-ink" : "text-white")}
+                        className={cn(
+                            "animate-pop",
+                            number > 0 ? "absolute right-1 top-1 h-5 w-5" : "h-7 w-7",
+                            color.light ? "text-ink" : "text-white"
+                        )}
                         fill="none"
                         stroke="currentColor"
                         strokeWidth={3.5}
@@ -1134,6 +1169,130 @@ function Swatch({ color, count, named, selected, tried, hinted, hand, disabled, 
             {hand && <DemoHand />}
         </button>
     );
+}
+
+interface NumberSpot {
+    zone: string;
+    x: number;
+    y: number;
+    size: number;
+}
+
+/**
+ * Brojevi u delovima slike (po brojevima). Mesto za broj traži se jednom po slici: u svakom
+ * zasebnom komadu dela (npr. svaki prozor) tačka koja je unutar tog dela, nije pokrivena delom
+ * nacrtanim preko njega i ima najviše mesta oko sebe. Obojen deo (tačnom bojom) više nema broj.
+ */
+function ZoneNumbers({ plan, fills }: { plan: ColoringPlan; fills: Fills }) {
+    const ref = useRef<SVGGElement>(null);
+    const [spots, setSpots] = useState<NumberSpot[]>([]);
+    const { picture } = plan;
+    const width = Number(picture.viewBox.split(/\s+/)[2]) || 300;
+    const base = width * plan.level.numberSize;
+
+    useLayoutEffect(() => {
+        const group = ref.current;
+        if (!group) return;
+        setSpots(findNumberSpots(group, picture, plan.zones.map((zone) => zone.id), base));
+    }, [picture, plan.zones, base]);
+
+    return (
+        <g ref={ref} pointerEvents="none" aria-hidden="true">
+            {spots.map((spot, index) => {
+                const zone = picture.zones.find((z) => z.id === spot.zone);
+                if (!zone || fills[zone.id] === zone.c) return null;
+                return (
+                    <text
+                        key={index}
+                        x={spot.x}
+                        y={spot.y}
+                        fontSize={spot.size}
+                        textAnchor="middle"
+                        dominantBaseline="central"
+                        fontWeight={800}
+                        fill={OUTLINE}
+                        stroke="#ffffff"
+                        strokeWidth={spot.size * 0.2}
+                        strokeLinejoin="round"
+                        paintOrder="stroke"
+                        className="select-none font-display"
+                    >
+                        {colorNumber(plan, zone.c)}
+                    </text>
+                );
+            })}
+        </g>
+    );
+}
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+function findNumberSpots(group: SVGGElement, picture: Picture, numbered: string[], size: number): NumberSpot[] {
+    const make = (d: string) => {
+        const path = document.createElementNS(SVG_NS, "path");
+        path.setAttribute("d", d);
+        path.setAttribute("fill", "none");
+        group.appendChild(path);
+        return path;
+    };
+    const temp: SVGPathElement[] = [];
+    const whole = picture.zones.map((zone) => {
+        const path = make(zone.d);
+        temp.push(path);
+        return path;
+    });
+    const inside = (path: SVGPathElement, x: number, y: number) => {
+        try {
+            return path.isPointInFill(new DOMPoint(x, y));
+        } catch {
+            return false;
+        }
+    };
+    const spots: NumberSpot[] = [];
+    picture.zones.forEach((zone, index) => {
+        if (!numbered.includes(zone.id)) return;
+        const later = whole.slice(index + 1);
+        const free = (x: number, y: number) => inside(whole[index], x, y) && !later.some((path) => inside(path, x, y));
+        const pieces = zone.d.split(/(?=M)/).filter((piece) => piece.trim());
+        const found: NumberSpot[] = [];
+        for (const piece of pieces) {
+            const path = make(piece);
+            temp.push(path);
+            const box = path.getBBox();
+            if (Math.min(box.width, box.height) < size * 0.45 && pieces.length > 1) continue;
+            const cx = box.x + box.width / 2;
+            const cy = box.y + box.height / 2;
+            let best: { x: number; y: number; room: number; dist: number } | null = null;
+            const steps = 12;
+            for (let i = 0; i <= steps; i += 1) {
+                for (let j = 0; j <= steps; j += 1) {
+                    const x = box.x + (box.width * i) / steps;
+                    const y = box.y + (box.height * j) / steps;
+                    if (!inside(path, x, y) || !free(x, y)) continue;
+                    // Koliko mesta ima oko tačke: najveći poluprečnik na kom je ceo krug tačaka i dalje u delu
+                    let room = 0;
+                    for (const r of [0.8, 0.6, 0.45, 0.3, 0.18]) {
+                        const radius = size * r;
+                        const ring = Array.from({ length: 8 }, (_, k) => [x + radius * Math.cos((k * Math.PI) / 4), y + radius * Math.sin((k * Math.PI) / 4)]);
+                        if (ring.every(([px, py]) => inside(path, px, py) && free(px, py))) {
+                            room = r;
+                            break;
+                        }
+                    }
+                    const dist = Math.hypot(x - cx, y - cy);
+                    if (!best || room > best.room || (room === best.room && dist < best.dist)) best = { x, y, room, dist };
+                }
+            }
+            if (best) found.push({ zone: zone.id, x: best.x, y: best.y, size: best.room >= 0.6 ? size : size * Math.max(best.room * 1.5, 0.45) });
+        }
+        if (found.length === 0) {
+            const box = whole[index].getBBox();
+            found.push({ zone: zone.id, x: box.x + box.width / 2, y: box.y + box.height / 2, size: size * 0.6 });
+        }
+        spots.push(...found);
+    });
+    temp.forEach((path) => path.remove());
+    return spots;
 }
 
 /** Ruka nad delom slike (unutar SVG-a, u središtu dela) */

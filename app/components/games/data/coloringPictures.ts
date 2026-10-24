@@ -494,7 +494,7 @@ export const PICTURES: Picture[] = [
         emoji: "🌳",
         viewBox: "80 95 240 340",
         zones: [
-            z("trava", "trava", "travu", "f", "lime", "M88,402 Q200,380 312,402 L312,428 L88,428 Z"),
+            z("trava", "trava", "travu", "f", "green", "M88,402 Q200,380 312,402 L312,428 L88,428 Z"),
             z("stablo", "stablo", "stablo", "n", "brown", "M176,412 L224,412 L214,285 L186,285 Z", 14),
             z(
                 "krosnja",
@@ -660,7 +660,7 @@ export const PICTURES: Picture[] = [
             z("p4", "četvrto polje", "četvrto polje", "n", "red", "M200,225 L200,375 A150,150 0 0,1 70.1,300 Z"),
             z("p5", "peto polje", "peto polje", "n", "yellow", "M200,225 L70.1,300 A150,150 0 0,1 70.1,150 Z"),
             z("p6", "šesto polje", "šesto polje", "n", "blue", "M200,225 L70.1,150 A150,150 0 0,1 200,75 Z"),
-            z("sredina", "sredina lopte", "sredinu lopte", "f", "green", circle(200, 225, 38)),
+            z("sredina", "sredina lopte", "sredinu lopte", "f", "yellow", circle(200, 225, 38)),
         ],
     },
     {
