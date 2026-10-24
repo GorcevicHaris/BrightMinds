@@ -8,6 +8,7 @@ import * as me from "@/app/api/auth/me/route";
 import * as logout from "@/app/api/auth/logout/route";
 import * as progress from "@/app/api/children/[id]/progress/route";
 import * as child from "@/app/api/children/[id]/route";
+import * as companion from "@/app/api/children/[id]/companion/route";
 import * as settings from "@/app/api/children/[id]/settings/route";
 import * as story from "@/app/api/children/[id]/stories/[storyId]/route";
 import * as stories from "@/app/api/children/[id]/stories/route";
@@ -66,6 +67,8 @@ const CHILD_OR_PARENT: Endpoint[] = [
     { name: "GET /api/children/[id]/unlocked-levels", call: (id) => unlockedLevels.GET(jsonRequest("GET"), idParams(id)) },
     { name: "POST /api/activities/complete", call: (id) => complete.POST(jsonRequest("POST", resultBody(id))) },
     { name: "PATCH /api/activities/complete", call: (id) => complete.PATCH(jsonRequest("PATCH", { childId: id, logIds: [1], moodAfter: "happy" })) },
+    { name: "GET /api/children/[id]/companion", call: (id) => companion.GET(jsonRequest("GET"), idParams(id)) },
+    { name: "PUT /api/children/[id]/companion", call: (id) => companion.PUT(jsonRequest("PUT", { action: "undress" }), idParams(id)) },
 ];
 
 const ALL = [...PARENT_ONLY, ...CHILD_OR_PARENT];

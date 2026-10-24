@@ -5,15 +5,33 @@
 // Niz dana (`streak`) se i dalje vodi u bazi za roditeljski panel, ali se detetu
 // NE vraća: bez "dođi i sutra" pritiska na dečjem ekranu.
 import { NextResponse } from "next/server";
-import { setSessionCookie } from "@/lib/auth";
-import { getClientIp, takeAttempt, type RateLimitRule } from "@/lib/rateLimit";
+import { pinFingerprint, setSessionCookie } from "@/lib/auth";
+import { getClientIp, takeAttempts, type Attempt, type RateLimitRule } from "@/lib/rateLimit";
 import { assertDbConfigured, supabaseAdmin } from "@/lib/supabase";
 import { asTrimmedString, dateOnlyInTimeZone, shiftDateOnly } from "@/lib/validation";
 import { parseDbTimestamp, selectChildRows, type ChildRow } from "../../_lib/children";
 import { enforceRateLimit, errorResponse, HttpError, readJsonObject } from "../../_lib/http";
 
-/** Neuspešni pokušaji po IP adresi. */
-const PIN_RULE: RateLimitRule = { limit: 8, windowMs: 5 * 60 * 1000 };
+// Tajni kod su četiri sličice od po deset (10.000 kombinacija) i nema korisničkog imena,
+// pa se neuspešni pokušaji ograničavaju na tri nivoa (broje se samo pogrešni kodovi):
+/** Kratko: posle 8 pogrešnih kodova sa iste adrese čeka se do 5 minuta. */
+export const PIN_RULE: RateLimitRule = { limit: 8, windowMs: 5 * 60 * 1000 };
+/** Zaključavanje: 20 pogrešnih kodova sa iste adrese za sat vremena zaključava je do sat vremena. */
+export const PIN_LOCKOUT_RULE: RateLimitRule = { limit: 20, windowMs: 60 * 60 * 1000 };
+/**
+ * Osigurač za sve adrese zajedno: pogađanje sa mnogo adresa se zaustavlja posle 60 pogrešnih
+ * kodova za 10 minuta. Tada se dete privremeno ne može prijaviti kodom, ali roditelj i dalje
+ * otvara igru iz svog panela — to je manja šteta od tuđeg ulaska u profil deteta.
+ */
+export const PIN_GLOBAL_RULE: RateLimitRule = { limit: 60, windowMs: 10 * 60 * 1000 };
+
+function takePinAttempt(ip: string): Attempt {
+    return takeAttempts([
+        { key: `pin:${ip}`, rule: PIN_RULE },
+        { key: `pin-hour:${ip}`, rule: PIN_LOCKOUT_RULE },
+        { key: "pin-all", rule: PIN_GLOBAL_RULE },
+    ]);
+}
 
 const DAILY_LOGIN_POINTS = 10;
 const MAX_AWARD_RETRIES = 3;
@@ -116,7 +134,7 @@ async function applyDailyLogin(initial: ChildRow): Promise<LoginAward> {
 }
 
 export async function POST(request: Request) {
-    let attempt: ReturnType<typeof takeAttempt> | null = null;
+    let attempt: Attempt | null = null;
     try {
         const body = await readJsonObject(request);
         const pinCode = readPin(body.pin_code);
@@ -125,7 +143,7 @@ export async function POST(request: Request) {
         assertDbConfigured();
 
         // Pokušaj se rezerviše unapred i vraća samo ako je kod tačan.
-        attempt = takeAttempt(`pin:${getClientIp(request)}`, PIN_RULE);
+        attempt = takePinAttempt(getClientIp(request));
         enforceRateLimit(attempt, "Previše pokušaja. Sačekaj malo pa probaj ponovo.");
 
         const matches = await selectChildRows((columns) =>
@@ -168,6 +186,7 @@ export async function POST(request: Request) {
             email: owner.email,
             role: owner.role,
             childId: child.id,
+            pinTag: pinFingerprint(child.id, pinCode),
         });
         return response;
     } catch (error) {

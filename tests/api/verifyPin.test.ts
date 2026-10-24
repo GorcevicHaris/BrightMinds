@@ -2,7 +2,8 @@
 // nagrada i ograničenje broja pokušaja po IP adresi.
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
-import { POST } from "@/app/api/children/verify-pin/route";
+import { PIN_GLOBAL_RULE, PIN_LOCKOUT_RULE, POST } from "@/app/api/children/verify-pin/route";
+import { resetRateLimit } from "@/lib/rateLimit";
 import { CHILD_ID, CHILD_PIN, OTHER_CHILD_ID, PARENT, advanceClock, belgradeDay, db, jsonRequest, readJson, resetWorld, seedFamily, sessionFromResponse } from "../setup/api";
 
 const WRONG_PIN = "cat,pizza,car,pepsi";
@@ -19,6 +20,8 @@ const mila = () => db.rows("children").find((row) => row.id === CHILD_ID);
 beforeEach(() => {
     resetWorld();
     seedFamily();
+    // Osigurač za sve adrese je zajednički za ceo proces — svaki test počinje od nule
+    resetRateLimit("pin-all");
 });
 
 describe("POST /api/children/verify-pin — signing in", () => {
@@ -200,5 +203,46 @@ describe("POST /api/children/verify-pin — rate limit", () => {
 
         advanceClock(1000);
         assert.equal((await verify(CHILD_PIN, ip)).status, 200);
+    });
+});
+
+describe("POST /api/children/verify-pin — lockout", () => {
+    /** Pogrešni kodovi u talasima od po osam, sa pauzom da istekne kratki prozor. */
+    async function failInWaves(ip: string, count: number): Promise<void> {
+        for (let done = 0; done < count; done += 1) {
+            if (done > 0 && done % PIN_LIMIT === 0) advanceClock(PIN_WINDOW_MS);
+            assert.equal((await verify(WRONG_PIN, ip)).status, 401, `wrong PIN ${done + 1}`);
+        }
+        advanceClock(PIN_WINDOW_MS);
+    }
+
+    it("locks one address for up to an hour after twenty wrong PINs, even after the short window passed", async () => {
+        const ip = freshIp();
+        await failInWaves(ip, PIN_LOCKOUT_RULE.limit);
+        const locked = await verify(CHILD_PIN, ip);
+        assert.equal(locked.status, 429);
+        assert.equal(sessionFromResponse(locked), null);
+        assert.ok(Number(locked.headers.get("retry-after")) > 5 * 60, "waits longer than the short window");
+        // Druga adresa i dalje može da se prijavi
+        assert.equal((await verify(CHILD_PIN, freshIp())).status, 200);
+    });
+
+    it("stops guessing spread over many addresses once sixty wrong PINs were tried in ten minutes", async () => {
+        for (let attempt = 1; attempt <= PIN_GLOBAL_RULE.limit; attempt += 1) {
+            assert.equal((await verify(WRONG_PIN, freshIp())).status, 401, `wrong PIN ${attempt}`);
+        }
+        const response = await verify(CHILD_PIN, freshIp());
+        assert.equal(response.status, 429);
+        assert.equal(sessionFromResponse(response), null);
+        advanceClock(PIN_GLOBAL_RULE.windowMs);
+        assert.equal((await verify(CHILD_PIN, freshIp())).status, 200);
+    });
+
+    it("a refused request does not use up the other limits", async () => {
+        const ip = freshIp();
+        for (let attempt = 1; attempt <= PIN_LIMIT; attempt += 1) await verify(WRONG_PIN, ip);
+        // Ova adresa je blokirana; njeni dalji pokušaji ne pune zajednički osigurač
+        for (let attempt = 1; attempt <= PIN_GLOBAL_RULE.limit; attempt += 1) assert.equal((await verify(WRONG_PIN, ip)).status, 429);
+        assert.equal((await verify(CHILD_PIN, freshIp())).status, 200);
     });
 });

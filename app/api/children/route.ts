@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         const input = parseChildInput(await readJsonObject(request));
         const pinCode = input.pin_code ?? null;
 
-        if (pinCode) await assertPinAvailable(pinCode);
+        if (pinCode) await assertPinAvailable(pinCode, { request, userId: session.userId });
 
         const [child] = await selectChildRows((columns) =>
             supabaseAdmin

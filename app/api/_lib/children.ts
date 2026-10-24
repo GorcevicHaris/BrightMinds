@@ -14,7 +14,8 @@ import {
     parseDateOnly,
     shiftDateOnly,
 } from "@/lib/validation";
-import { HttpError } from "./http";
+import { getClientIp, takeAttempts, type RateLimitRule } from "@/lib/rateLimit";
+import { enforceRateLimit, HttpError } from "./http";
 
 export const GENDERS = ["male", "female", "other"] as const;
 export type Gender = (typeof GENDERS)[number];
@@ -153,13 +154,36 @@ export function parseChildInput(body: Record<string, unknown>): ChildInput {
     return { first_name, last_name, date_of_birth, gender, notes, pin_code };
 }
 
-/** Baca 409 ako PIN već koristi neko drugo dete. */
-export async function assertPinAvailable(pinCode: string, exceptChildId?: number): Promise<void> {
+/**
+ * Odgovor „kod je zauzet” otkriva da neko drugo dete ima baš te sličice — a dete se prijavljuje
+ * samo kodom. Bez ograničenja bi nalog mogao da proba svih 10.000 kodova i tako sazna tuđe.
+ * Zato se zauzeti kodovi broje po nalogu i po adresi: najviše 5 za sat vremena.
+ */
+export const PIN_TAKEN_RULE: RateLimitRule = { limit: 5, windowMs: 60 * 60 * 1000 };
+export const PIN_TAKEN_LIMITED = "Previše pokušaja sa zauzetim sličicama. Pokušajte ponovo za sat vremena.";
+
+/** Baca 409 ako PIN već koristi neko drugo dete (429 posle previše zauzetih kodova). */
+export async function assertPinAvailable(
+    pinCode: string,
+    who: { request: Request; userId: number },
+    exceptChildId?: number
+): Promise<void> {
+    const attempt = takeAttempts([
+        { key: `pin-taken:user:${who.userId}`, rule: PIN_TAKEN_RULE },
+        { key: `pin-taken:ip:${getClientIp(who.request)}`, rule: PIN_TAKEN_RULE },
+    ]);
+    enforceRateLimit(attempt, PIN_TAKEN_LIMITED);
+
     let query = supabaseAdmin.from("children").select("id").eq("pin_code", pinCode);
     if (exceptChildId !== undefined) query = query.neq("id", exceptChildId);
     const { data, error } = await query.limit(1);
-    if (error) throw error;
+    if (error) {
+        attempt.refund();
+        throw error;
+    }
     if (data && data.length > 0) throw new HttpError(409, PIN_TAKEN);
+    // Broje se samo zauzeti kodovi
+    attempt.refund();
 }
 
 /**
