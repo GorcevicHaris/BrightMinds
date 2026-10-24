@@ -40,21 +40,21 @@ export default function ReminderBanner({ reminder, playedToday, initialDue, game
     if (!due || dismissed || seenGame || playedToday) return null;
 
     return (
-        <section role="status" aria-label="Podsetnik" className="flex items-center gap-4 rounded-card border-2 border-brand-200 bg-brand-50 p-4 shadow-soft sm:p-5">
+        <section role="status" aria-label="Podsetnik" className="flex flex-wrap items-center gap-3 rounded-card border-2 border-brand-200 bg-brand-50 p-4 shadow-soft sm:flex-nowrap sm:gap-4 sm:p-5">
             {showCompanion && companion ? (
-                <span className="block h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-[#EEF0F3] sm:h-24 sm:w-24">
-                    <CompanionPicture kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} variant="face" emotion="happy" className="h-full w-full" alt="" />
+                <span className="block h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-[#EEF0F3] sm:h-24 sm:w-24">
+                    <CompanionPicture kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} variant="face" emotion="happy" className="h-full w-full" alt="" eager fallback={<span className="grid h-full w-full place-items-center text-4xl">🧸</span>} />
                 </span>
             ) : (
-                <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-surface text-4xl" aria-hidden="true">
+                <span className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-surface text-4xl sm:h-24 sm:w-24" aria-hidden="true">
                     🧸
                 </span>
             )}
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 basis-40">
                 <p className="font-display text-xl font-extrabold leading-tight text-ink sm:text-2xl">Vreme je za igru sa drugarom!</p>
                 <p className="mt-0.5 text-base font-semibold text-ink-soft">Izaberi igru ispod.</p>
             </div>
-            <Button chunky size="lg" onClick={() => setDismissed(true)} className="shrink-0">
+            <Button chunky size="lg" onClick={() => setDismissed(true)} className="w-full shrink-0 sm:w-auto">
                 Hajde!
             </Button>
         </section>

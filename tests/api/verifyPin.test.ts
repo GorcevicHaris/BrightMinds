@@ -2,7 +2,8 @@
 // nagrada i ograničenje broja pokušaja po IP adresi.
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
-import { PIN_GLOBAL_RULE, PIN_LOCKOUT_RULE, POST } from "@/app/api/children/verify-pin/route";
+import { PIN_GLOBAL_RULE, PIN_LOCKOUT_RULE } from "@/app/api/_lib/pinLimits";
+import { POST } from "@/app/api/children/verify-pin/route";
 import { resetRateLimit } from "@/lib/rateLimit";
 import { CHILD_ID, CHILD_PIN, OTHER_CHILD_ID, PARENT, advanceClock, belgradeDay, db, jsonRequest, readJson, resetWorld, seedFamily, sessionFromResponse } from "../setup/api";
 

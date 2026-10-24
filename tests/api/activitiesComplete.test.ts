@@ -1,7 +1,8 @@
 // POST/PATCH /api/activities/complete — čuvanje završene partije i raspoloženja posle igre.
 import assert from "node:assert/strict";
 import { beforeEach, describe, it } from "node:test";
-import { GAME_LOCKED, PATCH, POST } from "@/app/api/activities/complete/route";
+import { PATCH, POST } from "@/app/api/activities/complete/route";
+import { GAME_LOCKED } from "@/lib/gameAccess";
 import { resolveSettings } from "@/lib/childSettings";
 import { GAMES, sortGamesForChild } from "@/lib/games";
 import {

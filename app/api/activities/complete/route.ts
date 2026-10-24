@@ -7,7 +7,7 @@
 import { NextResponse } from "next/server";
 import { requireChildAccess } from "@/lib/auth";
 import { resolveSettings } from "@/lib/childSettings";
-import { isGameAvailable } from "@/lib/gameAccess";
+import { GAME_LOCKED, isGameAvailable } from "@/lib/gameAccess";
 import {
     ACTIVITY_IDS,
     MAX_LEVEL,
@@ -29,7 +29,6 @@ const MOOD_VALUES: readonly Mood[] = MOODS.map((mood) => mood.value);
 const POINTS_PER_STAR = 5;
 const MAX_AWARD_RETRIES = 3;
 const INVALID_RESULT = "Neispravni podaci o rezultatu";
-export const GAME_LOCKED = "Ova igra je još zaključana";
 
 function readChildId(body: Record<string, unknown>): number {
     const childId = asInt(body.childId, { min: 1 });

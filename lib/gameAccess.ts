@@ -10,6 +10,9 @@
 //    dnevnog plana koji je roditelj sam sastavio.
 import { GAMES, sortGamesForChild, type GameDefinition, type GameId } from "./games";
 
+/** Poruka servera kada se rezultat šalje za igru koja detetu nije otvorena */
+export const GAME_LOCKED = "Ova igra je još zaključana";
+
 /** Posle kog POLOŽENOG nivoa prethodne igre se otvara sledeća */
 export const UNLOCK_AFTER_LEVEL = 3;
 
