@@ -15,7 +15,9 @@ export type GameId =
     | "where"
     | "uses"
     | "counting"
-    | "gaze";
+    | "gaze"
+    | "letters"
+    | "numbers";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -31,7 +33,9 @@ export type GameType =
     | "where"
     | "uses"
     | "counting"
-    | "gaze";
+    | "gaze"
+    | "letters"
+    | "numbers";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -394,6 +398,50 @@ export const GAMES: GameDefinition[] = [
         // 3. po redu: praćenje pogleda: osnova zajedničke pažnje
         ages: { min: 3, max: 6 },
         order: 3,
+    },
+    {
+        id: "letters",
+        gameType: "letters",
+        activityId: 15,
+        title: "Slova",
+        description: "Piši slova prstom",
+        skill: "Slova i pisanje",
+        icon: "🔤",
+        image: "/images/slova.svg",
+        accent: {
+            solid: "bg-rose-500",
+            edge: "border-rose-700",
+            soft: "bg-rose-50",
+            text: "text-rose-700",
+            border: "border-rose-200",
+            ring: "ring-rose-200",
+            gradient: "from-rose-400 to-orange-400",
+        },
+        offscreenTip:
+            "Pišite slova prstom po pesku, brašnu ili po leđima deteta, krupno i polako, i recite: „M kao mačka.” Prvo vi napišete, pa dete preko vašeg slova, pa samostalno. Dobro je početi od slova iz detetovog imena.",
+        graded: true,
+    },
+    {
+        id: "numbers",
+        gameType: "numbers",
+        activityId: 16,
+        title: "Brojevi",
+        description: "Piši brojeve i pronađi broj",
+        skill: "Pisanje i čitanje brojeva",
+        icon: "🔟",
+        image: "/images/brojevi.svg",
+        accent: {
+            solid: "bg-green-500",
+            edge: "border-green-700",
+            soft: "bg-green-50",
+            text: "text-green-700",
+            border: "border-green-200",
+            ring: "ring-green-200",
+            gradient: "from-green-400 to-teal-500",
+        },
+        offscreenTip:
+            "Tražite brojeve oko sebe: na liftu, satu, tablici kola, kalendaru — i pitajte: „Koji je ovo broj?” Pišite broj prstom po stolu i pored njega stavite toliko dugmića ili kockica. Na stepenicama brojite i pitajte: „Koji broj dolazi posle tri?”",
+        graded: true,
     },
 ];
 
