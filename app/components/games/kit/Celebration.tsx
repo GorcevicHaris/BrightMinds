@@ -38,8 +38,8 @@ export function celebrate() {
 }
 
 /**
- * Slavlje na kraju nivoa: nekoliko većih roj-eva zvezdica jedan za drugim, po celom ekranu.
- * I dalje kratko (oko sekunde i po) i bez bljeskanja — radost, a ne vatromet.
+ * Slavlje na kraju nivoa: kratka kiša mekih konfeta i nekoliko roj-eva zvezdica jedan za drugim,
+ * po celom ekranu. I dalje kratko (oko sekunde i po) i bez bljeskanja — radost, a ne vatromet.
  */
 export function celebrateBig() {
     if (typeof window === "undefined") return;
@@ -71,6 +71,20 @@ interface Burst {
     stars: Star[];
 }
 
+interface Confetto {
+    /** Mesto polaska, u delovima širine ekrana */
+    x: number;
+    width: number;
+    height: number;
+    color: string;
+    delay: number;
+    duration: number;
+    /** Koliko padne (deo visine ekrana) i skrene u stranu (px) */
+    fall: number;
+    drift: number;
+    spin: number;
+}
+
 interface Flyer {
     size: number;
     delay: number;
@@ -100,6 +114,45 @@ function makeStars(count = STARS, scale = 1): Star[] {
             delay: Math.random() * 80,
         };
     });
+}
+
+/** Meke, nežne boje (bez jarkih i bez bljeskanja) */
+const CONFETTI_COLORS = ["#ffd98a", "#b9e4c9", "#c7d2fe", "#fbcfe8", "#a5e3f2", "#fde68a", "#ddd6fe"];
+const CONFETTI_COUNT = 44;
+/** Najduže trajanje konfeta, sa čekanjem (ms) — kratko, do sekunde i po */
+const CONFETTI_MS = 1500;
+
+function makeConfetti(): Confetto[] {
+    return Array.from({ length: CONFETTI_COUNT }, (_, i) => {
+        const delay = Math.random() * 220;
+        return {
+            x: (i + Math.random()) / CONFETTI_COUNT,
+            width: 7 + Math.random() * 5,
+            height: 10 + Math.random() * 7,
+            color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            delay,
+            duration: Math.min(CONFETTI_MS - delay, 1050 + Math.random() * 230),
+            fall: 0.55 + Math.random() * 0.35,
+            drift: (Math.random() - 0.5) * 120,
+            spin: (Math.random() - 0.5) * 540,
+        };
+    });
+}
+
+/** Jedan konfet pada odozgo, lagano se okreće i nestaje pre nego što stigne do dna */
+function drop(element: HTMLSpanElement | null, piece: Confetto) {
+    if (!element || element.dataset.falling) return;
+    element.dataset.falling = "1";
+    const fall = window.innerHeight * piece.fall;
+    element.animate(
+        [
+            { transform: "translate(0, 0) rotate(0deg)", opacity: 0 },
+            { transform: `translate(${piece.drift * 0.3}px, ${fall * 0.15}px) rotate(${piece.spin * 0.2}deg)`, opacity: 1, offset: 0.12 },
+            { transform: `translate(${piece.drift * 0.8}px, ${fall * 0.75}px) rotate(${piece.spin * 0.8}deg)`, opacity: 1, offset: 0.75 },
+            { transform: `translate(${piece.drift}px, ${fall}px) rotate(${piece.spin}deg)`, opacity: 0 },
+        ],
+        { duration: piece.duration, delay: piece.delay, easing: "cubic-bezier(0.25, 0.6, 0.45, 1)", fill: "both" }
+    );
 }
 
 function makeFlyers(count: number, item: FlyDetail["item"]): Flyer[] {
@@ -141,6 +194,7 @@ const STAR_PATH = "M12 2.5l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17l-5.9 3.3 1.3-6.5L2.
 export function CelebrationLayer({ disabled = false }: { disabled?: boolean }) {
     const [bursts, setBursts] = useState<Burst[]>([]);
     const [flights, setFlights] = useState<Flight[]>([]);
+    const [confetti, setConfetti] = useState<{ id: number; pieces: Confetto[] } | null>(null);
     const systemReduced = useSystemReduced();
     const off = disabled || systemReduced;
 
@@ -170,6 +224,10 @@ export function CelebrationLayer({ disabled = false }: { disabled?: boolean }) {
         const onCelebrate = (event: Event) => {
             const at = (event as CustomEvent<{ x: number; y: number } | { big: true } | null>).detail;
             if (at && "big" in at) {
+                // Kraj nivoa: kratka kiša mekih konfeta odozgo, uz zvezdice
+                const id = (next += 1);
+                setConfetti({ id, pieces: makeConfetti() });
+                later(CONFETTI_MS + 100, () => setConfetti((current) => (current?.id === id ? null : current)));
                 BIG_SPOTS.forEach(([fx, fy], i) => {
                     later(i * BIG_STEP_MS, () => addBurst(window.innerWidth * fx, window.innerHeight * fy, makeStars(14, 1.5), BIG_SPOTS.length));
                 });
@@ -210,7 +268,7 @@ export function CelebrationLayer({ disabled = false }: { disabled?: boolean }) {
         };
     }, [off]);
 
-    if (off || (bursts.length === 0 && flights.length === 0)) return null;
+    if (off || (bursts.length === 0 && flights.length === 0 && !confetti)) return null;
     return (
         <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-[7000] overflow-hidden">
             {bursts.map((burst) =>
@@ -236,6 +294,14 @@ export function CelebrationLayer({ disabled = false }: { disabled?: boolean }) {
                     </svg>
                 ))
             )}
+            {confetti?.pieces.map((piece, i) => (
+                <span
+                    key={`${confetti.id}-${i}`}
+                    ref={(element) => drop(element, piece)}
+                    className="absolute -top-4 rounded-[3px] opacity-0"
+                    style={{ left: `${piece.x * 100}%`, width: piece.width, height: piece.height, backgroundColor: piece.color }}
+                />
+            ))}
             {flights.map((flight) =>
                 flight.flyers.map((flyer, i) => (
                     <svg

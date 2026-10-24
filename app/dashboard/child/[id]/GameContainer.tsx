@@ -566,42 +566,18 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         if (clock.limitReached) {
             return <RestCard childName={childName} onExtend={() => clock.addMinutes(ADULT_EXTRA_MINUTES)} />;
         }
-        // Sa planom: prikazujemo samo igre iz plana, redom. Kad je plan završen, dete bira samo.
-        const shown = planActive ? plan.map((id) => getGame(id)) : GAMES;
         return (
-            <section aria-labelledby="games-heading" className="space-y-4 sm:space-y-5">
-                {plan.length > 0 && <PlanStrip plan={plan} done={planDone} current={nextPlanned} />}
-                <h2 id="games-heading" className="text-xl font-extrabold text-ink sm:text-2xl">
-                    {planActive ? "Tvoj plan za danas" : plan.length > 0 ? "Plan je završen. Izaberi igru." : "Izaberi igru"}
-                </h2>
-                {levelsError && (
-                    <div className="flex flex-wrap items-center gap-3 rounded-card border border-sun-300 bg-sun-50 p-4" role="alert">
-                        <p className="min-w-0 flex-1 text-base font-extrabold text-sun-700">Igre se nisu učitale. Probaj ponovo.</p>
-                        <Button chunky variant="sun" onClick={retryLevels}>
-                            Probaj ponovo
-                        </Button>
-                    </div>
-                )}
-                <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-                    {shown.map((g, index) => {
-                        const status = !planActive ? undefined : planDone.includes(g.id) ? "done" : g.id === nextPlanned ? "now" : "later";
-                        return (
-                            <li key={g.id}>
-                                <GameCard
-                                    game={g}
-                                    unlocked={unlockedFor(g.id)}
-                                    loading={levelsLoading}
-                                    pending={levelsLoading}
-                                    unavailable={levelsError}
-                                    priority={index < 3}
-                                    status={status}
-                                    onOpen={() => openGame(g.id)}
-                                />
-                            </li>
-                        );
-                    })}
-                </ul>
-            </section>
+            <GamePicker
+                plan={plan}
+                planDone={planDone}
+                nextPlanned={nextPlanned}
+                planActive={planActive}
+                unlocked={unlocked}
+                levelsLoading={levelsLoading}
+                levelsError={levelsError}
+                onRetry={retryLevels}
+                onOpen={openGame}
+            />
         );
     }
 
@@ -822,6 +798,62 @@ export function WatchedBadge() {
             <span className="hidden sm:inline">Odrasli gleda</span>
             <span className="sr-only sm:hidden">Odrasli gleda tvoju igru</span>
         </span>
+    );
+}
+
+// ── Izbor igre (početni ekran) ────────────────────────────────────────────────
+// Izdvojeno u svoju funkciju: ovde se kasnije može dodati i mapa igara (GameMap.tsx).
+
+interface GamePickerProps {
+    plan: GameId[];
+    planDone: GameId[];
+    nextPlanned: GameId | null;
+    planActive: boolean;
+    /** Sledeći otključani nivo po igri */
+    unlocked: Record<string, number>;
+    levelsLoading: boolean;
+    levelsError: boolean;
+    onRetry: () => void;
+    onOpen: (id: GameId) => void;
+}
+
+function GamePicker({ plan, planDone, nextPlanned, planActive, unlocked, levelsLoading, levelsError, onRetry, onOpen }: GamePickerProps) {
+    // Sa planom: prikazujemo samo igre iz plana, redom. Kad je plan završen, dete bira samo.
+    const shown = planActive ? plan.map((id) => getGame(id)) : GAMES;
+    return (
+        <section aria-labelledby="games-heading" className="space-y-4 sm:space-y-5">
+            {plan.length > 0 && <PlanStrip plan={plan} done={planDone} current={nextPlanned} />}
+            <h2 id="games-heading" className="text-xl font-extrabold text-ink sm:text-2xl">
+                {planActive ? "Tvoj plan za danas" : plan.length > 0 ? "Plan je završen. Izaberi igru." : "Izaberi igru"}
+            </h2>
+            {levelsError && (
+                <div className="flex flex-wrap items-center gap-3 rounded-card border border-sun-300 bg-sun-50 p-4" role="alert">
+                    <p className="min-w-0 flex-1 text-base font-extrabold text-sun-700">Igre se nisu učitale. Probaj ponovo.</p>
+                    <Button chunky variant="sun" onClick={onRetry}>
+                        Probaj ponovo
+                    </Button>
+                </div>
+            )}
+            <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+                {shown.map((g, index) => {
+                    const status = !planActive ? undefined : planDone.includes(g.id) ? "done" : g.id === nextPlanned ? "now" : "later";
+                    return (
+                        <li key={g.id}>
+                            <GameCard
+                                game={g}
+                                unlocked={unlocked[g.id] ?? 1}
+                                loading={levelsLoading}
+                                pending={levelsLoading}
+                                unavailable={levelsError}
+                                priority={index < 3}
+                                status={status}
+                                onOpen={() => onOpen(g.id)}
+                            />
+                        </li>
+                    );
+                })}
+            </ul>
+        </section>
     );
 }
 
