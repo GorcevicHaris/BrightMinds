@@ -8,7 +8,7 @@
 //  • Pretežno opis: šta vidim, čujem i osećam, ko je tu, ko pomaže, koliko traje,
 //    šta sledi i da se završava. Čulne činjenice su važne („Bušilica zuji. Zvuk je glasan, ali kratko traje.”).
 //  • Korak sa izborom pita „Šta može da pomogne?” ili „Šta možeš da uradiš?”. Obično pomažu DVA izbora
-//    (od nivoa 6 uz njih stoje DVA izbora koja manje pomažu, pa priče postaju zahtevnije),
+//    (igra od njih nudi najviše tri slike: vidi `offeredForLevel`),
 //    a jedan je zastupanje sebe: tražim pomoć ili pauzu, kažem da je preglasno, držim mamu za ruku, nosim omiljenu igračku.
 //  • Izbor koji manje pomaže dobija mirnu rečenicu o tome šta bi se verovatno desilo — bez osude.
 //    Ono što je tipično za neurodivergentnu decu nikad nije takav izbor: pokrivanje ušiju,
@@ -1116,10 +1116,28 @@ const STORIES: readonly Story[] = [
     },
 ];
 
+/**
+ * Izbori jedne odluke za težinu nivoa. Svaki izbor je slika sa kratkim natpisom, pa ih je malo:
+ * nivoi 1–5 nude 1 + 1 (jedan koji pomaže i jedan koji manje pomaže), 6–10 nude 1 + 2, a 11–15
+ * nude 2 + 1 (dete uči da više izbora može da pomogne). Nikad više od tri slike.
+ */
+function offeredForLevel(decision: StoryDecision, level: number): StoryDecision {
+    const good = decision.options.filter((_, i) => decision.acceptable.includes(i));
+    const other = decision.options.filter((_, i) => !decision.acceptable.includes(i));
+    const keptGood = good.slice(0, level > 10 ? 2 : 1);
+    const keptOther = other.slice(0, level > 5 && level <= 10 ? 2 : 1);
+    return { question: decision.question, options: [...keptGood, ...keptOther], acceptable: keptGood.map((_, i) => i) };
+}
+
+const STORIES_BY_LEVEL: readonly Story[] = STORIES.map((story, i) => ({
+    ...story,
+    steps: story.steps.map((step) => (step.decision ? { ...step, decision: offeredForLevel(step.decision, i + 1) } : step)),
+}));
+
 /** Priča za nivo 1–15; vrednosti van opsega se svode na najbliži nivo. */
 export function storyForLevel(level: number): Story {
     const safe = Number.isFinite(level) ? Math.round(level) : 1;
-    return STORIES[Math.min(Math.max(safe, 1), STORIES.length) - 1];
+    return STORIES_BY_LEVEL[Math.min(Math.max(safe, 1), STORIES_BY_LEVEL.length) - 1];
 }
 
 /** Broj koraka sa odlukom — to je `total` za ocenu nivoa u režimu „Čitaj i biraj”. */

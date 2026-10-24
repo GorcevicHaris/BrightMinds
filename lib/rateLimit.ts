@@ -93,3 +93,35 @@ export function getClientIp(request: Request): string {
     const ip = forwarded || request.headers.get("x-real-ip")?.trim() || "unknown";
     return ip.slice(0, 64);
 }
+
+/**
+ * Troši po jedan pokušaj za svaki par (ključ, pravilo) — npr. kratak i dug prozor po IP
+ * adresi i zajednički osigurač za sve adrese. Dozvoljeno je samo ako dozvoljavaju sva
+ * pravila; čim jedno odbije, pokušaji potrošeni na ostala se vraćaju (odbijen zahtev se
+ * ne broji dvaput). `retryAfterSec` je najduže čekanje među pravilima koja su odbila.
+ */
+export function takeAttempts(entries: readonly { key: string; rule: RateLimitRule }[], now: number = Date.now()): Attempt {
+    const taken: Attempt[] = [];
+    for (const { key, rule } of entries) {
+        const attempt = takeAttempt(key, rule, now);
+        if (!attempt.allowed) {
+            for (const previous of taken) previous.refund();
+            // Ostala pravila se ipak pitaju, da poruka kaže koliko se zaista čeka
+            let retryAfterSec = attempt.retryAfterSec;
+            for (const other of entries.slice(taken.length + 1)) {
+                const probe = takeAttempt(other.key, other.rule, now);
+                if (probe.allowed) probe.refund();
+                else retryAfterSec = Math.max(retryAfterSec, probe.retryAfterSec);
+            }
+            return { allowed: false, retryAfterSec, refund: () => undefined };
+        }
+        taken.push(attempt);
+    }
+    return {
+        allowed: true,
+        retryAfterSec: 0,
+        refund: () => {
+            for (const attempt of taken) attempt.refund();
+        },
+    };
+}

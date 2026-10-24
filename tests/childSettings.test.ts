@@ -11,6 +11,7 @@ import {
     defaultSettings,
     resolveSettings,
     sanitizeSettings,
+    settingsOverrides,
     type AgeBand,
 } from "@/lib/childSettings";
 import { GAMES } from "@/lib/games";
@@ -171,6 +172,9 @@ describe("sanitizeSettings", () => {
             sessionMinutes: 30,
             moodCheck: "off",
             plan: ["emotions", "shapes"],
+            disabledGames: ["memory", "counting"],
+            unlockInOrder: true,
+            reminder: { enabled: true, time: "18:30", days: [1, 3, 5] },
         };
         assert.deepEqual(sanitizeSettings(valid, "young"), valid);
     });
@@ -320,5 +324,82 @@ describe("waitHint", () => {
         assert.equal(defaultSettings("older").waitHint, false);
         assert.equal(sanitizeSettings({ waitHint: true }, "middle").waitHint, true);
         assert.equal(sanitizeSettings({ waitHint: "yes" }, "young").waitHint, true);
+    });
+});
+
+describe("playAge (age used to order the games)", () => {
+    const born = (yearsAgo: number) => {
+        const date = new Date();
+        date.setFullYear(date.getFullYear() - yearsAgo, date.getMonth(), Math.max(1, date.getDate() - 2));
+        return date.toISOString().slice(0, 10);
+    };
+
+    it("is the child's age when the parent did not pick an age group", () => {
+        assert.equal(resolveSettings({}, born(5)).playAge, 5);
+        assert.equal(resolveSettings({}, null).playAge, null);
+    });
+
+    it("stays within the age group the parent picked", () => {
+        assert.equal(resolveSettings({ band: "young" }, born(8)).playAge, 4);
+        assert.equal(resolveSettings({ band: "older" }, born(5)).playAge, 7);
+        assert.equal(resolveSettings({ band: "middle" }, born(6)).playAge, 6);
+        assert.equal(resolveSettings({ band: "middle" }, null).playAge, 5);
+    });
+});
+
+describe("game access settings", () => {
+    it("default to every game and no unlocking in order (older saved settings too)", () => {
+        const settings = sanitizeSettings({ script: "cyrillic" }, "middle");
+        assert.deepEqual(settings.disabledGames, []);
+        assert.equal(settings.unlockInOrder, false);
+    });
+
+    it("keep only known games once, and never switch off every game", () => {
+        assert.deepEqual(sanitizeSettings({ disabledGames: ["memory", "chess", "memory", 4] }, "middle").disabledGames, ["memory"]);
+        assert.deepEqual(sanitizeSettings({ disabledGames: GAMES.map((game) => game.id) }, "middle").disabledGames, []);
+        assert.deepEqual(sanitizeSettings({ disabledGames: "memory" }, "middle").disabledGames, []);
+        assert.equal(sanitizeSettings({ unlockInOrder: "yes" }, "middle").unlockInOrder, false);
+    });
+
+    it("take a switched-off game out of the daily plan", () => {
+        const settings = sanitizeSettings({ plan: ["shapes", "memory"], disabledGames: ["memory"] }, "middle");
+        assert.deepEqual(settings.plan, ["shapes"]);
+    });
+
+    it("are stored only when changed", () => {
+        const base = sanitizeSettings({}, "middle");
+        assert.deepEqual(settingsOverrides(base, "middle"), {});
+        const changed = sanitizeSettings({ disabledGames: ["memory"], unlockInOrder: true }, "middle");
+        assert.deepEqual(settingsOverrides(changed, "middle"), { disabledGames: ["memory"], unlockInOrder: true });
+    });
+});
+
+describe("reminder settings", () => {
+    it("are off by default, at five in the afternoon, every day", () => {
+        assert.deepEqual(sanitizeSettings({}, "young").reminder, { enabled: false, time: "17:00", days: [1, 2, 3, 4, 5, 6, 7] });
+    });
+
+    it("keep a valid time and days in week order, and fix the rest", () => {
+        assert.deepEqual(sanitizeSettings({ reminder: { enabled: true, time: "07:05", days: [5, 1, 1, 9, "2"] } }, "young").reminder, {
+            enabled: true,
+            time: "07:05",
+            days: [1, 5],
+        });
+        for (const time of ["7:05", "24:00", "12:60", "noon", 1700]) {
+            assert.equal(sanitizeSettings({ reminder: { enabled: true, time } }, "young").reminder.time, "17:00", String(time));
+        }
+    });
+
+    it("switch off when no day is chosen", () => {
+        assert.deepEqual(sanitizeSettings({ reminder: { enabled: true, time: "18:00", days: [] } }, "young").reminder, {
+            enabled: false,
+            time: "18:00",
+            days: [1, 2, 3, 4, 5, 6, 7],
+        });
+    });
+
+    it("are stored only when changed", () => {
+        const changed = sanitizeSettings({ reminder: { enabled: true, time: "18:00", days: [1, 2, 3, 4, 5, 6, 7] } }, "young");
+        assert.deepEqual(settingsOverrides(changed, "young"), { reminder: { enabled: true, time: "18:00", days: [1, 2, 3, 4, 5, 6, 7] } });
     });
 });

@@ -5,7 +5,6 @@ import Image from "next/image";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
-import { animalImage } from "@/lib/pictures";
 import { gameSoundsEnabled, playWithFade, useMuted } from "@/lib/sound";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
@@ -19,7 +18,6 @@ import {
     useBubbleTail,
     hintDue,
     playSfx,
-    shuffle,
     useGameSync,
     useInputGuard,
     useTimers,
@@ -29,62 +27,20 @@ import {
 } from "@/app/components/games/kit";
 import type { BaseView, ChoiceState, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
 import { OwlPicture, WindPicture, type SoundPicture } from "./SoundPictures";
+import { buildSoundRounds, SOUND_ITEMS, SOUND_LEVELS, soundLevelIndex, type SoundMeta, type SoundRound } from "@/app/components/games/data/soundLevels";
 
 // ── Zvukovi ───────────────────────────────────────────────────────────────────
-// Svaki unos ima zvuk u /public/sounds i sliku: fotografiju iz /public/soundImage (`image`)
-// ili, kad fotografije nema, crtež iz SoundPictures.tsx (`Art`).
-//
-// Redosled je od tihih i poznatih ka naglim: viši nivoi dodaju zvukove s kraja liste,
-// a prva četiri su tiha, pa svaki nivo ima šta da pusti i kad su glasni zvuci isključeni.
-// Tihih zvukova je sedam (mačka, krava, svinja, ptica, kiša, sova, vetar); svi su na listi
-// do nivoa 4, pa dete kome su glasni zvuci isključeni ne sluša stalno istih pet.
-//
-// `loud` označava nagle ili oštre zvuke (lavež, sirena, grmljavina, zvono…). Oni se puštaju
-// samo ako je roditelj to dozvolio; njihove slike i dalje mogu biti ponuđene kao odgovor.
-// `level` ujednačava jačinu snimaka (izmereno na fajlovima: najglasnija sekunda svakog
-// snimka svedena je na oko −20 dBFS), da nijedan zvuk ne bude mnogo glasniji od ostalih.
-
-type Category = "animals" | "vehicles" | "weather" | "home";
-
-interface SoundItemBase {
-    id: string;
-    label: string;
-    sound: string;
-    category: Category;
-    loud: boolean;
-    /** Udeo izabrane jačine kojim se pušta ovaj snimak (0–1) */
-    level: number;
-}
+// Zvuci, nivoi i plan rundi su u data/soundLevels.ts; ovde se samo dodaje crtež za zvuke bez fotografije.
 
 /** Slika zvuka: putanja do fotografije ili crtež (SVG komponenta) — tačno jedno od ta dva. */
-type SoundItem = SoundItemBase & ({ image: string; Art?: undefined } | { Art: SoundPicture; image?: undefined });
+type SoundItem = SoundMeta & ({ image: string; Art?: undefined } | { Art: SoundPicture; image?: undefined });
 
-const ITEMS: SoundItem[] = [
-    { id: "cat", label: "Mačka", image: animalImage("cat"), sound: "/sounds/macka.mp3", category: "animals", loud: false, level: 0.3 },
-    { id: "cow", label: "Krava", image: animalImage("cow"), sound: "/sounds/krava.wav", category: "animals", loud: false, level: 0.4 },
-    { id: "pig", label: "Svinja", image: animalImage("pig"), sound: "/sounds/svinja.mp3", category: "animals", loud: false, level: 1 },
-    { id: "bird", label: "Ptica", image: animalImage("bird"), sound: "/sounds/ptica.mp3", category: "animals", loud: false, level: 1 },
-    { id: "dog", label: "Pas", image: animalImage("dog"), sound: "/sounds/pas.mp3", category: "animals", loud: true, level: 0.65 },
-    { id: "rain", label: "Kiša", image: "/soundImage/rain.webp", sound: "/sounds/kisa.mp3", category: "weather", loud: false, level: 1 },
-    // Sova i vetar: NIKO IH JOŠ NIJE PRESLUŠAO. Jačina je namerno oprezna i određena samo merenjem fajla
-    // (isti postupak kao za ostale: najglasnija sekunda na oko −20 dBFS; vetar se meri u prvih 6 s, koliko se
-    // i pušta). Pre objave ih treba preslušati na uređaju i proveriti da nijedan ne počinje naglo.
-    { id: "owl", label: "Sova", Art: OwlPicture, sound: "/sounds/sova.mp3", category: "animals", loud: false, level: 0.45 },
-    { id: "horse", label: "Konj", image: animalImage("horse"), sound: "/sounds/konj.mp3", category: "animals", loud: true, level: 0.5 },
-    { id: "wind", label: "Vetar", Art: WindPicture, sound: "/sounds/vetar.mp3", category: "weather", loud: false, level: 0.35 },
-    { id: "rooster", label: "Petao", image: animalImage("rooster"), sound: "/sounds/petao.wav", category: "animals", loud: true, level: 0.7 },
-    { id: "car", label: "Auto", image: "/soundImage/car.webp", sound: "/sounds/sirenaAuta.mp3", category: "vehicles", loud: true, level: 0.55 },
-    { id: "bell", label: "Zvono", image: "/soundImage/bell.webp", sound: "/sounds/zvonoKucno.mp3", category: "home", loud: true, level: 0.85 },
-    { id: "bear", label: "Medved", image: animalImage("bear"), sound: "/sounds/medved.mp3", category: "animals", loud: true, level: 1 },
-    { id: "monkey", label: "Majmun", image: animalImage("monkey"), sound: "/sounds/majmun.mp3", category: "animals", loud: true, level: 1 },
-    { id: "police", label: "Policija", image: "/soundImage/policeCar.webp", sound: "/sounds/policija.mp3", category: "vehicles", loud: true, level: 1 },
-    { id: "thunder", label: "Grmljavina", image: "/soundImage/thunder.webp", sound: "/sounds/grmljavina.mp3", category: "weather", loud: true, level: 0.7 },
-];
+const DRAWN: Record<string, SoundPicture> = { owl: OwlPicture, wind: WindPicture };
+
+const ITEMS: SoundItem[] = SOUND_ITEMS.map((meta): SoundItem => (meta.image ? { ...meta, image: meta.image } : { ...meta, image: undefined, Art: DRAWN[meta.id] ?? WindPicture }));
 
 const ITEM_BY_ID: Record<string, SoundItem | undefined> = Object.fromEntries(ITEMS.map((item) => [item.id, item]));
 
-/** Kiša, grmljavina i sirena traju dugo — zvuk se sam utiša posle ovoliko. */
-const MAX_PLAY_MS = 6000;
 /** Posle tačnog odgovora: najkraća pauza i najduže čekanje da glas završi rečenicu */
 const MIN_FEEDBACK_MS = 1300;
 const MAX_FEEDBACK_MS = 4000;
@@ -120,95 +76,7 @@ function correctText(item: SoundItem): string {
     return `To je ${item.label.toLowerCase()}.`;
 }
 
-// ── Nivoi ─────────────────────────────────────────────────────────────────────
-
-interface LevelConfig {
-    rounds: number;
-    /** Broj ponuđenih slika: lako 2–3, srednje 4, teško 6 (pre ograničenja iz podešavanja) */
-    options: number;
-    /** Koliko prvih zvukova sa liste učestvuje */
-    pool: number;
-    /** Pogrešne slike se biraju iz iste grupe kao tačna (životinje sa životinjama…) */
-    similar?: boolean;
-    /** Ispod slika nema reči: prepoznaje se samo po slici */
-    noLabels?: boolean;
-}
-
-// Svaki nivo ima iste zvukove kao pre dodavanja sove i vetra, plus njih dva čim dođu na red
-// (sova od nivoa 3, vetar od nivoa 4).
-const LEVELS: LevelConfig[] = [
-    { rounds: 5, options: 2, pool: 5 },
-    { rounds: 5, options: 2, pool: 6 },
-    { rounds: 5, options: 3, pool: 8 },
-    { rounds: 5, options: 3, pool: 10 },
-    { rounds: 6, options: 3, pool: 11 },
-    { rounds: 5, options: 4, pool: 12 },
-    { rounds: 5, options: 4, pool: 13 },
-    { rounds: 6, options: 4, pool: 14 },
-    { rounds: 6, options: 4, pool: 15 },
-    { rounds: 6, options: 4, pool: 16 },
-    // Teško: svi zvuci su poznati, pa svaki nivo menja način biranja — više slika, slične slike,
-    // pa slike bez reči ispod (snimaka nema više, zato se ne dodaju novi zvuci)
-    { rounds: 5, options: 6, pool: 16 },
-    { rounds: 6, options: 6, pool: 16 },
-    { rounds: 6, options: 6, pool: 16, similar: true },
-    { rounds: 6, options: 6, pool: 16, similar: true, noLabels: true },
-    { rounds: 7, options: 6, pool: 16, similar: true, noLabels: true },
-];
-
-function levelIndex(level: number): number {
-    return Number.isFinite(level) ? Math.min(Math.max(Math.round(level), 1), LEVELS.length) - 1 : 0;
-}
-
-interface Round {
-    targetId: string;
-    optionIds: string[];
-}
-
-interface RoundLimits {
-    /** Roditelj je dozvolio nagle i glasne zvuke */
-    loudSounds: boolean;
-    maxRounds: number;
-    /** Najviše ponuđenih slika (podešavanja deteta i širina ekrana) */
-    maxOptions: number;
-}
-
-/**
- * Sve runde nivoa unapred. Traže se samo zvuci koji smeju da se puste. Zvuci koji su novi
- * na ovom nivou sigurno dolaze na red. Kad dozvoljenih zvukova ima manje nego rundi,
- * zvuci se ponavljaju, ali nikad dva puta zaredom.
- */
-function buildRounds(level: number, { loudSounds, maxRounds, maxOptions }: RoundLimits): Round[] {
-    const index = levelIndex(level);
-    const config = LEVELS[index];
-    const previousPool = index > 0 ? LEVELS[index - 1].pool : 0;
-    const pool = ITEMS.slice(0, config.pool);
-    const playable = (item: SoundItem) => loudSounds || !item.loud;
-
-    // Ako bi nivo ostao sa manje od dva zvuka, uzimaju se dozvoljeni zvuci sa cele liste
-    const inPool = pool.filter(playable);
-    const candidates = inPool.length >= 2 ? inPool : ITEMS.filter(playable);
-    const roundCount = candidates.length >= 2 ? Math.max(1, Math.min(config.rounds, maxRounds)) : candidates.length;
-
-    const fresh = candidates.filter((item) => ITEMS.indexOf(item) >= previousPool);
-    const known = candidates.filter((item) => ITEMS.indexOf(item) < previousPool);
-    const targets = shuffle([...shuffle(fresh), ...shuffle(known)].slice(0, roundCount));
-    while (targets.length < roundCount) {
-        const again = shuffle(candidates);
-        const next = again[0] === targets[targets.length - 1] ? [...again.slice(1), again[0]] : again;
-        targets.push(...next.slice(0, roundCount - targets.length));
-    }
-
-    const optionCount = Math.min(config.options, maxOptions, pool.length);
-    return targets.map((target) => {
-        let others = shuffle(pool.filter((item) => item.id !== target.id));
-        if (config.similar) {
-            others = [...others.filter((item) => item.category === target.category), ...others.filter((item) => item.category !== target.category)];
-        }
-        const options = shuffle([target, ...others.slice(0, optionCount - 1)]);
-        return { targetId: target.id, optionIds: options.map((item) => item.id) };
-    });
-}
+type Round = SoundRound;
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
 
@@ -280,14 +148,15 @@ const GRID: Record<number, string> = {
     2: "mx-auto max-w-xl grid-cols-2 xl:max-w-3xl 2xl:max-w-4xl",
     3: "mx-auto max-w-2xl grid-cols-3 xl:max-w-5xl 2xl:max-w-6xl",
     4: "grid-cols-2 md:grid-cols-4",
-    6: "mx-auto max-w-3xl grid-cols-2 sm:grid-cols-3 lg:max-w-none lg:grid-cols-6",
+    // Šest slika: tri kolone u dva reda, a širina tolika da oba reda stanu u visinu ekrana
+    6: "mx-auto max-w-[min(100%,calc((100dvh-25rem)*1.15))] grid-cols-2 sm:grid-cols-3",
 };
 
 const IMAGE_SIZES: Record<number, string> = {
     2: "(min-width: 1536px) 440px, (min-width: 1280px) 380px, (min-width: 640px) 260px, 45vw",
     3: "(min-width: 1536px) 380px, (min-width: 1280px) 320px, (min-width: 640px) 200px, 30vw",
     4: "(min-width: 1536px) 300px, (min-width: 1280px) 260px, (min-width: 768px) 200px, 45vw",
-    6: "(min-width: 1024px) 130px, (min-width: 640px) 230px, 45vw",
+    6: "(min-width: 640px) 260px, 45vw",
 };
 
 // ── Dugme „Pusti zvuk” ────────────────────────────────────────────────────────
@@ -355,7 +224,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     const [rounds] = useState<Round[]>(() =>
         isMonitor
             ? []
-            : buildRounds(level, {
+            : buildSoundRounds(level, {
                   loudSounds: settings.loudSounds,
                   maxRounds: settings.preset.maxRounds,
                   maxOptions: isNarrowScreen() ? Math.min(settings.choiceLimit, NARROW_MAX_OPTIONS) : settings.choiceLimit,
@@ -390,7 +259,10 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     const options = shown.optionIds.flatMap((id) => ITEM_BY_ID[id] ?? []);
     const tail = useBubbleTail();
     const solved = shown.feedback === "correct";
-    const showLabels = !LEVELS[levelIndex(level)].noLabels;
+    const levelCfg = SOUND_LEVELS[soundLevelIndex(level)];
+    const showLabels = !levelCfg.noLabels;
+    /** Na lakim nivoima tačna slika zasvetli već posle prve greške (osim kad je roditelj isključio pomoć) */
+    const hintAfter = levelCfg.earlyHint && settings.hintAfter > 0 ? 1 : settings.hintAfter;
     // Prvi zvuk prvog nivoa se pokazuje rukom: prvo dugme za zvuk, pa tačna slika
     const firstDemo = !isMonitor && level === 1 && shown.round === 1 && !shown.feedback && !shown.soundOff;
     // Slike sledećeg zvuka se učitavaju dok dete rešava tekući, da nova runda ne „iskače” deo po deo
@@ -447,7 +319,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
             current.onerror = () => {
                 if (release()) void say(item.label);
             };
-            cutTimerRef.current = after(MAX_PLAY_MS, finish);
+            cutTimerRef.current = after(levelCfg.clipMs, finish);
             setPlaying(true);
 
             // Bez naglog početka: zvuk kreće tiho i pojačava se do jačine koju je izabrao roditelj
@@ -456,7 +328,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                 if (release()) void say(item.label);
             });
         },
-        [after, haltSound, say, stopSpeech]
+        [after, haltSound, say, stopSpeech, levelCfg.clipMs]
     );
 
     // Učitavanje zvukova nivoa unapred + gašenje svega kad igra nestane
@@ -613,7 +485,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
         if (id !== current.targetId) {
             const wrongIds = [...current.wrongIds, id];
             // Tačna slika se ističe posle `hintAfter` grešaka (0 = nikad), a najkasnije kad ostane samo ona
-            const hint = hintDue(settings.hintAfter, wrongIds.length, current.optionIds.length - 1);
+            const hint = hintDue(hintAfter, wrongIds.length, current.optionIds.length - 1);
             // Uzastopni brzi dodiri posle greške ne broje se kao nove greške
             guard.hold();
             playSfx("wrong");

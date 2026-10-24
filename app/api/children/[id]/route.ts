@@ -21,10 +21,10 @@ interface RouteContext {
 export async function PUT(request: Request, { params }: RouteContext) {
     try {
         const childId = parseIdParam((await params).id);
-        await requireChildOwner(childId);
+        const session = await requireChildOwner(childId);
         const input = parseChildInput(await readJsonObject(request));
 
-        if (input.pin_code) await assertPinAvailable(input.pin_code, childId);
+        if (input.pin_code) await assertPinAvailable(input.pin_code, { request, userId: session.userId }, childId);
 
         const [child] = await selectChildRows((columns) =>
             supabaseAdmin

@@ -16,14 +16,16 @@ export const USES_SCENES: Readonly<Record<string, SceneSpec>> = fixed({
     spoon: scene("kitchen", [thing("table", 120, 150, { s: 1.4 }), thing("soup", 120, 102, { s: 1.8 })]),
     pencil: scene("plain", [thing("paper", 120, 140, { s: 4 })]),
     scissors: scene("plain", [thing("paperCut", 120, 140, { s: 3.4 })]),
-    soap: scene("bathroom", [thing("sink", 130, 150, { s: 1.9 }), thing("stream", 145, 70, { s: 1.2 }), hero(60, { pose: "hold", s: 1.2 })]),
+    soap: scene("bathroom", [thing("sink", 150, 150, { s: 1.9 }), thing("stream", 165, 70, { s: 1.2 }), hero(132, { pose: "wash", s: 1.3 })]),
     key: scene("room", [thing("lock", 120, 150, { s: 1.4 })]),
     umbrella: scene("street", [hero(120, { s: 1.3, pose: "shrug" }), thing("rainDrops", 120, 50, { s: 1.4 })], "rain"),
-    bed: scene("room", [hero(110, { s: 1.3, face: "sleep" }), thing("zzz", 146, 50, { s: 1.4 })], "stars"),
+    bed: scene("room", [hero(110, { s: 1.3, pose: "mouth", face: "yawn" }), thing("zzz", 146, 50, { s: 1.4 })], "stars"),
     glass: scene("kitchen", [hero(70, { s: 1.2 }), thing("table", 150, 150, { s: 1.1 }), thing("bottle", 150, 112, { s: 1.6 })]),
     broom: scene("room", [thing("confetti", 120, 152, { s: 0.9 }), thing("leaves", 70, 150, { s: 1.2 }), thing("leaves", 170, 148, { s: 1.2 })]),
     phone: scene("room", [hero(70, { s: 1.2 }), think(scene("room", [who("baka", 120, { s: 1.2, pose: "wave", face: "happy" })]), 172, 64, 44, [100, 70])]),
     ball: scene("park", [thing("goal", 120, 132, { s: 1.8 })], "clear"),
+    fork: scene("kitchen", [thing("table", 120, 150, { s: 1.4 }), thing("plate", 120, 100, { s: 2.2 })]),
+    lamp: scene("room", [hero(110, { s: 1.3, face: "worried" })], "dark"),
 
     // Delovi tela
     eyes: scene("garden", [thing("butterfly", 120, 96, { s: 3 })], "clear"),
@@ -33,6 +35,7 @@ export const USES_SCENES: Readonly<Record<string, SceneSpec>> = fixed({
     hand: scene("room", [thing("doorOpen", 150, 148, { s: 1.2 }), who("boy", 150, { back: true, pose: "walk" })]),
     leg: scene("park", [thing("goal", 150, 132, { s: 1.4 }), thing("ball", 70, 150, { s: 1.8 })], "clear"),
     teeth: scene("plain", [thing("apple", 120, 140, { s: 3.6 })]),
+    tongue: scene("plain", [thing("iceCream", 120, 146, { s: 4.2 })]),
 
     // Stvari
     backpack: scene("street", [thing("school", 120, 120, { s: 1.4 })], "clear"),
@@ -47,6 +50,8 @@ export const USES_SCENES: Readonly<Record<string, SceneSpec>> = fixed({
     brush: scene("plain", [thing("paper", 90, 140, { s: 2.6 }), thing("paints", 176, 140, { s: 2 })]),
     book: scene("living", [thing("sofa", 120, 152, { s: 1.4 }), hero(110, { pose: "sit", y: 132 }), thing("lamp", 200, 150, { s: 1.2 })]),
     hammer: scene("plain", [thing("nail", 120, 140, { s: 2.6 })]),
+    crayons: scene("plain", [thing("drawing", 120, 144, { s: 3.6 })]),
+    scarf: scene("snow", [thing("snowflakes", 120, 60, { s: 1.4 }), hero(120, { s: 1.3, wear: ["jacket"], face: "tired" })]),
 
     // Životinje
     elephant: scene("plain", [thing("trunk", 120, 142, { s: 1.8 })]),
@@ -58,6 +63,8 @@ export const USES_SCENES: Readonly<Record<string, SceneSpec>> = fixed({
     turtle: scene("plain", [thing("shell", 120, 140, { s: 2.6 })]),
     cow: scene("plain", [thing("milk", 96, 140, { s: 3 }), thing("glass", 160, 140, { s: 2.6 })]),
     bee: scene("plain", [thing("honey", 120, 140, { s: 3.2 })]),
+    frog: scene("garden", [thing("puddle", 120, 150, { s: 3.4 }), thing("leaves", 90, 146, { s: 1.2 })], "clear"),
+    spider: scene("plain", [thing("web", 120, 150, { s: 3.4 })]),
 
     // Priroda i prevoz
     bicycle: scene("plain", [thing("pedal", 110, 140, { s: 3 })]),
@@ -69,6 +76,8 @@ export const USES_SCENES: Readonly<Record<string, SceneSpec>> = fixed({
     moon: scene("street", [], "stars"),
     rainbow: scene("street", [thing("puddle", 70, 150, { s: 1.4 }), thing("puddle", 170, 152, { s: 1.1 })], "rain"),
     snowman: scene("snow", [thing("carrot", 110, 146, { s: 2 }), thing("stone", 150, 150, { s: 0.6 }), thing("stone", 166, 150, { s: 0.6 })]),
+    train: scene("station", [], "clear"),
+    rocket: scene("sky", [thing("star", 60, 60), thing("star", 180, 40), thing("star", 140, 110, { s: 0.7 })], "stars"),
 });
 
 export function usesScene(itemId: string): SceneSpec | undefined {

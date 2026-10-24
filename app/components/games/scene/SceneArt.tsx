@@ -49,7 +49,7 @@ function FigureNode({ item, hero }: { item: FigureItem; hero?: HeroLook }) {
     if (item.hold) {
         const [hx, hy] = heldPoint(adult, pose, item.hold.hand ?? (pose === "hold" || pose === "sitHold" ? "both" : "r"));
         // Predmet „visi” iz šake: sredina donje ivice predmeta je malo ispod šake
-        const parts = [`translate(${hx} ${hy + 5})`];
+        const parts = [`translate(${hx} ${hy + 5 + (item.hold.dy ?? 0)})`];
         if (item.hold.rot) parts.push(`rotate(${item.hold.rot})`);
         parts.push(`scale(${item.hold.s ?? 0.8})`);
         held = (
@@ -59,6 +59,7 @@ function FigureNode({ item, hero }: { item: FigureItem; hero?: HeroLook }) {
         );
     }
     const transforms = [`translate(${item.x} ${item.y ?? GROUND_Y})`];
+    if (item.rot) transforms.push(`rotate(${item.rot})`);
     if (item.s && item.s !== 1) transforms.push(`scale(${item.s})`);
     if (item.flip) transforms.push("scale(-1 1)");
     return (
@@ -173,12 +174,14 @@ interface SceneArtProps {
     /** Glavni lik zadatka (izgled, izraz lica, leđima) */
     hero?: HeroLook;
     className?: string;
+    /** Slika popunjava okvir drugačijeg oblika (npr. kvadrat) i odseca višak sa strane */
+    fill?: boolean;
 }
 
-export function SceneArt({ spec, hero, className }: SceneArtProps) {
+export function SceneArt({ spec, hero, className, fill = false }: SceneArtProps) {
     const uid = useId().replace(/:/g, "");
     return (
-        <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className={cn("block", className)} aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid meet">
+        <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} className={cn("block", className)} aria-hidden="true" focusable="false" preserveAspectRatio={fill ? "xMidYMid slice" : "xMidYMid meet"}>
             <clipPath id={`${uid}-frame`}>
                 <rect width={VIEW_W} height={VIEW_H} rx={10} />
             </clipPath>

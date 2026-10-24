@@ -9,16 +9,33 @@ import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import { CoinIcon } from "@/app/components/ui/CoinIcon";
 import { Button } from "@/app/components/ui/Button";
 import { SoundToggle } from "@/app/components/ui/SoundToggle";
-import { CelebrationLayer, celebrateBig, GamePauseContext, GameTeacherContext, playSfx, useInputGuard, type GameProps, type GameResult } from "@/app/components/games/kit";
-import { useSpeakingLock } from "@/lib/voice";
+import {
+    CelebrationLayer,
+    celebrateBig,
+    CompanionPanelContext,
+    flyItems,
+    FLY_MS,
+    GamePauseContext,
+    GameTeacherContext,
+    HypeBubble,
+    HypePlus,
+    playSfx,
+    useCompanionHype,
+    useInputGuard,
+    useWideScreen,
+    type GameProps,
+    type GameResult,
+} from "@/app/components/games/kit";
+import { useSpeakingLock, useVoiceState } from "@/lib/voice";
 import CompanionPicture from "@/app/components/avatar3d/CompanionPicture";
 import CompanionStage from "@/app/components/avatar3d/CompanionStage";
 import type { CompanionAction as CompanionMove } from "@/app/components/avatar/Companion";
+import { useCalmMotion } from "@/app/components/avatar/motion";
 import TeacherAvatar from "@/app/components/avatar/TeacherAvatar";
 import type { VoiceEmotion as TeacherEmotion } from "@/lib/emotion";
 import { COINS_PER_STAR } from "@/lib/companion";
 import { chosenSkin, useCompanion } from "./companionState";
-import { GoalChip } from "./companionUi";
+import { coinWord, GoalChip } from "./companionUi";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
 import { cn } from "@/lib/cn";
 import {
@@ -33,10 +50,14 @@ import {
     type GameId,
     type Mood,
 } from "@/lib/games";
+import { pickerGames } from "@/lib/gameAccess";
 import { useGameBroadcast } from "@/lib/realtime";
 import { useSpeech } from "@/lib/speech";
 import type { VoiceEmotion } from "@/lib/emotion";
 import { usePlanProgress } from "./planProgress";
+// Mapa igara i „Igraj sa drugom” (GameMap.tsx, playTogether.tsx)
+import { GamePicker } from "./GameMap";
+import { TogetherEnd, TurnTakingLayer, useTogetherEnd } from "./playTogether";
 import { useSessionClock } from "./sessionClock";
 
 // Svaka igra se učitava tek kada je dete izabere
@@ -62,6 +83,8 @@ const GAME_LOADERS = {
     uses: () => import("@/app/components/games/UsesGame"),
     counting: () => import("@/app/components/games/CountingGame"),
     gaze: () => import("@/app/components/games/GazeGame"),
+    letters: () => import("@/app/components/games/LettersGame"),
+    numbers: () => import("@/app/components/games/NumbersGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -78,6 +101,8 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     uses: dynamic(GAME_LOADERS["uses"], { ssr: false, loading: GameLoading }),
     counting: dynamic(GAME_LOADERS["counting"], { ssr: false, loading: GameLoading }),
     gaze: dynamic(GAME_LOADERS["gaze"], { ssr: false, loading: GameLoading }),
+    letters: dynamic(GAME_LOADERS["letters"], { ssr: false, loading: GameLoading }),
+    numbers: dynamic(GAME_LOADERS["numbers"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {
@@ -192,6 +217,8 @@ interface GameContainerProps {
     preview?: boolean;
     /** Samo u probnom prikazu: sledeći otključani nivo u svim igrama (podrazumevano je sve otključano) */
     previewUnlocked?: number;
+    /** Uzrast u godinama (mapa je podrazumevana do 7 godina); null = nepoznat */
+    ageYears?: number | null;
 }
 
 /** Čuva rezultat nivoa; kod prekida mreže ili greške servera pokušava još dva puta. */
@@ -219,7 +246,7 @@ async function saveResult(payload: Record<string, unknown>): Promise<{ logId?: u
     throw lastError;
 }
 
-export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, onOverlayChange, preview = false, previewUnlocked = MAX_LEVEL + 1 }: GameContainerProps) {
+export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, onOverlayChange, preview = false, previewUnlocked = MAX_LEVEL + 1, ageYears = null }: GameContainerProps) {
     const settings = useChildSettings();
     const { say } = useSpeech(gender);
     const publish = useGameBroadcast(childId, !preview);
@@ -245,7 +272,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const [levelsAttempt, setLevelsAttempt] = useState(0);
 
     // Raspoloženje (ako je uključeno) pitamo jednom po poseti i posle odigrane igre; uvek može da se preskoči
-    const askMood = settings.moodCheck !== "off" && !preview;
+    // Probni prikaz pita samo uz `?mood=1` (da se ekran može pogledati bez prijave)
+    const [previewMood] = useState(() => preview && typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mood") === "1");
+    const askMood = settings.moodCheck !== "off" && (!preview || previewMood);
     const [moodBefore, setMoodBefore] = useState<Mood | null>(null);
     const [moodAsked, setMoodAsked] = useState(false);
     const sessionLogIds = useRef<number[]>([]);
@@ -267,6 +296,10 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const planActive = plan.length > 0 && nextPlanned !== null;
 
     const playKey = `${gameId}-${level}-${attempt}`;
+    // Položen tablet i računar: drugar stoji u velikom panelu pored igre (inače je portret u traci)
+    const wide = useWideScreen();
+    const hasCompanion = useCompanion() !== null;
+    const panel = wide && settings.avatar && hasCompanion;
     const listening = useSpeakingLock();
     // Dodir dok učitelj govori se ne prihvata, ali dete to vidi: kratko „Slušaj do kraja”
     const [listenNote, setListenNote] = useState(0);
@@ -286,6 +319,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const clock = useSessionClock(childId, preview ? 0 : settings.sessionMinutes, screen === "playing" && !outcome && !onBreak);
 
     const game = gameId ? getGame(gameId) : null;
+    const togetherEnd = useTogetherEnd(gameId);
     const tier = tierOf(tierId);
     const unlockedFor = (id: GameId) => unlocked[id] ?? 1;
 
@@ -544,7 +578,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             return <RestCard childName={childName} onExtend={() => clock.addMinutes(ADULT_EXTRA_MINUTES)} />;
         }
         // Sa planom: prikazujemo samo igre iz plana, redom. Kad je plan završen, dete bira samo.
-        const shown = planActive ? plan.map((id) => getGame(id)) : GAMES;
+        const shown = planActive ? plan.map((id) => getGame(id)) : pickerGames(settings, unlocked);
         return (
             <section aria-labelledby="games-heading" className="space-y-4 sm:space-y-5">
                 {plan.length > 0 && <PlanStrip plan={plan} done={planDone} current={nextPlanned} />}
@@ -559,6 +593,17 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         </Button>
                     </div>
                 )}
+                {/* Mapa ili kartice (GameMap.tsx); igre su već poređane po uzrastu i bez zaključanih (pickerGames) */}
+                <GamePicker
+                    ageYears={ageYears}
+                    games={shown}
+                    unlockedFor={unlockedFor}
+                    statusFor={planActive ? (id) => (planDone.includes(id) ? "done" : id === nextPlanned ? "now" : "later") : undefined}
+                    pending={levelsLoading}
+                    unavailable={levelsError}
+                    planActive={planActive}
+                    onOpen={openGame}
+                    grid={
                 <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
                     {shown.map((g, index) => {
                         const status = !planActive ? undefined : planDone.includes(g.id) ? "done" : g.id === nextPlanned ? "now" : "later";
@@ -578,6 +623,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         );
                     })}
                 </ul>
+                    }
+                />
             </section>
         );
     }
@@ -661,7 +708,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 </button>
             </header>
 
-            <div className="scroll-soft relative flex flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
+            <div className="scroll-soft relative isolate flex flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
                 {screen === "tiers" && <LevelMap game={game} unlocked={maxUnlocked} teacher={settings.avatar ? gender : null} onChoose={chooseTier} />}
 
                 {screen === "mood-before" && (
@@ -681,10 +728,14 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 )}
 
                 {screen === "playing" && (
-                    // Dok učitelj govori, igra ne prima dodire: rečenica se ne prekida, a dete ne bira pre
-                    // nego što čuje šta se traži. Dugmad u zaglavlju (pauza, zvuk, zatvori) i dalje rade.
+                    <CompanionPanelContext value={panel}>
+                    <div className={cn("relative flex flex-1", panel ? "flex-row gap-4 xl:gap-6" : "flex-col")}>
+                    {/* Drugar pored igre: navija, hvata zvezdice i kaže pohvalu */}
+                    {panel && <CompanionPanel />}
+                    {/* Dok učitelj govori, igra ne prima dodire: rečenica se ne prekida, a dete ne bira pre
+                        nego što čuje šta se traži. Dugmad u zaglavlju (pauza, zvuk, zatvori) i dalje rade. */}
                     <div
-                        className="relative flex flex-1 flex-col"
+                        className="relative flex min-w-0 flex-1 flex-col"
                         aria-busy={listening || undefined}
                         onPointerDownCapture={holdWhileSpeaking}
                         onClickCapture={holdWhileSpeaking}
@@ -701,6 +752,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         )}
                         {/* Za vreme pauze igra stoji: tajmeri čekaju, pomoć i govor igre ne kreću */}
                         <GamePauseContext.Provider value={onBreak}>
+                            {/* Igra sa drugom: traka „Sada igra …” (playTogether.tsx); inače samo igra */}
+                            <TurnTakingLayer key={playKey} gameId={game.id}>
                             <GameSlot
                                 key={`${game.id}-${level}-${attempt}`}
                                 gameId={game.id}
@@ -710,8 +763,11 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                                 childName={childName}
                                 onComplete={handleComplete}
                             />
+                            </TurnTakingLayer>
                         </GamePauseContext.Provider>
                     </div>
+                    </div>
+                    </CompanionPanelContext>
                 )}
             </div>
 
@@ -727,7 +783,22 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 />
             )}
 
-            {screen === "playing" && outcome && (
+            {/* Igra sa drugom: zajednička pohvala umesto uobičajenog kraja nivoa (playTogether.tsx) */}
+            {screen === "playing" && outcome && togetherEnd && (
+                <TogetherEnd
+                    gameId={game.id}
+                    playKey={playKey}
+                    stars={outcome.stars}
+                    level={level}
+                    advance={outcome.advance}
+                    limitReached={clock.limitReached}
+                    saved={outcome.saved}
+                    onNext={() => startLevel(tierId, level + 1)}
+                    onRetry={() => startLevel(tierId, level)}
+                    onLeave={leaveGame}
+                />
+            )}
+            {screen === "playing" && outcome && !togetherEnd && (
                 <LevelResult
                     outcome={outcome}
                     childName={childName}
@@ -1071,9 +1142,10 @@ function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
 }
 
 // ── Mapa nivoa ────────────────────────────────────────────────────────────────
-// Ulaz u igru: gore slika igre i jedno veliko dugme „Igraj” (nastavlja tamo gde je dete stalo),
-// ispod put od 15 nivoa u tri težine. Završeni nivoi su obojeni, sledeći svetli, ostali su zaključani.
-// Svaki otključan nivo može da se dodirne — dete vidi dokle je stiglo i šta je sledeće.
+// Ulaz u igru: drugar je glavni — veliki, živ, u svom svetu, maše detetu na pozdrav. Pored njega
+// (na telefonu ispod) slika i naziv igre, jedno veliko dugme „Igraj” (nastavlja tamo gde je dete
+// stalo) i put od 15 nivoa u tri težine. Završeni nivoi su obojeni, sledeći svetli, ostali su
+// zaključani. Svaki otključan nivo može da se dodirne — dete vidi dokle je stiglo i šta je sledeće.
 
 interface LevelMapProps {
     game: GameDefinition;
@@ -1084,6 +1156,9 @@ interface LevelMapProps {
     onChoose: (tier: TierConfig, level?: number) => void;
 }
 
+/** Svet drugara: ista meka siva kao u prodavnici dok se kupljena pozadina ne učita */
+const STAGE_BG = "bg-[#E4E6EB]";
+
 function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
     const allDone = unlocked > MAX_LEVEL;
     // Gde dete nastavlja: sledeći nezavršeni nivo; kad je sve završeno, najteža težina ispočetka
@@ -1092,56 +1167,88 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
     const started = unlocked > 1;
 
     return (
-        <div className="mx-auto flex w-full max-w-5xl flex-1 animate-fade-up flex-col justify-center gap-4 sm:gap-6 xl:max-w-6xl 2xl:max-w-7xl">
-            {/* Igra + veliko dugme */}
-            <section className="relative overflow-hidden rounded-card border border-line bg-surface shadow-lift">
-                <div className={cn("absolute inset-x-0 top-0 h-2 bg-gradient-to-r", game.accent.gradient)} aria-hidden="true" />
-                <div className="flex flex-col gap-4 p-4 pt-6 sm:flex-row sm:items-center sm:gap-7 sm:p-7 sm:pt-9">
-                    <div className="relative hidden aspect-[16/10] w-64 shrink-0 overflow-hidden rounded-2xl ring-1 ring-line sm:block lg:w-80">
-                        <Image src={game.image} alt="" fill sizes="320px" className="object-cover" priority />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-3">
-                            {teacher !== null && (
-                                <span className={cn("grid h-28 w-[5.5rem] shrink-0 place-items-end overflow-hidden rounded-2xl ring-1 sm:h-36 sm:w-28", game.accent.soft, game.accent.ring)}>
-                                    <Teacher gender={teacher} variant="scene" className="h-full w-full" />
-                                </span>
-                            )}
-                            <div className="min-w-0">
-                                <h2 className="font-display text-2xl font-extrabold leading-tight text-ink sm:text-4xl">{game.title}</h2>
-                                <p className="mt-0.5 text-base font-semibold text-ink-soft sm:text-lg">{game.description}</p>
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => onChoose(nextTier, nextLevel)}
-                            className="mt-4 flex min-h-16 w-full items-center gap-4 rounded-2xl border-2 border-b-[6px] border-emerald-900 bg-emerald-700 px-5 text-left text-white shadow-soft transition-[transform,background-color,border-width] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 sm:mt-6 sm:min-h-20 sm:px-7"
-                        >
-                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/20 sm:h-12 sm:w-12" aria-hidden="true">
-                                <svg viewBox="0 0 24 24" className="h-5 w-5 translate-x-0.5 sm:h-6 sm:w-6" fill="currentColor">
-                                    <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" />
-                                </svg>
-                            </span>
-                            <span className="min-w-0">
-                                <span className="block font-display text-xl font-extrabold leading-tight sm:text-2xl">{allDone ? "Igraj ponovo" : started ? "Nastavi" : "Igraj"}</span>
-                                <span className="block text-sm font-bold text-emerald-50 sm:text-base">
-                                    {nextTier.label} · nivo {nextLevel - nextTier.min + 1} od {LEVELS_PER_TIER}
-                                </span>
-                            </span>
-                        </button>
-                    </div>
-                </div>
+        <div className="mx-auto grid w-full max-w-6xl flex-1 animate-fade-up content-center gap-3 sm:gap-5 md:landscape:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:landscape:content-stretch 2xl:max-w-7xl">
+            {/* Drugar u svom svetu (bez drugara: velika slika igre) */}
+            <section
+                aria-label={teacher !== null ? "Tvoj drugar" : undefined}
+                className={cn(
+                    "relative h-[34dvh] min-h-52 overflow-hidden rounded-card shadow-lift ring-1 ring-line sm:h-[40dvh] md:landscape:h-auto md:landscape:min-h-0",
+                    teacher !== null ? STAGE_BG : game.accent.soft
+                )}
+            >
+                {teacher !== null ? (
+                    <>
+                        <Teacher gender={teacher} variant="full" action="wave" className="absolute inset-0 h-full w-full" />
+                        <CoinCount className="absolute left-3 top-3 sm:left-4 sm:top-4" />
+                        {/* Za šta dete skuplja novčiće */}
+                        <GoalChip className="absolute inset-x-3 bottom-3 mx-auto w-fit max-w-[calc(100%-1.5rem)] sm:bottom-4" />
+                    </>
+                ) : (
+                    <Image src={game.image} alt="" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" priority />
+                )}
             </section>
 
-            {/* Put kroz nivoe */}
-            <section aria-label="Svi nivoi" className="rounded-card border border-line bg-surface p-3 shadow-soft sm:p-5">
-                <ul className="grid gap-2 sm:gap-3">
-                    {TIERS.map((tier) => (
-                        <TierRow key={tier.id} tier={tier} unlocked={unlocked} next={allDone ? null : unlocked} onChoose={onChoose} />
-                    ))}
-                </ul>
-            </section>
+            <div className="flex min-w-0 flex-col justify-center gap-3 sm:gap-4">
+                {/* Igra + veliko dugme */}
+                <section className="relative overflow-hidden rounded-card border border-line bg-surface p-3 pt-4 shadow-soft sm:p-5 sm:pt-6">
+                    <div className={cn("absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r", game.accent.gradient)} aria-hidden="true" />
+                    <div className="flex items-center gap-3 sm:gap-4">
+                        {teacher !== null && (
+                            <div className="relative aspect-[16/10] w-24 shrink-0 overflow-hidden rounded-xl ring-1 ring-line sm:w-36 lg:w-44">
+                                <Image src={game.image} alt="" fill sizes="176px" className="object-cover" priority />
+                            </div>
+                        )}
+                        <div className="min-w-0">
+                            <h2 className="font-display text-xl font-extrabold leading-tight text-ink sm:text-3xl lg:text-4xl">{game.title}</h2>
+                            <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-ink-soft sm:text-base lg:text-lg">{game.description}</p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => onChoose(nextTier, nextLevel)}
+                        className="mt-3 flex min-h-16 w-full items-center gap-4 rounded-2xl border-2 border-b-[6px] border-emerald-900 bg-emerald-700 px-5 text-left text-white shadow-soft transition-[transform,background-color,border-width] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 sm:mt-5 sm:min-h-20 sm:px-7"
+                    >
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/20 sm:h-12 sm:w-12" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" className="h-5 w-5 translate-x-0.5 sm:h-6 sm:w-6" fill="currentColor">
+                                <path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z" />
+                            </svg>
+                        </span>
+                        <span className="min-w-0">
+                            <span className="block font-display text-xl font-extrabold leading-tight sm:text-2xl">{allDone ? "Igraj ponovo" : started ? "Nastavi" : "Igraj"}</span>
+                            <span className="block text-sm font-bold text-emerald-50 sm:text-base">
+                                {nextTier.label} · nivo {nextLevel - nextTier.min + 1} od {LEVELS_PER_TIER}
+                            </span>
+                        </span>
+                    </button>
+                </section>
+
+                {/* Put kroz nivoe */}
+                <section aria-label="Svi nivoi" className="rounded-card border border-line bg-surface p-2 shadow-soft sm:p-3">
+                    <ul className="grid gap-2">
+                        {TIERS.map((tier) => (
+                            <TierRow key={tier.id} tier={tier} unlocked={unlocked} next={allDone ? null : unlocked} onChoose={onChoose} />
+                        ))}
+                    </ul>
+                </section>
+            </div>
         </div>
+    );
+}
+
+/** Novčići koje dete ima (skuplja ih za drugara) — mali znak u uglu drugarovog sveta */
+function CoinCount({ value, className, countRef }: { value?: number; className?: string; countRef?: React.Ref<HTMLSpanElement> }) {
+    const companion = useCompanion();
+    if (!companion) return null;
+    const coins = value ?? companion.coins;
+    return (
+        <span
+            ref={countRef}
+            className={cn("inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 font-display text-lg font-extrabold text-sun-700 shadow-soft ring-2 ring-sun-200 sm:text-xl", className)}
+        >
+            <CoinIcon className="h-6 w-6" />
+            <span className="tabular-nums">{coins}</span>
+            <span className="sr-only"> {coinWord(coins)}</span>
+        </span>
     );
 }
 
@@ -1153,77 +1260,128 @@ interface TierRowProps {
     onChoose: (tier: TierConfig, level?: number) => void;
 }
 
+/**
+ * Jedna težina: znak sa zvezdicama i pet nivoa na traci. Prilagođava se širini svog mesta
+ * (container upiti): usko — znak sa kratkim nazivom ispod; šire — naziv i stanje pored znaka.
+ */
 function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
     const open = isTierUnlocked(tier, unlocked);
     const done = completedInTier(tier, unlocked);
     const status = !open ? tier.lockedHint : done === LEVELS_PER_TIER ? "Sve završeno" : done === 0 ? tier.hint : `Završeno ${done} od ${LEVELS_PER_TIER}`;
 
     return (
-        <li className={cn("flex flex-col gap-3 rounded-2xl p-3 sm:flex-row sm:items-center sm:gap-5 sm:p-4", open ? tier.look.soft : "bg-canvas")}>
-            <div className="flex items-center gap-3 sm:w-52 sm:shrink-0">
-                <span
-                    className={cn(
-                        "flex h-12 w-12 shrink-0 items-center justify-center gap-px rounded-2xl border-2 border-b-4 sm:h-14 sm:w-14",
-                        open ? cn(tier.look.solid, tier.look.edge, "text-white") : "border-line bg-surface text-ink-faint"
-                    )}
-                    aria-hidden="true"
-                >
-                    {open ? (
-                        Array.from({ length: tier.stars }, (_, i) => <Star key={i} className={tier.stars === 3 ? "h-3.5 w-3.5" : "h-4 w-4"} fill="currentColor" strokeWidth={0} />)
-                    ) : (
-                        <Lock className="h-5 w-5" />
-                    )}
-                </span>
-                <div className="min-w-0">
-                    <h3 className={cn("font-display text-lg font-extrabold leading-tight sm:text-xl", open ? "text-ink" : "text-ink-faint")}>{tier.label}</h3>
-                    <p className={cn("text-sm font-bold", open ? tier.look.text : "text-ink-faint")}>{status}</p>
+        <li className={cn("@container rounded-2xl px-2 py-2 @sm:p-3", open ? tier.look.soft : "bg-canvas")}>
+            <div className="flex items-center gap-2 @sm:gap-4">
+                <div className="flex w-14 shrink-0 flex-col items-center gap-0.5 @sm:w-40 @sm:flex-row @sm:gap-3 @xl:w-48">
+                    <span
+                        className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center gap-px rounded-xl border-2 border-b-4 @sm:h-12 @sm:w-12 @sm:rounded-2xl @xl:h-14 @xl:w-14",
+                            open ? cn(tier.look.solid, tier.look.edge, "text-white") : "border-line bg-surface text-ink-faint"
+                        )}
+                        aria-hidden="true"
+                    >
+                        {open ? (
+                            Array.from({ length: tier.stars }, (_, i) => <Star key={i} className={tier.stars === 3 ? "h-3 w-3 @sm:h-3.5 @sm:w-3.5" : "h-3.5 w-3.5 @sm:h-4 @sm:w-4"} fill="currentColor" strokeWidth={0} />)
+                        ) : (
+                            <Lock className="h-5 w-5" />
+                        )}
+                    </span>
+                    <div className="min-w-0 text-center @sm:text-left">
+                        <h3 className={cn("font-display text-xs font-extrabold leading-tight @sm:text-lg @xl:text-xl", open ? "text-ink" : "text-ink-faint")}>{tier.label}</h3>
+                        <p className={cn("hidden text-sm font-bold leading-tight @sm:block", open ? tier.look.text : "text-ink-faint")}>{status}</p>
+                    </div>
                 </div>
-            </div>
 
-            {/* Pet nivoa na traci; popunjeni deo trake pokazuje dokle je dete stiglo */}
-            <ol className="relative grid flex-1 grid-cols-5 items-center">
-                <span className="absolute inset-x-[10%] top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-line/70" aria-hidden="true" />
-                <span
-                    className={cn("absolute left-[10%] top-1/2 h-1.5 -translate-y-1/2 rounded-full", tier.look.track)}
-                    style={{ width: `${Math.max(0, Math.min(done, LEVELS_PER_TIER - 1)) * 20}%` }}
-                    aria-hidden="true"
-                />
-                {Array.from({ length: LEVELS_PER_TIER }, (_, i) => {
-                    const level = tier.min + i;
-                    const isDone = level < unlocked;
-                    const isNext = level === next;
-                    const locked = !isDone && !isNext;
-                    return (
-                        <li key={level} className="relative grid place-items-center">
-                            <button
-                                type="button"
-                                disabled={locked}
-                                onClick={() => onChoose(tier, level)}
-                                aria-label={`${tier.label}, nivo ${i + 1}${isDone ? ", završen" : isNext ? ", sledeći" : ", zaključan"}`}
-                                className={cn(
-                                    "relative grid h-12 w-12 place-items-center rounded-full border-2 border-b-4 font-display text-lg font-extrabold transition-[transform,border-width] sm:h-14 sm:w-14 sm:text-xl",
-                                    isDone && cn(tier.look.solid, tier.look.edge, "text-white active:translate-y-[2px] active:border-b-2"),
-                                    isNext && cn("bg-surface ring-4 active:translate-y-[2px] active:border-b-2", tier.look.edge, tier.look.text, tier.look.ring, "animate-soft-pulse"),
-                                    locked && "cursor-not-allowed border-line bg-surface text-ink-faint"
-                                )}
-                            >
-                                {locked ? <Lock className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" /> : i + 1}
-                                {isDone && (
-                                    <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-emerald-700 shadow-soft ring-1 ring-line" aria-hidden="true">
-                                        <Check className="h-3.5 w-3.5" strokeWidth={3.5} />
-                                    </span>
-                                )}
-                            </button>
-                        </li>
-                    );
-                })}
-            </ol>
+                {/* Pet nivoa na traci; popunjeni deo trake pokazuje dokle je dete stiglo */}
+                <ol className="relative grid flex-1 grid-cols-5 items-center">
+                    <span className="absolute inset-x-[10%] top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-line/70" aria-hidden="true" />
+                    <span
+                        className={cn("absolute left-[10%] top-1/2 h-1.5 -translate-y-1/2 rounded-full", tier.look.track)}
+                        style={{ width: `${Math.max(0, Math.min(done, LEVELS_PER_TIER - 1)) * 20}%` }}
+                        aria-hidden="true"
+                    />
+                    {Array.from({ length: LEVELS_PER_TIER }, (_, i) => {
+                        const level = tier.min + i;
+                        const isDone = level < unlocked;
+                        const isNext = level === next;
+                        const locked = !isDone && !isNext;
+                        return (
+                            <li key={level} className="relative grid place-items-center">
+                                <button
+                                    type="button"
+                                    disabled={locked}
+                                    onClick={() => onChoose(tier, level)}
+                                    aria-label={`${tier.label}, nivo ${i + 1}${isDone ? ", završen" : isNext ? ", sledeći" : ", zaključan"}`}
+                                    className={cn(
+                                        "relative grid h-11 w-11 place-items-center rounded-full border-2 border-b-4 font-display text-lg font-extrabold transition-[transform,border-width] @sm:h-12 @sm:w-12 @xl:h-14 @xl:w-14 @xl:text-xl",
+                                        isDone && cn(tier.look.solid, tier.look.edge, "text-white active:translate-y-[2px] active:border-b-2"),
+                                        isNext && cn("bg-surface ring-4 active:translate-y-[2px] active:border-b-2", tier.look.edge, tier.look.text, tier.look.ring, "animate-soft-pulse"),
+                                        locked && "cursor-not-allowed border-line bg-surface text-ink-faint"
+                                    )}
+                                >
+                                    {locked ? <Lock className="h-4 w-4 @xl:h-5 @xl:w-5" aria-hidden="true" /> : i + 1}
+                                    {isDone && (
+                                        <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white text-emerald-700 shadow-soft ring-1 ring-line" aria-hidden="true">
+                                            <Check className="h-3.5 w-3.5" strokeWidth={3.5} />
+                                        </span>
+                                    )}
+                                </button>
+                            </li>
+                        );
+                    })}
+                </ol>
+            </div>
         </li>
+    );
+}
+
+// ── Drugar pored igre ─────────────────────────────────────────────────────────
+// Položen tablet i računar: veliki živi drugar u svom svetu, pored polja za igru. Zvezdice za
+// tačan odgovor doleću do njega, on skoči i pokaže „+1”, a u oblačiću je pohvala koju glas kaže.
+// Dok govori, svetli mu okvir. Na grešku ne reaguje — greška nije kazna.
+
+function CompanionPanel() {
+    const companion = useCompanion();
+    const calm = useCalmMotion();
+    const hype = useCompanionHype(calm);
+    const { speaking } = useVoiceState();
+    if (!companion) return null;
+    return (
+        <aside aria-label="Tvoj drugar" className="relative w-[clamp(12rem,26vw,26rem)] shrink-0">
+            <div
+                data-hype-target=""
+                className={cn(
+                    "relative h-full min-h-48 overflow-hidden rounded-card shadow-lift ring-2 transition-shadow duration-200",
+                    STAGE_BG,
+                    speaking ? "ring-brand-400 shadow-[0_0_0_5px_var(--color-brand-100)]" : "ring-line"
+                )}
+            >
+                <CompanionStage
+                    kind={companion.kind}
+                    skin={chosenSkin(companion)}
+                    wear={companion.wear}
+                    // Uzak i visok panel: krupniji kadar; sa ljubimcem lik malo levo, da i ljubimac stane
+                    framing="wide"
+                    align={companion.wear.pet ? -0.4 : 0}
+                    background
+                    action={hype.action}
+                    actionKey={hype.actionKey}
+                    className="absolute inset-0"
+                />
+                <CoinCount className="absolute left-2.5 top-2.5 px-2.5 py-1 text-base sm:text-lg" />
+            </div>
+            {/* Pohvala iznad glave, „+1” u uglu */}
+            <div className="pointer-events-none absolute inset-x-2 top-12 flex justify-center">
+                <HypeBubble hype={hype} calm={calm} className="relative" />
+            </div>
+            <HypePlus hype={hype} calm={calm} className="absolute right-2.5 top-2.5" />
+        </aside>
     );
 }
 
 // ── Raspoloženje ──────────────────────────────────────────────────────────────
 // Tri lica (mlađa deca ne razlikuju pouzdano više stupnjeva); uvek može da se preskoči.
+// Pitanje postavlja drugar: veliki, radoznao, iznad pitanja (na položenom ekranu pored njega).
 
 const MOOD_FACE: Partial<Record<Mood, MoodFaceKind>> = { upset: "upset", neutral: "neutral", happy: "happy" };
 
@@ -1245,41 +1403,49 @@ function MoodPicker({ title, teacher = null, onSelect }: MoodPickerProps) {
         if (mood) playSfx("tap");
         onSelect(mood);
     };
+    const hero = teacher !== null;
     return (
-        <div className="mx-auto flex w-full max-w-2xl flex-1 animate-fade-up flex-col items-center justify-center text-center xl:max-w-4xl">
-            {teacher !== null && (
-                <span className="mb-3 grid h-32 w-[6.5rem] place-items-end overflow-hidden rounded-3xl bg-gradient-to-b from-brand-100 to-brand-50 ring-2 ring-brand-100 sm:h-40 sm:w-32 short:h-24 short:w-20">
-                    <Teacher gender={teacher ?? undefined} variant="scene" emotion="curious" className="h-full w-full" />
-                </span>
+        <div
+            className={cn(
+                "mx-auto grid w-full max-w-2xl flex-1 animate-fade-up content-center items-center gap-4 sm:gap-6 xl:max-w-4xl",
+                hero && "md:landscape:max-w-6xl md:landscape:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:landscape:gap-8"
             )}
-            <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">{title}</h2>
-            <ul className="mt-6 grid w-full grid-cols-3 gap-3 sm:mt-8 sm:gap-5">
-                {MOODS_THREE.map((mood) => (
-                    <li key={mood.value}>
-                        <button
-                            type="button"
-                            onClick={() => choose(mood.value)}
-                            className="flex w-full flex-col items-center gap-2 rounded-tile border-2 border-b-[5px] border-line bg-surface px-2 py-5 shadow-soft transition-[transform,border-color] hover:border-brand-300 hover:bg-brand-50 active:translate-y-[3px] active:border-b-2 sm:py-8"
-                        >
-                            {/* Crtano lice: isto na svakom uređaju (emodži se razlikuju od telefona do telefona) */}
-                            {MOOD_FACE[mood.value] ? (
-                                <MoodFace mood={MOOD_FACE[mood.value]!} className="h-20 w-20 sm:h-28 sm:w-28" />
-                            ) : (
-                                <span className="text-6xl sm:text-7xl" aria-hidden="true">{mood.emoji}</span>
-                            )}
-                            <span className="text-lg font-extrabold text-ink sm:text-xl">{mood.label}</span>
-                        </button>
-                    </li>
-                ))}
-            </ul>
-            <button
-                type="button"
-                onClick={() => choose(null)}
-                className="mt-6 inline-flex min-h-12 items-center gap-2 rounded-xl px-5 text-base font-extrabold text-ink-soft hover:bg-brand-50 hover:text-ink"
-            >
-                <SkipForward className="h-5 w-5" aria-hidden="true" />
-                Preskoči
-            </button>
+        >
+            {hero && (
+                <div className={cn("relative h-[44dvh] min-h-52 overflow-hidden rounded-card shadow-lift ring-1 ring-line sm:h-[44dvh] short:h-[36dvh] md:landscape:h-[min(72dvh,38rem)]", STAGE_BG)}>
+                    <Teacher gender={teacher ?? undefined} variant="full" emotion="curious" className="absolute inset-0 h-full w-full" />
+                </div>
+            )}
+            <div className="flex flex-col items-center text-center">
+                <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">{title}</h2>
+                <ul className="mt-5 grid w-full grid-cols-3 gap-3 sm:mt-8 sm:gap-5">
+                    {MOODS_THREE.map((mood) => (
+                        <li key={mood.value}>
+                            <button
+                                type="button"
+                                onClick={() => choose(mood.value)}
+                                className="flex w-full flex-col items-center gap-2 rounded-tile border-2 border-b-[5px] border-line bg-surface px-2 py-5 shadow-soft transition-[transform,border-color] hover:border-brand-300 hover:bg-brand-50 active:translate-y-[3px] active:border-b-2 sm:py-8 short:py-4"
+                            >
+                                {/* Crtano lice: isto na svakom uređaju (emodži se razlikuju od telefona do telefona) */}
+                                {MOOD_FACE[mood.value] ? (
+                                    <MoodFace mood={MOOD_FACE[mood.value]!} className="h-20 w-20 sm:h-28 sm:w-28 short:sm:h-24 short:sm:w-24" />
+                                ) : (
+                                    <span className="text-6xl sm:text-7xl" aria-hidden="true">{mood.emoji}</span>
+                                )}
+                                <span className="text-lg font-extrabold text-ink sm:text-xl">{mood.label}</span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+                <button
+                    type="button"
+                    onClick={() => choose(null)}
+                    className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl px-5 text-base font-extrabold text-ink-soft hover:bg-brand-50 hover:text-ink sm:mt-6"
+                >
+                    <SkipForward className="h-5 w-5" aria-hidden="true" />
+                    Preskoči
+                </button>
+            </div>
         </div>
     );
 }
@@ -1287,6 +1453,8 @@ function MoodPicker({ title, teacher = null, onSelect }: MoodPickerProps) {
 // ── Rezultat nivoa ────────────────────────────────────────────────────────────
 // Nema ishoda „nisi uspeo”: svaki završen nivo donosi zvezdicu. Kada je bilo mnogo
 // pomoći, prvo se nudi ista vežba još jednom. „Gotovo” je uvek jednako vidljivo.
+// Drugar je glavni: veliki, u svom svetu, aplaudira; novčići odlete do njega, a brojač
+// novčića u njegovom uglu naraste. Uz „Manje animacija” brojač odmah pokaže novi zbir.
 
 interface LevelResultProps {
     outcome: LevelOutcome;
@@ -1305,10 +1473,49 @@ interface LevelResultProps {
     teacher: string | undefined | null;
 }
 
+/** Kada novčići krenu ka drugaru (posle zvezdica, ms) */
+const COINS_START_MS = 900;
+/** Najviše novčića u letu (ostatak se samo doda brojaču) */
+const COINS_FLYING = 6;
+const COIN_STEP_MS = 110;
+
+/** Brojač novčića: od zbira pre nivoa do novog zbira, u koracima dok novčići sleću */
+function useCoinTicker(earned: number, enabled: boolean, calm: boolean, from: React.RefObject<HTMLElement | null>, to: React.RefObject<HTMLElement | null>) {
+    const companion = useCompanion();
+    // Zbir pre ovog nivoa (čuvanje rezultata stiže kasnije i ne menja prikaz)
+    const [base] = useState(() => companion?.coins ?? 0);
+    const [added, setAdded] = useState(0);
+    useEffect(() => {
+        if (!enabled || earned <= 0) return;
+        if (calm) {
+            queueMicrotask(() => setAdded(earned));
+            return;
+        }
+        const flying = Math.min(earned, COINS_FLYING);
+        const timers = [
+            setTimeout(() => {
+                if (from.current && to.current) flyItems(from.current, to.current, flying, "coin");
+            }, COINS_START_MS),
+            ...Array.from({ length: flying }, (_, i) =>
+                setTimeout(() => setAdded(Math.round((earned * (i + 1)) / flying)), COINS_START_MS + FLY_MS + i * COIN_STEP_MS - 80)
+            ),
+        ];
+        return () => timers.forEach(clearTimeout);
+    }, [earned, enabled, calm, from, to]);
+    return { coins: base + added, landing: added > 0 && added < earned };
+}
+
 function LevelResult({ outcome, childName, game, tier, level, showNumbers, limitReached, lastLevelSoon, onNext, onNextTier, onRetry, onLeave, teacher }: LevelResultProps) {
     const lastInTier = level >= tierMax(tier);
     const nextTier = TIERS[TIERS.findIndex((t) => t.id === tier.id) + 1] ?? null;
     const champion = outcome.advance && lastInTier && !nextTier;
+    const hero = teacher !== null;
+    const calm = useCalmMotion();
+    const earned = outcome.stars * COINS_PER_STAR;
+    const chipRef = useRef<HTMLParagraphElement>(null);
+    const stageRef = useRef<HTMLDivElement>(null);
+    const hasCompanion = useCompanion() !== null;
+    const ticker = useCoinTicker(earned, hero && hasCompanion, calm, chipRef, stageRef);
 
     let title = "Nivo je završen";
     let text = "";
@@ -1335,89 +1542,97 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
             <div
                 ref={panelRef}
                 tabIndex={-1}
-                className="max-h-full w-full max-w-md animate-fade-up overflow-y-auto rounded-t-[2rem] bg-surface p-6 text-center shadow-pop outline-none sm:rounded-[2rem] sm:p-9"
+                className={cn(
+                    "flex max-h-full w-full animate-fade-up flex-col overflow-hidden rounded-t-[2rem] bg-surface shadow-pop outline-none sm:rounded-[2rem]",
+                    hero ? "sm:max-w-xl md:landscape:max-w-5xl md:landscape:flex-row" : "max-w-md"
+                )}
             >
-                {/* Ceo drugar sa svim što je dete kupilo: kraj nivoa je trenutak nagrade */}
-                {teacher !== null && (
-                    // Drugar stoji u svojoj pozadini, preko cele širine vrha prozora
-                    <div className="relative -mx-6 -mt-6 mb-3 h-44 overflow-hidden bg-[#E4E6EB] sm:-mx-9 sm:-mt-9 sm:h-56">
-                        {/* Kad se pojave zvezdice drugar navija u svom svetu (pročitana priča: mali skok) */}
-                        <Teacher gender={teacher} variant="full" action={outcome.practice ? "hop" : outcome.stars > 0 ? "cheer" : undefined} className="absolute inset-0 h-full w-full" />
+                {/* Ceo drugar sa svim što je dete kupilo, u svom svetu: kraj nivoa je trenutak nagrade */}
+                {hero && (
+                    <div ref={stageRef} className={cn("relative h-[32dvh] min-h-44 shrink-0 sm:h-[38dvh] md:landscape:h-auto md:landscape:min-h-[24rem] md:landscape:w-[46%]", STAGE_BG)}>
+                        {/* Kad se pojave zvezdice drugar navija (pročitana priča: mali skok) */}
+                        <Teacher gender={teacher} variant="full" action={outcome.practice ? "hop" : "cheer"} className="absolute inset-0 h-full w-full" />
+                        <CoinCount
+                            value={hasCompanion ? ticker.coins : undefined}
+                            className={cn("absolute right-3 top-3 sm:right-4 sm:top-4", !calm && "transition-transform duration-200", ticker.landing && !calm && "scale-110")}
+                        />
                     </div>
                 )}
-                {outcome.practice ? (
-                    // Pročitana priča nije „rezultat”: bez zvezdica koje bi izgledale kao slaba ocena
-                    <p className="mb-4 text-6xl animate-pop" aria-hidden="true">
-                        📖
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3 pt-4 text-center sm:p-8 md:landscape:flex md:landscape:flex-col md:landscape:justify-center">
+                    {outcome.practice ? (
+                        // Pročitana priča nije „rezultat”: bez zvezdica koje bi izgledale kao slaba ocena
+                        <p className="mb-3 text-6xl animate-pop" aria-hidden="true">
+                            📖
+                        </p>
+                    ) : (
+                        <div className="mb-3 flex justify-center gap-2 sm:gap-3" aria-label={`${outcome.stars} od 3 zvezdice`}>
+                            {[1, 2, 3].map((s) => (
+                                <span key={s} className={cn("text-5xl sm:text-6xl", s <= outcome.stars ? "animate-pop" : "opacity-20 grayscale")} aria-hidden="true">
+                                    ⭐
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    <h2 className="text-2xl font-extrabold text-ink sm:text-3xl">
+                        {champion ? "🏆 " : ""}
+                        {title}
+                    </h2>
+                    {/* Svaka zvezdica donosi novčiće za drugara (odatle odlete do njega) */}
+                    <p ref={chipRef} className="mx-auto mt-2 flex w-fit items-center gap-1.5 rounded-full bg-sun-100 px-4 py-1.5 text-lg font-extrabold text-sun-700 ring-1 ring-sun-300">
+                        + {earned} <CoinIcon className="h-6 w-6" />
+                        <span className="sr-only">{coinWord(earned)}</span>
                     </p>
-                ) : (
-                    <div className="mb-4 flex justify-center gap-2 sm:gap-3" aria-label={`${outcome.stars} od 3 zvezdice`}>
-                        {[1, 2, 3].map((s) => (
-                            <span key={s} className={cn("text-5xl sm:text-6xl", s <= outcome.stars ? "animate-pop" : "opacity-20 grayscale")} aria-hidden="true">
-                                ⭐
-                            </span>
-                        ))}
-                    </div>
-                )}
-                <h2 className="text-2xl font-extrabold text-ink sm:text-3xl">
-                    {champion ? "🏆 " : ""}
-                    {title}
-                </h2>
-                {/* Svaka zvezdica donosi novčiće za drugara */}
-                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sun-100 px-4 py-1.5 text-lg font-extrabold text-sun-700 ring-1 ring-sun-300">
-                    + {outcome.stars * COINS_PER_STAR} <CoinIcon className="h-6 w-6" />
-                    <span className="sr-only">novčića</span>
-                </p>
-                {/* Cilj deteta: koliko je još do predmeta za koji skuplja (samo kad je izabran) */}
-                <GoalChip className="mx-auto mt-2 flex w-fit bg-sun-50 ring-1 ring-sun-200" />
-                {showNumbers && !limitReached && game.graded && !outcome.practice && (
-                    <p className="mt-1 text-base font-bold text-ink-soft">
-                        Iz prvog pokušaja: {outcome.correct} od {outcome.total}
-                    </p>
-                )}
-                {text && <p className="mt-2 text-base font-semibold text-ink-soft sm:text-lg">{text}</p>}
-                {lastLevelSoon && !limitReached && (
-                    <p className="mt-3 rounded-xl bg-sun-50 px-3 py-2 text-base font-extrabold text-sun-700">Još jedan nivo, pa pauza.</p>
-                )}
+                    {/* Cilj deteta: koliko je još do predmeta za koji skuplja (samo kad je izabran) */}
+                    <GoalChip className="mx-auto mt-2 flex w-fit bg-sun-50 ring-1 ring-sun-200" />
+                    {showNumbers && !limitReached && game.graded && !outcome.practice && (
+                        <p className="mt-1 text-base font-bold text-ink-soft">
+                            Iz prvog pokušaja: {outcome.correct} od {outcome.total}
+                        </p>
+                    )}
+                    {text && <p className="mt-2 text-base font-semibold text-ink-soft sm:text-lg">{text}</p>}
+                    {lastLevelSoon && !limitReached && (
+                        <p className="mt-3 rounded-xl bg-sun-50 px-3 py-2 text-base font-extrabold text-sun-700">Još jedan nivo, pa pauza.</p>
+                    )}
 
-                <div className="mt-6 flex flex-col gap-3">
-                    {!limitReached && !outcome.advance && (
-                        <Button chunky size="xl" variant="sun" block onClick={onRetry}>
-                            <RotateCcw className="h-6 w-6" aria-hidden="true" />
-                            {outcome.practice ? "Čitaj ponovo" : "Igraj još jednom"}
+                    <div className="mt-5 flex flex-col gap-3">
+                        {!limitReached && !outcome.advance && (
+                            <Button chunky size="xl" variant="sun" block onClick={onRetry}>
+                                <RotateCcw className="h-6 w-6" aria-hidden="true" />
+                                {outcome.practice ? "Čitaj ponovo" : "Igraj još jednom"}
+                            </Button>
+                        )}
+                        {!limitReached && outcome.advance && !lastInTier && (
+                            <Button chunky size="xl" variant="success" block onClick={onNext}>
+                                Sledeći nivo
+                                <ArrowRight className="h-6 w-6" aria-hidden="true" />
+                            </Button>
+                        )}
+                        {!limitReached && outcome.advance && lastInTier && nextTier && (
+                            <Button chunky size="xl" variant="success" block onClick={() => onNextTier(nextTier)}>
+                                Igraj „{nextTier.label}”
+                                <ArrowRight className="h-6 w-6" aria-hidden="true" />
+                            </Button>
+                        )}
+                        {/* „Gotovo” je jednako veliko kao nastavak: prestanak igre je dobar izbor */}
+                        <Button chunky size="xl" variant="secondary" block onClick={onLeave}>
+                            <Check className="h-6 w-6" aria-hidden="true" />
+                            {limitReached ? "Gotovo za danas" : "Gotovo"}
                         </Button>
-                    )}
-                    {!limitReached && outcome.advance && !lastInTier && (
-                        <Button chunky size="xl" variant="success" block onClick={onNext}>
-                            Sledeći nivo
-                            <ArrowRight className="h-6 w-6" aria-hidden="true" />
-                        </Button>
-                    )}
-                    {!limitReached && outcome.advance && lastInTier && nextTier && (
-                        <Button chunky size="xl" variant="success" block onClick={() => onNextTier(nextTier)}>
-                            Igraj „{nextTier.label}”
-                            <ArrowRight className="h-6 w-6" aria-hidden="true" />
-                        </Button>
-                    )}
-                    {/* „Gotovo” je jednako veliko kao nastavak: prestanak igre je dobar izbor */}
-                    <Button chunky size="xl" variant="secondary" block onClick={onLeave}>
-                        <Check className="h-6 w-6" aria-hidden="true" />
-                        {limitReached ? "Gotovo za danas" : "Gotovo"}
-                    </Button>
-                    {!limitReached && outcome.advance && (
-                        <Button size="lg" variant="ghost" block onClick={onRetry}>
-                            <RotateCcw className="h-5 w-5" aria-hidden="true" />
-                            Igraj ovaj nivo ponovo
-                        </Button>
-                    )}
+                        {!limitReached && outcome.advance && (
+                            <Button size="lg" variant="ghost" block onClick={onRetry}>
+                                <RotateCcw className="h-5 w-5" aria-hidden="true" />
+                                Igraj ovaj nivo ponovo
+                            </Button>
+                        )}
+                    </div>
+
+                    <p className="mt-4 border-t border-line pt-3 text-sm font-semibold normal-case text-ink-faint">
+                        <span className="font-extrabold text-ink-soft">Za odrasle:</span> {game.offscreenTip}
+                    </p>
+                    <p className="mt-1 min-h-5 text-xs font-bold normal-case text-ink-faint" aria-live="polite">
+                        {outcome.saved === "failed" && "Nema interneta. Rezultat nije sačuvan."}
+                    </p>
                 </div>
-
-                <p className="mt-4 border-t border-line pt-3 text-sm font-semibold normal-case text-ink-faint">
-                    <span className="font-extrabold text-ink-soft">Za odrasle:</span> {game.offscreenTip}
-                </p>
-                <p className="mt-1 min-h-5 text-xs font-bold normal-case text-ink-faint" aria-live="polite">
-                    {outcome.saved === "failed" && "Nema interneta. Rezultat nije sačuvan."}
-                </p>
             </div>
         </div>
     );
@@ -1437,19 +1652,20 @@ function Teacher({
     gender?: string;
     variant?: "bust" | "face" | "full" | "portrait" | "scene";
     emotion?: TeacherEmotion;
-    action?: CompanionMove;
+    /** Jednokratni pokret; „wave” (mahanje na pozdrav) samo za živog 3D drugara */
+    action?: CompanionMove | "wave";
     /** false: bez pozadine iz prodavnice (crta je mesto oko drugara, preko cele širine) */
     background?: boolean;
     className?: string;
 }) {
     const companion = useCompanion();
     if (companion) {
-        // Ceo lik (kraj nivoa) je živ 3D prikaz u svom svetu; mali portreti su 3D slike
+        // Ceo lik (ulaz u igru, pitanje, kraj nivoa) je živ 3D prikaz u svom svetu; mali portreti su 3D slike
         if (variant === "full") {
             return <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="full" background={background} emotion={emotion} action={action} actionKey={action} className={className} />;
         }
         const picture = variant === "face" ? "face" : variant === "bust" ? "bust" : variant === "scene" ? "full" : "portrait";
         return <CompanionPicture kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} variant={picture} background={background} emotion={emotion} className={className} eager />;
     }
-    return <TeacherAvatar gender={gender} variant={variant === "scene" ? "full" : variant} emotion={emotion} action={action} className={className} />;
+    return <TeacherAvatar gender={gender} variant={variant === "scene" ? "full" : variant} emotion={emotion} action={action === "wave" ? undefined : action} className={className} />;
 }

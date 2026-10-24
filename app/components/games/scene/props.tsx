@@ -1609,6 +1609,131 @@ const PROPS: Record<PropId, Draw> = {
             <g transform="translate(14 -36)">{PROPS.notes()}</g>
         </g>
     ),
+
+    // ── Hrana i stvari za radnje ──────────────────────────────────────────────
+    // Čokolada: tabla u crvenom omotu, gornji deo otvoren (dva reda kockica)
+    chocolate: () => (
+        <g>
+            <rect x={-7} y={-22} width={14} height={22} rx={1.5} fill="#6b3f22" {...stroke("#4a2a14", 1)} />
+            <path d="M-7 -15 H7 M0 -22 V-11" stroke="#4a2a14" strokeWidth={1} />
+            <rect x={-7.5} y={-11} width={15} height={11} rx={1.5} fill="#e8463f" {...stroke("#a82a24", 1)} />
+            <rect x={-7.5} y={-8} width={15} height={3} fill="#f6d84a" />
+        </g>
+    ),
+    lollipop: (tone = "#f2788c") => (
+        <g>
+            <rect x={-1} y={-14} width={2} height={14} rx={1} fill="#ffffff" {...stroke("#c9c2b6", 0.8)} />
+            <circle cx={0} cy={-20} r={7} fill={tone} {...stroke("#00000033", 1)} />
+            <path d="M0 -20 m-4 0 a4 4 0 1 1 4 4 a2.5 2.5 0 1 1 -2.5 -2.5" fill="none" stroke="#ffffff" strokeWidth={1.4} />
+        </g>
+    ),
+    // Sendvič: trougao hleba sa salatom i sirom
+    sandwich: () => (
+        <g>
+            <path d="M-11 0 L0 -20 L11 0Z" fill="#f2d49a" {...stroke("#c9a05a", 1.2)} />
+            <path d="M-9 -3 L0 -19 L9 -3" fill="none" stroke="#6cc06a" strokeWidth={2.4} />
+            <path d="M-7 -6 L0 -18 L7 -6" fill="none" stroke="#f6d84a" strokeWidth={2} />
+            <path d="M-11 0 L0 -20 L11 0" fill="none" stroke="#c9a05a" strokeWidth={1.2} />
+        </g>
+    ),
+    cookie: () => (
+        <g>
+            <circle cx={0} cy={-9} r={9} fill="#e3b06a" {...stroke("#b9793a", 1.2)} />
+            {[
+                [-4, -12],
+                [3, -14],
+                [4, -7],
+                [-2, -5],
+                [-5, -9],
+            ].map(([x, y]) => (
+                <circle key={`${x}${y}`} cx={x} cy={y} r={1.4} fill="#5a3418" />
+            ))}
+        </g>
+    ),
+    fork: () => (
+        <g transform="rotate(-30)">
+            <rect x={-1} y={-12} width={2} height={12} rx={1} fill="#9aa6b2" />
+            <path d="M-3.5 -12 H3.5 V-15 M-3.5 -12 V-20 M-1.2 -12 V-20 M1.2 -12 V-20 M3.5 -12 V-20" fill="none" stroke="#9aa6b2" strokeWidth={1.3} strokeLinecap="round" />
+        </g>
+    ),
+    // Kriška lubenice: crveno sa semenkama, zelena kora dole
+    watermelon: () => (
+        <g>
+            <path d="M0 -22 L-13 -3 Q0 3 13 -3Z" fill="#f2564e" />
+            <path d="M-13 -3 Q0 3 13 -3 L13.5 -0.5 Q0 6 -13.5 -0.5Z" fill="#4fae4a" />
+            {[
+                [-4, -9],
+                [3, -10],
+                [0, -15],
+                [6, -5],
+                [-7, -5],
+            ].map(([x, y]) => (
+                <ellipse key={`${x}${y}`} cx={x} cy={y} rx={0.9} ry={1.5} fill="#2f2522" />
+            ))}
+        </g>
+    ),
+    juiceBox: (tone = "#f6a23e") => (
+        <g>
+            <rect x={-7} y={-18} width={14} height={18} rx={1.5} fill={tone} {...stroke("#00000033", 1)} />
+            <circle cx={0} cy={-8} r={3.6} fill="#ffffff" opacity={0.8} />
+            <path d="M3 -18 L5 -25 L9 -27" fill="none" stroke="#ffffff" strokeWidth={1.8} strokeLinecap="round" />
+        </g>
+    ),
+    // Drveni štapić za jezik (kod doktora)
+    stick: () => <rect x={-1.6} y={-18} width={3.2} height={18} rx={1.6} fill="#e8c38a" {...stroke("#b98a4a", 0.8)} />,
+    pinecone: () => (
+        <g>
+            <ellipse cx={0} cy={-8} rx={6} ry={8} fill="#9a6232" {...stroke("#6a3f1c", 1)} />
+            <path d="M-5 -11 Q0 -8 5 -11 M-6 -7 Q0 -4 6 -7 M-5 -3 Q0 0 5 -3 M-3 -14 Q0 -12 3 -14" fill="none" stroke="#6a3f1c" strokeWidth={1} />
+        </g>
+    ),
+    // Kanta za zalivanje i kapi vode iz nje
+    wateringCan: (tone = "#4fae8a") => (
+        <g>
+            <rect x={-10} y={-16} width={16} height={16} rx={3} fill={tone} {...stroke("#00000033", 1)} />
+            <path d="M6 -10 L18 -20 L20 -18 L8 -6Z" fill={tone} {...stroke("#00000033", 1)} />
+            <path d="M-10 -12 Q-17 -10 -10 -3" fill="none" stroke={tone} strokeWidth={2.4} />
+            <path d="M-6 -16 Q-2 -22 2 -16" fill="none" stroke={tone} strokeWidth={2.2} />
+            <g fill="#6cc0e8">
+                <circle cx={21} cy={-14} r={1.4} />
+                <circle cx={23} cy={-10} r={1.2} />
+                <circle cx={20} cy={-8} r={1.3} />
+            </g>
+        </g>
+    ),
+    drum: () => (
+        <g>
+            <path d="M-14 -18 V-3 Q0 3 14 -3 V-18Z" fill="#e8605a" {...stroke("#a82a24", 1.2)} />
+            <ellipse cx={0} cy={-18} rx={14} ry={4} fill="#f6f0e6" {...stroke("#c9c2b6", 1.2)} />
+            <path d="M-14 -14 L-7 -3 L0 -14 L7 -3 L14 -14" fill="none" stroke="#f6d84a" strokeWidth={1.5} />
+            <path d="M-6 -21 L-14 -32 M6 -21 L14 -32" stroke={WOOD} strokeWidth={2} strokeLinecap="round" />
+        </g>
+    ),
+    // Krema za sunce: tuba sa suncem
+    sunscreen: () => (
+        <g>
+            <path d="M-6 0 L-7 -20 H7 L6 0Z" fill="#ffffff" {...stroke("#9aa6b2")} />
+            <rect x={-3} y={-24} width={6} height={4} rx={1} fill="#f6a23e" />
+            <circle cx={0} cy={-10} r={3.4} fill="#f4c94a" />
+        </g>
+    ),
+    // Paukova mreža (bez pauka): zraci i kružne niti
+    web: () => (
+        <g fill="none" stroke="#9aa6b2" strokeWidth={0.9} strokeLinecap="round">
+            {[0, 45, 90, 135].map((angle) => (
+                <path key={angle} d="M-16 0 H16" transform={`translate(0 -18) rotate(${angle})`} />
+            ))}
+            {[5, 10, 15].map((r) => (
+                <path
+                    key={r}
+                    d={Array.from({ length: 9 }, (_, i) => {
+                        const a = (i * Math.PI) / 4;
+                        return `${i === 0 ? "M" : "L"}${(Math.cos(a) * r).toFixed(2)} ${(-18 + Math.sin(a) * r).toFixed(2)}`;
+                    }).join(" ")}
+                />
+            ))}
+        </g>
+    ),
 };
 
 export function Prop({ id, tone }: { id: PropId; tone?: string }) {

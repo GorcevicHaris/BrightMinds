@@ -29,6 +29,16 @@ describe("PUT /api/children/[id]/settings", () => {
         assert.deepEqual(childRow()?.settings, { script: "cyrillic", volume: 1, plan: ["shapes", "emotions"] });
     });
 
+    it("stores the games the parent switched off and unlocking in order, and the child can read them", async () => {
+        const response = await put({ settings: { disabledGames: ["memory", "chess"], unlockInOrder: true, plan: ["memory", "shapes"] } });
+        assert.equal(response.status, 200);
+        assert.deepEqual(childRow()?.settings, { plan: ["shapes"], disabledGames: ["memory"], unlockInOrder: true });
+
+        signInAsChild(CHILD_ID);
+        const read = await readJson(await get());
+        assert.deepEqual(read.settings, { plan: ["shapes"], disabledGames: ["memory"], unlockInOrder: true });
+    });
+
     it("keeps the child's companion and bought clothes when the parent saves settings", async () => {
         const companion = { kind: "cat", owned: ["crown"], wear: { hat: "crown" }, spent: 10, v: 3 };
         db.rows("children")[0].settings = { volume: 0.5, companion };

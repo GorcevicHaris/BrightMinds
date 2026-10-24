@@ -48,7 +48,15 @@ export type ViewId = (typeof VIEW_IDS)[number];
  * zabrinuto i nelagodno, „firm” ozbiljno i odlučno („Stani.”), „tired” umorno, „sleep” spava.
  * Lice mora da odgovara situaciji: dete koje kaže „Pusti me” se ne smeje.
  */
-export type Face = EmotionId | "calm" | "talk" | "sleep" | "neutral" | "worried" | "firm" | "tired";
+export type Face = EmotionId | "calm" | "talk" | "sleep" | "neutral" | "worried" | "firm" | "tired" | ActionFace;
+
+/**
+ * Izrazi uz radnju (ne osećanja): „lick” liže (jezik napolju), „chew” žvaće, „laugh” se glasno
+ * smeje, „cry” plače (suze teku), „yawn” zeva, „open” otvara usta kod doktora („A”),
+ * „blow” duva (svećice, supa), „pain” nešto ga boli (stisnute oči).
+ */
+export const ACTION_FACES = ["lick", "chew", "laugh", "cry", "yawn", "open", "blow", "pain"] as const;
+export type ActionFace = (typeof ACTION_FACES)[number];
 
 /** Deca sa imenima iz igara, sporedna deca i lik deteta koje igra (priče su u prvom licu) */
 export const LOOK_IDS = [
@@ -124,11 +132,28 @@ export const POSE_IDS = [
     "swim",
     "ride",
     "walk",
+    // Radnje: šta lik radi rukama i telom (slika mora da pokaže tačno ono što piše u tekstu)
+    "eat",
+    "drink",
+    "brush",
+    "wash",
+    "draw",
+    "take",
+    "throw",
+    "embrace",
+    "holdHand",
+    "run",
+    "kick",
+    "sitEat",
+    "sitDraw",
+    "sitTie",
+    "floor",
+    "knee",
 ] as const;
 export type PoseId = (typeof POSE_IDS)[number];
 
 /** Odeća i dodaci preko osnovnog izgleda */
-export const WEAR_IDS = ["glasses", "partyHat", "beanie", "backpack", "jacket", "swim", "scarf", "medal", "plaster", "shaved"] as const;
+export const WEAR_IDS = ["glasses", "partyHat", "beanie", "backpack", "jacket", "swim", "scarf", "medal", "plaster", "shaved", "headphones"] as const;
 export type WearId = (typeof WEAR_IDS)[number];
 
 export const PROP_IDS = [
@@ -337,6 +362,20 @@ export const PROP_IDS = [
     "strings",
     "stream",
     "bottle",
+    // Hrana i stvari za radnje (jede, liže, pije, crta, zaliva…)
+    "chocolate",
+    "lollipop",
+    "sandwich",
+    "cookie",
+    "fork",
+    "watermelon",
+    "juiceBox",
+    "stick",
+    "pinecone",
+    "wateringCan",
+    "drum",
+    "web",
+    "sunscreen",
 ] as const;
 export type PropId = (typeof PROP_IDS)[number];
 
@@ -347,6 +386,8 @@ export interface Held {
     s?: number;
     rot?: number;
     tone?: string;
+    /** Pomak nadole (u jedinicama lika): kesa ili kofa visi iz šake umesto da stoji na njoj */
+    dy?: number;
 }
 
 /**
@@ -380,6 +421,8 @@ export interface FigureItem {
     hold?: Held;
     /** Kuda lik gleda (podrazumevano pravo napred) */
     gaze?: Gaze;
+    /** Nagib celog lika oko stopala, u stepenima (spušta se niz tobogan, ljulja se) */
+    rot?: number;
 }
 
 export interface PropItem {
@@ -420,6 +463,10 @@ export interface SceneSpec {
     items: readonly SceneItem[];
     /** „fixed”: cela slika, bez približavanja (podrazumevano kamera prati likove i predmete) */
     camera?: "fixed";
+    /** Najveće približavanje (podrazumevano MAX_ZOOM); male sličice izbora smeju bliže */
+    maxZoom?: number;
+    /** „square”: slika se prikazuje kao kvadrat (srednji deo), pa kamera bira kadar za kvadrat */
+    frame?: "square";
 }
 
 /** Glavni lik, kako ga zadaje igra */
