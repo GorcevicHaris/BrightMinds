@@ -111,9 +111,10 @@ function GreetingBanner({ showAvatar, children, onCompanion }: { showAvatar: boo
             }}
         >
             <CompanionStage kind={companion.kind} skin={chosenSkin(companion)} wear={companion.wear} framing="wide" align={0.42} background interactive className="absolute inset-0" />
-            <div className="relative flex min-h-52 items-center sm:min-h-64">
+            {/* Sloj sa pozdravom propušta dodire do drugara (platno ispod); hvata ih samo kartica pozdrava */}
+            <div className="pointer-events-none relative flex min-h-52 items-center sm:min-h-64">
                 <div className="w-[62%] p-4 sm:w-1/2 sm:p-8">
-                    <div className="inline-block max-w-full rounded-2xl bg-white/88 px-4 py-3 shadow-soft backdrop-blur-sm sm:px-5 sm:py-4">{children}</div>
+                    <div className="pointer-events-auto inline-block max-w-full rounded-2xl bg-white/88 px-4 py-3 shadow-soft backdrop-blur-sm sm:px-5 sm:py-4">{children}</div>
                 </div>
                 {/* Za tastaturu i čitač ekrana; prstom se drugar prevlači, a dodirom otvara (vidi onClick iznad) */}
                 <button type="button" onClick={onCompanion} aria-label="Moj drugar" className="pointer-events-none absolute inset-y-0 right-0 w-[38%] rounded-r-card focus-visible:ring-4 focus-visible:ring-brand-400 sm:w-1/2" />
