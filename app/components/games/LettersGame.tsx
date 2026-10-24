@@ -284,7 +284,8 @@ export default function LettersGame({ childId, level, gender, childName, onCompl
 
             <PlayArea accent={GAME.accent} className="relative p-2 sm:p-4">
                 {tracing && glyph ? (
-                    <div className="flex h-[min(50dvh,34rem)] w-full max-w-3xl items-stretch justify-center gap-2 sm:gap-4 short:h-[44dvh]">
+                    // Nizak ekran: tabla dobija ono što ostane posle zaglavlja, uputstva i poruke (bar 12rem)
+                    <div className="flex h-[min(50dvh,34rem)] w-full max-w-3xl items-stretch justify-center gap-2 sm:gap-4 short:h-[max(12rem,calc(100dvh-29rem))]">
                         {task.guide === "copy" && (
                             // Uzor za prepisivanje: slovo sa strane, na tabli je samo početna tačka
                             <div className="flex w-[26%] max-w-44 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-line bg-surface p-2 shadow-soft">
