@@ -70,7 +70,7 @@ function ViewSwitch({ child, view, className }: { child: OwnedChild; view: Child
                     href={`/dashboard/${path}/${child.id}`}
                     aria-current={id === view ? "page" : undefined}
                     className={cn(
-                        "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 text-sm font-extrabold transition-colors",
+                        "inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-extrabold transition-colors",
                         id === view ? "bg-surface text-brand-700 shadow-soft" : "text-ink-soft hover:text-ink"
                     )}
                 >

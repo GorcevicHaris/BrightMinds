@@ -55,7 +55,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
             <main className="flex min-h-dvh flex-col items-center px-4 py-6 sm:px-6 sm:py-10">
                 <Logo size="md" tagline className="mb-6 lg:hidden" />
                 <div className="flex w-full max-w-xl flex-1 flex-col justify-center">{children}</div>
-                <Link href="/privatnost" className="mt-6 text-sm font-bold text-ink-soft underline-offset-4 hover:text-ink hover:underline">
+                <Link href="/privatnost" className="mt-4 inline-flex min-h-11 items-center px-2 text-sm font-bold text-ink-soft underline-offset-4 hover:text-ink hover:underline">
                     Podaci i privatnost
                 </Link>
             </main>

@@ -130,7 +130,7 @@ export default function RegisterPage() {
                                     onClick={() => setShowPassword((v) => !v)}
                                     aria-label={showPassword ? "Sakrij lozinku" : "Prikaži lozinku"}
                                     aria-pressed={showPassword}
-                                    className="grid h-9 w-9 place-items-center rounded-lg text-ink-faint transition-colors hover:bg-brand-50 hover:text-ink"
+                                    className="-mr-1.5 grid h-11 w-11 place-items-center rounded-lg text-ink-faint transition-colors hover:bg-brand-50 hover:text-ink"
                                 >
                                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                                 </button>
@@ -170,7 +170,7 @@ export default function RegisterPage() {
 
                     <p className="mt-6 text-center text-sm font-semibold text-ink-soft">
                         Već imate nalog?{" "}
-                        <Link href="/login" className="font-extrabold text-brand-600 underline-offset-4 hover:underline">
+                        <Link href="/login" className="-my-3 inline-block py-3 font-extrabold text-brand-600 underline-offset-4 hover:underline">
                             Prijavite se
                         </Link>
                     </p>
