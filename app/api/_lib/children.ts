@@ -1,7 +1,7 @@
 // app/api/_lib/children.ts
 // Zajednički deo ruta za decu: oblik odgovora, provera ulaza, jedinstvenost PIN-a
 // i čitanje zapisa partija (progress_logs) i poseta (play_sessions) koje dele
-// rute za nivoe, statistiku i izvoz.
+// rute za nivoe i statistiku.
 import { ADVANCE_RATIO } from "@/lib/games";
 import { isUniqueViolation, noResult, supabaseAdmin, withSchemaFallback, type DbAttemptResult } from "@/lib/supabase";
 import {
@@ -14,7 +14,9 @@ import {
     parseDateOnly,
     shiftDateOnly,
 } from "@/lib/validation";
-import { HttpError } from "./http";
+import { getClientIp, takeAttempts, type RateLimitRule } from "@/lib/rateLimit";
+import { isToday, playedTodayWindowStart } from "@/lib/reminder";
+import { enforceRateLimit, HttpError } from "./http";
 
 export const GENDERS = ["male", "female", "other"] as const;
 export type Gender = (typeof GENDERS)[number];
@@ -153,13 +155,36 @@ export function parseChildInput(body: Record<string, unknown>): ChildInput {
     return { first_name, last_name, date_of_birth, gender, notes, pin_code };
 }
 
-/** Baca 409 ako PIN već koristi neko drugo dete. */
-export async function assertPinAvailable(pinCode: string, exceptChildId?: number): Promise<void> {
+/**
+ * Odgovor „kod je zauzet” otkriva da neko drugo dete ima baš te sličice — a dete se prijavljuje
+ * samo kodom. Bez ograničenja bi nalog mogao da proba svih 10.000 kodova i tako sazna tuđe.
+ * Zato se zauzeti kodovi broje po nalogu i po adresi: najviše 5 za sat vremena.
+ */
+export const PIN_TAKEN_RULE: RateLimitRule = { limit: 5, windowMs: 60 * 60 * 1000 };
+export const PIN_TAKEN_LIMITED = "Previše pokušaja sa zauzetim sličicama. Pokušajte ponovo za sat vremena.";
+
+/** Baca 409 ako PIN već koristi neko drugo dete (429 posle previše zauzetih kodova). */
+export async function assertPinAvailable(
+    pinCode: string,
+    who: { request: Request; userId: number },
+    exceptChildId?: number
+): Promise<void> {
+    const attempt = takeAttempts([
+        { key: `pin-taken:user:${who.userId}`, rule: PIN_TAKEN_RULE },
+        { key: `pin-taken:ip:${getClientIp(who.request)}`, rule: PIN_TAKEN_RULE },
+    ]);
+    enforceRateLimit(attempt, PIN_TAKEN_LIMITED);
+
     let query = supabaseAdmin.from("children").select("id").eq("pin_code", pinCode);
     if (exceptChildId !== undefined) query = query.neq("id", exceptChildId);
     const { data, error } = await query.limit(1);
-    if (error) throw error;
+    if (error) {
+        attempt.refund();
+        throw error;
+    }
     if (data && data.length > 0) throw new HttpError(409, PIN_TAKEN);
+    // Broje se samo zauzeti kodovi
+    attempt.refund();
 }
 
 /**
@@ -199,7 +224,7 @@ export interface ProgressLogRow {
 }
 
 /**
- * Kolone zapisa partije koje čitaju statistika i izvoz (bez child_id i
+ * Kolone zapisa partije koje čita statistika (bez child_id i
  * recorded_by, koji su poznati iz upita). Baza bez migracije 0004 nema
  * session_id/passed — tada se čita `*` (videti `selectProgressLogs`).
  */
@@ -226,7 +251,7 @@ export const PLAY_SESSIONS_TABLE = "play_sessions";
 /** Ključ pod kojim `withSchemaFallback` pamti da tabela poseta ne postoji. */
 export const PLAY_SESSIONS_MEMO = "play_sessions";
 
-/** Raspoloženje jedne posete — ono što statistici i izvozu treba od `play_sessions`. */
+/** Raspoloženje jedne posete — ono što statistici treba od `play_sessions`. */
 export interface PlaySessionRow {
     id: number;
     mood_before: string | null;
@@ -314,4 +339,26 @@ export function parseDbTimestamp(value: string | null | undefined): Date | null 
     const hasZone = /(Z|[+-]\d{2}(:?\d{2})?)$/i.test(value);
     const date = new Date(hasZone ? value : `${value.replace(" ", "T")}Z`);
     return Number.isNaN(date.getTime()) ? null : date;
+}
+
+// ── Podsetnik: da li je dete danas igralo ──────────────────────────────────────
+
+/**
+ * Deca (od zadatih) koja danas imaju bar jednu završenu partiju, po kalendaru aplikacije.
+ * Jedan upit za sve: partije iz poslednjih 26 sati, pa se dan proverava u kodu.
+ */
+export async function childrenWhoPlayedToday(childIds: readonly number[], now: Date = new Date()): Promise<Set<number>> {
+    if (childIds.length === 0) return new Set();
+    const { data, error } = await supabaseAdmin
+        .from("progress_logs")
+        .select("child_id, completed_at")
+        .in("child_id", [...childIds])
+        .gt("completed_at", playedTodayWindowStart(now).toISOString())
+        .limit(1000);
+    if (error) throw error;
+    const played = new Set<number>();
+    for (const row of (data ?? []) as { child_id: number; completed_at: string | null }[]) {
+        if (isToday(parseDbTimestamp(row.completed_at), now)) played.add(row.child_id);
+    }
+    return played;
 }

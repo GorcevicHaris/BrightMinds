@@ -94,7 +94,7 @@ export default function PrivacyPage() {
                 <Block title="Vaša prava">
                     <ul className="list-disc space-y-2 pl-5">
                         <li>
-                            <strong className="text-ink">Preuzimanje:</strong> u podešavanjima deteta izaberite „Preuzmi rezultate (CSV)”.
+                            <strong className="text-ink">Uvid:</strong> sve rezultate deteta vidite u „Statistici” na kartici deteta.
                         </li>
                         <li>
                             <strong className="text-ink">Brisanje rezultata:</strong> u podešavanjima deteta izaberite „Obriši sve rezultate”.

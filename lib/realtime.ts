@@ -32,6 +32,13 @@ const REMOVE_DELAY_MS = 5_000;
 const TopicContext = createContext<string | null>(null);
 export const RealtimeTopicProvider = TopicContext.Provider;
 
+/**
+ * Lokalni slušalac stanja igre na istom uređaju (npr. „Igraj sa drugom”: čiji je red).
+ * Dobija svaku poruku koju igra pošalje, i kad praćenja uživo nema (probni režim, bez teme).
+ */
+const GameEventTapContext = createContext<((update: GameUpdate) => void) | null>(null);
+export const GameEventTapProvider = GameEventTapContext.Provider;
+
 type Listener = (payload: GameUpdate) => void;
 
 interface ChannelEntry {
@@ -183,6 +190,11 @@ export function useGameBroadcast(childId: number, enabled = true) {
     const topic = useContext(TopicContext);
     const entryRef = useRef<ChannelEntry | null>(null);
     const lastRef = useRef<GameUpdate | null>(null);
+    const tap = useContext(GameEventTapContext);
+    const tapRef = useRef(tap);
+    useEffect(() => {
+        tapRef.current = tap;
+    }, [tap]);
 
     useEffect(() => {
         if (!enabled) return;
@@ -204,6 +216,7 @@ export function useGameBroadcast(childId: number, enabled = true) {
     }, [topic, enabled]);
 
     return useCallback((update: GameUpdate) => {
+        tapRef.current?.(update);
         if (update.event === "completed") {
             lastRef.current = null;
         } else {
