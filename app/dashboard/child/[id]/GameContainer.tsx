@@ -681,7 +681,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
                 {screen === "playing" && (
                     <CompanionPanelContext value={panel}>
-                    <div className={cn("relative flex flex-1", panel ? "flex-row gap-4 lg:gap-6" : "flex-col")}>
+                    <div className={cn("relative flex flex-1", panel ? "flex-row gap-4 xl:gap-6" : "flex-col")}>
                     {/* Drugar pored igre: navija, hvata zvezdice i kaže pohvalu */}
                     {panel && <CompanionPanel />}
                     {/* Dok učitelj govori, igra ne prima dodire: rečenica se ne prekida, a dete ne bira pre
@@ -1337,7 +1337,7 @@ function CompanionPanel() {
     const { speaking } = useVoiceState();
     if (!companion) return null;
     return (
-        <aside aria-label="Tvoj drugar" className="relative w-[clamp(12rem,30vw,26rem)] shrink-0">
+        <aside aria-label="Tvoj drugar" className="relative w-[clamp(12rem,26vw,26rem)] shrink-0">
             <div
                 data-hype-target=""
                 className={cn(

@@ -122,7 +122,7 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
  * Drugar koji čita zadatke, na početku trake (telefon, uspravan tablet): živ portret do pojasa,
  * u svom svetu; izraz i usta prate glas, a dok govori oko njega svetli prsten. Na tačan odgovor
  * zvezdice doleću do njega, on skoči, kratko poraste, pokaže „+1” i u oblačiću kaže pohvalu.
- * Portret malo viri iz trake (veći je od nje), da traka ne uzme mesto igri.
+ * Portret viri iz trake (veći je od nje), pa traka nije viša nego ranije i igri ne uzima mesto.
  */
 function HudTeacher() {
     const teacher = React.useContext(GameTeacherContext);
@@ -135,7 +135,7 @@ function HudTeacher() {
         <span
             data-hype-target=""
             className={cn(
-                "relative z-30 -my-4 h-24 w-20 shrink-0 origin-top-left sm:-my-5 sm:h-32 sm:w-[6.5rem] short:-my-3 short:h-20 short:w-16 short:sm:-my-3 short:sm:h-20 short:sm:w-16",
+                "relative z-30 -my-6 h-24 w-20 shrink-0 origin-top-left sm:-my-8 sm:h-32 sm:w-[6.5rem] short:-my-3 short:h-20 short:w-16 short:sm:-my-3 short:sm:h-20 short:sm:w-16",
                 !calm && "transition-transform duration-300 ease-out",
                 hype.excited && "scale-[1.35]"
             )}
