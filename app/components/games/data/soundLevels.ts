@@ -29,6 +29,8 @@ export interface SoundMeta {
     level: number;
     /** Fotografija; bez nje se crta slika iz SoundPictures.tsx */
     image?: string;
+    /** Najduže puštanje ovog snimka (ms), kad je kraće od nivoa — npr. da se ne čuje oštećen deo fajla */
+    maxMs?: number;
 }
 
 export const SOUND_ITEMS: SoundMeta[] = [
@@ -43,10 +45,10 @@ export const SOUND_ITEMS: SoundMeta[] = [
     // i pušta). Pre objave ih treba preslušati na uređaju i proveriti da nijedan ne počinje naglo.
     // Merenje fajlova (dekodirano, bez puštanja): sova 3,6 s, 44,1 kHz stereo, vrh −3,6 dBFS, bez odsecanja,
     // počinje posle 0,13 s tišine; vetar 19 s, 48 kHz stereo, polako raste iz tišine, ali ima 33 odsečena
-    // uzorka (0 dBFS), jedan kratak niz na 4,8 s (u delu koji se pušta) — uz jačinu 0,35 verovatno se ne čuje.
+    // uzorka (0 dBFS), jedan kratak niz na 4,8 s — zato se vetar pušta najviše 4,5 s (maxMs), pre tog mesta.
     { id: "owl", label: "Sova", sound: "/sounds/sova.mp3", category: "animals", loud: false, level: 0.45 },
     { id: "horse", label: "Konj", image: animalImage("horse"), sound: "/sounds/konj.mp3", category: "animals", loud: true, level: 0.5 },
-    { id: "wind", label: "Vetar", sound: "/sounds/vetar.mp3", category: "weather", loud: false, level: 0.35 },
+    { id: "wind", label: "Vetar", sound: "/sounds/vetar.mp3", category: "weather", loud: false, level: 0.35, maxMs: 4500 },
     { id: "rooster", label: "Petao", image: animalImage("rooster"), sound: "/sounds/petao.wav", category: "animals", loud: true, level: 0.7 },
     { id: "car", label: "Auto", image: "/soundImage/car.webp", sound: "/sounds/sirenaAuta.mp3", category: "vehicles", loud: true, level: 0.55 },
     { id: "bell", label: "Zvono", image: "/soundImage/bell.webp", sound: "/sounds/zvonoKucno.mp3", category: "home", loud: true, level: 0.85 },

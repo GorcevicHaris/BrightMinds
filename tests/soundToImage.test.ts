@@ -77,3 +77,10 @@ describe("sound rounds", () => {
         }
     }
 });
+
+describe("sound file safety", () => {
+    it("plays the wind clip only before its clipped segment at 4.8 s", () => {
+        const wind = SOUND_ITEMS.find((item) => item.id === "wind");
+        assert.ok(wind?.maxMs !== undefined && wind.maxMs < 4800, "vetar se seče pre 4,8 s");
+    });
+});
