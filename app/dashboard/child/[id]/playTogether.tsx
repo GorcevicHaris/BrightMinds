@@ -602,7 +602,8 @@ export function TogetherEnd({ playKey, stars, level, advance, limitReached, save
 
                 <div className="mt-6 flex flex-col gap-3">
                     {!limitReached && canNext && (
-                        <Button chunky size="xl" variant="success" block onClick={onNext}>
+                        // Na uskom telefonu manje unutrašnje margine, da natpis stane u jedan red
+                        <Button chunky size="xl" variant="success" block onClick={onNext} className="max-sm:px-4">
                             Još jedan nivo zajedno
                             <ArrowRight className="h-6 w-6" aria-hidden="true" />
                         </Button>

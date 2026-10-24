@@ -42,7 +42,8 @@ const STAGE_WIDTH = {
 
 export function GameStage({ children, width = "normal", className }: GameStageProps) {
     return (
-        <div className={cn("relative mx-auto flex w-full flex-1 flex-col gap-4 sm:gap-5", STAGE_WIDTH[width], className)}>
+        // Na telefonu nešto manji razmaci: na niskom ekranu (360 × 740) zadatak i izbori staju bez skrolovanja
+        <div className={cn("relative mx-auto flex w-full flex-1 flex-col gap-3 sm:gap-5", STAGE_WIDTH[width], className)}>
             {children}
         </div>
     );

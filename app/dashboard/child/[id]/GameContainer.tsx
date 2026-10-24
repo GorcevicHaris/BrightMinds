@@ -676,8 +676,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         >
             <GameBackdrop game={game} />
             <CelebrationLayer disabled={settings.reduceMotion} />
-            {/* Zaglavlje igre — ista mesta dugmadi u svim igrama */}
-            <header className="relative flex h-16 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 sm:h-18 sm:gap-3 sm:px-5">
+            {/* Zaglavlje igre — ista mesta dugmadi u svim igrama; na položenom telefonu niže, da igri ostane više mesta */}
+            <header className="relative flex h-16 shrink-0 items-center gap-2 border-b border-line bg-surface px-3 sm:h-18 sm:gap-3 sm:px-5 [@media(max-height:30rem)]:h-14">
                 {screen === "playing" ? (
                     <button
                         type="button"
@@ -741,7 +741,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 </button>
             </header>
 
-            <div className="scroll-soft relative isolate flex flex-1 flex-col overflow-y-auto px-3 py-4 sm:px-6 sm:py-6">
+            <div className="scroll-soft relative isolate flex flex-1 flex-col overflow-y-auto px-3 py-3 sm:px-6 sm:py-6 [@media(max-height:30rem)]:py-2">
                 {screen === "tiers" && <LevelMap game={game} unlocked={maxUnlocked} teacher={settings.avatar ? gender : null} onChoose={chooseTier} />}
 
                 {screen === "mood-before" && (
@@ -1158,33 +1158,38 @@ function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
             role="dialog"
             aria-modal="true"
             aria-label="Pauza"
-            className="absolute inset-0 z-20 flex animate-fade flex-col items-center justify-center gap-6 bg-gradient-to-b from-sky-50 to-brand-50 p-6 text-center outline-none"
+            // Uspravno: drugar, naslov, krug, poruka i dugme jedno ispod drugog. Položen telefon (nizak ekran):
+            // drugar, krug i kolona sa naslovom i dugmetom u jednom redu, da se krug ne spljošti
+            className="absolute inset-0 z-20 flex animate-fade flex-col items-center justify-center-safe gap-6 overflow-y-auto bg-gradient-to-b from-sky-50 to-brand-50 p-6 text-center outline-none [@media(max-height:30rem)]:flex-row [@media(max-height:30rem)]:gap-8 [@media(max-height:30rem)]:p-4"
         >
             {teacher !== null && (
-                <span className="grid h-40 w-32 place-items-end overflow-hidden rounded-3xl bg-white/70 ring-2 ring-white sm:h-52 sm:w-40">
+                <span className="grid h-40 w-32 shrink-0 place-items-end overflow-hidden rounded-3xl bg-white/70 ring-2 ring-white sm:h-52 sm:w-40 [@media(max-height:30rem)]:h-48 [@media(max-height:30rem)]:w-36">
                     <Teacher gender={teacher ?? undefined} variant="scene" emotion="gentle" className="h-full w-full" />
                 </span>
             )}
-            <h2 className="font-display text-3xl font-extrabold text-ink sm:text-4xl">Pauza</h2>
-            <div className="relative grid h-56 w-56 place-items-center sm:h-72 sm:w-72" aria-hidden="true">
+            <div className="contents [@media(max-height:30rem)]:order-3 [@media(max-height:30rem)]:flex [@media(max-height:30rem)]:flex-col [@media(max-height:30rem)]:items-center [@media(max-height:30rem)]:gap-4">
+                <h2 className="order-1 font-display text-3xl font-extrabold text-ink sm:text-4xl">Pauza</h2>
+                <p className="order-3 text-lg font-bold text-ink-soft">Kad budeš {female ? "spremna" : "spreman"}, nastavi igru.</p>
+                <Button
+                    chunky
+                    size="xl"
+                    variant="success"
+                    className="order-4"
+                    onClick={() => {
+                        if (guard.blocked()) return;
+                        playSfx("tap");
+                        onDone();
+                    }}
+                >
+                    <Play className="h-6 w-6" fill="currentColor" aria-hidden="true" />
+                    Nastavi igru
+                </Button>
+            </div>
+            <div className="relative order-2 grid h-56 w-56 shrink-0 place-items-center sm:h-72 sm:w-72 [@media(max-height:30rem)]:h-52 [@media(max-height:30rem)]:w-52" aria-hidden="true">
                 <span className="absolute inset-0 animate-breathe rounded-full bg-sky-200/70" />
                 <span className="absolute inset-[18%] animate-breathe rounded-full bg-sky-300/60 [animation-delay:150ms]" />
                 <span className="relative font-display text-2xl font-extrabold text-sky-900 sm:text-3xl">{inhale ? "Udahni…" : "Izdahni…"}</span>
             </div>
-            <p className="text-lg font-bold text-ink-soft">Kad budeš {female ? "spremna" : "spreman"}, nastavi igru.</p>
-            <Button
-                chunky
-                size="xl"
-                variant="success"
-                onClick={() => {
-                    if (guard.blocked()) return;
-                    playSfx("tap");
-                    onDone();
-                }}
-            >
-                <Play className="h-6 w-6" fill="currentColor" aria-hidden="true" />
-                Nastavi igru
-            </Button>
         </div>
     );
 }
@@ -1220,7 +1225,8 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
             <section
                 aria-label={teacher !== null ? "Tvoj drugar" : undefined}
                 className={cn(
-                    "relative h-[34dvh] min-h-52 overflow-hidden rounded-card shadow-lift ring-1 ring-line sm:h-[40dvh] md:landscape:h-auto md:landscape:min-h-0",
+                    // Nizak telefon (npr. 360 × 740): drugar je malo niži, da i put kroz sve težine stane bez skrolovanja
+                    "relative h-[34dvh] min-h-52 overflow-hidden rounded-card shadow-lift ring-1 ring-line max-md:short:h-[27dvh] max-md:short:min-h-44 sm:h-[36dvh] md:landscape:h-auto md:landscape:min-h-0",
                     teacher !== null ? STAGE_BG : game.accent.soft
                 )}
             >
@@ -1361,7 +1367,8 @@ function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
                                     onClick={() => onChoose(tier, level)}
                                     aria-label={`${tier.label}, nivo ${i + 1}${isDone ? ", završen" : isNext ? ", sledeći" : ", zaključan"}`}
                                     className={cn(
-                                        "relative grid h-11 w-11 place-items-center rounded-full border-2 border-b-4 font-display text-lg font-extrabold transition-[transform,border-width] @sm:h-12 @sm:w-12 @xl:h-14 @xl:w-14 @xl:text-xl",
+                                        // Krug je na telefonu 44 px, a nevidljiv okvir oko njega daje dodiru 48 px (susedni krugovi se ne preklapaju)
+                                        "relative grid h-11 w-11 place-items-center rounded-full border-2 border-b-4 font-display text-lg font-extrabold transition-[transform,border-width] after:absolute after:-inset-0.5 @sm:h-12 @sm:w-12 @xl:h-14 @xl:w-14 @xl:text-xl",
                                         isDone && cn(tier.look.solid, tier.look.edge, "text-white active:translate-y-[2px] active:border-b-2"),
                                         isNext && cn("bg-surface ring-4 active:translate-y-[2px] active:border-b-2", tier.look.edge, tier.look.text, tier.look.ring, "animate-soft-pulse"),
                                         locked && "cursor-not-allowed border-line bg-surface text-ink-faint"
@@ -1395,7 +1402,8 @@ function CompanionPanel() {
     const { speaking } = useVoiceState();
     if (!companion) return null;
     return (
-        <aside aria-label="Tvoj drugar" className="relative w-[clamp(12rem,26vw,26rem)] shrink-0">
+        // Položen telefon: igra je viša od ekrana, pa drugar stoji u mestu (vidljiv) dok se igra pomera
+        <aside aria-label="Tvoj drugar" className="relative w-[clamp(12rem,26vw,26rem)] shrink-0 [@media(max-height:30rem)]:sticky [@media(max-height:30rem)]:top-0 [@media(max-height:30rem)]:h-[calc(100dvh-4.5rem)] [@media(max-height:30rem)]:self-start">
             <div
                 data-hype-target=""
                 className={cn(
@@ -1598,7 +1606,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
             >
                 {/* Ceo drugar sa svim što je dete kupilo, u svom svetu: kraj nivoa je trenutak nagrade */}
                 {hero && (
-                    <div ref={stageRef} className={cn("relative h-[32dvh] min-h-44 shrink-0 sm:h-[38dvh] md:landscape:h-auto md:landscape:min-h-[24rem] md:landscape:w-[46%]", STAGE_BG)}>
+                    <div ref={stageRef} className={cn("relative h-[32dvh] min-h-44 shrink-0 max-md:short:h-[26dvh] max-md:short:min-h-40 sm:h-[38dvh] md:landscape:h-auto md:landscape:min-h-[24rem] md:landscape:w-[46%]", STAGE_BG)}>
                         {/* Kad se pojave zvezdice drugar navija (pročitana priča: mali skok) */}
                         <Teacher gender={teacher} variant="full" action={outcome.practice ? "hop" : "cheer"} className="absolute inset-0 h-full w-full" />
                         <CoinCount
@@ -1607,7 +1615,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                         />
                     </div>
                 )}
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3 pt-4 text-center sm:p-8 md:landscape:flex md:landscape:flex-col md:landscape:justify-center">
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3 pt-4 text-center sm:p-8 md:landscape:flex md:landscape:flex-col md:landscape:justify-center-safe">
                     {outcome.practice ? (
                         // Pročitana priča nije „rezultat”: bez zvezdica koje bi izgledale kao slaba ocena
                         <p className="mb-3 text-6xl animate-pop" aria-hidden="true">

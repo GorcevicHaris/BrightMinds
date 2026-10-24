@@ -149,7 +149,8 @@ const GRID: Record<number, string> = {
     3: "mx-auto max-w-2xl grid-cols-3 xl:max-w-5xl 2xl:max-w-6xl",
     4: "grid-cols-2 md:grid-cols-4",
     // Šest slika: tri kolone u dva reda, a širina tolika da oba reda stanu u visinu ekrana
-    6: "mx-auto max-w-[min(100%,calc((100dvh-25rem)*1.15))] grid-cols-2 sm:grid-cols-3",
+    // (na položenom telefonu bar 20rem — inače bi se slike skupile u uzane trake)
+    6: "mx-auto max-w-[min(100%,max(20rem,calc((100dvh-25rem)*1.15)))] grid-cols-2 sm:grid-cols-3",
 };
 
 const IMAGE_SIZES: Record<number, string> = {

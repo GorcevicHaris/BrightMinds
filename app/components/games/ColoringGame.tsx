@@ -760,7 +760,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                 mode === "verbal"
                     ? "max-h-[max(11rem,calc(100dvh-31rem))]"
                     : mode === "free"
-                      ? "max-h-[max(11rem,calc(100dvh-31rem))]"
+                      ? // Slobodno bojenje: ispod slike su dva reda boja i alati
+                        "max-h-[max(11rem,calc(100dvh-32.5rem))]"
                       : // Široka slika ima primer iznad sebe (viši red natpisa)
                         !tall && hasModel
                         ? swatches.length > 6
@@ -947,11 +948,12 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                 </div>
 
                 {/* Boje i alat */}
-                <div className={cn("flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-3 shadow-soft", mode === "free" ? "sm:w-72" : "sm:w-60 lg:w-64")}>
+                {/* Na uskom telefonu manji razmaci, da šest boja u redu budu dovoljno široke za dodir (48 px) */}
+                <div className={cn("flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-2 shadow-soft sm:p-3", mode === "free" ? "sm:w-72" : "sm:w-60 lg:w-64")}>
                     <p className={cn("hidden px-1 font-display text-base font-extrabold sm:block", accent.text)}>{mode === "number" ? "Brojevi i boje" : "Boje"}</p>
                     <div
                         className={cn(
-                            "grid gap-2.5 sm:gap-3",
+                            "grid gap-1.5 sm:gap-3",
                             mode === "free" ? "grid-cols-6 sm:grid-cols-4" : cn(PALETTE_COLS[swatches.length] ?? "grid-cols-6", swatches.length > 8 ? "sm:grid-cols-3" : "sm:grid-cols-2")
                         )}
                     >
