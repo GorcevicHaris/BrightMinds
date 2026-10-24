@@ -1,8 +1,8 @@
 // Bojanka: slike i nivoi (povlačenje podrške, palete, zadaci).
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { buildColoringPlan, colorNumber, COLORING_LEVELS, coloringLevel } from "@/app/components/games/data/coloringLevels";
-import { BASIC_COLORS, COLOR_BY_ID, COLORS, colorSentence, modelColors, PICTURE_BY_ID, PICTURES, zoneOrder } from "@/app/components/games/data/coloringPictures";
+import { buildColoringPlan, colorNumber, COLORING_LEVELS, coloringLevel, mirrorPartner } from "@/app/components/games/data/coloringLevels";
+import { BASIC_COLORS, COLOR_BY_ID, COLORS, colorSentence, mirrorPath, modelColors, PICTURE_BY_ID, PICTURES, zoneOrder } from "@/app/components/games/data/coloringPictures";
 import { MAX_LEVEL } from "@/lib/games";
 
 /** Ponovljiv „nasumičan” niz za planove */
@@ -18,7 +18,7 @@ const LIMITS = { young: { rounds: 5, choices: 3 }, middle: { rounds: 6, choices:
 
 /** Koliko podrške nivo daje (veći broj = više pomoći); mora da opada kroz nivoe */
 function support(level: (typeof COLORING_LEVELS)[number]): number {
-    const byMode = { copy: 40, number: 20, verbal: 10, free: 0 }[level.mode];
+    const byMode = { copy: 40, number: 20, mirror: 15, verbal: 10, free: 0 }[level.mode];
     const model = level.model === "shown" ? 8 : level.model === "request" ? 4 : 0;
     return byMode + model + (level.showZone ? 2 : 0) + (level.showColor ? 2 : 0) + (level.showMatches ? 1 : 0) + (level.showSwatch ? 1 : 0) + (level.pulseZone ? 0.5 : 0);
 }
@@ -61,13 +61,19 @@ describe("coloring levels", () => {
         assert.equal(new Set(keys).size, keys.length);
     });
 
-    it("support only fades: model → numbers → verbal instruction → free", () => {
+    it("support only fades: model → numbers → other half → verbal instruction → free", () => {
         for (let i = 1; i < COLORING_LEVELS.length; i += 1) {
             assert.ok(support(COLORING_LEVELS[i]) <= support(COLORING_LEVELS[i - 1]), `level ${i + 1} gives more help than level ${i}`);
         }
         assert.deepEqual(COLORING_LEVELS.slice(0, 3).map((l) => [l.mode, l.model, l.showZone, l.showColor]), Array(3).fill(["copy", "shown", true, true]));
         assert.ok(COLORING_LEVELS.some((l) => l.mode === "copy" && l.model === "request"), "a level with the model on request");
         assert.ok(COLORING_LEVELS.some((l) => l.mode === "number"), "colour-by-number levels");
+        // Druga polovina: posle bojenja po brojevima, pre bojenja po uputstvu; prvi put uz pokazni deo
+        const mirrors = COLORING_LEVELS.flatMap((l, i) => (l.mode === "mirror" ? [i] : []));
+        assert.deepEqual(mirrors, [9, 10], "levels 10 and 11 colour the other half");
+        assert.ok(COLORING_LEVELS[mirrors[0]].demo && COLORING_LEVELS[mirrors[0]].showZone, "the first one is modelled and marked");
+        assert.ok(!COLORING_LEVELS[mirrors[1]].demo && !COLORING_LEVELS[mirrors[1]].showZone, "the second one has no marks");
+        assert.equal(COLORING_LEVELS.filter((l) => l.demo).length, 1);
         assert.equal(COLORING_LEVELS[MAX_LEVEL - 1].mode, "free");
     });
 
@@ -100,6 +106,62 @@ describe("coloring levels", () => {
     });
 });
 
+describe("symmetric pictures (colour the other half)", () => {
+    const symmetric = PICTURES.filter((picture) => picture.mirror);
+
+    it("there are symmetric pictures for every mirror level", () => {
+        assert.ok(symmetric.length >= 6);
+        for (const level of COLORING_LEVELS.filter((l) => l.mode === "mirror")) {
+            for (const id of level.pictures) assert.ok(PICTURE_BY_ID[id]?.mirror, `${id} is symmetric`);
+        }
+    });
+
+    for (const picture of symmetric) {
+        it(`${picture.id}: every right part is the mirror image of its left part`, () => {
+            const { axis, pairs } = picture.mirror!;
+            const byId = new Map(picture.zones.map((zone) => [zone.id, zone]));
+            assert.ok(Object.keys(pairs).length >= 3);
+            for (const [right, left] of Object.entries(pairs)) {
+                const r = byId.get(right);
+                const l = byId.get(left);
+                assert.ok(r && l, `${right} ↔ ${left}`);
+                assert.equal(r!.c, l!.c, "same colour");
+                assert.equal(r!.name, l!.name, "same name");
+                assert.equal(r!.d, mirrorPath(l!.d, axis), "right = left in the mirror");
+                assert.notEqual(r!.d, l!.d);
+                // Levi deo je levo od ose, desni desno (proverava se po x-koordinatama apsolutnih tačaka)
+                const xs = (d: string) => [...d.matchAll(/[ML](-?[\d.]+),/g)].map((m) => Number(m[1]));
+                assert.ok(xs(l!.d).every((x) => x <= axis + 0.01), `${left} stays left of the axis`);
+                assert.ok(xs(r!.d).every((x) => x >= axis - 0.01), `${right} stays right of the axis`);
+            }
+            // Svaki deo slike je u nekom paru (središnji ukrasi su obojeni detalji)
+            const paired = new Set([...Object.keys(pairs), ...Object.values(pairs)]);
+            assert.deepEqual(picture.zones.map((zone) => zone.id).filter((id) => !paired.has(id)), []);
+        });
+    }
+
+    it("the left half is coloured from the start, the child colours the right half", () => {
+        for (const picture of symmetric) {
+            const level = COLORING_LEVELS.findIndex((l) => l.mode === "mirror" && l.pictures.includes(picture.id)) + 1;
+            assert.ok(level > 0, picture.id);
+            const plan = buildColoringPlan(level, null, picture.id);
+            const { pairs } = picture.mirror!;
+            assert.deepEqual(
+                plan.zones.map((zone) => zone.id),
+                picture.order
+            );
+            for (const zone of plan.zones) assert.ok(zone.id in pairs);
+            for (const left of Object.values(pairs)) assert.equal(plan.prefilled[left], PICTURE_BY_ID[picture.id]!.zones.find((z) => z.id === left)!.c);
+        }
+    });
+
+    it("mirrors absolute and relative path commands, arcs included", () => {
+        assert.equal(mirrorPath("M150,10 L180,20 Z", 200), "M250,10 L220,20 Z");
+        assert.equal(mirrorPath("M10,10 h20 v5 a5,5 0 0,1 5,5 Z", 50), "M90,10 h-20 v5 a5,5 0 0,0 -5,5 Z");
+        assert.equal(mirrorPath("M0,0 C10,0 20,5 30,10", 100), "M200,0 C190,0 180,5 170,10");
+    });
+});
+
 describe("coloring plans", () => {
     for (let level = 1; level <= MAX_LEVEL; level += 1) {
         for (const [band, limits] of Object.entries(LIMITS)) {
@@ -116,14 +178,22 @@ describe("coloring plans", () => {
                     }
                     assert.equal(plan.zones.length + Object.keys(plan.prefilled).length, plan.picture.zones.length);
 
-                    if (def.mode === "copy" || def.mode === "number") {
+                    if (def.mode === "copy" || def.mode === "number" || def.mode === "mirror") {
                         // Svaka boja sa primera mora biti u paleti — inače dete ne može da završi
                         for (const zone of plan.zones) assert.ok(plan.palette.includes(zone.c), `${plan.picture.id}/${zone.id}`);
                         assert.equal(new Set(plan.palette).size, plan.palette.length);
-                        if (def.mode === "copy") {
+                        if (def.mode === "copy" || def.mode === "mirror") {
                             const needed = modelColors(plan.zones).length;
                             assert.ok(plan.palette.length <= Math.max(needed, limits.choices));
                             if (def.colors === 0) assert.equal(plan.palette.length, needed, "first level offers only the colours of the model");
+                            if (def.mode === "mirror") {
+                                // Dete boji samo desnu polovinu; leva je obojena (bojom odraza) od početka
+                                for (const zone of plan.zones) {
+                                    const partner = mirrorPartner(plan.picture, zone.id);
+                                    assert.ok(partner, `${plan.picture.id}/${zone.id} has a mirror partner`);
+                                    assert.equal(plan.prefilled[partner!], zone.c, `${plan.picture.id}/${partner} is coloured like ${zone.id}`);
+                                }
+                            }
                         } else {
                             // Po brojevima: samo boje koje imaju broj, 1…n
                             assert.deepEqual(plan.palette, modelColors(plan.zones));
