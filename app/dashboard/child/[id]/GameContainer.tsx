@@ -37,6 +37,9 @@ import { useGameBroadcast } from "@/lib/realtime";
 import { useSpeech } from "@/lib/speech";
 import type { VoiceEmotion } from "@/lib/emotion";
 import { usePlanProgress } from "./planProgress";
+// Mapa igara i „Igraj sa drugom” (GameMap.tsx, playTogether.tsx)
+import { GamePicker } from "./GameMap";
+import { TogetherEnd, TurnTakingLayer, useTogetherEnd } from "./playTogether";
 import { useSessionClock } from "./sessionClock";
 
 // Svaka igra se učitava tek kada je dete izabere
@@ -192,6 +195,8 @@ interface GameContainerProps {
     preview?: boolean;
     /** Samo u probnom prikazu: sledeći otključani nivo u svim igrama (podrazumevano je sve otključano) */
     previewUnlocked?: number;
+    /** Uzrast u godinama (mapa je podrazumevana do 7 godina); null = nepoznat */
+    ageYears?: number | null;
 }
 
 /** Čuva rezultat nivoa; kod prekida mreže ili greške servera pokušava još dva puta. */
@@ -219,7 +224,7 @@ async function saveResult(payload: Record<string, unknown>): Promise<{ logId?: u
     throw lastError;
 }
 
-export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, onOverlayChange, preview = false, previewUnlocked = MAX_LEVEL + 1 }: GameContainerProps) {
+export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, onOverlayChange, preview = false, previewUnlocked = MAX_LEVEL + 1, ageYears = null }: GameContainerProps) {
     const settings = useChildSettings();
     const { say } = useSpeech(gender);
     const publish = useGameBroadcast(childId, !preview);
@@ -286,6 +291,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const clock = useSessionClock(childId, preview ? 0 : settings.sessionMinutes, screen === "playing" && !outcome && !onBreak);
 
     const game = gameId ? getGame(gameId) : null;
+    const togetherEnd = useTogetherEnd(gameId);
     const tier = tierOf(tierId);
     const unlockedFor = (id: GameId) => unlocked[id] ?? 1;
 
@@ -559,6 +565,17 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         </Button>
                     </div>
                 )}
+                {/* Mapa ili kartice (GameMap.tsx) — posle spajanja: sortGamesForChild / availableGames */}
+                <GamePicker
+                    ageYears={ageYears}
+                    games={shown}
+                    unlockedFor={unlockedFor}
+                    statusFor={planActive ? (id) => (planDone.includes(id) ? "done" : id === nextPlanned ? "now" : "later") : undefined}
+                    pending={levelsLoading}
+                    unavailable={levelsError}
+                    planActive={planActive}
+                    onOpen={openGame}
+                    grid={
                 <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
                     {shown.map((g, index) => {
                         const status = !planActive ? undefined : planDone.includes(g.id) ? "done" : g.id === nextPlanned ? "now" : "later";
@@ -578,6 +595,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         );
                     })}
                 </ul>
+                    }
+                />
             </section>
         );
     }
@@ -701,6 +720,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         )}
                         {/* Za vreme pauze igra stoji: tajmeri čekaju, pomoć i govor igre ne kreću */}
                         <GamePauseContext.Provider value={onBreak}>
+                            {/* Igra sa drugom: traka „Sada igra …” (playTogether.tsx); inače samo igra */}
+                            <TurnTakingLayer key={playKey} gameId={game.id}>
                             <GameSlot
                                 key={`${game.id}-${level}-${attempt}`}
                                 gameId={game.id}
@@ -710,6 +731,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                                 childName={childName}
                                 onComplete={handleComplete}
                             />
+                            </TurnTakingLayer>
                         </GamePauseContext.Provider>
                     </div>
                 )}
@@ -727,7 +749,22 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 />
             )}
 
-            {screen === "playing" && outcome && (
+            {/* Igra sa drugom: zajednička pohvala umesto uobičajenog kraja nivoa (playTogether.tsx) */}
+            {screen === "playing" && outcome && togetherEnd && (
+                <TogetherEnd
+                    gameId={game.id}
+                    playKey={playKey}
+                    stars={outcome.stars}
+                    level={level}
+                    advance={outcome.advance}
+                    limitReached={clock.limitReached}
+                    saved={outcome.saved}
+                    onNext={() => startLevel(tierId, level + 1)}
+                    onRetry={() => startLevel(tierId, level)}
+                    onLeave={leaveGame}
+                />
+            )}
+            {screen === "playing" && outcome && !togetherEnd && (
                 <LevelResult
                     outcome={outcome}
                     childName={childName}
