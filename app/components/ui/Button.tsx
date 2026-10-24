@@ -41,7 +41,8 @@ const VARIANTS: Record<ButtonVariant, { flat: string; chunky: string }> = {
 };
 
 const SIZES: Record<ButtonSize, string> = {
-    sm: "min-h-9 px-3 text-sm gap-1.5 rounded-xl",
+    // I malo dugme je visoko 44 px: toliko treba prstu na telefonu
+    sm: "min-h-11 px-3 text-sm gap-1.5 rounded-xl",
     md: "min-h-11 px-4 text-[0.95rem] gap-2 rounded-xl",
     lg: "min-h-13 px-6 text-base gap-2.5 rounded-2xl",
     xl: "min-h-16 px-8 text-xl gap-3 rounded-2xl",

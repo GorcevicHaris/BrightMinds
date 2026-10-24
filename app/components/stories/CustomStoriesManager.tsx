@@ -712,7 +712,7 @@ function StoryEditor({ isNew, draft, setDraft, previewing, onTogglePreview, disa
 }
 
 const ICON_BUTTON =
-    "grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-line bg-surface text-ink-soft transition-colors hover:bg-brand-50 hover:text-ink disabled:pointer-events-none disabled:opacity-40";
+    "grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-line bg-surface text-ink-soft transition-colors hover:bg-brand-50 hover:text-ink disabled:pointer-events-none disabled:opacity-40";
 
 interface StepFieldsProps {
     step: DraftStep;
