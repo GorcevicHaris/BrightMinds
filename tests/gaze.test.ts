@@ -13,6 +13,7 @@ import {
     gazeRule,
     gazeWrong,
     getGazeObject,
+    headTurn,
     itIs,
     mergeGazeMonitor,
     roundFields,
@@ -112,16 +113,19 @@ describe("gaze game content", () => {
 });
 
 describe("gaze game levels", () => {
-    it("moves from pointing to head and eyes to eyes only, then to wanting and knowing", () => {
+    it("moves from pointing to head and eyes, half a head turn, eyes only, then to wanting and knowing", () => {
         const cues = LEVELS.map((level) => gazeRule(level).tasks.map((task) => `${task.kind}:${task.cue}:${task.objects}`).join(","));
-        assert.deepEqual(cues.slice(0, 2), ["look:point:2", "look:point:2"]);
-        assert.deepEqual(cues.slice(2, 5), ["look:head:2", "look:head:2", "look:head:2"]);
-        assert.deepEqual(cues.slice(5, 10), ["look:head:3", "look:head:3", "look:head:4", "look:head:4", "look:head:4"]);
-        assert.equal(cues[10], "look:eyes:3");
-        assert.equal(cues[11], "look:eyes:4");
-        assert.equal(cues[12], "want:head:3");
-        assert.equal(cues[13], "know:head:2");
+        assert.deepEqual(cues.slice(0, 2), ["look:point:2", "look:point:3"]);
+        assert.deepEqual(cues.slice(2, 5), ["look:head:2", "look:head:3", "look:head:4"]);
+        assert.deepEqual(cues.slice(5, 7), ["look:turn:3", "look:turn:4"]);
+        assert.deepEqual(cues.slice(7, 10), ["look:eyes:2", "look:eyes:3", "look:eyes:4"]);
+        assert.deepEqual(cues.slice(10, 12), ["want:head:3", "want:eyes:3"]);
+        assert.deepEqual(cues.slice(12, 14), ["know:head:2", "know:eyes:2"]);
         assert.deepEqual(gazeRule(15).tasks.map((task) => task.kind), ["look", "want", "know"]);
+        assert.ok(gazeRule(15).tasks.every((task) => task.cue === "eyes"));
+        // Svaki nivo je drugačiji od prethodnog, a znak pogleda nikad ne postaje jači unutar iste vrste zadatka
+        for (let i = 1; i < cues.length; i += 1) assert.notEqual(cues[i], cues[i - 1], `nivo ${i + 1}`);
+        assert.deepEqual([headTurn("point"), headTurn("head"), headTurn("turn"), headTurn("eyes")], [1, 1, 0.5, 0]);
         assert.equal(gazeRule(0), gazeRule(1));
         assert.equal(gazeRule(99), gazeRule(15));
         assert.equal(gazeRule(Number.NaN), gazeRule(1));
@@ -215,14 +219,17 @@ describe("gaze game pictures", () => {
                 assert.deepEqual(hinted.map((figure) => figure.fig), [round.hero]);
                 if (round.kind === "know") {
                     assert.equal(people.length, 2);
+                    for (const figure of people) assert.equal(figure.gaze!.head, headTurn(round.cue), `nivo ${level}: glava u „ko zna”`);
                     assert.ok(props.includes("boxOpen"));
                     continue;
                 }
                 assert.equal(people.length, 1);
                 // Glava se okreće osim na nivoima „samo oči”; ruka pokazuje samo na prvim nivoima, u pravu stranu
-                assert.equal(looker.gaze!.head, round.cue === "eyes" ? 0 : 1);
-                assert.equal(looker.pose, round.cue === "point" ? "point" : "stand");
+                assert.equal(looker.gaze!.head, headTurn(round.cue));
                 const targetSlot = round.objects.find((object) => object.id === round.target)!.slot;
+                // Ka predmetu na polici ruka ide uvis, ka predmetu dole pokazuje ispred sebe
+                const up = targetSlot === "upLeft" || targetSlot === "upRight";
+                assert.equal(looker.pose, round.cue === "point" ? (up ? "reach" : "point") : "stand");
                 if (round.cue === "point") assert.equal(looker.flip, slotSide(targetSlot) === "left");
                 assert.equal(looker.gaze!.x < 120, slotSide(targetSlot) === "left", `nivo ${level}: pogled ide na pogrešnu stranu`);
             }

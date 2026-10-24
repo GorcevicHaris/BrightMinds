@@ -7,6 +7,12 @@
 // i poređenje, pa do 20 u dva okvira, jedan više / jedan manje i sabiranje sa predmetima.
 // Sve je konkretno i vidljivo: predmeti su uvek na ekranu, nema treptanja ni žurbe.
 //
+// Na prvim nivoima učitelj pre odgovora broji zajedno sa detetom (model „brojimo zajedno”),
+// pa se model povlači: nivoi 1–2 — predmeti zasvetle jedan po jedan dok glas broji, a poslednji
+// zasvetli bez reči, pa dete samo kaže koliko ih je (načelo kardinalnosti: poslednji izgovoren
+// broj je odgovor); nivoi 3–4 — predmeti zasvetle bez glasa, dete broji u sebi; dalje bez modela
+// (brojanje zajedno ostaje samo kao pomoć posle greške ili dugog čekanja).
+//
 // Pravila pisanja:
 //  • Svaka imenica ima tri oblika: uz 1 (jedna jabuka), uz 2–4 (dve jabuke) i uz 5 i više,
 //    posle „Koliko ima…?” i „više / manje” (pet jabuka). `countPhrase` bira oblik i rod broja
@@ -58,6 +64,22 @@ export const COUNT_NOUNS: readonly CountNoun[] = [
     n("duck", "🦆", "f", "patka", "patke", "pataka", true),
     n("ladybug", "🐞", "f", "bubamara", "bubamare", "bubamara", true),
     n("turtle", "🐢", "f", "kornjača", "kornjače", "kornjača", true),
+    // Još voća, povrća i stvari
+    n("cherry", "🍒", "f", "trešnja", "trešnje", "trešanja"),
+    n("carrot", "🥕", "f", "šargarepa", "šargarepe", "šargarepa"),
+    n("lemon", "🍋", "m", "limun", "limuna", "limuna"),
+    n("mushroom", "🍄", "f", "pečurka", "pečurke", "pečuraka"),
+    n("gift", "🎁", "m", "poklon", "poklona", "poklona"),
+    n("heart", "❤️", "n", "srce", "srca", "srca"),
+    n("bell", "🔔", "n", "zvono", "zvona", "zvona"),
+    // Još životinja (sa farme, iz bašte)
+    n("chick", "🐤", "n", "pile", "pileta", "pilića", true),
+    n("rabbit", "🐰", "m", "zec", "zeca", "zečeva", true),
+    n("sheep", "🐑", "f", "ovca", "ovce", "ovaca", true),
+    n("mouse", "🐭", "m", "miš", "miša", "miševa", true),
+    n("snail", "🐌", "m", "puž", "puža", "puževa", true),
+    n("frog", "🐸", "f", "žaba", "žabe", "žaba", true),
+    n("bee", "🐝", "f", "pčela", "pčele", "pčela", true),
 ];
 
 export function getCountNoun(id: unknown): CountNoun | undefined {
@@ -259,27 +281,35 @@ interface LevelRule {
     /** Najmanja razlika dve grupe pri poređenju */
     gap: number;
     rounds: number;
+    /**
+     * Model „brojimo zajedno” pre odgovora (samo kad se broji na tabli): „voice” — predmeti
+     * zasvetle jedan po jedan dok glas broji, a poslednji zasvetli bez reči (dete kaže koliko);
+     * „lights” — predmeti zasvetle bez glasa (dete broji u sebi); „none” — bez modela.
+     */
+    model: CountModel;
 }
+
+export type CountModel = "voice" | "lights" | "none";
 
 const RULES: readonly LevelRule[] = [
     // Lako: male grupe do 3, pa do 5 u redu i kao na kockici; kartice imaju i tačkice
-    { first: 1, last: 1, kinds: ["count"], min: 1, max: 3, layout: "row", choices: 2, dots: true, gap: 2, rounds: 5 },
-    { first: 2, last: 2, kinds: ["count"], min: 1, max: 4, layout: "row", choices: 3, dots: true, gap: 2, rounds: 5 },
-    { first: 3, last: 3, kinds: ["count"], min: 1, max: 5, layout: "row", choices: 3, dots: true, gap: 2, rounds: 5 },
-    { first: 4, last: 4, kinds: ["count"], min: 1, max: 5, layout: "dice", choices: 3, dots: true, gap: 2, rounds: 5 },
-    { first: 5, last: 5, kinds: ["count", "most"], min: 1, max: 5, layout: "dice", choices: 3, dots: true, gap: 2, rounds: 5 },
+    { first: 1, last: 1, kinds: ["count"], min: 1, max: 3, layout: "row", choices: 2, dots: true, gap: 2, rounds: 5, model: "voice" },
+    { first: 2, last: 2, kinds: ["count"], min: 1, max: 4, layout: "row", choices: 3, dots: true, gap: 2, rounds: 5, model: "voice" },
+    { first: 3, last: 3, kinds: ["count"], min: 1, max: 5, layout: "row", choices: 3, dots: true, gap: 2, rounds: 5, model: "lights" },
+    { first: 4, last: 4, kinds: ["count"], min: 1, max: 5, layout: "dice", choices: 3, dots: true, gap: 2, rounds: 5, model: "lights" },
+    { first: 5, last: 5, kinds: ["count", "most"], min: 1, max: 5, layout: "dice", choices: 3, dots: true, gap: 2, rounds: 5, model: "none" },
     // Srednje: do 10 (pet + još, okvir od deset), broj ↔ količina, više pa i manje
-    { first: 6, last: 6, kinds: ["count"], min: 4, max: 7, layout: "row", choices: 3, dots: false, gap: 2, rounds: 6 },
-    { first: 7, last: 7, kinds: ["count"], min: 5, max: 10, layout: "frame", choices: 3, dots: false, gap: 2, rounds: 6 },
-    { first: 8, last: 8, kinds: ["match"], min: 1, max: 8, layout: "row", choices: 3, dots: false, gap: 2, rounds: 6 },
-    { first: 9, last: 9, kinds: ["most"], min: 2, max: 10, layout: "row", choices: 2, dots: false, gap: 1, rounds: 6 },
-    { first: 10, last: 10, kinds: ["count", "match", "most", "least"], min: 1, max: 10, layout: "frame", choices: 3, dots: false, gap: 1, rounds: 6 },
+    { first: 6, last: 6, kinds: ["count"], min: 4, max: 7, layout: "row", choices: 3, dots: false, gap: 2, rounds: 6, model: "none" },
+    { first: 7, last: 7, kinds: ["count"], min: 5, max: 10, layout: "frame", choices: 3, dots: false, gap: 2, rounds: 6, model: "none" },
+    { first: 8, last: 8, kinds: ["match"], min: 1, max: 8, layout: "row", choices: 3, dots: false, gap: 2, rounds: 6, model: "none" },
+    { first: 9, last: 9, kinds: ["most"], min: 2, max: 10, layout: "row", choices: 2, dots: false, gap: 1, rounds: 6, model: "none" },
+    { first: 10, last: 10, kinds: ["count", "match", "most", "least"], min: 1, max: 10, layout: "frame", choices: 3, dots: false, gap: 1, rounds: 6, model: "none" },
     // Teško: do 20 u dva okvira, jedan više / jedan manje, sabiranje sa predmetima, pa sve izmešano
-    { first: 11, last: 11, kinds: ["count"], min: 10, max: 15, layout: "frame", choices: 4, dots: false, gap: 1, rounds: 8 },
-    { first: 12, last: 12, kinds: ["count"], min: 11, max: 20, layout: "frame", choices: 4, dots: false, gap: 1, rounds: 8 },
-    { first: 13, last: 13, kinds: ["plus1", "minus1"], min: 2, max: 9, layout: "row", choices: 4, dots: false, gap: 1, rounds: 8 },
-    { first: 14, last: 14, kinds: ["add"], min: 1, max: 5, layout: "row", choices: 4, dots: false, gap: 1, rounds: 8 },
-    { first: 15, last: 15, kinds: ["count", "least", "plus1", "minus1", "add", "most"], min: 11, max: 20, layout: "frame", choices: 4, dots: false, gap: 1, rounds: 8 },
+    { first: 11, last: 11, kinds: ["count"], min: 10, max: 15, layout: "frame", choices: 4, dots: false, gap: 1, rounds: 8, model: "none" },
+    { first: 12, last: 12, kinds: ["count"], min: 11, max: 20, layout: "frame", choices: 4, dots: false, gap: 1, rounds: 8, model: "none" },
+    { first: 13, last: 13, kinds: ["plus1", "minus1"], min: 2, max: 9, layout: "row", choices: 4, dots: false, gap: 1, rounds: 8, model: "none" },
+    { first: 14, last: 14, kinds: ["add"], min: 1, max: 5, layout: "row", choices: 4, dots: false, gap: 1, rounds: 8, model: "none" },
+    { first: 15, last: 15, kinds: ["count", "least", "plus1", "minus1", "add", "most"], min: 11, max: 20, layout: "frame", choices: 4, dots: false, gap: 1, rounds: 8, model: "none" },
 ];
 
 export const COUNTING_MAX_LEVEL = 15;
@@ -385,6 +415,21 @@ export function buildCountingLevel(level: number, { maxChoices, maxRounds, rando
         lastNoun = noun.id;
     }
     return rounds;
+}
+
+/** Da li se u ovom zadatku pre odgovora broji zajedno (model), i kako */
+export function modelFor(level: number, round: CountRound): CountModel {
+    return round.kind === "count" ? countingRule(level).model : "none";
+}
+
+/**
+ * Koraci modela „brojimo zajedno”: isti kao pomoć, ali uz `voice` poslednji broj ostaje
+ * nečujan (`word` je prazan) — odgovor na „Koliko ima?” kaže dete; uz `lights` se ništa ne kaže.
+ */
+export function modelSteps(round: CountRound, model: CountModel): CountStep[] {
+    if (model === "none") return [];
+    const steps = hintSteps(round);
+    return steps.map((step, i) => (model === "lights" || i === steps.length - 1 ? { ...step, word: "" } : step));
 }
 
 // ── Brojanje uz pomoć ─────────────────────────────────────────────────────────

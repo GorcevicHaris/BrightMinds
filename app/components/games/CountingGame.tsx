@@ -5,7 +5,9 @@
 // Nivoi 1–5: do 3, pa do 5 (u redu i kao na kockici), kartice sa brojem i tačkicama;
 // 6–10: do 10 (pet + još, okvir od deset), broj ↔ količina, više i manje;
 // 11–15: do 20 u dva okvira, jedan više / jedan manje, sabiranje sa predmetima, pa sve izmešano.
-// Pomoć je model brojanja: predmeti zasvetle jedan po jedan dok glas broji, pa tačna kartica blago svetli.
+// Na nivoima 1–4 učitelj pre odgovora broji zajedno sa detetom (model koji se povlači, vidi
+// data/countingItems.ts). Pomoć je isti model: predmeti zasvetle jedan po jedan dok glas broji, pa
+// tačna kartica blago svetli.
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
@@ -42,6 +44,8 @@ import {
     groupKey,
     hintSteps,
     mergeCountingMonitor,
+    modelFor,
+    modelSteps,
     pickedSentence,
     questionFor,
     solveView,
@@ -57,6 +61,10 @@ const GAME = getGame("counting");
 const WRONG_FEEDBACK_MS = 1400;
 const INSTRUCTION = "Slušaj pitanje i izaberi pravi odgovor.";
 const COUNT_ALONG = "Brojimo zajedno.";
+/** Model pre odgovora: uz glas („Brojimo zajedno.”) ili bez njega („Broji u sebi.”) */
+const MODEL_LEAD = { voice: COUNT_ALONG, lights: "Broji u sebi." } as const;
+/** Korak modela bez reči (poslednji predmet ili brojanje u sebi) */
+const MODEL_SILENT_MS = 900;
 /** Jedan korak brojanja uz pomoć: najmanje ovoliko (i kad je glas isključen), najviše dok glas ne završi */
 const COUNT_STEP_MIN_MS = 700;
 const COUNT_STEP_MAX_MS = 2200;
@@ -137,10 +145,44 @@ export default function CountingGame({ childId, level, gender, onComplete, isMon
         if (lead) sayThen(lead, () => step(0), { emotion: "gentle" });
         else step(0);
     };
-    // Za početni efekat (pokazni zadatak): uvek najnovija verzija
+    /**
+     * Model „brojimo zajedno” pre odgovora: predmeti zasvetle jedan po jedan; uz glas se broji
+     * naglas osim poslednjeg (dete kaže koliko), bez glasa dete broji u sebi. Na kraju pitanje.
+     * Kartice su sve vreme slobodne: dete koje već zna sme odmah da odgovori.
+     */
+    const modelCount = (intro?: string) => {
+        const task = viewRef.current.task;
+        if (!task) return;
+        const mode = modelFor(level, task);
+        const question = questionFor(task);
+        if (mode === "none") {
+            say(intro ? `${intro} ${question}` : question);
+            return;
+        }
+        countRun.current += 1;
+        const mine = countRun.current;
+        const steps = modelSteps(task, mode);
+        commit({ ...viewRef.current, lit: {} });
+        const step = (i: number) => {
+            if (mine !== countRun.current || finishedRef.current || viewRef.current.feedback === "correct") return;
+            if (i >= steps.length) {
+                say(question);
+                return;
+            }
+            const { key, lit, word } = steps[i];
+            commit({ ...viewRef.current, lit: { ...viewRef.current.lit, [key]: lit } });
+            if (word) sayThen(word, () => step(i + 1), { min: COUNT_STEP_MIN_MS, max: COUNT_STEP_MAX_MS });
+            else after(MODEL_SILENT_MS, () => step(i + 1));
+        };
+        const lead = MODEL_LEAD[mode];
+        sayThen(intro ? `${intro} ${lead}` : lead, () => step(0), { emotion: "gentle" });
+    };
+    // Za početni efekat (pokazni zadatak, model): uvek najnovija verzija
     const countAlongRef = useRef(countAlong);
+    const modelCountRef = useRef(modelCount);
     useEffect(() => {
         countAlongRef.current = countAlong;
+        modelCountRef.current = modelCount;
     });
 
     // Početak nivoa: uputstvo jednom, pa prvo pitanje. U pokaznom zadatku učitelj i izbroji.
@@ -152,7 +194,7 @@ export default function CountingGame({ childId, level, gender, onComplete, isMon
         if (!task) return;
         const text = `${INSTRUCTION} ${questionFor(task)}`;
         if (demoRounds(level, viewRef.current.totalRounds) === 0) {
-            say(text);
+            modelCountRef.current(INSTRUCTION);
             return;
         }
         countRun.current += 1;
@@ -178,7 +220,7 @@ export default function CountingGame({ childId, level, gender, onComplete, isMon
         guard.hold();
         const question = questionFor(round);
         commit({ ...viewRef.current, task: round, round: index + 1, wrong: [], picked: null, feedback: null, hint: false, lit: {} }, `Zadatak ${index + 1}: ${question}`);
-        say(question);
+        modelCount();
     };
 
     const handlePick = (value: number) => {

@@ -5,7 +5,7 @@
 // dole na podu ili gore na polici. know: dvoje dece i otvorena kutija između njih; jedno gleda
 // u kutiju (kutija je bliže njemu), drugo gleda nešto daleko, gore.
 
-import { getGazeObject, slotSide, type GazeObject, type GazeView, type SlotId } from "@/app/components/games/data/gazeRounds";
+import { getGazeObject, headTurn, slotSide, type GazeObject, type GazeView, type SlotId } from "@/app/components/games/data/gazeRounds";
 import { scene, thing, who, type SceneItem, type SceneSpec } from "@/app/components/games/scene/types";
 
 /** Gde stoji predmet (sredina donje ivice); gornja mesta imaju policu na zidu */
@@ -51,10 +51,11 @@ export function gazeScene(round: Pick<GazeView, "kind" | "cue" | "hero" | "other
             y: BUST.y,
             s: BUST.s,
             face: "calm",
-            // Ruka koja pokazuje je desna; za predmet levo lik se crta preokrenut
-            pose: pointing ? "point" : "stand",
+            // Ruka koja pokazuje je desna; za predmet levo lik se crta preokrenut. Ka predmetu gore
+            // (na polici) ruka ide uvis, ka predmetu dole pokazuje ispred sebe.
+            pose: pointing ? (upper(target.item.slot) ? "reach" : "point") : "stand",
             flip: pointing && slotSide(target.item.slot) === "left",
-            gaze: { x: center.cx, y: center.cy, head: round.cue === "eyes" ? 0 : 1, line, ring: line ? center.r : 0 },
+            gaze: { x: center.cx, y: center.cy, head: headTurn(round.cue), line, ring: line ? center.r : 0 },
         })
     );
     return { ...scene("plain", items), camera: "fixed" };
@@ -65,7 +66,11 @@ const BOX = { left: 100, right: 140, y: 152, s: 1.35 } as const;
 const KID = { left: 48, right: 192, y: 150, s: 1.3 } as const;
 const FAR_POINT = { left: [26, 46], right: [214, 46] } as const;
 
-function knowScene(round: Pick<GazeView, "hero" | "other" | "objects" | "heroSide">, line: boolean): SceneSpec | null {
+function upper(slot: SlotId): boolean {
+    return slot === "upLeft" || slot === "upRight";
+}
+
+function knowScene(round: Pick<GazeView, "cue" | "hero" | "other" | "objects" | "heroSide">, line: boolean): SceneSpec | null {
     const far = getGazeObject(round.objects[0]?.id);
     if (!round.hero || !round.other || !far) return null;
     const heroX = KID[round.heroSide];
@@ -80,8 +85,8 @@ function knowScene(round: Pick<GazeView, "hero" | "other" | "objects" | "heroSid
         ...scene("plain", [
             thing(far.prop, fx, fy, { s: far.s, ...(far.tone ? { tone: far.tone } : {}) }),
             thing("boxOpen", boxX, BOX.y, { s: BOX.s }),
-            who(round.hero, heroX, { y: KID.y, s: KID.s, face: "calm", gaze: { x: boxInside.x, y: boxInside.y, line, ring: line ? 26 : 0 } }),
-            who(round.other, otherX, { y: KID.y, s: KID.s, face: "calm", gaze: { x: farCenter.cx, y: farCenter.cy } }),
+            who(round.hero, heroX, { y: KID.y, s: KID.s, face: "calm", gaze: { x: boxInside.x, y: boxInside.y, head: headTurn(round.cue), line, ring: line ? 26 : 0 } }),
+            who(round.other, otherX, { y: KID.y, s: KID.s, face: "calm", gaze: { x: farCenter.cx, y: farCenter.cy, head: headTurn(round.cue) } }),
         ]),
         camera: "fixed",
     };
