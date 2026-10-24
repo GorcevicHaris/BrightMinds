@@ -22,6 +22,7 @@ import { chosenSkin, CompanionProvider, useCompanion } from "./companionState";
 import { GoalChip } from "./companionUi";
 import LockedGameHint from "./LockedGameHint";
 import { TogetherProvider } from "./playTogether";
+import { RemoteProvider } from "./playRemote";
 import ReminderBanner from "./ReminderBanner";
 import type { ChildProfile } from "./page";
 
@@ -56,7 +57,10 @@ export default function ChildPageClient({ realtimeTopic = null, ...props }: Prop
                 preview={props.preview}
                 previewPoints={props.child.experience_points ?? 0}
             >
-                <ChildPage {...props} />
+                {/* Drug na drugom uređaju (playRemote.tsx): traje i dok dete gleda „Moj drugar” ili „Napredak” */}
+                <RemoteProvider childId={props.child.id} childName={props.child.first_name || "Druže"} gender={props.child.gender ?? undefined} preview={props.preview}>
+                    <ChildPage {...props} />
+                </RemoteProvider>
             </CompanionProvider>
         </RealtimeTopicProvider>
     );

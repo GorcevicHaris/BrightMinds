@@ -37,11 +37,13 @@ import {
 import { GameEventTapProvider } from "@/lib/realtime";
 import type { GameUpdate } from "@/lib/types";
 import { chosenSkin, useCompanion } from "./companionState";
+// Drug na drugom uređaju (playRemote.tsx): pozivanje i ulazak kod druga kreću iz istog prozora
+import { RemoteChoices, RemoteGuestEntry, RemoteHostPicker, useRemoteActive } from "./playRemote";
 
 // ── Boje igrača ───────────────────────────────────────────────────────────────
 
 /** Svaki igrač ima svoju boju (i oblik znaka), da se red vidi i bez čitanja */
-const LOOKS = [
+export const LOOKS = [
     { solid: "bg-brand-600", soft: "bg-brand-50", ring: "ring-brand-400", text: "text-brand-700", border: "border-brand-500", mark: "★" },
     { solid: "bg-orange-500", soft: "bg-orange-50", ring: "ring-orange-400", text: "text-orange-700", border: "border-orange-400", mark: "●" },
 ] as const;
@@ -118,7 +120,7 @@ export function TogetherProvider({ childId, childName, gender, preview = false, 
 
 // ── Portret igrača ────────────────────────────────────────────────────────────
 
-function PlayerPicture({ player, look, className, dim = false }: { player: TogetherPlayer; look: (typeof LOOKS)[number]; className?: string; dim?: boolean }) {
+export function PlayerPicture({ player, look, className, dim = false }: { player: TogetherPlayer; look: (typeof LOOKS)[number]; className?: string; dim?: boolean }) {
     return (
         <span className={cn("relative block shrink-0 overflow-hidden rounded-2xl ring-4", look.soft, look.ring, dim && "opacity-60 grayscale", className)}>
             <CompanionPicture kind={player.kind} skin={player.skin} wear={player.wear as Wear | undefined} variant="bust" eager className="h-full w-full" />
@@ -128,10 +130,17 @@ function PlayerPicture({ player, look, className, dim = false }: { player: Toget
 
 // ── Početak: „Igraj sa drugom” ─────────────────────────────────────────────────
 
-export function TogetherStartButton() {
+interface StartProps {
+    /** Igre koje dete vidi i dokle je stiglo — za izbor igre kad poziva druga sa drugog uređaja */
+    games?: GameDefinition[];
+    unlockedFor?: (id: GameId) => number;
+}
+
+export function TogetherStartButton({ games = [], unlockedFor = () => 1 }: StartProps) {
     const together = useTogether();
+    const remoteActive = useRemoteActive();
     const [open, setOpen] = useState(false);
-    if (!together || together.friend) return null;
+    if (!together || together.friend || remoteActive) return null;
     return (
         <>
             <button
@@ -142,7 +151,7 @@ export function TogetherStartButton() {
                 <Users className="h-6 w-6" aria-hidden="true" />
                 Igraj sa drugom
             </button>
-            <FriendPicker open={open} onClose={() => setOpen(false)} />
+            <FriendPicker open={open} onClose={() => setOpen(false)} games={games} unlockedFor={unlockedFor} />
         </>
     );
 }
@@ -173,13 +182,24 @@ function writeSaved(childId: number, list: TogetherPlayer[]) {
     }
 }
 
-function FriendPicker({ open, onClose }: { open: boolean; onClose: () => void }) {
+type PickerMode = "list" | "adding" | "remote-host" | "remote-guest";
+
+const PICKER_TITLES: Record<PickerMode, string> = {
+    list: "Ko igra sa tobom?",
+    adding: "Ko igra sa tobom?",
+    "remote-host": "Pozovi druga sa drugog uređaja",
+    "remote-guest": "Uđi kod druga",
+};
+
+function FriendPicker({ open, onClose, games, unlockedFor }: { open: boolean; onClose: () => void; games: GameDefinition[]; unlockedFor: (id: GameId) => number }) {
     const together = useTogether();
     const childId = together?.childId ?? 0;
     const preview = together?.preview ?? false;
     const [siblings, setSiblings] = useState<TogetherPlayer[] | null>(null);
     const [saved, setSaved] = useState<TogetherPlayer[]>([]);
-    const [adding, setAdding] = useState(false);
+    const [mode, setMode] = useState<PickerMode>("list");
+    const adding = mode === "adding";
+    const setAdding = (value: boolean) => setMode(value ? "adding" : "list");
     const [name, setName] = useState("");
     const [kind, setKind] = useState<string>(FRIEND_KINDS[0]);
 
@@ -189,7 +209,7 @@ function FriendPicker({ open, onClose }: { open: boolean; onClose: () => void })
         queueMicrotask(() => {
             if (controller.signal.aborted) return;
             setSaved(readSaved(childId));
-            setAdding(false);
+            setMode("list");
             setName("");
         });
         if (preview) {
@@ -224,9 +244,15 @@ function FriendPicker({ open, onClose }: { open: boolean; onClose: () => void })
     const people = [...(siblings ?? []), ...saved];
 
     return (
-        <Modal open={open} onClose={onClose} title="Ko igra sa tobom?" size="md">
-            {!adding ? (
+        <Modal open={open} onClose={onClose} title={PICKER_TITLES[mode]} size="md">
+            {mode === "remote-host" ? (
+                <RemoteHostPicker games={games} unlockedFor={unlockedFor} onDone={onClose} onBack={() => setMode("list")} />
+            ) : mode === "remote-guest" ? (
+                <RemoteGuestEntry onDone={onClose} onBack={() => setMode("list")} />
+            ) : !adding ? (
                 <div className="space-y-5">
+                    <RemoteChoices onHost={() => setMode("remote-host")} onGuest={() => setMode("remote-guest")} />
+                    {!preview && <p className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">Na ovom uređaju, na smenu</p>}
                     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                         {people.map((friend) => (
                             <li key={`${friend.childId ?? "d"}-${friend.name}`}>
