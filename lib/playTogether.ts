@@ -13,9 +13,10 @@ import type { GameId } from "./games";
  * U „Lavirintu” svako vodi lik kroz svoj lavirint, a u „Pronađi razlike” igrači traže razlike
  * na istim slikama na smenu (jedna razlika — jedan potez).
  * U igrama „Obuci se” i „Prodavnica” jedan zadatak je jedna odeća (ili jedna kupovina).
- * U igrama „Mama i beba” i „Spakuj ranac” jedan zadatak je jedna tabla (ili jedan ranac).
+ * U igrama „Mama i beba” i „Spakuj ranac” jedan zadatak je jedna tabla (ili jedan ranac), a u
+ * igrama „Šta fali?” i „Prve reči” jedna polica, slika, reč ili rečenica.
  */
-export const TOGETHER_GAMES: readonly GameId[] = ["memory", "counting", "gaze", "where", "puzzle", "inset", "clock", "maze", "differences", "weather", "market", "families", "backpack"];
+export const TOGETHER_GAMES: readonly GameId[] = ["memory", "counting", "gaze", "where", "puzzle", "inset", "clock", "maze", "differences", "weather", "market", "families", "backpack", "missing", "words"];
 
 export function isTogetherGame(id: GameId | null | undefined): boolean {
     return Boolean(id) && TOGETHER_GAMES.includes(id as GameId);

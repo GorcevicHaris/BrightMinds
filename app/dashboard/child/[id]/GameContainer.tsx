@@ -98,6 +98,8 @@ const GAME_LOADERS = {
     market: () => import("@/app/components/games/MarketGame"),
     families: () => import("@/app/components/games/FamilyGame"),
     backpack: () => import("@/app/components/games/BackpackGame"),
+    missing: () => import("@/app/components/games/MissingGame"),
+    words: () => import("@/app/components/games/WordsGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -126,6 +128,8 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     market: dynamic(GAME_LOADERS["market"], { ssr: false, loading: GameLoading }),
     families: dynamic(GAME_LOADERS["families"], { ssr: false, loading: GameLoading }),
     backpack: dynamic(GAME_LOADERS["backpack"], { ssr: false, loading: GameLoading }),
+    missing: dynamic(GAME_LOADERS["missing"], { ssr: false, loading: GameLoading }),
+    words: dynamic(GAME_LOADERS["words"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {

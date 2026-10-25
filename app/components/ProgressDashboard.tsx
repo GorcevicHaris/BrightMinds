@@ -128,6 +128,8 @@ const GAME_SERIES: Record<GameId, Series> = {
     market: { swatch: "bg-honey-600", color: "var(--color-honey-600)" },
     families: { swatch: "bg-[#a8653a]", color: "#a8653a" },
     backpack: { swatch: "bg-[#246f8f]", color: "#246f8f" },
+    missing: { swatch: "bg-berry-600", color: "var(--color-berry-600)" },
+    words: { swatch: "bg-pine-600", color: "var(--color-pine-600)" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */

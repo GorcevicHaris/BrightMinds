@@ -100,6 +100,25 @@
   --color-honey-500: #c38a17;
   --color-honey-600: #a87510;
   --color-honey-700: #8c6210;
+  /* Bobice (igra „Šta fali?”: somotska zavesa) */
+  --color-berry-50: #fbf1f6;
+  --color-berry-100: #f7e1ec;
+  --color-berry-200: #efc6da;
+  --color-berry-300: #dd9cbd;
+  --color-berry-400: #c6719c;
+  --color-berry-500: #a24d7a;
+  --color-berry-600: #8f3f6a;
+  --color-berry-700: #7a2f58;
+
+  /* Školska tabla (igra „Prve reči”) */
+  --color-pine-50: #eef7f2;
+  --color-pine-100: #d6eee1;
+  --color-pine-200: #b0dcc4;
+  --color-pine-300: #7fc2a0;
+  --color-pine-400: #4fa37c;
+  --color-pine-500: #2f8462;
+  --color-pine-600: #256b50;
+  --color-pine-700: #1f5641;
 
   --radius-card: 1.5rem;
   --radius-tile: 1.25rem;
