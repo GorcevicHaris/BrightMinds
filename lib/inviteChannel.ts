@@ -140,6 +140,10 @@ interface Handlers {
 export function useInviteChannel(name: string | null, role: InviteRole, handlers: Handlers) {
     const [ready, setReady] = useState(false);
     const [present, setPresent] = useState<boolean | null>(null);
+    // Kada je Presence javio da drug više nije na kanalu — samo za druga koji je pre toga bio
+    // tu (0 = nije otišao). Pri ulasku Presence ume da stigne posle prve poruke; tada nema odlaska.
+    const [leftAt, setLeftAt] = useState(0);
+    const seenPresent = useRef(false);
     const entryRef = useRef<Entry | null>(null);
     const handlersRef = useRef(handlers);
     useEffect(() => {
@@ -153,7 +157,15 @@ export function useInviteChannel(name: string | null, role: InviteRole, handlers
         const onState = (payload: unknown) => handlersRef.current.onState(payload);
         const onEnd = () => handlersRef.current.onEnd();
         const onReady = (value: boolean) => setReady(value);
-        const onPresence = (value: boolean) => setPresent(value);
+        const onPresence = (value: boolean) => {
+            setPresent(value);
+            if (value) {
+                seenPresent.current = true;
+                setLeftAt(0);
+            } else if (seenPresent.current) {
+                setLeftAt((prev) => prev || Date.now());
+            }
+        };
         entry.onState.add(onState);
         entry.onEnd.add(onEnd);
         entry.onReady.add(onReady);
@@ -167,6 +179,8 @@ export function useInviteChannel(name: string | null, role: InviteRole, handlers
             entryRef.current = null;
             setReady(false);
             setPresent(null);
+            setLeftAt(0);
+            seenPresent.current = false;
             release(name);
         };
     }, [name, role]);
@@ -183,5 +197,5 @@ export function useInviteChannel(name: string | null, role: InviteRole, handlers
         if (entry?.ready && entry.channel) void entry.channel.send({ type: "broadcast", event: EVENT_END, payload: {} });
     }, []);
 
-    return { ready, present, sendState, sendEnd, configured: realtimeConfigured };
+    return { ready, present, leftAt, sendState, sendEnd, configured: realtimeConfigured };
 }

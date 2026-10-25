@@ -63,10 +63,10 @@ const shapes = (rows: Row[], sessions: Row[] = []) => gameOf(buildProgress(rows,
 describe("buildProgress with no data", () => {
     const empty = buildProgress([], NOW);
 
-    it("lists every game in registry order, on level 1 of the easy tier", () => {
+    it("lists every game in learning order (as the child and the settings see them), on level 1 of the easy tier", () => {
         assert.deepEqual(
             empty.games.map((game) => game.gameId),
-            GAMES.map((game) => game.id)
+            [...GAMES].sort((a, b) => a.order - b.order).map((game) => game.id)
         );
         for (const game of empty.games) {
             assert.equal(game.plays, 0);

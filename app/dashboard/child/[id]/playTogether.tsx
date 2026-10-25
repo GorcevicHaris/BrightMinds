@@ -3,8 +3,9 @@
 
 // „Igraj sa drugom” (isti uređaj, na smenu). Dete bira druga — dete sa istog roditeljskog
 // naloga ili drug čije ime upiše odrasli — i oboje igraju isti nivo: jedan zadatak jedno,
-// sledeći drugo. Svako ima svoju boju i svog drugara; na vrhu igre uvek piše čiji je red
-// („Sada igra Amar”), a ko čeka vidi karticu „Sačekaj svoj red”. Na kraju pohvala oboma,
+// sledeći drugo. Svako ima svoju boju i svog drugara; iznad igre (na tabletu, računaru i
+// telefonu na boku u stubu pored nje) uvek piše čiji je red („Sada igra Amar”), a ko čeka
+// vidi karticu „Sačekaj svoj red”. Na kraju pohvala oboma,
 // bez poređenja: „Zajedno ste skupili 12 zvezdica!”. Novčiće i nivoe dobija samo prijavljeno
 // dete; drug dobija pohvalu. Ime druga upisanog na uređaju ostaje samo na ovom uređaju.
 //
@@ -30,7 +31,6 @@ import { cn } from "@/lib/cn";
 import { LEVELS_PER_TIER, MAX_LEVEL, getGame, type GameDefinition, type GameId } from "@/lib/games";
 import {
     FRIEND_KINDS,
-    TOGETHER_GAMES,
     cleanFriendName,
     isTogetherGame,
     parseSavedFriends,
@@ -181,10 +181,10 @@ export function TogetherProvider({ childId, childName, gender, preview = false, 
 
 // ── Portret igrača ────────────────────────────────────────────────────────────
 
-export function PlayerPicture({ player, look, className, dim = false }: { player: TogetherPlayer; look: (typeof LOOKS)[number]; className?: string; dim?: boolean }) {
+export function PlayerPicture({ player, look, className, dim = false, onReady }: { player: TogetherPlayer; look: (typeof LOOKS)[number]; className?: string; dim?: boolean; onReady?: () => void }) {
     return (
         <span className={cn("relative block shrink-0 overflow-hidden rounded-2xl ring-4", look.soft, look.ring, dim && "opacity-60 grayscale", className)}>
-            <CompanionPicture kind={player.kind} skin={player.skin} wear={player.wear as Wear | undefined} variant="bust" eager className="h-full w-full" />
+            <CompanionPicture kind={player.kind} skin={player.skin} wear={player.wear as Wear | undefined} variant="bust" eager onReady={onReady} className="h-full w-full" />
         </span>
     );
 }
@@ -417,8 +417,9 @@ export function TogetherGamePicker({ games, unlockedFor, pending = false, unavai
     if (!together?.friend) return null;
     const { host, friend } = together;
     const versus = together.mode === "versus";
-    // Samo igre u kojima smena ima smisla (i koje su inače ponuđene)
-    const shown = TOGETHER_GAMES.filter((id) => games.some((g) => g.id === id)).map((id) => getGame(id));
+    // Samo igre u kojima smena ima smisla (i koje su inače ponuđene), istim redom kao na
+    // početnom ekranu deteta — poznat raspored, bez traženja
+    const shown = games.filter((game) => isTogetherGame(game.id));
 
     return (
         <section aria-label="Igra sa drugom" className="space-y-4 sm:space-y-5">
@@ -577,7 +578,9 @@ export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
 
     return (
         <GameEventTapProvider value={onUpdate}>
-            <div className="relative flex flex-1 flex-col gap-2 sm:gap-3">
+            {/* Tablet, računar i telefon na boku: ko je na redu stoji u stubu pored igre, pa igra
+                ima celu visinu kao i kad dete igra samo (traka iznad igre samo na uspravnom telefonu) */}
+            <div className="relative flex flex-1 flex-col gap-2 sm:gap-3 md:flex-row landscape:flex-row">
                 <TurnStrip
                     key={now}
                     player={players[now]}
@@ -586,7 +589,12 @@ export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
                     otherLook={LOOKS[waiting]}
                     scores={versus ? [together.versus.scores[now], together.versus.scores[waiting]] : null}
                 />
-                <div className={cn("relative flex flex-1 flex-col rounded-[1.75rem] border-4 border-dashed p-1 transition-colors", LOOKS[now].border)}>
+                <div
+                    className={cn(
+                        "relative flex min-w-0 flex-1 flex-col rounded-[1.75rem] border-4 border-dashed p-1 transition-colors md:rounded-none md:border-0 md:border-l-4 md:p-0 md:pl-2 landscape:rounded-none landscape:border-0 landscape:border-l-4 landscape:p-0 landscape:pl-2",
+                        LOOKS[now].border
+                    )}
+                >
                     {children}
                     {guard > 0 && <div className="absolute inset-0 z-30" aria-hidden="true" />}
                 </div>
@@ -604,11 +612,21 @@ interface TurnStripProps {
     scores?: [number, number] | null;
 }
 
-function TurnStrip({ player, look, other, otherLook, scores = null }: TurnStripProps) {
+/** Uspravan telefon: traka iznad igre; tablet, računar i telefon na boku: stub pored igre (TurnRail) */
+function TurnStrip(props: TurnStripProps) {
+    return (
+        <>
+            <TurnBar {...props} />
+            <TurnRail {...props} />
+        </>
+    );
+}
+
+function TurnBar({ player, look, other, otherLook, scores = null }: TurnStripProps) {
     const calm = useCalmMotion();
     const versus = scores !== null;
     return (
-        <div className="flex items-stretch gap-2 sm:gap-3" role="status" aria-live="polite">
+        <div className="flex items-stretch gap-2 sm:gap-3 md:hidden landscape:hidden" role="status" aria-live="polite">
             <div className={cn("flex min-w-0 flex-1 items-center rounded-2xl px-2.5 py-2 text-white shadow-soft sm:gap-3 sm:px-4", versus ? "gap-2" : "gap-3", look.solid, !calm && "animate-pop")}>
                 <PlayerPicture player={player} look={look} className={cn("h-12 w-12 bg-white sm:h-16 sm:w-16", versus && "max-[400px]:h-10 max-[400px]:w-10")} />
                 <span className="min-w-0 flex-1">
@@ -639,6 +657,41 @@ function TurnStrip({ player, look, other, otherLook, scores = null }: TurnStripP
                 </span>
                 <span className={cn("sr-only", versus ? "sm:hidden" : "min-[480px]:hidden")}>{other.name}: sačekaj svoj red</span>
                 {versus && <ScorePill name={other.name} stars={scores[1]} className="px-2 text-base max-[400px]:px-1.5 sm:px-2.5 sm:text-lg" />}
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Stub pored igre (tablet, računar, telefon na boku): gore ko je na redu (u svojoj boji,
+ * krupno), ispod ko čeka sa kartom „Sačekaj svoj red”. Isti podaci kao traka, ali igri ne
+ * uzima visinu — igra staje na ekran isto kao kad dete igra samo.
+ */
+function TurnRail({ player, look, other, otherLook, scores = null }: TurnStripProps) {
+    const calm = useCalmMotion();
+    const versus = scores !== null;
+    return (
+        <div className="hidden w-28 shrink-0 flex-col gap-2 md:flex landscape:flex lg:w-32" role="status" aria-live="polite">
+            {/* Nizak položen ekran (telefon na boku): manji drugari, ruka bez natpisa */}
+            <div className={cn("flex flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-center text-white shadow-soft [@media(max-height:30rem)]:gap-0.5 [@media(max-height:30rem)]:py-1.5", look.solid, !calm && "animate-pop")}>
+                <PlayerPicture player={player} look={look} className="h-14 w-14 bg-white lg:h-16 lg:w-16 [@media(max-height:30rem)]:h-11 [@media(max-height:30rem)]:w-11" />
+                <span className="text-xs font-extrabold uppercase tracking-wide text-white/85">
+                    <span aria-hidden="true">{look.mark} </span>
+                    {versus ? "Na redu je" : "Tvoj red"}
+                </span>
+                <span className="block w-full truncate font-display text-lg font-extrabold leading-tight">{player.name}</span>
+                {versus && <ScorePill name={player.name} stars={scores[0]} className="bg-white px-2 text-base" />}
+            </div>
+            <div className="flex flex-col items-center gap-1 rounded-2xl border-2 border-line bg-surface px-2 py-2 text-center [@media(max-height:30rem)]:gap-0.5 [@media(max-height:30rem)]:py-1.5">
+                <span className="relative">
+                    <PlayerPicture player={other} look={otherLook} dim className="h-11 w-11 [@media(max-height:30rem)]:h-9 [@media(max-height:30rem)]:w-9" />
+                    <span className="absolute -bottom-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full bg-sky-600 text-white shadow-soft ring-2 ring-white" aria-hidden="true">
+                        <Hand className="h-3.5 w-3.5" />
+                    </span>
+                </span>
+                <span className="block w-full truncate text-sm font-extrabold text-ink">{other.name}</span>
+                <span className="text-xs font-extrabold leading-tight text-sky-700 [@media(max-height:30rem)]:sr-only">Sačekaj svoj red</span>
+                {versus && <ScorePill name={other.name} stars={scores[1]} className="px-2 text-base" />}
             </div>
         </div>
     );

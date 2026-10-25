@@ -8,10 +8,31 @@
 import type { GameId } from "./games";
 
 /**
- * Igre u kojima smena posle svakog zadatka ima smisla (kratki zadaci, jasan kraj poteza).
- * U „Umetaljci” i „Satu” zadatak je jedan komad, pa igrači istu tablu slažu na smenu.
+ * Igre u kojima smena posle svakog zadatka ima smisla (kratki zadaci, jasan kraj poteza) i koje
+ * sa trakom ili stubom „Sada igra …” staju na ekran kao i kad dete igra samo. U „Umetaljci”,
+ * „Satu” i „Složi sliku” zadatak je jedan komad, pa igrači istu tablu slažu na smenu.
+ * Bez smene ostaju „Bojanka” (slobodno stvaranje, nema jasnog kraja poteza), „Socijalne priče”
+ * (priča se sluša u komadu; koraci bez izbora bi samo prebacivali red) i „Slova” i „Brojevi”
+ * (tabla za pisanje prstom je stalne visine, pa uz traku na uspravnom telefonu ne staje).
+ * Sa drugog uređaja (playRemote.tsx) igraju se sve igre: tamo svako igra na svom ekranu.
  */
-export const TOGETHER_GAMES: readonly GameId[] = ["memory", "counting", "gaze", "where", "puzzle", "inset", "clock"];
+export const TOGETHER_GAMES: readonly GameId[] = [
+    "shapes",
+    "memory",
+    "sound-to-image",
+    "social",
+    "emotions",
+    "sorting",
+    "sequence",
+    "where",
+    "uses",
+    "counting",
+    "gaze",
+    "food",
+    "puzzle",
+    "inset",
+    "clock",
+];
 
 export function isTogetherGame(id: GameId | null | undefined): boolean {
     return Boolean(id) && TOGETHER_GAMES.includes(id as GameId);

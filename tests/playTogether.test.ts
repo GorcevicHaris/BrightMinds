@@ -24,6 +24,11 @@ describe("TOGETHER_GAMES", () => {
         assert.ok(!isTogetherGame(null));
     });
 
+    it("takes turns in every game except free coloring, the listened story and writing with a finger", () => {
+        const without = GAMES.filter((g) => !isTogetherGame(g.id)).map((g) => g.id);
+        assert.deepEqual(without.sort(), ["coloring", "letters", "numbers", "social-story"]);
+    });
+
     it("offers friend companions that really exist", () => {
         for (const kind of FRIEND_KINDS) assert.ok(isCompanionKindId(kind), kind);
     });

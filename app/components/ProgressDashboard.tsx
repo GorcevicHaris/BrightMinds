@@ -100,6 +100,9 @@ interface Series {
     color: string;
 }
 
+/** Igre redom učenja (kao na početnom ekranu deteta i u podešavanjima), ne redom u kodu */
+const GAMES_IN_ORDER = [...GAMES].sort((a, b) => a.order - b.order);
+
 const ALL_GAMES_SERIES: Series = { swatch: "bg-brand-600", color: "var(--color-brand-600)" };
 
 const GAME_SERIES: Record<GameId, Series> = {
@@ -529,7 +532,7 @@ function ParentView({ data, onRefresh, isRefreshing }: ParentViewProps) {
 function GameFilterControl({ value, onChange }: { value: GameFilter; onChange: (value: GameFilter) => void }) {
     const options: { value: GameFilter; label: string; icon?: string }[] = [
         { value: "all", label: "Sve igre" },
-        ...GAMES.map((game) => ({ value: game.id, label: game.title, icon: game.icon })),
+        ...GAMES_IN_ORDER.map((game) => ({ value: game.id, label: game.title, icon: game.icon })),
     ];
     return (
         <>
@@ -796,7 +799,7 @@ function ActivityChart({ daily, filter, windowDays }: { daily: DailyActivity[]; 
 
 function DayTooltip({ day, filter }: { day: DailyActivity; filter: GameFilter }) {
     const shown = filter === "all" ? day : (day.games[filter] ?? { plays: 0, minutes: 0 });
-    const breakdown = filter === "all" ? GAMES.filter((game) => day.games[game.id]) : [];
+    const breakdown = filter === "all" ? GAMES_IN_ORDER.filter((game) => day.games[game.id]) : [];
     return (
         <div className="max-w-60 rounded-xl border border-line bg-surface px-3 py-2.5 text-sm shadow-lift">
             <p className="text-xs font-bold text-ink-soft">{formatDay(day.date, "long")}</p>

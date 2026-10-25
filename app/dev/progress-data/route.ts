@@ -95,6 +95,24 @@ const SCRIPTED: Play[] = [
         [3, 1, 4, 6, 1.1],
         [3, 2, 3, 6, 0.1],
     ]),
+    // Novije igre (Složi sliku, Umetaljka, Sat, Razvrstaj): kartice, boje i nazivi i za njih
+    ...scriptedPlays("puzzle", [
+        [1, 3, 1, 5, 6.3],
+        [2, 4, 0, 5, 3.3],
+        [6, 5, 1, 7, 0.3],
+    ]),
+    ...scriptedPlays("inset", [
+        [1, 2, 2, 5, 5.4],
+        [2, 4, 1, 5, 1.4],
+    ]),
+    ...scriptedPlays("clock", [
+        [1, 4, 1, 6, 4.5],
+        [11, 3, 2, 6, 0.5],
+    ]),
+    ...scriptedPlays("sorting", [
+        [1, 5, 1, 6, 2.6],
+        [4, 4, 2, 6, 0.6],
+    ]),
 ];
 
 export function GET() {

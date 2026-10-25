@@ -40,7 +40,7 @@ function MirrorLoading() {
 // Svaka igra ima sopstveni tip stanja (GameProps<V extends BaseView>) i uklapa se u opšti
 // GameProps bez kastovanja; igra koja odstupi od ugovora iz kit/types.ts ovde prijavljuje grešku.
 // (next/dynamic traži da opcije budu objekat napisan na licu mesta, zato se ponavljaju.)
-const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
+export const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
     shape_matching: dynamic(() => import("@/app/components/games/ShapeMatchingGame"), { ssr: false, loading: MirrorLoading }),
     memory: dynamic(() => import("@/app/components/games/MemoryGame"), { ssr: false, loading: MirrorLoading }),
     coloring: dynamic(() => import("@/app/components/games/ColoringGame"), { ssr: false, loading: MirrorLoading }),
@@ -76,7 +76,7 @@ interface MonitorView extends Partial<BaseView> {
     [key: string]: unknown;
 }
 
-interface ActiveGame {
+export interface ActiveGame {
     game: GameDefinition;
     view: MonitorView;
     /** Menja se sa svakim novim početkom nivoa, da se ekran igre iscrta iz početka */
@@ -311,7 +311,7 @@ function NowPlaying({ active }: { active: ActiveGame }) {
     );
 }
 
-function GameMirror({ active, childId, gender }: { active: ActiveGame; childId: number; gender?: string }) {
+export function GameMirror({ active, childId, gender }: { active: ActiveGame; childId: number; gender?: string }) {
     const Game = GAME_COMPONENTS[active.game.gameType];
     const finished = active.phase === "finished";
 
@@ -325,12 +325,15 @@ function GameMirror({ active, childId, gender }: { active: ActiveGame; childId: 
                     {finished ? "Nivo je završen — čeka se sledeći" : "Samo prikaz, bez upravljanja igrom"}
                 </p>
             </div>
-            {/* contain-content: sve što igra iscrta (i fiksirani slojevi) ostaje unutar okvira */}
+            {/* contain-content: sve što igra iscrta (i fiksirani slojevi) ostaje unutar okvira.
+                Okvir je bar visok kao ekran deteta: igre koje tablu mere prema mestu koje imaju
+                (Umetaljka, Sat, Složi sliku) bez stalne visine ne bi imale gde da nacrtaju tablu, a
+                igra kojoj treba više mesta okvir i dalje produži (red mreže: najmanje — koliko treba). */}
             <div
                 aria-hidden="true"
                 inert
                 className={cn(
-                    "pointer-events-none flex min-h-80 select-none flex-col bg-canvas p-3 contain-content transition-opacity duration-300 sm:p-5",
+                    "pointer-events-none grid select-none grid-cols-[minmax(0,1fr)] grid-rows-[minmax(clamp(30rem,72dvh,44rem),auto)] bg-canvas p-3 contain-content transition-opacity duration-300 sm:p-5",
                     finished && "opacity-50"
                 )}
             >
