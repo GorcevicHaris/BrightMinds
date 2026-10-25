@@ -96,6 +96,8 @@ const GAME_LOADERS = {
     differences: () => import("@/app/components/games/DifferencesGame"),
     weather: () => import("@/app/components/games/WeatherGame"),
     market: () => import("@/app/components/games/MarketGame"),
+    families: () => import("@/app/components/games/FamilyGame"),
+    backpack: () => import("@/app/components/games/BackpackGame"),
     missing: () => import("@/app/components/games/MissingGame"),
     words: () => import("@/app/components/games/WordsGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
@@ -124,6 +126,8 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     differences: dynamic(GAME_LOADERS["differences"], { ssr: false, loading: GameLoading }),
     weather: dynamic(GAME_LOADERS["weather"], { ssr: false, loading: GameLoading }),
     market: dynamic(GAME_LOADERS["market"], { ssr: false, loading: GameLoading }),
+    families: dynamic(GAME_LOADERS["families"], { ssr: false, loading: GameLoading }),
+    backpack: dynamic(GAME_LOADERS["backpack"], { ssr: false, loading: GameLoading }),
     missing: dynamic(GAME_LOADERS["missing"], { ssr: false, loading: GameLoading }),
     words: dynamic(GAME_LOADERS["words"], { ssr: false, loading: GameLoading }),
 };

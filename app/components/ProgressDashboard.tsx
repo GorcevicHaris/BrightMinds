@@ -126,6 +126,8 @@ const GAME_SERIES: Record<GameId, Series> = {
     differences: { swatch: "bg-coral-600", color: "var(--color-coral-600)" },
     weather: { swatch: "bg-storm-600", color: "var(--color-storm-600)" },
     market: { swatch: "bg-honey-600", color: "var(--color-honey-600)" },
+    families: { swatch: "bg-[#a8653a]", color: "#a8653a" },
+    backpack: { swatch: "bg-[#246f8f]", color: "#246f8f" },
     missing: { swatch: "bg-berry-600", color: "var(--color-berry-600)" },
     words: { swatch: "bg-pine-600", color: "var(--color-pine-600)" },
 };
