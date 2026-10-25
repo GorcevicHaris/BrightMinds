@@ -80,6 +80,16 @@ export function isMoreAnimalKind(kind: string): kind is MoreAnimalKind {
 }
 // ── kraj: još životinja ──
 
+// ── Novi drugari (animals/friends/, izgledi u animals/friends/skins.data.ts) ──
+/** Novi drugari: robotić, vanzemaljac, bubamara, pčelica, leptirić, pužić, hobotnica, lenjivac */
+export const FRIEND_KINDS = ["robot", "alien", "ladybug", "bee", "butterfly", "snail", "octopus", "sloth"] as const;
+export type FriendKind = (typeof FRIEND_KINDS)[number];
+
+export function isFriendKind(kind: string): kind is FriendKind {
+    return (FRIEND_KINDS as readonly string[]).includes(kind);
+}
+// ── kraj: novi drugari ──
+
 export function isHumanKind(kind: string): kind is HumanKind {
     return (HUMAN_KINDS as readonly string[]).includes(kind);
 }
@@ -156,6 +166,16 @@ export const COMPANION_LABELS: Record<CompanionKind, string> = {
     bat: "Slepi miš",
     dragon: "Zmaj",
     // ── kraj: još životinja ──
+    // ── Novi drugari (animals/friends/) ──
+    robot: "Robotić",
+    alien: "Vanzemaljac",
+    ladybug: "Bubamara",
+    bee: "Pčelica",
+    butterfly: "Leptirić",
+    snail: "Pužić",
+    octopus: "Hobotnica",
+    sloth: "Lenjivac",
+    // ── kraj: novi drugari ──
 };
 
 /** Proporcije tela: kroj odeće i kadar kamere zavise od njih */

@@ -26,7 +26,7 @@ export const COINS_PER_STAR = 2;
 
 /**
  * Pratioci koje dete može da izabere: ljudi (devojčica, dečak, učiteljica, učitelj, tinejdžerka,
- * tinejdžer, nana, dedo) i životinje.
+ * tinejdžer, nana, dedo), životinje i novi drugari (robotić, vanzemaljac, bubamara, pčelica…).
  * 3D crteži: app/components/avatar3d; 2D (kad WebGL ne radi): app/components/avatar/Companion.
  */
 export const COMPANION_KINDS = [
@@ -42,6 +42,9 @@ export const COMPANION_KINDS = [
     "chicken", "parrot", "flamingo", "seal", "dolphin", "turtle", "beaver", "otter",
     "mole", "alpaca", "rhino", "fennec", "cheetah", "leopard", "mouse", "bat", "dragon",
     // ── kraj: još životinja ──
+    // ── Novi drugari (app/components/avatar3d/animals/friends/) — dodaje se samo na kraj ──
+    "robot", "alien", "ladybug", "bee", "butterfly", "snail", "octopus", "sloth",
+    // ── kraj: novi drugari ──
 ] as const;
 export type CompanionKindId = (typeof COMPANION_KINDS)[number];
 

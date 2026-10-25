@@ -10,7 +10,7 @@ import * as THREE from "three";
 import "@/app/components/avatar3d/animals";
 import "@/app/components/avatar3d/items";
 import { companionBuilder, itemBuilder, type FaceExpression, type Wear } from "@/app/components/avatar3d/contract";
-import { COMPANION_LABELS, MORE_ANIMAL_KINDS, type MoreAnimalKind } from "@/app/components/avatar3d/data";
+import { COMPANION_LABELS, MORE_ANIMAL_KINDS, type CompanionKind, type SkinData } from "@/app/components/avatar3d/data";
 import { MORE_SKINS } from "@/app/components/avatar3d/animals/more/skins.data";
 import { Figure } from "@/app/components/avatar3d/engine/figure";
 import { Stage } from "@/app/components/avatar3d/engine/stage";
@@ -36,7 +36,7 @@ function dressProbe(figure: Figure, [id, color]: Probe) {
 const EXPRESSIONS: FaceExpression[] = ["neutral", "happy", "proud", "gentle", "curious", "sad", "serious", "worried", "surprised"];
 
 interface View {
-    kind: MoreAnimalKind;
+    kind: string;
     skin: string;
     expression: FaceExpression;
     dressed: boolean;
@@ -77,10 +77,15 @@ function outfit(): { wear: Wear; probes: Probe[] } {
 }
 
 export default function MoreLab() {
+    return <GroupLab title="Još 3D životinja (proba)" kinds={MORE_ANIMAL_KINDS} skins={MORE_SKINS} />;
+}
+
+/** Proba jedne grupe vrsta (još životinja, novi drugari): ista studija i galerija */
+export function GroupLab({ title, kinds, skins: SKINS }: { title: string; kinds: readonly string[]; skins: Readonly<Record<string, readonly SkinData[]>> }) {
     const hostRef = useRef<HTMLDivElement>(null);
     const stageRef = useRef<Stage | null>(null);
     const figureRef = useRef<Figure | null>(null);
-    const [view, setView] = useState<View>({ kind: "wolf", skin: MORE_SKINS.wolf[0].id, expression: "happy", dressed: false, yaw: 0, quality: "high" });
+    const [view, setView] = useState<View>({ kind: kinds[0], skin: SKINS[kinds[0]][0].id, expression: "happy", dressed: false, yaw: 0, quality: "high" });
     const [info, setInfo] = useState("");
     const [gallery, setGallery] = useState<{ title: string; src: string }[]>([]);
     const showRef = useRef<(v: View) => { tris: number; ms: number; registered: boolean }>(() => ({ tris: 0, ms: 0, registered: false }));
@@ -100,7 +105,7 @@ export default function MoreLab() {
             }
             const dress = v.wear ? { wear: v.wear, probes: [] as Probe[] } : v.dressed ? outfit() : { wear: {}, probes: [] as Probe[] };
             const t0 = performance.now();
-            const figure = new Figure({ kind: v.kind, skin: v.skin }, dress.wear, { quality: v.quality });
+            const figure = new Figure({ kind: v.kind as CompanionKind, skin: v.skin }, dress.wear, { quality: v.quality });
             const ms = Math.round(performance.now() - t0);
             const tris = triangles(figure.body.root);
             for (const probe of dress.probes) dressProbe(figure, probe);
@@ -113,7 +118,7 @@ export default function MoreLab() {
         showRef.current = show;
         const api = {
             show: (v: Partial<View>) => {
-                const next: View = { kind: "wolf", skin: "", expression: "happy", dressed: false, yaw: 0, quality: "high", ...v };
+                const next: View = { kind: kinds[0], skin: "", expression: "happy", dressed: false, yaw: 0, quality: "high", ...v };
                 if (!next.skin) next.skin = (companionBuilder(next.kind)?.skins ?? [])[0]?.id ?? "";
                 return show(next);
             },
@@ -123,7 +128,7 @@ export default function MoreLab() {
             anchors: () => figureRef.current?.body.anchors,
             figure: () => figureRef.current,
             THREE,
-            registered: () => MORE_ANIMAL_KINDS.filter((k) => companionBuilder(k)),
+            registered: () => kinds.filter((k) => companionBuilder(k)),
             skinsOf: (k: string) => companionBuilder(k)?.skins ?? [],
         };
         (window as unknown as { __more: typeof api }).__more = api;
@@ -132,11 +137,12 @@ export default function MoreLab() {
             stage.dispose();
             stageRef.current = null;
         };
-    }, []);
+    }, [kinds]);
 
+    const label = (kind: string) => COMPANION_LABELS[kind as CompanionKind] ?? kind;
     useEffect(() => {
         const r = showRef.current(view);
-        setInfo(r.registered ? `${COMPANION_LABELS[view.kind]} · ${view.skin} · ${r.tris.toLocaleString("sr")} trouglova (telo) · ${r.ms} ms` : `${COMPANION_LABELS[view.kind]}: još nije napravljen`);
+        setInfo(r.registered ? `${label(view.kind)} · ${view.skin} · ${r.tris.toLocaleString("sr")} trouglova (telo) · ${r.ms} ms` : `${label(view.kind)}: još nije napravljen`);
     }, [view]);
 
     const makeGallery = async () => {
@@ -144,35 +150,35 @@ export default function MoreLab() {
         if (!stage) return;
         const out: { title: string; src: string }[] = [];
         const wait = () => new Promise((r) => setTimeout(r, 30));
-        for (const kind of MORE_ANIMAL_KINDS) {
+        for (const kind of kinds) {
             if (!companionBuilder(kind)) continue;
-            for (const skin of MORE_SKINS[kind]) {
+            for (const skin of SKINS[kind]) {
                 for (const yaw of [0, 0.7]) {
                     showRef.current({ kind, skin: skin.id, expression: "happy", dressed: false, yaw, quality: "high" });
                     await wait();
-                    out.push({ title: `${COMPANION_LABELS[kind]} · ${skin.label}${yaw ? " · 3/4" : ""}`, src: stage.snapshot() });
+                    out.push({ title: `${label(kind)} · ${skin.label}${yaw ? " · 3/4" : ""}`, src: stage.snapshot() });
                 }
             }
-            showRef.current({ kind, skin: MORE_SKINS[kind][0].id, expression: "happy", dressed: true, yaw: 0.45, quality: "high" });
+            showRef.current({ kind, skin: SKINS[kind][0].id, expression: "happy", dressed: true, yaw: 0.45, quality: "high" });
             await wait();
-            out.push({ title: `${COMPANION_LABELS[kind]} · obučen`, src: stage.snapshot() });
+            out.push({ title: `${label(kind)} · obučen`, src: stage.snapshot() });
             setGallery([...out]);
         }
         showRef.current(view);
     };
 
-    const skins = MORE_SKINS[view.kind];
+    const skins = SKINS[view.kind] ?? [];
     return (
         <main className="min-h-screen bg-[#F4F1EC] p-4 text-[#2A2230]">
-            <h1 className="mb-2 text-xl font-bold">Još 3D životinja (proba)</h1>
+            <h1 className="mb-2 text-xl font-bold">{title}</h1>
             <div className="flex flex-wrap gap-4">
                 <div ref={hostRef} data-stage className="h-[700px] w-[560px] rounded-2xl bg-gradient-to-b from-[#E9EEF6] to-[#F7F2EA]" />
                 <div className="flex max-w-[440px] flex-col gap-3 text-sm">
                     <p data-info>{info}</p>
                     <div className="flex flex-wrap gap-1">
-                        {MORE_ANIMAL_KINDS.map((kind) => (
-                            <button key={kind} type="button" onClick={() => setView((v) => ({ ...v, kind, skin: MORE_SKINS[kind][0].id }))} className={`rounded-full px-3 py-1 ${view.kind === kind ? "bg-[#5B4BDB] text-white" : companionBuilder(kind) ? "bg-white" : "bg-white/50 text-slate-400"}`}>
-                                {COMPANION_LABELS[kind]}
+                        {kinds.map((kind) => (
+                            <button key={kind} type="button" onClick={() => setView((v) => ({ ...v, kind, skin: SKINS[kind][0].id }))} className={`rounded-full px-3 py-1 ${view.kind === kind ? "bg-[#5B4BDB] text-white" : companionBuilder(kind) ? "bg-white" : "bg-white/50 text-slate-400"}`}>
+                                {label(kind)}
                             </button>
                         ))}
                     </div>
