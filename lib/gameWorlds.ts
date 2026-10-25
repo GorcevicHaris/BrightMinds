@@ -21,6 +21,7 @@
 //  • Mape su samo podsticaj na samostalnoj mapi deteta. „Otključavanje redom” i isključene
 //    igre važe i dalje, unutar mape. Igra sa drugom (isti uređaj, drugi uređaj, takmičenje) ne
 //    gleda mape, a ni server ih ne proverava (rezultat se čuva kao i do sada).
+//  • Mape idu po težini igre (`byDifficulty`), ne po uzrastu deteta: livada ima najlakše igre.
 //  • Igre se dele po svim igrama koje je roditelj uključio (i onima koje „Otključavanje
 //    redom” još drži zaključanim), da igra ne bi prelazila iz mape u mapu kako se otvaraju.
 //  • Dnevni plan roditelja ima svoj put (bez mapa); igra iz plana je uvek dostupna.
@@ -61,7 +62,16 @@ export function isWorldId(value: unknown): value is WorldId {
 // ── Raspored igara po mapama ───────────────────────────────────────────────────
 
 /**
- * Deli igre (već poređane za dete: prvo za njegov uzrast, od najlakše) na mape, redom.
+ * Igre od najlakše ka najtežoj, isto za svako dete: po najmanjem uzrastu za koji je igra, pa po
+ * najvećem, pa po redu učenja. (Redosled „za uzrast deteta” stavlja igre za mlađu decu na kraj,
+ * pa bi najlakše igre završile na poslednjoj, ledenoj mapi.)
+ */
+export function byDifficulty<T extends { ages: { min: number; max: number }; order: number }>(games: readonly T[]): T[] {
+    return [...games].sort((a, b) => a.ages.min - b.ages.min || a.ages.max - b.ages.max || a.order - b.order);
+}
+
+/**
+ * Deli igre (poređane po težini, `byDifficulty`) na mape, redom.
  * Mape su podjednake: veličina je `ceil(n / 4)`, pa 27 igara daje 7 / 7 / 7 / 6. Sa malo igara
  * mapa je manje (bar jedna igra po mapi, nikad prazna mapa), npr. 5 igara → 2 / 2 / 1.
  */

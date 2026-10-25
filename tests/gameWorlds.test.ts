@@ -8,6 +8,7 @@ import {
     MAX_WORLDS,
     WORLD_IDS,
     buildWorlds,
+    byDifficulty,
     chooseWorld,
     defaultWorld,
     gameStars,
@@ -223,5 +224,19 @@ describe("default world", () => {
         assert.deepEqual(parseOpened('["desert","meadow","x"]'), ["meadow", "desert"]);
         assert.deepEqual(parseOpened("{"), []);
         assert.deepEqual(parseOpened(null), []);
+    });
+});
+
+describe("mape po težini igre", () => {
+    it("livada ima najlakše igre, led najteže — za dete bilo kog uzrasta", () => {
+        const worlds = splitIntoWorlds(byDifficulty(GAMES));
+        const first = worlds[0].map((g) => g.id);
+        const last = worlds[worlds.length - 1].map((g) => g.id);
+        assert.ok(first.includes("shapes") || first.includes("sound-to-image"), "najlakše igre su na livadi");
+        assert.ok(!last.includes("shapes") && !last.includes("sound-to-image"), "najlakše igre nisu na ledu");
+        for (const world of worlds.slice(1)) {
+            const prevMax = Math.max(...worlds[worlds.indexOf(world) - 1].map((g) => g.ages.min));
+            assert.ok(Math.min(...world.map((g) => g.ages.min)) >= prevMax, "svaka sledeća mapa počinje bar od istog uzrasta");
+        }
     });
 });

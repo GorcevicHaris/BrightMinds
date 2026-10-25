@@ -21,6 +21,7 @@ import type { GameAccess, GameProgress } from "@/lib/gameAccess";
 import {
     WORLD_WORDS,
     buildWorlds,
+    byDifficulty,
     chooseWorld,
     gateOpenedPraise,
     gateState,
@@ -198,7 +199,7 @@ function WorldMaps({ childId, gender, access, progress, openAll, planIds, pendin
     const tabsRef = useRef<HTMLDivElement>(null);
 
     // Dok se napredak učitava, sve mape izgledaju kao pre učitavanja (bez zvezdica): ne otvaraju se
-    const worlds = useMemo(() => buildWorlds(access.map((a) => a.game), pending ? {} : progress, { openAll }), [access, progress, pending, openAll]);
+    const worlds = useMemo(() => buildWorlds(byDifficulty(access.map((a) => a.game)), pending ? {} : progress, { openAll }), [access, progress, pending, openAll]);
     const orderLocked = useMemo(() => new Set(access.filter((a) => a.state === "locked").map((a) => a.game.id)), [access]);
 
     const viewKey = worldViewKey(childId);
