@@ -31,7 +31,7 @@ import {
     type TimerId,
 } from "@/app/components/games/kit";
 import { DragDemo } from "@/app/components/games/kit/DragDemo";
-import { isWideBoard, trayGrid, trayPieceSize } from "@/app/components/games/kit/InsetArt";
+import { HOLE_HIT, isWideBoard, trayGrid, trayPieceSize } from "@/app/components/games/kit/InsetArt";
 import { useDragSnap, type DragSnap } from "@/app/components/games/kit/useDragSnap";
 import {
     boardIntro,
@@ -353,8 +353,8 @@ export default function ClockGame({ childId, level, gender, onComplete, isMonito
         <GameStage>
             {hud}
             {/* Nizak ekran: kod slaganja uputstvo samo glasom (dugme „Ponovi”), da tabla i komadi budu krupni;
-                pitanje o vremenu tada stoji u polju za igru, pored sata */}
-            <GamePrompt key={`prompt-${shown.board}-${placing ? "" : shown.round}`} className={cn("animate-fade-up [@media(max-height:30rem)]:hidden", placing && "[@media(max-height:37.5rem)]:hidden")} compact title={title} />
+                pitanje o vremenu na položenom ekranu stoji u polju za igru, pored sata */}
+            <GamePrompt key={`prompt-${shown.board}-${placing ? "" : shown.round}`} className={cn("animate-fade-up [@media(max-height:30rem)]:hidden flat:hidden", placing && "[@media(max-height:37.5rem)]:hidden")} compact title={title} />
             <PlayArea accent={GAME.accent} className="p-2 sm:p-4">
                 {placing ? (
                     <PlaceBoard
@@ -368,7 +368,7 @@ export default function ClockGame({ childId, level, gender, onComplete, isMonito
                     />
                 ) : (
                     <div className="flex min-h-0 w-full flex-1 flex-col items-center gap-2 landscape:flex-row">
-                        <p className="hidden shrink-0 text-center font-display text-xl font-extrabold leading-snug text-ink [@media(max-height:30rem)]:block landscape:w-40">{title}</p>
+                        <p className="hidden shrink-0 text-center font-display text-xl font-extrabold leading-snug text-ink flat:block landscape:w-40">{title}</p>
                         <TimeBoard key={`task-${shown.round}`} view={shown} calm={calm} disabled={isMonitor || solved} onPick={pickChoice} onSet={setHour} />
                     </div>
                 )}
@@ -482,7 +482,7 @@ function PlaceBoard({ view, drag, calm, disabled, demo, onSlot }: PlaceBoardProp
                                 disabled={disabled || view.selected === null}
                                 onClick={() => onSlot(slot)}
                                 aria-label={isBoard ? `Rupa, ${slotName(view, slot)}` : `Rupa na satu, ${slotName(view, slot)}`}
-                                className="absolute rounded-2xl outline-none focus-visible:ring-4 focus-visible:ring-brand-400 disabled:cursor-default"
+                                className={cn("absolute rounded-2xl outline-none focus-visible:ring-4 focus-visible:ring-brand-400 disabled:cursor-default", HOLE_HIT)}
                                 style={slotBox(view, slot, size.width, size.height)}
                             />
                         );
@@ -622,7 +622,7 @@ function TimeBoard({ view, calm, disabled, onPick, onSet }: TimeBoardProps) {
                                 aria-label={`${timePhrase({ h: hour, m: 0 })}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                 className="animate-pop min-h-0 p-1.5 sm:p-2"
                             >
-                                <ClockPieceSvg value={hour} className="pointer-events-none h-[clamp(3.5rem,11dvh,6rem)] w-[clamp(3.5rem,11dvh,6rem)]" />
+                                <ClockPieceSvg value={hour} className="pointer-events-none h-[clamp(3.5rem,11dvh,6rem)] w-[clamp(3.5rem,11dvh,6rem)] flat:h-[clamp(2.75rem,9dvh,5rem)] flat:w-[clamp(2.75rem,9dvh,5rem)]" />
                             </ChoiceCard>
                         );
                     })}

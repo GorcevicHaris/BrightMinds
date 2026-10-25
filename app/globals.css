@@ -12,6 +12,14 @@
   }
 }
 
+/* Položen telefon i nizak laptop (širok, a nizak ekran): igra sa pitanjem ide u dve kolone —
+   uputstvo levo, izbori desno — da sve stane bez skrolovanja */
+@custom-variant flat {
+  @media (orientation: landscape) and (max-height: 37.5rem) {
+    @slot;
+  }
+}
+
 /* Drugar levo, prodavnica desno: računar, i položen tablet ili nizak laptop (širok, a nizak ekran) */
 @custom-variant side {
   @media (min-width: 64rem), (min-width: 48rem) and (orientation: landscape) {

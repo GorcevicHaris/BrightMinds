@@ -214,7 +214,7 @@ function mergeMonitor(base: SceneView, incoming: Partial<SceneView> | null | und
 const TEXT_LOOK = "Pogledaj gde je šta na polici. Kad zapamtiš, javi mi.";
 const TEXT_LOOK_NEXT = "Evo nove police. Pogledaj gde je šta.";
 const TEXT_PLACE = "Vrati svaku stvar na njeno mesto.";
-const TEXT_PICK_FIRST = "Prvo izaberi stvar iz korpe.";
+const TEXT_PICK_FIRST = "Šta je stajalo ovde?";
 const TEXT_WRONG_FIRST = "Nije bilo tu. Probaj opet.";
 
 const TEXT_WRONG_AGAIN = "Ni tu nije bilo. Seti se gde je šta stajalo.";
@@ -222,7 +222,7 @@ const TEXT_WRONG_AGAIN = "Ni tu nije bilo. Seti se gde je šta stajalo.";
 const GAME = getGame("memory");
 /** Mesto na polici: što veće, a da polica (i korpa) stanu na ekran po visini i po širini */
 const SHELF_STYLE = {
-    "--cell": "max(4.25rem, min(9.5rem, calc((100dvh - var(--chrome)) / var(--rows) - 1.5rem), calc((100vw - 7rem) / var(--cols))))",
+    "--cell": "max(var(--cell-min, 4.25rem), min(9.5rem, calc((100dvh - var(--chrome)) / var(--rows) - 1.5rem), calc((100vw - 7rem) / var(--cols))))",
 } as CSSProperties;
 
 export default function MemoryScene({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps) {
@@ -330,7 +330,7 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
             const how = firstTry ? "iz prvog pokušaja" : prompted ? "uz pomoć" : "posle greške";
             commit(solved, `Na mestu ${how}: ${name}`);
             playSfx("correct");
-            const sentence = praise(`${name} je na svom mestu.`, firstTry);
+            const sentence = praise(`${name} ${art?.plural ? "su" : "je"} na svom mestu.`, firstTry);
             if (tray.length > 0) {
                 say(sentence, undefined, "happy");
                 guard.hold();
@@ -391,19 +391,25 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
     const look = shown.phase === "look";
     const hintSlot = shown.hint ? shown.slots.indexOf(shown.hint) : -1;
     const selectedArt = cardArt(shown.selected ?? undefined);
-    let instruction = look ? "Zapamti gde je šta." : selectedArt ? `Kuda ide ${selectedArt.name.toLowerCase()}?` : "Izaberi stvar iz korpe.";
+    let instruction = look ? "Zapamti gde je šta." : selectedArt ? `Kuda ${selectedArt.plural ? "idu" : "ide"} ${selectedArt.name.toLowerCase()}?` : TEXT_PLACE;
     if (shown.done) instruction = "Sve je na svom mestu.";
+
+    // Uputstvo i poruka u istom okviru. Položen telefon: okvir stoji desno od police, iznad korpe
+    // (iznad police ne bi ostalo mesta za tri reda); tada se crta tamo, a ovde je sakriven.
+    const instructionBox = (className: string) => (
+        <div className={cn("grid min-h-14 place-items-center rounded-2xl border border-line bg-surface px-4 py-2 shadow-soft *:col-start-1 *:row-start-1", className)}>
+            <p aria-hidden={shown.feedback ? true : undefined} className={cn("text-center font-display text-lg font-extrabold text-ink transition-opacity duration-200 sm:text-2xl flat:sm:text-lg", shown.feedback && "opacity-0")}>
+                {instruction}
+            </p>
+            <Feedback kind={shown.feedback} correctText="Pravo mesto." wrongText={TEXT_WRONG_FIRST} className="flat:static!" />
+        </div>
+    );
 
     return (
         <GameStage width="normal">
             <GameHud round={shown.round} totalRounds={shown.totalRounds} score={isMonitor || settings.preset.showPoints ? shown.score : undefined} unit="Stvar" onSpeak={isMonitor ? undefined : repeatInstruction} />
 
-            <div className={cn("grid min-h-14 place-items-center rounded-2xl border border-line bg-surface px-4 py-2 shadow-soft *:col-start-1 *:row-start-1", tail)}>
-                <p aria-hidden={shown.feedback ? true : undefined} className={cn("text-center font-display text-lg font-extrabold text-ink transition-opacity duration-200 sm:text-2xl", shown.feedback && "opacity-0")}>
-                    {instruction}
-                </p>
-                <Feedback kind={shown.feedback} correctText="Na svom je mestu." wrongText={TEXT_WRONG_FIRST} />
-            </div>
+            {instructionBox(cn(tail, "flat:hidden"))}
 
             <PlayArea accent={GAME.accent}>
                 {/* Položen ekran: korpa (ili dugme) stoji desno od police, da sve stane bez skrolovanja */}
@@ -413,7 +419,8 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                     role="group"
                     aria-label={look ? "Polica sa stvarima" : "Polica"}
                     className={cn(
-                        "shrink-0 rounded-2xl border-4 border-amber-800 bg-amber-50 p-2 shadow-soft [--chrome:27rem] sm:p-3 landscape:[--chrome:23rem]",
+                        // Položen telefon: manje zaglavlja iznad police, a mesto sme da bude i manje (najmanje 48 px)
+                        "shrink-0 rounded-2xl border-4 border-amber-800 bg-amber-50 p-2 shadow-soft [--chrome:27rem] sm:p-3 landscape:[--chrome:23rem] flat:p-1.5 flat:[--cell-min:3rem] flat:[--chrome:calc(6.25rem+28.5dvh)] flat:sm:p-1.5",
                         isMonitor && "pointer-events-none"
                     )}
                     style={{ ...SHELF_STYLE, "--rows": shown.rows, "--cols": shown.cols } as CSSProperties}
@@ -460,6 +467,8 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                     ))}
                 </div>
 
+                <div className="flex w-full flex-col items-center gap-3 landscape:w-auto flat:w-64 flat:gap-2">
+                {instructionBox("hidden w-full px-2 flat:grid flat:min-h-12")}
                 {look ? (
                     !isMonitor && (
                         <button
@@ -482,7 +491,7 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                     <div
                         role="group"
                         aria-label="Korpa"
-                        className="flex min-h-20 w-full max-w-xl flex-wrap items-center justify-center gap-1.5 rounded-2xl border-2 border-amber-300 bg-amber-100/70 p-1.5 sm:gap-3 sm:p-3 landscape:w-60 landscape:max-w-60"
+                        className="flex min-h-20 w-full max-w-xl flex-wrap items-center justify-center gap-1.5 rounded-2xl border-2 border-amber-300 bg-amber-100/70 p-1.5 sm:gap-3 sm:p-3 landscape:w-60 landscape:max-w-60 flat:w-full flat:max-w-none flat:sm:gap-2 flat:sm:p-2"
                     >
                         {shown.tray.length === 0 && <span className="text-base font-bold text-ink-soft">Korpa je prazna.</span>}
                         {shown.tray.map((id) => {
@@ -498,7 +507,7 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                                     aria-pressed={selected}
                                     aria-label={art.name}
                                     className={cn(
-                                        "relative aspect-square w-14 shrink-0 overflow-hidden rounded-xl bg-surface shadow-soft transition-transform sm:w-24",
+                                        "relative aspect-square w-14 shrink-0 overflow-hidden rounded-xl bg-surface shadow-soft transition-transform sm:w-24 flat:sm:w-[clamp(3rem,12dvh,5rem)]",
                                         selected ? "-translate-y-1 ring-4 ring-brand-500 ring-offset-2 ring-offset-amber-100" : "ring-2 ring-amber-200 enabled:active:scale-95"
                                     )}
                                 >
@@ -508,6 +517,7 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                         })}
                     </div>
                 )}
+                </div>
                 </div>
             </PlayArea>
         </GameStage>
