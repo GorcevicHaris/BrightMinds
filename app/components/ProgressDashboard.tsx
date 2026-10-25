@@ -126,6 +126,8 @@ const GAME_SERIES: Record<GameId, Series> = {
     differences: { swatch: "bg-coral-600", color: "var(--color-coral-600)" },
     weather: { swatch: "bg-storm-600", color: "var(--color-storm-600)" },
     market: { swatch: "bg-honey-600", color: "var(--color-honey-600)" },
+    families: { swatch: "bg-[#a8653a]", color: "#a8653a" },
+    backpack: { swatch: "bg-[#246f8f]", color: "#246f8f" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */
