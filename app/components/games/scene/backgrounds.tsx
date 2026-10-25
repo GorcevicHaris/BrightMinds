@@ -387,6 +387,44 @@ const BACKGROUNDS: Record<BackgroundId, (view: ViewId) => ReactNode> = {
             <ellipse cx={120} cy={146} rx={96} ry={12} fill="#e5e3ff" />
         </g>
     ),
+    // Pijaca: nebo, kuće u daljini, kaldrma, zastavice preko trga
+    market: (view) => (
+        <g>
+            <Sky view={view} x={0} y={0} w={240} h={HORIZON} />
+            <House x={14} y={58} color="#f6d3a8" roof="#d9765a" />
+            <House x={186} y={60} color="#cfe0f2" roof="#7f8fb8" />
+            <rect x={0} y={HORIZON - 6} width={240} height={66} fill="#e6ddcf" />
+            <g stroke="#d3c7b4" strokeWidth={1}>
+                <path d={`M0 ${HORIZON + 12} H240 M0 ${HORIZON + 32} H240 M0 ${HORIZON + 52} H240`} />
+            </g>
+            <path d="M0 14 Q60 30 120 16 T240 14" stroke="#9a8a7a" strokeWidth={0.9} fill="none" />
+            {Array.from({ length: 11 }, (_, i) => {
+                const x = 10 + i * 22;
+                const y = 14 + Math.sin((x / 240) * Math.PI * 2) * 7 + 2;
+                return <path key={i} d={`M${x - 5} ${y} H${x + 5} L${x} ${y + 9}Z`} fill={["#e8605a", "#f4c94a", "#6cc0e8", "#8fd07a"][i % 4]} />;
+            })}
+        </g>
+    ),
+    // Akvarijum: voda, zraci svetla, pesak na dnu i staklo oko svega
+    aquarium: () => (
+        <g>
+            <rect width={240} height={160} fill="#6fc6ea" />
+            <rect width={240} height={60} fill="#8fd6f2" opacity={0.7} />
+            <g fill="#ffffff" opacity={0.14}>
+                <path d="M30 0 H52 L90 130 H62Z" />
+                <path d="M120 0 H136 L160 130 H140Z" />
+                <path d="M190 0 H204 L214 130 H198Z" />
+            </g>
+            <path d="M0 132 Q40 124 80 130 T160 128 T240 130 V160 H0Z" fill="#f1dca8" />
+            <g fill="#e2c88e">
+                <circle cx={40} cy={146} r={2} />
+                <circle cx={110} cy={152} r={2.4} />
+                <circle cx={176} cy={144} r={1.8} />
+                <circle cx={214} cy={154} r={2.2} />
+            </g>
+            <rect x={3} y={3} width={234} height={154} rx={8} fill="none" stroke="#e6f6fd" strokeWidth={6} opacity={0.9} />
+        </g>
+    ),
     sky: (view) => (
         <g>
             <Sky view={view} x={0} y={0} w={240} h={160} />

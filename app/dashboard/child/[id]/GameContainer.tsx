@@ -92,6 +92,8 @@ const GAME_LOADERS = {
     puzzle: () => import("@/app/components/games/PuzzleGame"),
     inset: () => import("@/app/components/games/InsetGame"),
     clock: () => import("@/app/components/games/ClockGame"),
+    maze: () => import("@/app/components/games/MazeGame"),
+    differences: () => import("@/app/components/games/DifferencesGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -114,6 +116,8 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     puzzle: dynamic(GAME_LOADERS["puzzle"], { ssr: false, loading: GameLoading }),
     inset: dynamic(GAME_LOADERS["inset"], { ssr: false, loading: GameLoading }),
     clock: dynamic(GAME_LOADERS["clock"], { ssr: false, loading: GameLoading }),
+    maze: dynamic(GAME_LOADERS["maze"], { ssr: false, loading: GameLoading }),
+    differences: dynamic(GAME_LOADERS["differences"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {
