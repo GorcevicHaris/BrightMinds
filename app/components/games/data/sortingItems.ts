@@ -134,7 +134,7 @@ const RULE_WORDS: Record<SortRuleKey, { label: string; emoji: string; yes: (item
     summer: { label: "Leto", emoji: "☀️", yes: () => "je za leto", no: "nije za leto" },
     winter: { label: "Zima", emoji: "❄️", yes: () => "je za zimu", no: "nije za zimu" },
     air: { label: "U vazduhu", emoji: "☁️", yes: (item) => item.goes ?? "leti", no: "ne leti" },
-    water: { label: "U vodi", emoji: "🌊", yes: (item) => item.goes ?? "pliva", no: "ne pliva" },
+    water: { label: "U vodi", emoji: "🌊", yes: (item) => item.goes ?? "pliva", no: "ne ide po vodi" },
     land: { label: "Na zemlji", emoji: "🌳", yes: (item) => item.goes ?? "ide po zemlji", no: "ne ide po zemlji" },
     meal: { label: "Za jelo", emoji: "😋", yes: () => "je za jelo", no: "nije za jelo" },
     wash: { label: "Za pranje", emoji: "🛁", yes: () => "je za pranje", no: "nije za pranje" },

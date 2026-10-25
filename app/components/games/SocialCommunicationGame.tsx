@@ -398,7 +398,8 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
     const answered = shown.picked !== null;
 
     return (
-        <GameStage width="narrow">
+        // Položen telefon: primer i pitanje levo, izbori (i beleške posle izbora) desno
+        <GameStage width="narrow" className="flat:grid flat:max-w-none flat:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] flat:content-start flat:gap-x-3 flat:gap-y-2 flat:*:col-start-2 flat:*:first:col-span-2 flat:*:first:col-start-1">
             <GameHud
                 round={shown.round}
                 totalRounds={shown.totalRounds}
@@ -414,8 +415,9 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                 // Dok se primer čita, slika je velika, iznad teksta; posle ostaje mala, levo od teksta.
                 className={cn(
                     "flex animate-fade-up rounded-card border-2 shadow-soft sm:gap-4",
-                    answered && "hidden",
+                    answered && "hidden flat:flex",
                     shown.optionsShown ? "items-center gap-3 p-2.5 sm:p-3" : picture ? "flex-col items-stretch gap-3 p-3 sm:p-5" : "items-center gap-3 p-4 sm:p-5",
+                    "flat:col-start-1! flat:row-span-6 flat:row-start-2 flat:flex-col flat:items-stretch flat:justify-center flat:gap-2 flat:self-stretch flat:p-2.5 flat:sm:gap-2 flat:sm:p-2.5",
                     ACCENT.soft,
                     ACCENT.border
                 )}
@@ -424,7 +426,9 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     <div
                         className={cn(
                             "shrink-0 overflow-hidden rounded-2xl bg-surface ring-1 ring-brand-100",
-                            shown.optionsShown ? "w-28 sm:w-36" : "mx-auto w-full max-w-[min(100%,48dvh)] short:max-w-[min(100%,40dvh)]"
+                            shown.optionsShown ? "w-28 sm:w-36" : "mx-auto w-full max-w-[min(100%,48dvh)] short:max-w-[min(100%,40dvh)]",
+                            // Položen telefon: slika je bila velika dok se primer čitao; uz izbore ostaje samo tekst
+                            shown.optionsShown ? "flat:hidden" : "flat:mx-auto flat:w-full flat:max-w-[min(100%,40dvh)] flat:sm:w-full"
                         )}
                     >
                         <SceneArt spec={picture.scene} hero={{ look: picture.hero }} className="h-auto w-full" />
@@ -435,15 +439,15 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     </span>
                 )}
                 <div className="min-w-0 flex-1">
-                    <p className={cn("text-sm font-extrabold sm:text-base", ACCENT.text)}>{MODEL_LABEL}</p>
-                    <p className={cn("font-bold leading-snug text-ink sm:text-xl", shown.optionsShown ? "text-base" : "text-lg")}>
+                    <p className={cn("text-sm font-extrabold sm:text-base [@media(max-height:30rem)]:sr-only", ACCENT.text)}>{MODEL_LABEL}</p>
+                    <p className={cn("font-bold leading-snug text-ink sm:text-xl flat:text-[0.95rem] flat:sm:text-[0.95rem]", shown.optionsShown ? "text-base" : "text-lg")}>
                         {genderText(situation.model, female)}
                     </p>
                     {/* Na tabletu je pitanje u istoj kartici kao primer, da slike izbora stanu na ekran bez pomeranja */}
                     {shown.optionsShown && (
-                        <div aria-hidden="true" className="mt-2 hidden border-t border-brand-200 pt-2 sm:block">
-                            <p className="font-display text-2xl font-extrabold leading-snug text-ink">{genderText(situation.text, female)}</p>
-                            <p className="text-lg font-bold text-ink-soft">{situation.ask}</p>
+                        <div aria-hidden="true" className="mt-2 hidden border-t border-brand-200 pt-2 sm:block flat:mt-1.5 flat:pt-1.5">
+                            <p className="font-display text-2xl font-extrabold leading-tight text-ink flat:text-lg">{genderText(situation.text, female)}</p>
+                            <p className="text-lg font-bold text-ink-soft flat:text-base">{situation.ask}</p>
                         </div>
                     )}
                 </div>

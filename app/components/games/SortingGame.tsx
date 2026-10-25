@@ -470,20 +470,25 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
         <GameStage>
             <GameHud round={shown.round} totalRounds={shown.totalRounds} score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
+            {/* Položen telefon: uputstvo je u polju za igru, iznad predmeta; predmet levo, korpe desno */}
             <GamePrompt
                 key={`prompt-${shown.kind}`}
-                className="animate-fade-up"
+                className="animate-fade-up flat:hidden"
                 title={titleFor(shown.kind, shown.support, plan.intro ?? ruleIntro(shown.baskets))}
             />
 
-            <PlayArea accent={GAME.accent}>
+            <PlayArea accent={GAME.accent} className="flat:flex-row flat:gap-4">
+                <div className="flex flex-col items-center flat:max-w-[40%] flat:shrink-0">
+                <p className="mb-2 hidden text-center font-display text-lg font-extrabold leading-tight text-ink flat:block">
+                    {titleFor(shown.kind, shown.support, plan.intro ?? ruleIntro(shown.baskets))}
+                </p>
                 {/* Predmet koji se razvrstava: veliki, u sredini; može se i prevući do korpe. Posle tačnog
                     odgovora „uskoči” u korpu, a isprekidan okvir ostaje kao prazno mesto */}
-                <div className="mb-4 flex items-center gap-3 sm:mb-6 sm:gap-5 short:sm:mb-3">
+                <div className="mb-4 flex items-center gap-3 short:mb-2 sm:mb-6 sm:gap-5 short:sm:mb-3 flat:mb-2 flat:sm:mb-2">
                     {/* Veliko / malo: pored predmeta bledo stoji isti predmet u drugoj veličini, da dete ima
                         sa čim da poredi (sam predmet na ekranu nije ni veliki ni mali) */}
                     {shown.kind === "size" && item.size && (
-                        <div aria-hidden="true" className="pointer-events-none grid shrink-0 place-items-center opacity-35 grayscale-[30%]" style={{ width: "clamp(5.5rem, 16dvh, 10rem)", height: "clamp(5.5rem, 16dvh, 10rem)" }}>
+                        <div aria-hidden="true" className="pointer-events-none grid shrink-0 place-items-center opacity-35 grayscale-[30%]" style={{ width: "clamp(5.5rem, 14dvh, 10rem)", height: "clamp(5.5rem, 14dvh, 10rem)" }}>
                             <ItemPicture item={{ ...item, size: item.size === "big" ? "small" : "big" }} className="leading-none" style={{ fontSize: item.size === "big" ? `calc(${BIG_ITEM} * 0.45)` : BIG_ITEM }} />
                         </div>
                     )}
@@ -499,7 +504,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                             !isMonitor && !solved && "cursor-grab",
                             dragging && "z-30 cursor-grabbing"
                         )}
-                        style={{ width: "clamp(5.5rem, 16dvh, 10rem)", height: "clamp(5.5rem, 16dvh, 10rem)" }}
+                        style={{ width: "clamp(5.5rem, 14dvh, 10rem)", height: "clamp(5.5rem, 14dvh, 10rem)" }}
                     >
                         <div ref={picture} className={cn("pointer-events-none grid h-full w-full place-items-center", dragging && "drop-shadow-xl")}>
                             <ItemPicture
@@ -512,14 +517,15 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                     </div>
                 </div>
                 {/* U nivoima oblika naziv bi odao odgovor, pa se ne prikazuje (mesto ostaje, da se ništa ne pomera) */}
-                <p className="-mt-2 mb-4 min-h-7 text-center font-display text-xl font-extrabold text-ink sm:mb-6 sm:min-h-8 sm:text-2xl short:sm:mb-3" aria-live="polite">
+                <p className="-mt-2 mb-4 min-h-7 text-center font-display text-xl font-extrabold text-ink short:mb-2 sm:mb-6 sm:min-h-8 sm:text-2xl short:sm:mb-3 flat:mb-0 flat:mt-0 flat:sm:mb-0 flat:sm:text-xl" aria-live="polite">
                     {namesAnswer(shown.kind, item) ? "" : capitalized(item.name)}
                 </p>
+                </div>
 
                 <div
                     role="group"
                     aria-label="Korpe"
-                    className={cn("grid w-full max-w-3xl gap-3 sm:gap-4", shown.baskets.length === 2 ? "grid-cols-2" : shown.baskets.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4", isMonitor && "pointer-events-none")}
+                    className={cn("grid w-full max-w-3xl gap-3 sm:gap-4 flat:gap-2 flat:sm:gap-2", shown.baskets.length === 2 ? "grid-cols-2" : shown.baskets.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4 flat:sm:grid-cols-2", isMonitor && "pointer-events-none")}
                 >
                     {shown.baskets.map((id) => {
                         const basket = basketFor(id);
@@ -535,7 +541,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                                 onClick={() => handlePick(id)}
                                 aria-label={`Korpa: ${basket.label}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                 style={tintStyle(tint, state)}
-                                className={cn("min-h-28 flex-col gap-1.5 px-1.5 sm:min-h-44 sm:gap-2 sm:px-3 short:sm:min-h-32", over === id && "ring-4 ring-brand-300")}
+                                className={cn("min-h-28 flex-col gap-1.5 px-1.5 short:min-h-[5.5rem] sm:min-h-44 sm:gap-2 sm:px-3 short:sm:min-h-32 flat:min-h-0 flat:sm:min-h-0 flat:gap-1 flat:py-2 flat:sm:gap-1", over === id && "ring-4 ring-brand-300")}
                             >
                                 {/* Na telefonu je sličica iznad naziva, da i „Životinje” stanu u uzanu korpu */}
                                 <span className={cn("flex flex-col items-center gap-1 leading-tight sm:flex-row sm:gap-2", shown.support === "text" ? "text-lg sm:text-2xl" : "text-base sm:text-xl")}>
@@ -561,7 +567,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                                     className={cn(
                                         "flex w-full flex-wrap content-end items-end justify-center gap-0.5 rounded-b-2xl border-x-4 border-b-4 border-amber-700/60 bg-amber-100/70 px-1 pb-1 pt-2 text-xl leading-none sm:text-2xl",
                                         // Veliki predmet je i u korpi veći: obe korpe su iste visine
-                                        shown.kind === "size" ? "min-h-12 sm:min-h-16" : "min-h-10 sm:min-h-12"
+                                        shown.kind === "size" ? "min-h-12 sm:min-h-16" : "min-h-10 short:min-h-8 sm:min-h-12 flat:min-h-8"
                                     )}
                                     // U nivoima boja je i dno korpe u njenoj boji
                                     style={tint ? { borderColor: `${tint}99`, backgroundColor: `${tint}26` } : undefined}

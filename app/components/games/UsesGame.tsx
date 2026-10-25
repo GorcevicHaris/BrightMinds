@@ -201,7 +201,7 @@ export default function UsesGame({ childId, level, gender, onComplete, isMonitor
     const picture = usesScene(item.id);
 
     return (
-        <GameStage>
+        <GameStage split>
             <GameHud round={shown.round} totalRounds={shown.totalRounds} unit="Pitanje" score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
             <GamePrompt
@@ -217,7 +217,7 @@ export default function UsesGame({ childId, level, gender, onComplete, isMonitor
                 <div
                     role="group"
                     aria-label="Slike"
-                    className={cn("grid w-full max-w-3xl gap-3 sm:gap-4", count === 2 ? "grid-cols-2" : count === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4", isMonitor && "pointer-events-none")}
+                    className={cn("grid w-full max-w-3xl gap-3 sm:gap-4", count === 2 ? "grid-cols-2" : count === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4 flat:sm:grid-cols-2", isMonitor && "pointer-events-none")}
                 >
                     {shown.choices.map((id) => {
                         const choice = getUseItem(id);
@@ -230,13 +230,13 @@ export default function UsesGame({ childId, level, gender, onComplete, isMonitor
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(id)}
                                 aria-label={`${choice.name}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
-                                className={cn("animate-pop flex-col gap-1.5 px-1.5 sm:gap-2", count <= 3 ? "min-h-36 sm:min-h-52" : "min-h-28 sm:min-h-48")}
+                                className={cn("animate-pop flex-col gap-1.5 px-1.5 sm:gap-2", count <= 3 ? "min-h-36 sm:min-h-52" : "min-h-28 sm:min-h-48", "flat:min-h-0 flat:sm:min-h-0 flat:py-2")}
                             >
                                 <span aria-hidden="true" className={cn("leading-none", count <= 3 ? "text-[clamp(3.25rem,12dvh,6rem)]" : "text-[clamp(2.75rem,9dvh,5.5rem)]")}>
                                     {choice.emoji}
                                 </span>
                                 {/* Natpis je za odrasle i decu koja čitaju; pitanje nikad ne sadrži naziv, pa ne odaje odgovor */}
-                                <span className="text-base leading-tight sm:text-xl">{choice.name}</span>
+                                <span className="text-base leading-tight sm:text-xl flat:sm:text-base">{choice.name}</span>
                                 {showHand && id === item.id && <DemoHand />}
                             </ChoiceCard>
                         );

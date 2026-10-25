@@ -30,7 +30,7 @@ import {
     type TimerId,
 } from "@/app/components/games/kit";
 import { DragDemo } from "@/app/components/games/kit/DragDemo";
-import { isWideBoard, trayGrid, trayPieceSize } from "@/app/components/games/kit/InsetArt";
+import { HOLE_HIT, isWideBoard, trayGrid, trayPieceSize } from "@/app/components/games/kit/InsetArt";
 import { useDragSnap, type DragSnap } from "@/app/components/games/kit/useDragSnap";
 import {
     buildInsetLevel,
@@ -364,7 +364,7 @@ function InsetPlay({ view, drag, calm, wiggle, disabled, demo, onHole, onRotate 
                                 disabled={disabled || selected === null}
                                 onClick={() => onHole(id)}
                                 aria-label={`Rupa: ${getInsetShape(id)?.name.toLowerCase() ?? ""}`}
-                                className="absolute rounded-2xl outline-none focus-visible:ring-4 focus-visible:ring-brand-400 disabled:cursor-default"
+                                className={cn("absolute rounded-2xl outline-none focus-visible:ring-4 focus-visible:ring-brand-400 disabled:cursor-default", HOLE_HIT)}
                                 style={{ left: pct(o.x - pad, size.width), top: pct(o.y - pad, size.height), width: pct(INSET_HOLE + pad * 2, size.width), height: pct(INSET_HOLE + pad * 2, size.height) }}
                             />
                         );

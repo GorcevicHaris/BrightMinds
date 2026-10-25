@@ -8,18 +8,24 @@ import type { CSSProperties, ReactNode } from "react";
 import { DICE_PATTERNS, rowsOf, type CountNoun, type CountRound } from "@/app/components/games/data/countingItems";
 import { cn } from "@/lib/cn";
 
-/** Veličine predmeta: deo širine i visine ekrana, pa staju i na telefon i na položen tablet */
+/**
+ * Veličine predmeta: deo širine i visine ekrana, pa staju i na telefon i na položen tablet.
+ * Kad tabla ima svoju kolonu (položen telefon, `flat`), `--count-k` uvećava deo visine, a
+ * `--count-w` smanjuje deo širine (kolona je oko četvrtine ekrana).
+ */
 const SIZE = {
     /** Do tri predmeta: krupno */
-    few: "min(21vw, 11dvh, 7rem)",
+    few: "min(calc(21vw * var(--count-w, 1)), calc(11dvh * var(--count-k, 1)), 7rem)",
     /** Četiri–pet predmeta u jednom redu */
-    row: "min(15.5vw, 10dvh, 6rem)",
+    row: "min(calc(15.5vw * var(--count-w, 1)), calc(10dvh * var(--count-k, 1)), 6rem)",
     /** Dva reda po pet */
-    rows: "min(14.5vw, 8dvh, 5.25rem)",
-    dice: "min(16vw, 6dvh, 5rem)",
-    frame: "min(13.5vw, 6.5dvh, 4.5rem)",
+    rows: "min(calc(14.5vw * var(--count-w, 1)), calc(8dvh * var(--count-k, 1)), 5.25rem)",
+    dice: "min(calc(16vw * var(--count-w, 1)), calc(6dvh * var(--count-k, 1)), 5rem)",
+    frame: "min(calc(13.5vw * var(--count-w, 1)), calc(6.5dvh * var(--count-k, 1)), 4.5rem)",
+    /** Dva okvira (preko deset): u svojoj koloni stoje jedan ispod drugog, pa su niži */
+    frames: "min(calc(13.5vw * var(--count-w, 1)), calc(6.5dvh * min(var(--count-k, 1), 0.95)), 4.5rem)",
     /** Grupa na kartici */
-    group: "min(11.5vw, 5.8dvh, 3.75rem)",
+    group: "min(calc(11.5vw * var(--count-w, 1)), calc(5.8dvh * var(--count-k, 1)), 3.75rem)",
 };
 
 /**
@@ -28,7 +34,7 @@ const SIZE = {
  */
 function pairSize(across: number): string {
     const cells = Math.max(across, 2);
-    return `min(${((66 - 1.5 * cells) / cells).toFixed(1)}vw, 7dvh, 5rem)`;
+    return `min(calc(${((66 - 1.5 * cells) / cells).toFixed(1)}vw * var(--count-w, 1)), calc(7dvh * var(--count-k, 1)), 5rem)`;
 }
 
 function sized(size: string): CSSProperties {
@@ -85,15 +91,16 @@ function Dice({ noun, count, lit }: { noun: CountNoun; count: number; lit: numbe
 /** Okvir od deset (2 × 5), puni se red po red; preko deset — drugi okvir */
 function Frames({ noun, count, lit }: { noun: CountNoun; count: number; lit: number }) {
     const frames = count > 10 ? 2 : 1;
+    const size = frames > 1 ? SIZE.frames : SIZE.frame;
     return (
-        <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-4">
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-4 flat:flex-col flat:sm:flex-col flat:sm:gap-2">
             {Array.from({ length: frames }, (_, frame) => (
                 <div key={frame} className="grid grid-cols-5 gap-px overflow-hidden rounded-xl border-[3px] border-blue-300 bg-blue-300">
                     {Array.from({ length: 10 }, (_, cell) => {
                         const index = frame * 10 + cell + 1;
                         return (
                             <span key={cell} className="grid place-items-center bg-surface p-[min(0.8vw,0.3rem)]">
-                                {index <= count ? <Thing noun={noun} size={SIZE.frame} lit={index <= lit} /> : <span style={sized(SIZE.frame)} />}
+                                {index <= count ? <Thing noun={noun} size={size} lit={index <= lit} /> : <span style={sized(size)} />}
                             </span>
                         );
                     })}

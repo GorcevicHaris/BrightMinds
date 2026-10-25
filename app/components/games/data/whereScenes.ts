@@ -195,7 +195,8 @@ export function buildWhereLevel(level: number, { maxChoices, maxRounds, random =
         const most = Math.max(...withTarget.map(options));
         const fitting = withTarget.filter((object) => options(object) >= Math.min(choiceCount - 1, most));
         const object = pick(fitting);
-        const others = object.relations.filter((relation) => relation !== target && known.includes(relation));
+        // „Pored” i „između” bi bile obe tačne (ko je između dve kutije, pored je kutije)
+        const others = object.relations.filter((relation) => relation !== target && known.includes(relation) && !(target === "next" && relation === "between"));
         // Na teškim nivoima prednost imaju slični položaji (na ↔ iznad, iza ↔ ispred, u ↔ na)
         const close = CONFUSABLE[target].filter((relation) => others.includes(relation));
         const preferred = choiceCount >= 4 ? [...shuffle(close), ...shuffle(others.filter((relation) => !close.includes(relation)))] : shuffle(others);
@@ -213,7 +214,7 @@ const CONFUSABLE: Record<Relation, readonly Relation[]> = {
     in: ["on", "behind"],
     on: ["above", "in"],
     under: ["on", "next"],
-    next: ["between", "front"],
+    next: ["front", "behind"],
     behind: ["front", "in"],
     front: ["behind", "next"],
     above: ["on", "next"],
