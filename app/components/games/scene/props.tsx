@@ -1734,6 +1734,99 @@ const PROPS: Record<PropId, Draw> = {
             ))}
         </g>
     ),
+
+    // ── Igra „Pronađi razlike” ────────────────────────────────────────────────
+    // Morska trava: tri talasaste vlati
+    seaweed: (tone = "#5fae4a") => (
+        <g fill="none" strokeLinecap="round" stroke={tone}>
+            <path d="M-6 0 Q-12 -10 -6 -20 Q0 -30 -6 -40" strokeWidth={5} />
+            <path d="M2 0 Q8 -9 2 -18 Q-4 -27 3 -34" strokeWidth={4.5} />
+            <path d="M9 0 Q14 -7 10 -14 Q6 -21 11 -26" strokeWidth={4} />
+        </g>
+    ),
+    starfish: (tone = "#f28b6e") => (
+        <g transform="translate(0 -10)">
+            <path
+                d={Array.from({ length: 10 }, (_, i) => {
+                    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+                    const r = i % 2 === 0 ? 11 : 5;
+                    return `${i === 0 ? "M" : "L"}${(Math.cos(a) * r).toFixed(2)} ${(Math.sin(a) * r).toFixed(2)}`;
+                }).join(" ") + "Z"}
+                fill={tone}
+                {...stroke("#00000033", 1.2)}
+            />
+            <circle cx={-2} cy={-1} r={1} fill="#ffffff" opacity={0.7} />
+            <circle cx={2} cy={1.5} r={1} fill="#ffffff" opacity={0.7} />
+        </g>
+    ),
+    crab: () => (
+        <g {...stroke("#b8433f", 1.2)}>
+            <path d="M-10 -3 L-15 0 M-9 -1 L-13 2 M10 -3 L15 0 M9 -1 L13 2" fill="none" strokeWidth={1.6} />
+            <ellipse cx={0} cy={-6} rx={10} ry={6} fill="#e8605a" />
+            <path d="M-8 -10 Q-14 -16 -12 -20 M8 -10 Q14 -16 12 -20" fill="none" strokeWidth={1.6} />
+            <circle cx={-12} cy={-21} r={3.2} fill="#e8605a" />
+            <circle cx={12} cy={-21} r={3.2} fill="#e8605a" />
+            <circle cx={-3} cy={-12} r={1.8} fill="#ffffff" stroke="none" />
+            <circle cx={3} cy={-12} r={1.8} fill="#ffffff" stroke="none" />
+            <circle cx={-3} cy={-12} r={0.9} fill="#2f2522" stroke="none" />
+            <circle cx={3} cy={-12} r={0.9} fill="#2f2522" stroke="none" />
+        </g>
+    ),
+    coral: (tone = "#f2789a") => (
+        <g fill="none" stroke={tone} strokeLinecap="round" strokeWidth={4}>
+            <path d="M0 0 V-16 M0 -16 Q-8 -20 -9 -30 M0 -16 Q7 -22 6 -32 M-4 -22 Q-12 -22 -15 -18 M4 -24 Q11 -26 13 -22" />
+        </g>
+    ),
+    // Tezga na pijaci: sto sa robom i tenda na prugice
+    stall: (tone = "#e8605a") => (
+        <g>
+            <rect x={-38} y={-62} width={3} height={62} fill={WOOD_DARK} />
+            <rect x={35} y={-62} width={3} height={62} fill={WOOD_DARK} />
+            <rect x={-42} y={-26} width={84} height={6} rx={1.5} fill={WOOD} {...stroke(WOOD_DARK, 1)} />
+            <rect x={-38} y={-20} width={76} height={20} fill="#c98e5a" {...stroke(WOOD_DARK, 1)} />
+            <path d="M-38 -10 H38" stroke={WOOD_DARK} strokeWidth={0.8} opacity={0.6} />
+            <path d="M-44 -64 H44 L40 -54 H-40Z" fill="#ffffff" {...stroke("#00000022", 1)} />
+            {[-44, -26, -8, 10, 28].map((x) => (
+                <path key={x} d={`M${x} -64 H${x + 9} L${x + 8.2} -54 H${x + 0.8}Z`} fill={tone} />
+            ))}
+            <path d="M-40 -54 Q-35 -49 -30 -54 Q-25 -49 -20 -54 Q-15 -49 -10 -54 Q-5 -49 0 -54 Q5 -49 10 -54 Q15 -49 20 -54 Q25 -49 30 -54 Q35 -49 40 -54" fill={tone} {...stroke("#00000022", 0.8)} />
+        </g>
+    ),
+    // Gajba sa voćem (boja voća se može zadati)
+    crate: (tone = "#e8605a") => (
+        <g>
+            {[-9, 0, 9, -4.5, 4.5].map((x, i) => (
+                <circle key={i} cx={x} cy={i < 3 ? -17 : -22} r={5} fill={tone} {...stroke("#00000033", 0.9)} />
+            ))}
+            <rect x={-16} y={-16} width={32} height={16} rx={1.5} fill="#d9a066" {...stroke(WOOD_DARK, 1.2)} />
+            <path d="M-16 -8 H16 M-6 -16 V0 M6 -16 V0" stroke={WOOD_DARK} strokeWidth={0.9} opacity={0.7} />
+        </g>
+    ),
+    // Suncobran na plaži
+    parasol: (tone = "#e8605a") => (
+        <g>
+            <rect x={-1.5} y={-52} width={3} height={52} fill="#c9ae86" />
+            <path d="M-30 -48 Q0 -76 30 -48 Z" fill="#ffffff" {...stroke("#00000022", 1)} />
+            <path d="M-30 -48 Q-22 -66 -10 -70 L-10 -48Z M10 -48 V-70 Q22 -66 30 -48Z" fill={tone} />
+            <path d="M-30 -48 Q-25 -44 -20 -48 Q-15 -44 -10 -48 Q-5 -44 0 -48 Q5 -44 10 -48 Q15 -44 20 -48 Q25 -44 30 -48" fill="none" {...stroke("#00000033", 1)} />
+        </g>
+    ),
+    // Kofica za pesak
+    bucket: (tone = "#3f8fd8") => (
+        <g>
+            <path d="M-8 -16 Q0 -26 8 -16" fill="none" stroke="#8a8a8a" strokeWidth={1.2} />
+            <path d="M-9 -16 H9 L7 0 H-7Z" fill={tone} {...stroke("#00000033", 1)} />
+            <rect x={-9.5} y={-17} width={19} height={3} rx={1} fill="#ffffff" opacity={0.5} />
+        </g>
+    ),
+    // Jelka pod snegom
+    pine: () => (
+        <g>
+            <rect x={-3} y={-10} width={6} height={10} fill="#a8794e" />
+            <path d="M0 -70 L-16 -40 H-9 L-22 -18 H-13 L-26 -6 H26 L13 -18 H22 L9 -40 H16Z" fill="#4f9a6e" />
+            <path d="M0 -70 L-8 -55 Q0 -52 8 -55Z M-13 -36 Q-4 -32 6 -35 L9 -40 H-9Z M-19 -15 Q-6 -10 8 -14 L13 -18 H-13Z" fill="#ffffff" opacity={0.9} />
+        </g>
+    ),
 };
 
 export function Prop({ id, tone }: { id: PropId; tone?: string }) {
