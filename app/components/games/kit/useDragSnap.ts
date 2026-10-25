@@ -17,6 +17,11 @@ export const RETURN_MS = 280;
 export const WOBBLE_MS = 420;
 /** Domet mesta: deo veće stranice mesta, mereno od njegove sredine */
 const SNAP_REACH = 0.7;
+/**
+ * Najmanji domet (px): i sitna rupa (sat na položenom telefonu) prima komad pušten otprilike
+ * jedan prst od sredine. Bira se najbliže mesto, pa veći domet ne „krade” komad susednoj rupi.
+ */
+const MIN_REACH_PX = 40;
 
 interface Options {
     enabled: boolean;
@@ -74,7 +79,7 @@ export function nearestSlot(root: ParentNode | null, x: number, y: number): stri
         const rect = el.getBoundingClientRect();
         if (rect.width === 0 || rect.height === 0) return;
         const dist = Math.hypot(x - (rect.left + rect.width / 2), y - (rect.top + rect.height / 2));
-        const reach = Math.max(rect.width, rect.height) * SNAP_REACH;
+        const reach = Math.max(Math.max(rect.width, rect.height) * SNAP_REACH, MIN_REACH_PX);
         const id = el.dataset.slot;
         if (id && dist <= reach && (!best || dist < best.dist)) best = { id, dist };
     });

@@ -783,7 +783,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
     const solved = shown.feedback === "correct";
 
     return (
-        <GameStage>
+        <GameStage split>
             <GameHud round={shown.round} totalRounds={shown.totalRounds} score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
             <GamePrompt key={`prompt-${shown.round}`} className="animate-fade-up" title={prompt.title} subtitle={prompt.subtitle} />
@@ -794,7 +794,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                 <div
                     key={`target-${shown.round}-${demo.run}`}
                     className={cn(
-                        "mb-3 grid shrink-0 animate-fade-up place-items-center rounded-3xl border-4 border-dashed bg-white/80 transition-colors sm:mb-6",
+                        "mb-3 grid shrink-0 animate-fade-up place-items-center rounded-3xl border-4 border-dashed bg-white/80 transition-colors sm:mb-6 flat:mb-2 flat:sm:mb-2",
                         solved ? "border-emerald-300" : "border-brand-200",
                         demo.on && "animate-soft-pulse ring-4 ring-brand-300"
                     )}
@@ -814,7 +814,7 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                     role="group"
                     aria-label="Ponuđeni oblici"
                     className={cn(
-                        "mx-auto grid w-full animate-fade-up [--chrome:24rem] [--gap:0.75rem] sm:[--chrome:28rem] sm:[--gap:0.875rem]",
+                        "mx-auto grid w-full animate-fade-up [--chrome:24rem] [--gap:0.75rem] sm:[--chrome:29.5rem] sm:[--gap:0.875rem] flat:[--chrome:11rem] flat:sm:[--chrome:11rem]",
                         LAYOUT[shown.options.length] ?? DEFAULT_LAYOUT,
                         isMonitor && "pointer-events-none"
                     )}

@@ -87,7 +87,7 @@ describe("gaze game content", () => {
         const objects = [{ id: "ball", slot: "left" as const }, { id: "teddy", slot: "right" as const }];
         assert.equal(gazeWrong({ kind: "look", hero: "amina", objects }, "teddy", false), "Netačno. To je meda. Pogledaj kuda Amina gleda.");
         assert.equal(gazeWrong({ kind: "look", hero: "amina", objects }, "teddy", true), "Netačno. To je meda. Prati tačkice od očiju.");
-        assert.equal(gazeWrong({ kind: "know", hero: "amina", objects: [{ id: "kite", slot: "upRight" }] }, "haris", false), "Netačno. Haris gleda zmaja. Pogledaj u šta gleda koje dete.");
+        assert.equal(gazeWrong({ kind: "know", hero: "amina", objects: [{ id: "kite", slot: "upRight" }] }, "haris", false), "Netačno. Haris gleda zmaja. Pogledaj koje dete gleda u kutiju.");
         // Nijedna poruka ne kaže gde da dodirne niti traži pogled u oči
         for (const { rounds } of levels()) {
             for (const round of rounds) {

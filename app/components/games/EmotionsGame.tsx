@@ -100,7 +100,7 @@ const EMOTION_TINT: Record<EmotionId, string> = {
 const OPTION_BASIS: Record<number, string> = {
     2: "basis-[calc(50%-0.4rem)]",
     3: "basis-[calc(33.333%-0.52rem)]",
-    4: "basis-[calc(50%-0.4rem)] sm:basis-[calc(25%-0.58rem)]",
+    4: "basis-[calc(50%-0.4rem)] sm:basis-[calc(25%-0.58rem)] flat:sm:basis-[calc(50%-0.4rem)]",
     // Pet i šest lica i na telefonu idu u tri kolone: u dva reda staju na ekran bez skrolovanja
     5: "basis-[calc(33.333%-0.52rem)]",
     6: "basis-[calc(33.333%-0.52rem)]",
@@ -371,7 +371,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
     const many = shown.options.length >= 5;
 
     return (
-        <GameStage width="narrow">
+        <GameStage width="narrow" split>
             <GameHud
                 round={shown.round}
                 totalRounds={shown.totalRounds}
@@ -401,7 +401,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                         key={shown.round}
                         role="group"
                         aria-label="Izaberi osećanje"
-                        className={cn("flex animate-fade flex-wrap justify-center gap-3", (isMonitor || shown.picked !== null) && "pointer-events-none")}
+                        className={cn("flex animate-fade flex-wrap content-center justify-center gap-3 flat:gap-2", (isMonitor || shown.picked !== null) && "pointer-events-none")}
                     >
                         {shown.options.map((id) => {
                             const emotion = EMOTIONS[id];
@@ -427,14 +427,22 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                                         "grow-0 flex-col gap-1.5 px-1.5",
                                         OPTION_BASIS[shown.options.length] ?? OPTION_BASIS[4],
                                         // Pet i šest lica na niskom tabletu i računaru: zbijenije kartice, da oba reda stanu bez skrolovanja
-                                        many && "short:sm:gap-1 short:sm:py-2"
+                                        many && "short:sm:gap-1 short:sm:py-2",
+                                        "flat:min-h-0 flat:gap-1 flat:py-1.5 flat:sm:py-1.5"
                                     )}
                                 >
-                                    <span className={cn("block h-20 w-20 shrink-0 rounded-2xl p-1 sm:h-28 sm:w-28", many ? "short:sm:h-16 short:sm:w-16" : "short:sm:h-24 short:sm:w-24", EMOTION_TINT[id])}>
+                                    <span
+                                        className={cn(
+                                            "block h-20 w-20 shrink-0 rounded-2xl p-1 short:h-[4.5rem] short:w-[4.5rem] sm:h-28 sm:w-28",
+                                            many ? "short:sm:h-16 short:sm:w-16" : "short:sm:h-24 short:sm:w-24",
+                                            "flat:h-[clamp(2.75rem,11dvh,5rem)] flat:w-[clamp(2.75rem,11dvh,5rem)] flat:sm:h-[clamp(2.75rem,11dvh,5rem)] flat:sm:w-[clamp(2.75rem,11dvh,5rem)]",
+                                            EMOTION_TINT[id]
+                                        )}
+                                    >
                                         <EmotionFace emotion={id} className="h-full w-full" />
                                     </span>
                                     {/* U tri kolone na uskom telefonu i „Iznenađeno” staje u jedan red */}
-                                    <span className={cn("leading-tight sm:text-lg", many ? "text-sm min-[400px]:text-base short:sm:text-base" : "text-base")}>{emotion.label}</span>
+                                    <span className={cn("leading-tight sm:text-lg", many ? "text-sm min-[400px]:text-base short:sm:text-base flat:sm:text-sm" : "text-base flat:sm:text-base")}>{emotion.label}</span>
                                     {showHand && <DemoHand />}
                                 </ChoiceCard>
                             );
@@ -445,7 +453,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                         {lastTried && (
                             <p
                                 key={`${shown.round}-${shown.tried.length}`}
-                                className="flex animate-fade-up items-center justify-center gap-2 rounded-card border-2 border-rose-200 bg-rose-50 px-4 py-3 text-center text-base font-bold text-ink sm:text-lg"
+                                className="flex animate-fade-up items-center justify-center gap-2 rounded-card border-2 border-rose-200 bg-rose-50 px-4 py-3 text-center text-base font-bold text-ink sm:text-lg flat:py-1.5 flat:sm:text-base"
                             >
                                 <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-rose-500 text-sm font-black text-white">
                                     ✗
