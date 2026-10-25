@@ -8,6 +8,8 @@
 // odsjaj na kosi, senka ispod brade) — u istom duhu kao 3D slike životinja u igrama.
 // Nema učitavanja modela, pa radi i na starijim tabletima.
 // Boja kože, boja kose i frizura dolaze iz skins.ts (uvek besplatno); bez izbora — dosadašnji izgled.
+// Hidžab (3D likovi sa hidžabom i ženski likovi koji ga nose, kad WebGL ne radi): tkanina oko
+// lica sa mekim rubom, pokriva kosu, uši i vrat i pada preko ramena; kosa se tada ne crta.
 // Ceo lik i portret se mirno kreću (diše, kosa se leluja, mahne kad pozdravlja): motion.ts.
 
 import { useId, useRef, type ReactNode } from "react";
@@ -71,10 +73,22 @@ interface TeacherAvatarProps {
     actionKey?: number | string;
     /** Bez ikakvih pokreta (sličice) */
     still?: boolean;
+    /** Hidžab: boja (hex) i kroj (sportski je kraći); bez njega — kosa iz izgleda */
+    hijab?: { color: string; sport?: boolean };
+    /** Boja kože iz 3D izgleda (hex), kad je nema među 2D bojama */
+    toneHex?: string;
     className?: string;
 }
 
-export default function TeacherAvatar({ gender, variant = "bust", emotion: fixedEmotion, wear, skin, action, actionKey, still = false, className }: TeacherAvatarProps) {
+/** Mešanje boje sa belom (k > 0) ili crnom (k < 0) */
+function shadeHex(hex: string, k: number): string {
+    const n = parseInt(hex.slice(1), 16);
+    const mix = (c: number) => Math.round(k >= 0 ? c + (255 - c) * k : c * (1 + k));
+    const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(mix);
+    return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
+
+export default function TeacherAvatar({ gender, variant = "bust", emotion: fixedEmotion, wear, skin, action, actionKey, still = false, hijab, toneHex, className }: TeacherAvatarProps) {
     const female = gender?.toLowerCase() === "female";
     const look = LOOKS[female ? "female" : "male"];
     const kind = female ? "woman" : "man";
@@ -103,9 +117,10 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
     // deli isto svetlo, pa se kapak koji prekriva oko ne vidi kao zakrpa.
     const id = (name: string) => `${uid}-${name}`;
     const fill = (name: string) => `url(#${id(name)})`;
-    const [skinLight, skinMid, skinDark] = toneColors(human.tone);
-    const [hairLight, hairMid, hairDark] = hairColors(human.hair);
-    const hair = hairArt(human.style, fill("hair"), hairDark);
+    const [skinLight, skinMid, skinDark] = toneHex ? [shadeHex(toneHex, 0.16), toneHex, shadeHex(toneHex, -0.2)] : toneColors(human.tone);
+    // Uz hidžab: kosa se ne vidi, obrve su tamnosmeđe
+    const [hairLight, hairMid, hairDark] = hijab ? ["#5A4232", "#3E2A1F", "#2A1C14"] : hairColors(human.hair);
+    const hair = hijab ? { back: null, front: null } : hairArt(human.style, fill("hair"), hairDark);
 
     const eye = (x: number, part: string) => (
         <g data-part={part} transform={`translate(${x} ${EYE_Y})`}>
@@ -171,7 +186,12 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
             <path d="M95 204q25 36 50 0-25 14-50 0z" fill="#fff" />
             <path d="M95 204q25 14 50 0-25 9-50 0z" fill="#C9D2E0" opacity="0.7" />
             {full && fullBackFront(wear, kind)}
-            {renderWorn(wear, "neck", { variant: art, kind })}
+            {hijab ? (
+                // Deo hidžaba preko vrata i ramena (pokriva i ono što je oko vrata)
+                <path d={full ? (hijab.sport ? DRAPE_FULL_SPORT : DRAPE_FULL) : hijab.sport ? DRAPE_SPORT : DRAPE} fill={fill("hijab")} />
+            ) : (
+                renderWorn(wear, "neck", { variant: art, kind })
+            )}
 
             {/* Ceo lik: ruke vise pored tela, desna drži predmet iz prodavnice */}
             {full && fullArms(wear, kind, sleeve, skinMid, fist)}
@@ -196,11 +216,15 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
             {/* Glava (na celom liku u grupi za klimanje uz nežne reči) */}
             {nodWrap(
                 <g data-part="head">
-                    <circle cx="55" cy="122" r="13" fill={fill("skin")} />
-                    <circle cx="185" cy="122" r="13" fill={fill("skin")} />
-                    <circle cx="56" cy="122" r="6" fill={skinDark} opacity="0.7" />
-                    <circle cx="184" cy="122" r="6" fill={skinDark} opacity="0.85" />
-                    {female && (
+                    {!hijab && (
+                        <>
+                            <circle cx="55" cy="122" r="13" fill={fill("skin")} />
+                            <circle cx="185" cy="122" r="13" fill={fill("skin")} />
+                            <circle cx="56" cy="122" r="6" fill={skinDark} opacity="0.7" />
+                            <circle cx="184" cy="122" r="6" fill={skinDark} opacity="0.85" />
+                        </>
+                    )}
+                    {female && !hijab && (
                         <>
                             <circle cx="54" cy="139" r="5" fill="#FFCD4D" />
                             <circle cx="186" cy="139" r="5" fill="#FFCD4D" />
@@ -257,6 +281,17 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                     {/* Kosa sa odsjajem */}
                     {hair.front}
 
+                    {/* Hidžab: tkanina oko lica (otvor za lice), meki uvijen rub i odsjaj */}
+                    {hijab && (
+                        <>
+                            <path d={HIJAB_HOOD} fill={fill("hijab")} fillRule="evenodd" />
+                            <ellipse cx="120" cy="117" rx="57" ry="70" fill="none" stroke={shadeHex(hijab.color, 0.22)} strokeWidth="6" />
+                            <ellipse cx="120" cy="117" rx="61" ry="74" fill="none" stroke={shadeHex(hijab.color, -0.18)} strokeOpacity="0.45" strokeWidth="2" />
+                            {hijab.sport && <path d="M78 64Q120 40 162 64" stroke="#fff" strokeOpacity="0.75" strokeWidth="4" strokeLinecap="round" fill="none" />}
+                            {shine("M66 52c14-18 34-28 56-30", 0.3)}
+                        </>
+                    )}
+
                     {/* Kapa: poslednja, preko kose */}
                     {renderWorn(wear, "hat", { variant: art, kind })}
                 </g>
@@ -299,6 +334,13 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
                     <stop offset="0.45" stopColor={hairMid} />
                     <stop offset="1" stopColor={hairDark} />
                 </linearGradient>
+                {hijab && (
+                    <linearGradient id={id("hijab")} gradientUnits="userSpaceOnUse" x1="70" y1="20" x2="170" y2="280">
+                        <stop offset="0" stopColor={shadeHex(hijab.color, 0.18)} />
+                        <stop offset="0.5" stopColor={hijab.color} />
+                        <stop offset="1" stopColor={shadeHex(hijab.color, -0.16)} />
+                    </linearGradient>
+                )}
                 <linearGradient id={id("top")} gradientUnits="userSpaceOnUse" x1="60" y1="200" x2="180" y2="290">
                     <stop offset="0" stopColor={look.top[0]} />
                     <stop offset="1" stopColor={look.top[1]} />
@@ -335,6 +377,19 @@ export default function TeacherAvatar({ gender, variant = "bust", emotion: fixed
         </svg>
     );
 }
+
+// ── Hidžab ────────────────────────────────────────────────────────────────────
+
+/** Tkanina oko glave: spolja oblo (teme do y ≈ 20), unutra otvor za lice (evenodd) */
+const HIJAB_HOOD =
+    "M120 20C168 20 200 56 200 112C200 154 186 186 160 204Q120 222 80 204C54 186 40 154 40 112C40 56 72 20 120 20Z" +
+    "M120 47C88 47 63 78 63 117C63 156 88 187 120 187C152 187 177 156 177 117C177 78 152 47 120 47Z";
+/** Deo preko vrata i ramena (poprsje): omotan je duži napred, sportski kraći i obao */
+const DRAPE = "M72 172C56 196 34 214 28 250Q26 266 46 272Q120 296 194 272Q214 266 212 250C206 214 184 196 168 172Q120 196 72 172Z";
+const DRAPE_SPORT = "M74 172C58 194 38 210 34 236Q34 250 52 254Q120 272 188 254Q206 250 206 236C202 210 182 194 166 172Q120 194 74 172Z";
+/** Isto za ceo lik (uži trup) */
+const DRAPE_FULL = "M78 172C68 194 56 208 54 232Q54 250 72 256Q120 274 168 256Q186 250 186 232C184 208 172 194 162 172Q120 194 78 172Z";
+const DRAPE_FULL_SPORT = "M80 172C70 192 60 204 58 222Q58 236 74 240Q120 254 166 240Q182 236 182 222C180 204 170 192 160 172Q120 192 80 172Z";
 
 // ── Frizure ───────────────────────────────────────────────────────────────────
 // Kosa je u istom okviru kao dosadašnja (teme do y ≈ 18, strane x ≈ 36–204), pa kape iz

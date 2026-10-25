@@ -34,7 +34,8 @@ function suitTop(t: Tailor, o: { color: string; kind?: "cotton" | "fleece" | "fe
     const s = t.s;
     const main = clothMaterial({ color: o.color, kind: o.kind ?? "cotton", map: o.map });
     const off = o.offset ?? LAYER.top;
-    const neck = o.neck === "v" ? vNeck(t, 0.04) : o.neck === "high" ? () => s.neckBaseY + 0.012 : crewNeck(t);
+    // Visok okovratnik je uz hidžab običan (ispod tkanine, ne viri ispod brade)
+    const neck = o.neck === "v" ? vNeck(t, 0.04) : o.neck === "high" && !t.ctx.hijab ? () => s.neckBaseY + 0.012 : crewNeck(t);
     const extra = softFolds(t, o.folds ?? 1, 0.003);
     const hem = o.hem ?? safeHem(t, s.hipY - 0.01);
     t.torso(hem, neck, off, main, extra, 40);
@@ -55,8 +56,8 @@ export function astronaut(t: Tailor) {
     const white = "#F2F5FA";
     const panel = "#C7D0DD";
     const { off, extra } = suitTop(t, { color: white, kind: "felt", neck: "high", cuff: "#8C98AB", offset: LAYER.outer - 0.004 });
-    // Kragna — prsten za šlem
-    t.ring(s.neckBaseY + 0.014, off + 0.002, 0.008, 0.012, plastic("#AEB9C9", 0.4));
+    // Kragna — prsten za šlem (uz hidžab je ispod tkanine)
+    if (!t.ctx.hijab) t.ring(s.neckBaseY + 0.014, off + 0.002, 0.008, 0.012, plastic("#AEB9C9", 0.4));
     pants(t, { cloth: { color: white, kind: "felt" }, fit: "cargo", offset: LAYER.outer - 0.008, pockets: false, knee: panel, stitch: "#AEB9C9" });
     const grey = fabric(panel, "felt");
     // Panel na grudima i pojas

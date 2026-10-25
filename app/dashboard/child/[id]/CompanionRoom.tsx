@@ -11,6 +11,9 @@
 //  • stalne cene, bez popusta i odbrojavanja; cilj „Radim za ovo” pokazuje koliko je ostalo;
 //  • glas nikad ne kaže gde da se dodirne; veliki dodirni ciljevi, slika + reč;
 //  • Lik: drugar, koža, oči, kosa, frizura, hidžab (besplatno — identitet se ne plaća), krzno.
+//    Drugari su po grupama (deca, tinejdžeri, odrasli, nana i dedo, životinje), a likovi sa
+//    hidžabom stoje odmah pored vršnjaka; njima se biraju koža, oči, boja i kroj hidžaba.
+//    Uz hidžab prodavnica ne nudi stvari koje se uz njega ne nose (trake za kosu, minđuše…).
 // Drugar se okreće prevlačenjem i sam se vrati; uz „Manje animacija” stoji mirno.
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -43,7 +46,7 @@ import {
 import type { CompanionAction as CompanionMove } from "@/app/components/avatar/motion";
 import CompanionPicture from "@/app/components/avatar3d/CompanionPicture";
 import CompanionStage from "@/app/components/avatar3d/CompanionStage";
-import { COMPANION_KINDS, COMPANION_LABELS, isHumanKind, type CompanionKind, type ItemData, type SetData, type SkinData, type Slot, type Wear } from "@/app/components/avatar3d/data";
+import { COMPANION_GROUPS, COMPANION_LABELS, isHumanKind, type CompanionKind, type ItemData, type SetData, type SkinData, type Slot, type Wear } from "@/app/components/avatar3d/data";
 import {
     EYE_COLORS,
     HAIR_COLORS,
@@ -57,11 +60,14 @@ import {
     hasBeardOption,
     NO_HIJAB,
     SKIN_TONES,
+    alwaysHijab,
+    hasHairOption,
     hasHijabOption,
     hijabParts,
     hijabValue,
     humanLook,
     humanLookId,
+    wearsHijab,
     type ColorLookPart,
     type HumanLook,
 } from "@/app/components/avatar3d/looks";
@@ -643,7 +649,9 @@ interface ShopPanelProps {
 }
 
 function ShopPanel({ category, sub, onCategory, onSub, owned, wear, coins, goal, kind, skin, selected, onPick, onPickSet }: ShopPanelProps) {
-    const items = category === "sets" ? [] : itemsInSlot(category);
+    // Uz hidžab se ne nude stvari koje se ne nose uz njega (trake za kosu, minđuše…)
+    const hijabOn = wearsHijab(kind, skin);
+    const items = category === "sets" ? [] : itemsInSlot(category).filter((item) => !(hijabOn && item.hijab === "hide"));
     const groups = category === "sets" ? [] : subgroupsOf(category, items);
     const shown = sub ? items.filter((item) => groupOf(item) === sub) : items;
     const label = CATEGORIES.find((c) => c.id === category)?.label ?? "";
@@ -795,9 +803,14 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
               { id: "companion", label: "Drugar", Icon: UserRound },
               { id: "tone", label: "Koža", Icon: Palette },
               { id: "eyes", label: "Oči", Icon: Eye },
-              { id: "hair", label: "Kosa", Icon: Palette },
-              { id: "style", label: "Frizura", Icon: Scissors },
-              { id: "face", label: "Lice", Icon: Smile },
+              // Lik sa hidžabom: kosa je ispod hidžaba, pa se biraju samo boja i kroj hidžaba
+              ...(hasHairOption(kind as never)
+                  ? [
+                        { id: "hair" as LookTab, label: "Kosa", Icon: Palette },
+                        { id: "style" as LookTab, label: "Frizura", Icon: Scissors },
+                        { id: "face" as LookTab, label: "Lice", Icon: Smile },
+                    ]
+                  : []),
               ...(hasHijabOption(kind as never) ? [{ id: "hijab" as LookTab, label: "Hidžab", Icon: Sparkles }] : []),
           ]
         : [
@@ -826,28 +839,36 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
             }
         >
 
-            {active === "companion" && (
-                <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 xl:grid-cols-6">
-                    {COMPANION_KINDS.map((option) => {
-                        const chosen = option === kind;
-                        return (
-                            <li key={option}>
-                                <button
-                                    type="button"
-                                    onClick={() => onChoose(option)}
-                                    aria-pressed={chosen}
-                                    disabled={busy}
-                                    className={cn(TILE, tileBorder(false, chosen))}
-                                >
-                                    <CompanionPicture kind={option} skin={companionSkins[option]} variant="face" emotion="happy" className="aspect-square w-full rounded-xl bg-[#EEF0F3]" />
-                                    <span className="text-sm font-extrabold text-ink">{COMPANION_LABELS[option]}</span>
-                                    {chosen && <WornBadge />}
-                                </button>
-                            </li>
-                        );
-                    })}
-                </ul>
-            )}
+            {active === "companion" &&
+                // Ljudi po uzrastu (deca, tinejdžeri, odrasli, nana i dedo), pa životinje — uvek istim redom
+                COMPANION_GROUPS.map((group) => (
+                    <section key={group.id} aria-labelledby={`drugari-${group.id}`} className="space-y-1.5">
+                        <h3 id={`drugari-${group.id}`} className="px-1 text-sm font-extrabold text-ink-soft">
+                            {group.label}
+                        </h3>
+                        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 xl:grid-cols-6">
+                            {group.kinds.map((option) => {
+                                const chosen = option === kind;
+                                return (
+                                    <li key={option}>
+                                        <button
+                                            type="button"
+                                            onClick={() => onChoose(option)}
+                                            aria-pressed={chosen}
+                                            disabled={busy}
+                                            className={cn(TILE, tileBorder(false, chosen))}
+                                        >
+                                            <CompanionPicture kind={option} skin={companionSkins[option]} variant="face" emotion="happy" className="aspect-square w-full rounded-xl bg-[#EEF0F3]" />
+                                            {/* Ceo naziv (i dug, npr. „Tinejdžerka sa hidžabom”), u najviše tri reda */}
+                                            <span className="text-xs font-extrabold leading-tight text-ink break-words min-[400px]:text-[13px] sm:text-sm">{COMPANION_LABELS[option]}</span>
+                                            {chosen && <WornBadge />}
+                                        </button>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </section>
+                ))}
 
             {look && active === "face" && (
                 <div className="space-y-3">
@@ -891,7 +912,7 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
                     })}
                 </ul>
             )}
-            {look && active === "hijab" && <HijabPicker look={look} busy={busy} onPick={(value, label) => put({ hijab: value }, label)} />}
+            {look && active === "hijab" && <HijabPicker look={look} always={alwaysHijab(kind as never)} busy={busy} onPick={(value, label) => put({ hijab: value }, label)} />}
 
             {!human && active === "fur" && (
                 <ul className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 xl:grid-cols-6">
@@ -953,15 +974,18 @@ function SwatchGrid({ parts, chosen, busy, onPick, big = false }: { parts: reado
     );
 }
 
-function HijabPicker({ look, busy, onPick }: { look: HumanLook; busy: boolean; onPick: (value: string, label: string) => void }) {
+/** Kroj i boja hidžaba; lik sa hidžabom (`always`) nema izbor „Bez hidžaba” */
+function HijabPicker({ look, always, busy, onPick }: { look: HumanLook; always: boolean; busy: boolean; onPick: (value: string, label: string) => void }) {
     const parts = hijabParts(look.hijab);
     const style = parts?.style ?? "omotan";
     return (
         <div className="space-y-3">
             <ChipRow label="Kroj hidžaba" small>
-                <Chip small active={!parts} onClick={() => onPick(NO_HIJAB, "Bez hidžaba")}>
-                    Bez hidžaba
-                </Chip>
+                {!always && (
+                    <Chip small active={!parts} onClick={() => onPick(NO_HIJAB, "Bez hidžaba")}>
+                        Bez hidžaba
+                    </Chip>
+                )}
                 {HIJAB_STYLES.map((s) => (
                     <Chip key={s.id} small active={parts?.style === s.id} onClick={() => onPick(hijabValue(parts?.color ?? HIJAB_COLORS[0].id, s.id as "omotan" | "sportski"), s.label)}>
                         {s.label.replace(" hidžab", "")}

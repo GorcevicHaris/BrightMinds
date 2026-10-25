@@ -1,4 +1,5 @@
-// Ljudski drugari (devojčica, dečak, učiteljica, učitelj, tinejdžeri, nana, dedo) po ugovoru: telo, glava sa licem,
+// Ljudski drugari (devojčica, dečak, učiteljica, učitelj, tinejdžeri, nana, dedo i likovi sa
+// hidžabom: devojčica, tinejdžerka, mama) po ugovoru: telo, glava sa licem,
 // kosa i hidžab iz izgleda (looks.ts, uvek besplatno), sidra za predmete. Odeću (i osnovnu
 // odeću kad mesto ostane prazno) dodaje Figure (figure.ts).
 
@@ -6,11 +7,11 @@ import * as THREE from "three";
 import type { HairStyle } from "../catalog";
 import { registerCompanion, type Anchors, type CompanionBuilder, type FigureBody, type FigureContext, type HeadSurface } from "../contract";
 import { HUMAN_KINDS, type HumanKind } from "../data";
-import { EYE_COLORS, HAIR_COLORS, HIJAB_COLORS, NO_BEARD, SKIN_TONES, hairShape, hasBeardOption, hijabParts, humanLook, partHex, type HumanLook } from "../looks";
+import { EYE_COLORS, HAIR_COLORS, HIJAB_COLORS, HUMAN_DEFAULT, NO_BEARD, SKIN_TONES, alwaysHijab, hairShape, hasBeardOption, hijabParts, humanLook, partHex, type HumanLook } from "../looks";
 import { buildBody } from "./body";
 import { buildBeard, buildHair, hairCrown, type BeardStyle } from "./hair";
 import { buildHead, EAR_U, EAR_V, headInfo, type HeadInfo } from "./head";
-import { buildHijab, HIJAB_THICKNESS } from "./hijab";
+import { buildHijab, hijabOuter, hijabThickness, HIJAB_THICKNESS } from "./hijab";
 import { Kit } from "./kit";
 import { withDetail } from "./detail";
 import { disposeObject, skinMaterial } from "./materials";
@@ -25,6 +26,8 @@ export interface HumanBody extends FigureBody {
     setHeadwear: (underHat: boolean) => number;
     /** Hidžab je deo izgleda: boja (hex) ili null */
     hijab: string | null;
+    /** Deo hidžaba preko ramena se ponovo kroji po odeći ispod (majica, duks, jakna) */
+    fitHijab: (outfit: string | undefined) => void;
 }
 
 const HAIR_STYLE: Record<string, HairStyle | null> = {
@@ -55,13 +58,14 @@ const HAIR_STYLE: Record<string, HairStyle | null> = {
     none: null,
 };
 
-/** Površina glave za predmete (u koordinatama kosti glave), po želji naduvana za hidžab */
-function headSurface(info: HeadInfo, inflate: number): HeadSurface {
-    if (inflate <= 0) return { center: info.center.clone(), point: info.point, normal: info.normal };
+/** Površina glave za predmete (u koordinatama kosti glave); uz hidžab je uvećana tačno za tkaninu */
+function headSurface(info: HeadInfo, hijab: boolean): HeadSurface {
+    if (!hijab) return { center: info.center.clone(), point: info.point, normal: info.normal };
     const n = new THREE.Vector3();
     return {
         center: info.center.clone(),
-        point: (u, v, out = new THREE.Vector3()) => info.point(u, v, out).addScaledVector(info.normal(u, v, n), inflate),
+        // + 1,5 mm da kapa ne dodiruje tkaninu
+        point: (u, v, out = new THREE.Vector3()) => info.point(u, v, out).addScaledVector(info.normal(u, v, n), hijabThickness(info.shape, u, v) + 0.0015),
         normal: info.normal,
     };
 }
@@ -152,7 +156,8 @@ function buildHumanAt(kind: HumanKind, look: HumanLook, ctx: FigureContext): Hum
     root.add(rig.root);
     const tone = partHex(SKIN_TONES, look.tone);
     const hairHex = partHex(HAIR_COLORS, look.hair);
-    const hijab = hijabParts(look.hijab);
+    // Lik sa hidžabom ga nosi uvek (i kad izgled stigne bez njega)
+    const hijab = hijabParts(look.hijab) ?? (alwaysHijab(kind) ? hijabParts(HUMAN_DEFAULT[kind].hijab) : null);
     const hijabHex = hijab ? partHex(HIJAB_COLORS, hijab.color) : null;
 
     const meshes = buildBody(rig, skinMaterial(tone), { feet: true, torsoSkin: skinMaterial(tone, true) });
@@ -164,12 +169,27 @@ function buildHumanAt(kind: HumanKind, look: HumanLook, ctx: FigureContext): Hum
     // Brada i brkovi (učitelj, dedo) su deo lica: idu uz glavu i ispod kape
     if (look.beard && look.beard !== NO_BEARD && hasBeardOption(kind)) face.group.add(buildBeard(info, hairHex, tone, look.beard as BeardStyle));
 
-    // Hidžab: deo tela (izgled), ne predmet; uši i kosa se ispod njega ne crtaju
+    // Hidžab: deo tela (izgled), ne predmet; uši i kosa se ispod njega ne crtaju. Deo preko
+    // ramena se kroji po odeći ispod, pa se ponovo pravi kad se odeća promeni
     const hijabObjects: THREE.Object3D[] = [];
+    let hijabFit = -1;
+    const fitHijab = (outfit: string | undefined) => {
+        const outer = hijabOuter(outfit);
+        if (!hijabHex || Math.abs(outer - hijabFit) < 1e-5) return;
+        for (const object of hijabObjects) {
+            object.removeFromParent();
+            disposeObject(object);
+        }
+        hijabObjects.length = 0;
+        withDetail(ctx.quality === "low" ? 0.6 : 1, () => {
+            const kit = new Kit({ rig, root });
+            buildHijab(kit, info, hijabHex, hijab?.style === "sportski" ? "sport" : "classic", outer);
+            hijabObjects.push(...kit.objects);
+        });
+        hijabFit = outer;
+    };
     if (hijabHex) {
-        const kit = new Kit({ rig, root });
-        buildHijab(kit, info, hijabHex, hijab?.style === "sportski" ? "sport" : "classic");
-        hijabObjects.push(...kit.objects);
+        fitHijab(undefined);
         face.ears.forEach((ear) => (ear.visible = false));
     }
 
@@ -186,7 +206,8 @@ function buildHumanAt(kind: HumanKind, look: HumanLook, ctx: FigureContext): Hum
 
     const setHeadwear = (hat: boolean): number => withDetail(ctx.quality === "low" ? 0.6 : 1, () => headwear(hat));
     const headwear = (hat: boolean): number => {
-        if (hijabHex) return HIJAB_THICKNESS;
+        // Kapa sedi na hidžabu: površina glave za predmete je već uvećana za tkaninu
+        if (hijabHex) return 0;
         if (!style) return 0;
         if (underHat !== hat) {
             for (const object of hair) {
@@ -208,7 +229,7 @@ function buildHumanAt(kind: HumanKind, look: HumanLook, ctx: FigureContext): Hum
         shape,
         rig,
         anchors: humanAnchors(rig, info, Boolean(hijabHex)),
-        head: headSurface(info, hijabHex ? HIJAB_THICKNESS : 0),
+        head: headSurface(info, Boolean(hijabHex)),
         root,
         tone,
         parts,
@@ -216,6 +237,7 @@ function buildHumanAt(kind: HumanKind, look: HumanLook, ctx: FigureContext): Hum
         look,
         headInfo: info,
         hijab: hijabHex,
+        fitHijab,
         setHeadwear,
         dispose: () => {
             face.dispose();

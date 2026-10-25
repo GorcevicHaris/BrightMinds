@@ -63,6 +63,10 @@ const BASE_ITEMS: Record<string, Partial<Record<"outfit" | "bottom" | "feet", st
     teenboy: { outfit: "crna-majica", bottom: "tamne-farmerke", feet: "crno-bele-patike" },
     grandma: { outfit: "beli-kardigan", bottom: "duga-suknja", feet: "mokasine" },
     grandpa: { outfit: "kosulja-prsluk", bottom: "bez-pantalone", feet: "mokasine" },
+    // Sa hidžabom: dugi rukavi i duge nogavice ili suknja (skromno, uz hidžab)
+    hijabgirl: { outfit: "lila-majica-dugi-rukav", bottom: "farmerke", feet: "bele-patike" },
+    hijabteen: { outfit: "dzemper-pletenica", bottom: "siroke-farmerke", feet: "bele-patike" },
+    hijabwoman: { outfit: "zeleni-kardigan", bottom: "duga-teget-suknja", feet: "krem-patike" },
 };
 
 /** Osnovna odeća čoveka (prototip motora) kad je mesto prazno — lik nikad nije neobučen */
@@ -75,9 +79,17 @@ const BASE: Record<string, Partial<Record<"outfit" | "bottom" | "feet", [string,
     teenboy: { outfit: ["majica", 1], bottom: ["farmerke", 0], feet: ["patike", 0] },
     grandma: { outfit: ["dzemper", 1], bottom: ["farmerke", 2], feet: ["patike", 0] },
     grandpa: { outfit: ["kosulja", 1], bottom: ["farmerke", 0], feet: ["patike", 3] },
+    hijabgirl: { outfit: ["majica-dugi-rukav", 1], bottom: ["farmerke", 0], feet: ["patike", 2] },
+    hijabteen: { outfit: ["dzemper", 1], bottom: ["farmerke", 2], feet: ["patike", 0] },
+    hijabwoman: { outfit: ["dzemper", 1], bottom: ["farmerke", 2], feet: ["patike", 0] },
 };
 
 const PROTO = new Map<string, Item3D>(ITEMS_3D.map((item) => [item.id, item]));
+
+/** Predmet se ne nosi uz hidžab (katalog: `hijab: "hide"`, ili 3D crtež: `withHijab: "hide"`) */
+export function hiddenByHijab(id: string): boolean {
+    return getItem(id)?.hijab === "hide" || itemBuilder(id)?.builder.withHijab === "hide";
+}
 
 /** Kontekst predmeta za jedno telo (izvozi se i za probne stranice kataloga) */
 export function makeItemContext(body: FigureBody, wear: Wear, extras: { hairCrown: number; quality: "high" | "low"; hijab: string | null }): { ctx: ItemContext; objects: THREE.Object3D[] } {
@@ -216,12 +228,14 @@ export class Figure {
         const hidden = this.hiddenSlots(wear);
         // Kosa pod kapom: kapa koja se crta spušta kosu
         const hatId = wear.hat && !hidden.has("hat") && itemBuilder(wear.hat) ? wear.hat : undefined;
-        if (human) this.hairCrown = human.setHeadwear(Boolean(hatId) && !(human.hijab && itemBuilder(hatId!)?.builder.withHijab === "hide"));
+        // Hidžab se kroji po odeći ispod (prazno mesto: osnovna odeća)
+        if (human?.hijab) human.fitHijab(hidden.has("outfit") ? undefined : (wear.outfit && itemBuilder(wear.outfit) ? wear.outfit : BASE_ITEMS[body.kind]?.outfit));
+        if (human) this.hairCrown = human.setHeadwear(Boolean(hatId) && !(human.hijab && hiddenByHijab(hatId!)));
 
         for (const slot of DRESS_ORDER) {
             const id = wear[slot];
             const entry = id ? itemBuilder(id) : undefined;
-            const skip = !id || !entry || entry.slot !== slot || hidden.has(slot) || (human?.hijab && entry.builder.withHijab === "hide");
+            const skip = !id || !entry || entry.slot !== slot || hidden.has(slot) || (human?.hijab && hiddenByHijab(id));
             const current = this.worn.get(slot);
             if (skip) {
                 // Osnovna odeća ostaje dok je mesto prazno i nije skriveno (dodaje se ispod)

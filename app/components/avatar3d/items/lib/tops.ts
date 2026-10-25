@@ -182,7 +182,8 @@ export function hoodie(t: Tailor, o: HoodieOptions) {
         t.sleeve(side, 0, 0.9, off - 0.002, fleece, baggy);
         t.armRing(side, 0.92, off - 0.004, 0.0062, 0.017, rib);
     }
-    hoodRing(t, neck, off, fleece);
+    // Spuštena kapuljača je ispod hidžaba (ne viri kroz tkaninu preko ramena)
+    if (!t.ctx.hijab) hoodRing(t, neck, off, fleece);
     if (o.pocket !== false) {
         // Kengur-džep: meko ispupčenje sa kosim otvorima i porubljenim ivicama
         const top = s.waistY;
@@ -480,16 +481,19 @@ export function puffer(t: Tailor, o: PufferOptions) {
     const hem = safeHem(t, s.hipY - 0.035);
     const neckY = s.neckBaseY + 0.008;
     t.torso(hem, neckY, off, shell, quilt, 50, 56);
-    // Visoka kragna (stoji uz vrat)
-    t.torso(neckY - 0.004, neckY + 0.03 * Math.min(1.3, s.height / 1.19), off - 0.006, shell, () => 0.004, 8, 48);
-    t.ring(neckY + 0.03 * Math.min(1.3, s.height / 1.19), off - 0.002, 0.004, 0.005, shell);
+    // Visoka kragna (stoji uz vrat); uz hidžab je kragna ispod tkanine, pa se ne diže uz vrat
+    const collarH = t.ctx.hijab ? 0 : 0.03 * Math.min(1.3, s.height / 1.19);
+    if (collarH > 0) {
+        t.torso(neckY - 0.004, neckY + collarH, off - 0.006, shell, () => 0.004, 8, 48);
+        t.ring(neckY + collarH, off - 0.002, 0.004, 0.005, shell);
+    }
     t.ring(hem, off + 0.006, 0.006, 0.01, fabric(o.trim ?? darker(o.body.color, 0.2), "rib"));
     for (const side of SIDES) {
         const puffArm: LimbExtra = (tt) => 0.006 + 0.007 * Math.pow(Math.abs(Math.sin(tt * Math.PI * 4.5)), 0.6) * smoothstep(0, 0.1, tt) * (1 - smoothstep(0.85, 0.92, tt));
         t.sleeve(side, 0, 0.9, off - 0.006, shell, puffArm, 32);
         t.armRing(side, 0.91, off - 0.008, 0.006, 0.016, fabric(o.trim ?? darker(o.body.color, 0.2), "rib"));
     }
-    t.zipper(hem + 0.01, neckY + 0.025, off + quilt(0, s.chestY) + 0.002, fabric(darker(o.body.color, 0.25), "cotton"), metal("#C9CCD3"), quilt);
+    t.zipper(hem + 0.01, collarH > 0 ? neckY + collarH - 0.005 : s.shoulderY - 0.03, off + quilt(0, s.chestY) + 0.002, fabric(darker(o.body.color, 0.25), "cotton"), metal("#C9CCD3"), quilt);
     // Džepovi sa poklopcem
     for (const side of SIDES) t.patch(side * 0.6, side * 1.0, s.waistY - 0.03, s.waistY - 0.005, off + 0.012, shell, { puff: 0.002, soft: 0.15, nu: 8, nv: 4 });
 }
@@ -627,15 +631,16 @@ export function pufferVest(t: Tailor, o: { body: Cloth; under: Cloth; longSleeve
     // Bez rukava: ljuska se sužava oko ramena (otvor za ruku)
     const armhole: TorsoExtra = (a, y) => quilt(a, y) - 0.014 * Math.pow(Math.abs(Math.sin(a)), 8) * smoothstep(s.chestY - 0.01, s.shoulderY - 0.02, y);
     t.torso(hem, neckY, off, shell, armhole, 44, 52);
-    const collarH = 0.034 * Math.min(1.3, s.height / 1.19);
-    t.torso(neckY - 0.006, neckY + collarH, off - 0.008, shell, (a, y) => 0.008 + 0.004 * Math.sin(Math.PI * (y - neckY + 0.006) / (collarH + 0.006)), 10, 48);
-    t.ring(neckY + collarH, off - 0.0, 0.004, 0.005, shell);
+    // Uz hidžab kragna ne stoji uz vrat (ispod je tkanine)
+    const collarH = t.ctx.hijab ? 0 : 0.034 * Math.min(1.3, s.height / 1.19);
+    if (collarH > 0) t.torso(neckY - 0.006, neckY + collarH, off - 0.008, shell, (a, y) => 0.008 + 0.004 * Math.sin(Math.PI * (y - neckY + 0.006) / (collarH + 0.006)), 10, 48);
+    if (collarH > 0) t.ring(neckY + collarH, off - 0.0, 0.004, 0.005, shell);
     t.ring(hem, off + 0.006, 0.006, 0.01, fabric(darker(o.body.color, 0.08), "rib"));
     for (const side of SIDES) {
         t.sleeve(side, 0, 0.05, off - 0.008, shell, () => 0.008);
         t.armRing(side, 0.05, off - 0.004, 0.006, 0.01, fabric(darker(o.body.color, 0.08), "rib"));
     }
-    t.zipper(hem + 0.01, neckY + collarH - 0.003, off + quilt(0, s.chestY) + 0.002, fabric(darker(o.body.color, 0.2), "cotton"), metal("#C9CCD3"), quilt);
+    t.zipper(hem + 0.01, collarH > 0 ? neckY + collarH - 0.003 : s.shoulderY - 0.03, off + quilt(0, s.chestY) + 0.002, fabric(darker(o.body.color, 0.2), "cotton"), metal("#C9CCD3"), quilt);
     // Šavovi kanala (prošiveni)
     const seam = fabric(darker(o.body.color, 0.12), "cotton");
     for (let i = 1; i < 5; i++) {

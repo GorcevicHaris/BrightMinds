@@ -315,3 +315,23 @@ describe("companion actions", () => {
         assert.equal(parseCompanionAction("buy"), null);
     });
 });
+
+describe("companion kinds (real catalog)", () => {
+    it("accepts every companion on the list, including the girl, teen and mom with a hijab", async () => {
+        const { COMPANION_CATALOG } = await import("@/app/components/avatar3d/manifest");
+        const { COMPANION_KINDS } = await import("@/lib/companion");
+        for (const kind of ["hijabgirl", "hijabteen", "hijabwoman"]) assert.ok((COMPANION_KINDS as readonly string[]).includes(kind), kind);
+        for (const kind of COMPANION_KINDS) {
+            assert.equal(sanitizeCompanion({ kind }, "female", COMPANION_CATALOG).kind, kind);
+            const chosen = applyCompanionAction(defaultCompanion("female"), { action: "choose", kind }, 0, COMPANION_CATALOG);
+            assert.ok(chosen.ok && chosen.state.kind === kind, kind);
+        }
+        // Lik sa hidžabom: besplatan izgled sa hidžabom se čuva, izgled bez hidžaba se odbacuje
+        const state = sanitizeCompanion(
+            { kind: "hijabgirl", skin: { hijabgirl: "kakao.zelene.tamnosmedja.pundja.teget-sportski", hijabteen: "medena.lesnik.tamnosmedja.pundja.nema" } },
+            "female",
+            COMPANION_CATALOG
+        );
+        assert.deepEqual(state.skin, { hijabgirl: "kakao.zelene.tamnosmedja.pundja.teget-sportski" });
+    });
+});

@@ -4,7 +4,7 @@
 
 import * as THREE from "three";
 import { BONES, type BodyShape, type BoneName, type ExtraBoneName, type Joints, type Rig } from "../contract";
-import { HUMAN_TRAITS, type HumanKind } from "../data";
+import { HIJAB_BODY, HUMAN_TRAITS, isHijabKind, type HumanKind } from "../data";
 import { profile, smoothstep, type BoneWeights } from "./surface";
 
 export { BONES, type BodyShape, type BoneName, type Joints, type Rig } from "../contract";
@@ -234,6 +234,8 @@ export function bodyShape(kind: HumanKind): BodyShape {
 }
 
 function makeShape(kind: HumanKind): BodyShape {
+    // Lik sa hidžabom ima telo svog vršnjaka (devojčica, tinejdžerka, učiteljica), pod svojim imenom
+    if (isHijabKind(kind)) return { ...bodyShape(HIJAB_BODY[kind]), kind };
     switch (kind) {
         case "girl":
         case "boy":

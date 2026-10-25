@@ -7,6 +7,8 @@ import AnimalAvatar from "./AnimalAvatar";
 import { isCompanionKind, type CompanionKind } from "./companions";
 import type { CompanionAction } from "./motion";
 import TeacherAvatar from "./TeacherAvatar";
+import { HIJAB_COLORS, SKIN_TONES, hijabParts, humanLook as humanLook3D, partHex } from "@/app/components/avatar3d/looks";
+import { isHumanKind as isHumanKind3D } from "@/app/components/avatar3d/data";
 import type { Wear } from "./wearables";
 
 export { COMPANIONS, isCompanionKind, type CompanionKind } from "./companions";
@@ -17,8 +19,11 @@ export { COMPANION_ACTIONS, type CompanionAction } from "./motion";
  * (kad WebGL ne radi) crtaju kao najsličniji: devojčica → učiteljica, dečak → učitelj…
  */
 const FALLBACK_2D: Record<string, CompanionKind> = { girl: "woman", boy: "man", fox: "cat", lion: "bear", penguin: "bear", unicorn: "bunny" };
-/** Porodica (tinejdžeri, nana, dedo) u 2D: učiteljica ili učitelj */
-const FAMILY_FALLBACK_2D: Record<string, CompanionKind> = { teengirl: "woman", teenboy: "man", grandma: "woman", grandpa: "man" };
+/** Porodica (tinejdžeri, nana, dedo) i likovi sa hidžabom u 2D: učiteljica ili učitelj */
+const FAMILY_FALLBACK_2D: Record<string, CompanionKind> = {
+    teengirl: "woman", teenboy: "man", grandma: "woman", grandpa: "man",
+    hijabgirl: "woman", hijabteen: "woman", hijabwoman: "woman",
+};
 
 export function companion2DKind(kind: string): CompanionKind {
     return FALLBACK_2D[kind] ?? FAMILY_FALLBACK_2D[kind] ?? (isCompanionKind(kind) ? kind : "woman");
@@ -66,7 +71,13 @@ export default function Companion({ kind: anyKind, variant = "bust", emotion, we
     // Izgled druge vrste (npr. lisice) ne važi za 2D zamenu (mačku) — tada dosadašnji crtež
     const skin = kind === anyKind ? skin2D(anySkin) : undefined;
     if (kind === "woman" || kind === "man") {
-        return <TeacherAvatar gender={kind === "woman" ? "female" : "male"} variant={variant} emotion={emotion} wear={wear} skin={skin} {...motion} className={className} />;
+        // Hidžab iz 3D izgleda (lik sa hidžabom ili ženski lik koji ga nosi) crta se i u 2D,
+        // sa bojom kože iz 3D izgleda
+        const look3D = isHumanKind3D(anyKind) ? humanLook3D(anyKind, anySkin) : null;
+        const parts = look3D ? hijabParts(look3D.hijab) : null;
+        const hijab = parts ? { color: partHex(HIJAB_COLORS, parts.color), sport: parts.style === "sportski" } : undefined;
+        const toneHex = hijab && look3D ? partHex(SKIN_TONES, look3D.tone) : undefined;
+        return <TeacherAvatar gender={kind === "woman" ? "female" : "male"} variant={variant} emotion={emotion} wear={wear} skin={skin} hijab={hijab} toneHex={toneHex} {...motion} className={className} />;
     }
     return <AnimalAvatar kind={kind} variant={variant} emotion={emotion} wear={wear} skin={skin} {...motion} className={className} />;
 }

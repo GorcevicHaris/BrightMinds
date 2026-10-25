@@ -37,8 +37,26 @@ export type CompanionKind = CompanionKindId;
 export const FAMILY_KINDS = ["teengirl", "teenboy", "grandma", "grandpa"] as const;
 export type FamilyKind = (typeof FAMILY_KINDS)[number];
 
-export const HUMAN_KINDS = ["girl", "boy", "woman", "man", ...FAMILY_KINDS] as const;
+/**
+ * Likovi sa hidžabom: devojčica, tinejdžerka i mama. Hidžab im je deo lika (uvek ga nose, bira
+ * se samo boja i kroj), a telo je isto kao kod devojčice, tinejdžerke i učiteljice.
+ */
+export const HIJAB_KINDS = ["hijabgirl", "hijabteen", "hijabwoman"] as const;
+export type HijabKind = (typeof HIJAB_KINDS)[number];
+
+export const HUMAN_KINDS = ["girl", "boy", "woman", "man", ...FAMILY_KINDS, ...HIJAB_KINDS] as const;
 export type HumanKind = (typeof HUMAN_KINDS)[number];
+
+/** Telo lika sa hidžabom (mere, lice, osnovna odeća) */
+export const HIJAB_BODY: Record<HijabKind, "girl" | "teengirl" | "woman"> = {
+    hijabgirl: "girl",
+    hijabteen: "teengirl",
+    hijabwoman: "woman",
+};
+
+export function isHijabKind(kind: string): kind is HijabKind {
+    return (HIJAB_KINDS as readonly string[]).includes(kind);
+}
 
 /** Uzrast lika: lice (oči, nos, obrazi), građa i ponuda frizura zavise od njega */
 export type HumanAge = "child" | "teen" | "adult" | "senior";
@@ -53,6 +71,9 @@ export const HUMAN_TRAITS: Record<HumanKind, { female: boolean; age: HumanAge }>
     teenboy: { female: false, age: "teen" },
     grandma: { female: true, age: "senior" },
     grandpa: { female: false, age: "senior" },
+    hijabgirl: { female: true, age: "child" },
+    hijabteen: { female: true, age: "teen" },
+    hijabwoman: { female: true, age: "adult" },
 };
 
 /** Osnovne životinje (animals/<vrsta>.ts, izgledi u animals/skins.data.ts) */
@@ -103,6 +124,10 @@ export const COMPANION_LABELS: Record<CompanionKind, string> = {
     teenboy: "Tinejdžer",
     grandma: "Nana",
     grandpa: "Dedo",
+    // ── Ljudi sa hidžabom ──
+    hijabgirl: "Devojčica sa hidžabom",
+    hijabteen: "Tinejdžerka sa hidžabom",
+    hijabwoman: "Mama sa hidžabom",
     // ── Životinje ──
     cat: "Mačka",
     dog: "Pas",
@@ -158,6 +183,19 @@ export const COMPANION_LABELS: Record<CompanionKind, string> = {
     // ── kraj: još životinja ──
 };
 
+/**
+ * Grupe na spisku drugara (Lik → Drugar): deca, tinejdžeri, odrasli, nana i dedo, pa životinje.
+ * Lik sa hidžabom stoji odmah pored svog vršnjaka (ne na kraju spiska). Životinje su svi ostali
+ * drugari redom kao u COMPANION_KINDS (nove životinje se same pojave na kraju).
+ */
+export const COMPANION_GROUPS: readonly { id: string; label: string; kinds: readonly CompanionKind[] }[] = [
+    { id: "deca", label: "Deca", kinds: ["girl", "hijabgirl", "boy"] },
+    { id: "tinejdzeri", label: "Tinejdžeri", kinds: ["teengirl", "hijabteen", "teenboy"] },
+    { id: "odrasli", label: "Odrasli", kinds: ["woman", "hijabwoman", "man"] },
+    { id: "stariji", label: "Nana i dedo", kinds: ["grandma", "grandpa"] },
+    { id: "zivotinje", label: "Životinje", kinds: COMPANION_KINDS.filter((kind) => !isHumanKind(kind)) },
+];
+
 /** Proporcije tela: kroj odeće i kadar kamere zavise od njih */
 export type Proportion = "child" | "adult" | "animal";
 
@@ -177,6 +215,11 @@ export interface ItemData {
      * ne menja): haljina i kostim do članaka → ["bottom"]; kombinezon astronauta → ["bottom"].
      */
     hides?: readonly Slot[];
+    /**
+     * "hide": ne nosi se uz hidžab — ne crta se na liku u hidžabu i prodavnica ga takvom liku
+     * ne nudi (šnale i trake za kosu, minđuše, mašne i marame oko vrata koje hidžab pokriva).
+     */
+    hijab?: "hide";
     /**
      * Podvrsta za filter u prodavnici (jedan čip = samo ta vrsta), npr. obuća: "patike",
      * "cizme", "sandale", "papuce"; odeća: "majice", "duksevi", "haljine", "kostimi". Id-jevi

@@ -1,5 +1,7 @@
 // Izgled čoveka (devojčica, dečak, učiteljica, učitelj, tinejdžerka, tinejdžer, nana, dedo):
 // boja kože, boja očiju, boja kose, frizura, hidžab, pegice i brada/brkovi (učitelj, dedo).
+// Devojčica, tinejdžerka i mama sa hidžabom: boja kože, boja očiju, boja i kroj hidžaba (kosa je
+// ispod hidžaba, pa se boja kose i frizura ne biraju; hidžab je uvek tu).
 // Sve je UVEK besplatno — identitet se ne plaća (i vesele boje kose su besplatne).
 // Čisti podaci, bez three.js: uvozi ga i server (provera izbora).
 //
@@ -11,7 +13,7 @@
 // Stari 2D zapis od tri dela `<koža>.<kosa>.<frizura>` i dalje važi (oči smeđe, bez hidžaba),
 // pa izgled koji je dete ranije izabralo ostaje isti.
 
-import { HUMAN_TRAITS, isHumanKind, type HumanKind } from "./data";
+import { HUMAN_TRAITS, isHijabKind, isHumanKind, type HumanKind } from "./data";
 
 export interface LookPart {
     id: string;
@@ -167,6 +169,10 @@ export const HAIRSTYLES: Record<HumanKind, readonly HairStylePart[]> = {
     grandpa: [
         STYLE.proredjena, STYLE.kratka, STYLE.zacesljana, STYLE["razdeljak-strana"], STYLE.osisana, STYLE["bez-kose"], STYLE.kovrdzava, STYLE.talasasta,
     ],
+    // Likovi sa hidžabom: kosa je skupljena u punđu ispod hidžaba (ne crta se i ne bira se)
+    hijabgirl: [STYLE.pundja],
+    hijabteen: [STYLE.pundja],
+    hijabwoman: [STYLE.pundja],
 };
 
 /** Bez hidžaba */
@@ -206,6 +212,16 @@ export function hijabValue(color: string, style: "omotan" | "sportski"): string 
 
 export function hasHijabOption(kind: HumanKind): boolean {
     return HUMAN_TRAITS[kind].female;
+}
+
+/** Lik sa hidžabom (devojčica, tinejdžerka, mama): hidžab je uvek tu, bira se boja i kroj */
+export function alwaysHijab(kind: HumanKind): boolean {
+    return isHijabKind(kind);
+}
+
+/** Lik ima izbor boje kose i frizure (likovi sa hidžabom nemaju — kosa je ispod hidžaba) */
+export function hasHairOption(kind: HumanKind): boolean {
+    return !isHijabKind(kind);
 }
 
 /** Pegice (besplatno): bez, malo, više; „bez” je podrazumevano i ne piše se u id */
@@ -254,6 +270,10 @@ export const HUMAN_DEFAULT: Record<HumanKind, HumanLook> = {
     teenboy: { tone: "karamel", eye: "smedje", hair: "crna", style: "fejd", hijab: NO_HIJAB },
     grandma: { tone: "svetla", eye: "plave", hair: "seda", style: "pundja", hijab: NO_HIJAB },
     grandpa: { tone: "psenicna", eye: "smedje", hair: "bela", style: "proredjena", hijab: NO_HIJAB, beard: "brkovi" },
+    // Sa hidžabom: kosa (tamnosmeđa) daje samo boju obrva
+    hijabgirl: { tone: "psenicna", eye: "smedje", hair: "tamnosmedja", style: "pundja", hijab: "roze" },
+    hijabteen: { tone: "medena", eye: "lesnik", hair: "tamnosmedja", style: "pundja", hijab: "ljubicasta" },
+    hijabwoman: { tone: "svetla", eye: "tamne", hair: "tamnosmedja", style: "pundja", hijab: "krem" },
 };
 
 export function humanLookId(look: HumanLook): string {
@@ -286,6 +306,8 @@ export function parseHumanLook(kind: HumanKind, id: string): HumanLook | undefin
     if (!known(SKIN_TONES, look.tone) || !known(EYE_COLORS, look.eye) || !known(HAIR_COLORS, look.hair)) return undefined;
     if (!known(HAIRSTYLES[kind], look.style)) return undefined;
     if (look.hijab !== NO_HIJAB && (!hasHijabOption(kind) || !hijabParts(look.hijab))) return undefined;
+    // Lik sa hidžabom uvek nosi hidžab
+    if (look.hijab === NO_HIJAB && alwaysHijab(kind)) return undefined;
     return look;
 }
 
@@ -300,6 +322,11 @@ export function hairShape(kind: HumanKind, style: string): HairShape {
 
 export function partHex(list: readonly ColorLookPart[], id: string): string {
     return (list.find((part) => part.id === id) ?? list[0]).hex;
+}
+
+/** Drugar trenutno nosi hidžab (lik sa hidžabom, ili ženski lik koji ga je izabrao) */
+export function wearsHijab(kind: string, skin: string | undefined): boolean {
+    return isHumanKind(kind) && humanLook(kind, skin).hijab !== NO_HIJAB;
 }
 
 /** Izgled za 3D motor: čovek dobija delove izgleda, životinja id krzna (nepoznat → prvi) */
