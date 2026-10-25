@@ -435,7 +435,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                                         className={cn(
                                             "block h-20 w-20 shrink-0 rounded-2xl p-1 short:h-[4.5rem] short:w-[4.5rem] sm:h-28 sm:w-28",
                                             many ? "short:sm:h-16 short:sm:w-16" : "short:sm:h-24 short:sm:w-24",
-                                            "flat:h-[clamp(2.75rem,12dvh,5rem)] flat:w-[clamp(2.75rem,12dvh,5rem)] flat:sm:h-[clamp(2.75rem,12dvh,5rem)] flat:sm:w-[clamp(2.75rem,12dvh,5rem)]",
+                                            "flat:h-[clamp(2.75rem,11dvh,5rem)] flat:w-[clamp(2.75rem,11dvh,5rem)] flat:sm:h-[clamp(2.75rem,11dvh,5rem)] flat:sm:w-[clamp(2.75rem,11dvh,5rem)]",
                                             EMOTION_TINT[id]
                                         )}
                                     >

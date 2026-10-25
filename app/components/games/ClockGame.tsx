@@ -620,9 +620,9 @@ function TimeBoard({ view, calm, disabled, onPick, onSet }: TimeBoardProps) {
                                 disabled={disabled || (state !== "idle" && state !== "hint")}
                                 onClick={() => onPick(key)}
                                 aria-label={`${timePhrase({ h: hour, m: 0 })}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
-                                className="animate-pop min-h-0 p-1.5 sm:p-2"
+                                className="animate-pop min-h-0 p-1.5 sm:p-2 flat:sm:p-1"
                             >
-                                <ClockPieceSvg value={hour} className="pointer-events-none h-[clamp(3.5rem,11dvh,6rem)] w-[clamp(3.5rem,11dvh,6rem)] flat:h-[clamp(2.75rem,9dvh,5rem)] flat:w-[clamp(2.75rem,9dvh,5rem)]" />
+                                <ClockPieceSvg value={hour} className="pointer-events-none h-[clamp(3.5rem,11dvh,6rem)] w-[clamp(3.5rem,11dvh,6rem)] flat:h-[clamp(2.75rem,8dvh,5rem)] flat:w-[clamp(2.75rem,8dvh,5rem)]" />
                             </ChoiceCard>
                         );
                     })}
