@@ -254,7 +254,7 @@ const SHORT = {
     hide: "flat:hidden!",
     swatch: "flat:h-12!",
     tool: "flat:min-h-12 flat:flex-row flat:gap-2",
-    art: "[@media(max-height:30rem)]:max-h-[calc(100dvh-12.25rem)]! [@media(orientation:landscape)_and_(min-height:30.01rem)_and_(max-height:37.5rem)]:max-h-[calc(100dvh-17rem)]!",
+    art: "[@media(max-height:30rem)]:max-h-[calc(100dvh-13.25rem)]! [@media(orientation:landscape)_and_(min-height:30.01rem)_and_(max-height:37.5rem)]:max-h-[calc(100dvh-17rem)]!",
 };
 
 // ── Pokazivanje ───────────────────────────────────────────────────────────────

@@ -439,7 +439,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     </span>
                 )}
                 <div className="min-w-0 flex-1">
-                    <p className={cn("text-sm font-extrabold sm:text-base", ACCENT.text)}>{MODEL_LABEL}</p>
+                    <p className={cn("text-sm font-extrabold sm:text-base [@media(max-height:30rem)]:sr-only", ACCENT.text)}>{MODEL_LABEL}</p>
                     <p className={cn("font-bold leading-snug text-ink sm:text-xl flat:text-[0.95rem] flat:sm:text-[0.95rem]", shown.optionsShown ? "text-base" : "text-lg")}>
                         {genderText(situation.model, female)}
                     </p>

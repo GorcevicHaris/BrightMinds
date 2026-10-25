@@ -420,7 +420,7 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                     aria-label={look ? "Polica sa stvarima" : "Polica"}
                     className={cn(
                         // Položen telefon: manje zaglavlja iznad police, a mesto sme da bude i manje (najmanje 48 px)
-                        "shrink-0 rounded-2xl border-4 border-amber-800 bg-amber-50 p-2 shadow-soft [--chrome:27rem] sm:p-3 landscape:[--chrome:23rem] flat:p-1.5 flat:[--cell-min:3rem] flat:[--chrome:calc(6.25rem+28.5dvh)] flat:sm:p-1.5",
+                        "shrink-0 rounded-2xl border-4 border-amber-800 bg-amber-50 p-2 shadow-soft [--chrome:27rem] sm:p-3 landscape:[--chrome:23rem] flat:p-1.5 flat:[--cell-min:3rem] flat:[--chrome:calc(6.5rem+28.5dvh)] flat:sm:p-1.5",
                         isMonitor && "pointer-events-none"
                     )}
                     style={{ ...SHELF_STYLE, "--rows": shown.rows, "--cols": shown.cols } as CSSProperties}
