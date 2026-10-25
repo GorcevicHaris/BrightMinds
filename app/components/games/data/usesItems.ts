@@ -12,17 +12,20 @@
 //  • `answer` je cela rečenica sa pravim padežom (instrumental: olovkom, makazama, ušima;
 //    akuzativ: loptu, kapu) i rečcom na drugom mestu („Sijalica nam daje…”, „Kupamo se…”).
 //  • `name` je nominativ za natpis i za „To je … / To su …” (`plural` za makaze, oči, zube…).
-//  • Sličice su emodži iz Unicode 11 ili starijeg (stariji tableti) — test to proverava.
+//  • Slika je crtež iz zajedničkog kompleta slika (pictures/), ne emodži: emodži je na svakom
+//    uređaju drugačiji (negde siv ili ga nema) — test proverava da svaki predmet ima svoju sliku.
 
 import type { BaseView } from "@/app/components/games/kit/types";
 import type { FeedbackKind } from "@/app/components/games/kit/ui";
 import { toCount } from "@/app/components/games/kit/utils";
+import type { PictureId } from "@/app/components/games/pictures";
 
 export type UseGroup = "home" | "body" | "things" | "animals" | "world";
 
 export interface UseItem {
     id: string;
-    emoji: string;
+    /** Slika (zajednički komplet slika) */
+    pic: PictureId;
     /** Nominativ, velikim početnim slovom (natpis na kartici) */
     name: string;
     /** Množina („To su makaze.”) */
@@ -36,9 +39,9 @@ export interface UseItem {
     alsoFits?: readonly string[];
 }
 
-const u = (id: string, emoji: string, name: string, group: UseGroup, question: string, answer: string, extra: Partial<Pick<UseItem, "plural" | "alsoFits">> = {}): UseItem => ({
+const u = (id: string, pic: PictureId, name: string, group: UseGroup, question: string, answer: string, extra: Partial<Pick<UseItem, "plural" | "alsoFits">> = {}): UseItem => ({
     id,
-    emoji,
+    pic,
     name,
     group,
     question,
@@ -48,71 +51,71 @@ const u = (id: string, emoji: string, name: string, group: UseGroup, question: s
 
 export const USE_ITEMS: readonly UseItem[] = [
     // Kuća (lako): predmeti koje dete svaki dan koristi
-    u("spoon", "🥄", "Kašika", "home", "Čime jedemo supu?", "Supu jedemo kašikom."),
-    u("pencil", "✏️", "Olovka", "home", "Čime pišemo?", "Pišemo olovkom."),
-    u("scissors", "✂️", "Makaze", "home", "Čime sečemo papir?", "Papir sečemo makazama.", { plural: true }),
-    u("soap", "🧼", "Sapun", "home", "Čime peremo ruke?", "Ruke peremo sapunom."),
-    u("key", "🔑", "Ključ", "home", "Šta stavljamo u bravu da otvorimo vrata?", "Ključ stavljamo u bravu."),
-    u("umbrella", "☂️", "Kišobran", "home", "Šta nas čuva od kiše?", "Kišobran nas čuva od kiše."),
-    u("bed", "🛏️", "Krevet", "home", "Na čemu spavamo?", "Spavamo na krevetu."),
-    u("glass", "🥛", "Čaša", "home", "Iz čega pijemo vodu?", "Vodu pijemo iz čaše."),
-    u("broom", "🧹", "Metla", "home", "Čime čistimo pod?", "Pod čistimo metlom."),
-    u("phone", "📱", "Telefon", "home", "Čime zovemo baku?", "Baku zovemo telefonom."),
-    u("ball", "⚽", "Lopta", "home", "Šta šutiramo nogom?", "Loptu šutiramo nogom."),
-    u("fork", "🍴", "Viljuška", "home", "Čime nabadamo hranu?", "Hranu nabadamo viljuškom."),
-    u("lamp", "💡", "Sijalica", "home", "Šta nam daje svetlo u mraku?", "Sijalica nam daje svetlo."),
+    u("spoon", "spoon", "Kašika", "home", "Čime jedemo supu?", "Supu jedemo kašikom."),
+    u("pencil", "pencil", "Olovka", "home", "Čime pišemo?", "Pišemo olovkom."),
+    u("scissors", "scissors", "Makaze", "home", "Čime sečemo papir?", "Papir sečemo makazama.", { plural: true }),
+    u("soap", "soap", "Sapun", "home", "Čime peremo ruke?", "Ruke peremo sapunom."),
+    u("key", "key", "Ključ", "home", "Šta stavljamo u bravu da otvorimo vrata?", "Ključ stavljamo u bravu."),
+    u("umbrella", "umbrella", "Kišobran", "home", "Šta nas čuva od kiše?", "Kišobran nas čuva od kiše."),
+    u("bed", "bed", "Krevet", "home", "Na čemu spavamo?", "Spavamo na krevetu."),
+    u("glass", "glass", "Čaša", "home", "Iz čega pijemo vodu?", "Vodu pijemo iz čaše."),
+    u("broom", "broom", "Metla", "home", "Čime čistimo pod?", "Pod čistimo metlom."),
+    u("phone", "phone", "Telefon", "home", "Čime zovemo baku?", "Baku zovemo telefonom."),
+    u("ball", "ball", "Lopta", "home", "Šta šutiramo nogom?", "Loptu šutiramo nogom."),
+    u("fork", "fork", "Viljuška", "home", "Čime nabadamo hranu?", "Hranu nabadamo viljuškom."),
+    u("lamp", "bulb", "Sijalica", "home", "Šta nam daje svetlo u mraku?", "Sijalica nam daje svetlo."),
 
     // Delovi tela (srednje)
-    u("eyes", "👀", "Oči", "body", "Čime gledamo?", "Gledamo očima.", { plural: true }),
-    u("ear", "👂", "Uvo", "body", "Čime slušamo?", "Slušamo ušima."),
-    u("nose", "👃", "Nos", "body", "Čime mirišemo cveće?", "Cveće mirišemo nosom."),
-    u("mouth", "👄", "Usta", "body", "Čime pričamo?", "Pričamo ustima.", { plural: true }),
-    u("hand", "✋", "Ruka", "body", "Čime mašemo kad se pozdravljamo?", "Mašemo rukom."),
-    u("leg", "🦵", "Noga", "body", "Čime šutiramo loptu?", "Loptu šutiramo nogom."),
-    u("teeth", "🦷", "Zubi", "body", "Čime grizemo jabuku?", "Jabuku grizemo zubima.", { plural: true, alsoFits: ["mouth"] }),
-    u("tongue", "👅", "Jezik", "body", "Čime ližemo sladoled?", "Sladoled ližemo jezikom.", { alsoFits: ["mouth"] }),
+    u("eyes", "eyes", "Oči", "body", "Čime gledamo?", "Gledamo očima.", { plural: true }),
+    u("ear", "ear", "Uvo", "body", "Čime slušamo?", "Slušamo ušima."),
+    u("nose", "nose", "Nos", "body", "Čime mirišemo cveće?", "Cveće mirišemo nosom."),
+    u("mouth", "mouth", "Usta", "body", "Čime pričamo?", "Pričamo ustima.", { plural: true }),
+    u("hand", "hand", "Ruka", "body", "Čime mašemo kad se pozdravljamo?", "Mašemo rukom."),
+    u("leg", "leg", "Noga", "body", "Čime šutiramo loptu?", "Loptu šutiramo nogom."),
+    u("teeth", "teeth", "Zubi", "body", "Čime grizemo jabuku?", "Jabuku grizemo zubima.", { plural: true, alsoFits: ["mouth"] }),
+    u("tongue", "tongue", "Jezik", "body", "Čime ližemo sladoled?", "Sladoled ližemo jezikom.", { alsoFits: ["mouth"] }),
 
     // Stvari (srednje): manje česti predmeti iz kuće, odeća
-    u("backpack", "🎒", "Ranac", "things", "Šta nosimo na leđima u školu?", "Ranac nosimo na leđima."),
-    u("alarm", "⏰", "Budilnik", "things", "Šta zvoni ujutru da ustanemo?", "Budilnik zvoni ujutru."),
-    u("bathtub", "🛁", "Kada", "things", "U čemu se kupamo?", "Kupamo se u kadi."),
-    u("glasses", "👓", "Naočare", "things", "Šta nam pomaže da bolje vidimo?", "Naočare nam pomažu da bolje vidimo.", { plural: true }),
-    u("sneakers", "👟", "Patike", "things", "Šta obuvamo na noge?", "Patike obuvamo na noge.", { plural: true }),
-    u("gloves", "🧤", "Rukavice", "things", "Šta zimi navlačimo na šake?", "Zimi na šake navlačimo rukavice.", { plural: true }),
-    u("cap", "🧢", "Kapa", "things", "Šta stavljamo na glavu?", "Kapu stavljamo na glavu."),
-    u("bin", "🗑️", "Kanta", "things", "Gde bacamo smeće?", "Smeće bacamo u kantu."),
-    u("thermometer", "🌡️", "Toplomer", "things", "Čime merimo temperaturu?", "Temperaturu merimo toplomerom."),
-    u("brush", "🖌️", "Četkica", "things", "Čime slikamo bojama?", "Slikamo četkicom."),
-    u("book", "📖", "Knjiga", "things", "Šta čitamo?", "Čitamo knjigu."),
-    u("hammer", "🔨", "Čekić", "things", "Čime zakucavamo ekser?", "Ekser zakucavamo čekićem."),
-    u("crayons", "🖍️", "Bojice", "things", "Čime crtamo šarene crteže?", "Šarene crteže crtamo bojicama.", { plural: true, alsoFits: ["brush"] }),
-    u("scarf", "🧣", "Šal", "things", "Šta nosimo oko vrata kad je hladno?", "Oko vrata nosimo šal."),
+    u("backpack", "backpack", "Ranac", "things", "Šta nosimo na leđima u školu?", "Ranac nosimo na leđima."),
+    u("alarm", "alarm", "Budilnik", "things", "Šta zvoni ujutru da ustanemo?", "Budilnik zvoni ujutru."),
+    u("bathtub", "bathtub", "Kada", "things", "U čemu se kupamo?", "Kupamo se u kadi."),
+    u("glasses", "glasses", "Naočare", "things", "Šta nam pomaže da bolje vidimo?", "Naočare nam pomažu da bolje vidimo.", { plural: true }),
+    u("sneakers", "sneakers", "Patike", "things", "Šta obuvamo na noge?", "Patike obuvamo na noge.", { plural: true }),
+    u("gloves", "gloves", "Rukavice", "things", "Šta zimi navlačimo na šake?", "Zimi na šake navlačimo rukavice.", { plural: true }),
+    u("cap", "cap", "Kapa", "things", "Šta stavljamo na glavu?", "Kapu stavljamo na glavu."),
+    u("bin", "bin", "Kanta", "things", "Gde bacamo smeće?", "Smeće bacamo u kantu."),
+    u("thermometer", "thermometer", "Toplomer", "things", "Čime merimo temperaturu?", "Temperaturu merimo toplomerom."),
+    u("brush", "paintbrush", "Četkica", "things", "Čime slikamo bojama?", "Slikamo četkicom."),
+    u("book", "bookOpen", "Knjiga", "things", "Šta čitamo?", "Čitamo knjigu."),
+    u("hammer", "hammer", "Čekić", "things", "Čime zakucavamo ekser?", "Ekser zakucavamo čekićem."),
+    u("crayons", "crayons", "Bojice", "things", "Čime crtamo šarene crteže?", "Šarene crteže crtamo bojicama.", { plural: true, alsoFits: ["brush"] }),
+    u("scarf", "scarf", "Šal", "things", "Šta nosimo oko vrata kad je hladno?", "Oko vrata nosimo šal."),
 
     // Životinje (teško): po osobini
-    u("elephant", "🐘", "Slon", "animals", "Ko ima surlu?", "Slon ima surlu."),
-    u("giraffe", "🦒", "Žirafa", "animals", "Ko ima dugačak vrat?", "Žirafa ima dugačak vrat."),
-    u("hedgehog", "🦔", "Jež", "animals", "Ko ima bodlje?", "Jež ima bodlje."),
-    u("rabbit", "🐰", "Zec", "animals", "Ko ima duge uši?", "Zec ima duge uši."),
-    u("bird", "🐦", "Ptica", "animals", "Ko ima perje?", "Ptica ima perje."),
-    u("fish", "🐟", "Riba", "animals", "Ko ima peraja i pliva?", "Riba ima peraja i pliva."),
-    u("turtle", "🐢", "Kornjača", "animals", "Ko nosi oklop na leđima?", "Kornjača nosi oklop na leđima."),
-    u("cow", "🐄", "Krava", "animals", "Ko nam daje mleko?", "Krava nam daje mleko."),
-    u("bee", "🐝", "Pčela", "animals", "Ko pravi med?", "Pčela pravi med."),
-    u("frog", "🐸", "Žaba", "animals", "Ko skače i kreketa u bari?", "Žaba skače i kreketa u bari."),
-    u("spider", "🕷️", "Pauk", "animals", "Ko plete mrežu?", "Pauk plete mrežu."),
+    u("elephant", "elephant", "Slon", "animals", "Ko ima surlu?", "Slon ima surlu."),
+    u("giraffe", "giraffe", "Žirafa", "animals", "Ko ima dugačak vrat?", "Žirafa ima dugačak vrat."),
+    u("hedgehog", "hedgehog", "Jež", "animals", "Ko ima bodlje?", "Jež ima bodlje."),
+    u("rabbit", "rabbit", "Zec", "animals", "Ko ima duge uši?", "Zec ima duge uši."),
+    u("bird", "bird", "Ptica", "animals", "Ko ima perje?", "Ptica ima perje."),
+    u("fish", "fish", "Riba", "animals", "Ko ima peraja i pliva?", "Riba ima peraja i pliva."),
+    u("turtle", "turtle", "Kornjača", "animals", "Ko nosi oklop na leđima?", "Kornjača nosi oklop na leđima."),
+    u("cow", "cow", "Krava", "animals", "Ko nam daje mleko?", "Krava nam daje mleko."),
+    u("bee", "bee", "Pčela", "animals", "Ko pravi med?", "Pčela pravi med."),
+    u("frog", "frog", "Žaba", "animals", "Ko skače i kreketa u bari?", "Žaba skače i kreketa u bari."),
+    u("spider", "spider", "Pauk", "animals", "Ko plete mrežu?", "Pauk plete mrežu."),
 
     // Priroda i prevoz (teško): po osobini i funkciji
-    u("bicycle", "🚲", "Bicikl", "world", "Šta ima pedale?", "Bicikl ima pedale."),
-    u("boat", "⛵", "Brod", "world", "Šta plovi po moru?", "Brod plovi po moru."),
-    u("plane", "✈️", "Avion", "world", "Šta leti visoko na nebu?", "Avion leti visoko na nebu."),
-    u("guitar", "🎸", "Gitara", "world", "Šta ima žice?", "Gitara ima žice."),
-    u("magnifier", "🔍", "Lupa", "world", "Šta povećava sitne stvari?", "Lupa povećava sitne stvari."),
-    u("sun", "☀️", "Sunce", "world", "Šta sija danju i greje nas?", "Sunce sija danju i greje nas."),
-    u("moon", "🌙", "Mesec", "world", "Šta svetli na nebu noću?", "Mesec svetli na nebu noću."),
-    u("rainbow", "🌈", "Duga", "world", "Šta je šareno i vidi se posle kiše?", "Duga se vidi posle kiše."),
-    u("snowman", "⛄", "Sneško", "world", "Šta pravimo od snega?", "Od snega pravimo Sneška."),
-    u("train", "🚂", "Voz", "world", "Šta ide po šinama?", "Voz ide po šinama."),
-    u("rocket", "🚀", "Raketa", "world", "Šta leti u svemir?", "Raketa leti u svemir.", { alsoFits: ["plane"] }),
+    u("bicycle", "bicycle", "Bicikl", "world", "Šta ima pedale?", "Bicikl ima pedale."),
+    u("boat", "boat", "Brod", "world", "Šta plovi po moru?", "Brod plovi po moru."),
+    u("plane", "plane", "Avion", "world", "Šta leti visoko na nebu?", "Avion leti visoko na nebu."),
+    u("guitar", "guitar", "Gitara", "world", "Šta ima žice?", "Gitara ima žice."),
+    u("magnifier", "magnifier", "Lupa", "world", "Šta povećava sitne stvari?", "Lupa povećava sitne stvari."),
+    u("sun", "sunFace", "Sunce", "world", "Šta sija danju i greje nas?", "Sunce sija danju i greje nas."),
+    u("moon", "moon", "Mesec", "world", "Šta svetli na nebu noću?", "Mesec svetli na nebu noću."),
+    u("rainbow", "rainbow", "Duga", "world", "Šta je šareno i vidi se posle kiše?", "Duga se vidi posle kiše."),
+    u("snowman", "snowman", "Sneško", "world", "Šta pravimo od snega?", "Od snega pravimo Sneška."),
+    u("train", "train", "Voz", "world", "Šta ide po šinama?", "Voz ide po šinama."),
+    u("rocket", "rocket", "Raketa", "world", "Šta leti u svemir?", "Raketa leti u svemir.", { alsoFits: ["plane"] }),
 ];
 
 /** Natpis i odgovor posle pogrešnog izbora: „To je kapa.” / „To su makaze.” */

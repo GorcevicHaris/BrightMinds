@@ -35,6 +35,7 @@ import { buildUsesLevel, emptyUsesView, getUseItem, itIs, mergeUsesMonitor, type
 import { usesScene } from "@/app/components/games/data/usesScenes";
 import { storyHero } from "@/app/components/games/scene/heroes";
 import { SceneArt } from "@/app/components/games/scene/SceneArt";
+import { Picture } from "@/app/components/games/pictures";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
@@ -232,9 +233,7 @@ export default function UsesGame({ childId, level, gender, onComplete, isMonitor
                                 aria-label={`${choice.name}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                 className={cn("animate-pop flex-col gap-1.5 px-1.5 sm:gap-2", count <= 3 ? "min-h-36 sm:min-h-52" : "min-h-28 sm:min-h-48", "flat:min-h-0 flat:sm:min-h-0 flat:py-2")}
                             >
-                                <span aria-hidden="true" className={cn("leading-none", count <= 3 ? "text-[clamp(3.25rem,12dvh,6rem)]" : "text-[clamp(2.75rem,9dvh,5.5rem)]")}>
-                                    {choice.emoji}
-                                </span>
+                                <Picture id={choice.pic} className={cn("shrink-0", count <= 3 ? "h-[clamp(4rem,15dvh,7.5rem)] w-[clamp(4rem,15dvh,7.5rem)]" : "h-[clamp(3.5rem,11dvh,6.75rem)] w-[clamp(3.5rem,11dvh,6.75rem)]")} />
                                 {/* Natpis je za odrasle i decu koja čitaju; pitanje nikad ne sadrži naziv, pa ne odaje odgovor */}
                                 <span className="text-base leading-tight sm:text-xl flat:sm:text-base">{choice.name}</span>
                                 {showHand && id === item.id && <DemoHand />}

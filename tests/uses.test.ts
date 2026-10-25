@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { buildUsesLevel, getUseItem, itIs, mergeUsesMonitor, USE_ITEMS, USES_MAX_LEVEL, usesRule } from "@/app/components/games/data/usesItems";
+import { isPictureId } from "@/app/components/games/pictures";
 import { BAND_PRESETS } from "@/lib/childSettings";
 
 function seeded(seed: number) {
@@ -13,35 +14,15 @@ function seeded(seed: number) {
 
 const LEVELS = Array.from({ length: USES_MAX_LEVEL }, (_, i) => i + 1);
 
-/**
- * Emodži iz Unicode 12 i novijih (na starijim tabletima su prazni kvadratići). Nisu svi, ali su
- * tu blokovi i znaci koje bi neko najverovatnije izabrao za predmete (četkica za zube, stolica…).
- */
-function isNewEmoji(codePoint: number): boolean {
-    return (
-        (codePoint >= 0x1fa70 && codePoint <= 0x1faff) || // Symbols and Pictographs Extended-A (12+)
-        (codePoint >= 0x1f6d5 && codePoint <= 0x1f6df) ||
-        (codePoint >= 0x1f6fa && codePoint <= 0x1f6ff) ||
-        (codePoint >= 0x1f7e0 && codePoint <= 0x1f7ff) ||
-        (codePoint >= 0x1f90c && codePoint <= 0x1f90f) ||
-        [0x1f93f, 0x1f971, 0x1f972, 0x1f977, 0x1f978, 0x1f979, 0x1f97b, 0x1f9a3, 0x1f9a4, 0x1f9ab, 0x1f9ac, 0x1f9ad, 0x1f9cb, 0x1f9cc].includes(codePoint) ||
-        (codePoint >= 0x1f9a5 && codePoint <= 0x1f9aa) ||
-        (codePoint >= 0x1f9ae && codePoint <= 0x1f9af) ||
-        (codePoint >= 0x1f9ba && codePoint <= 0x1f9bf) ||
-        (codePoint >= 0x1f9c3 && codePoint <= 0x1f9ca) ||
-        (codePoint >= 0x1f9cd && codePoint <= 0x1f9cf)
-    );
-}
-
 describe("uses game content", () => {
     it("has unique items, each with its own picture, a question and an answer sentence", () => {
         assert.equal(new Set(USE_ITEMS.map((item) => item.id)).size, USE_ITEMS.length);
-        assert.equal(new Set(USE_ITEMS.map((item) => item.emoji)).size, USE_ITEMS.length, "repeated picture");
+        assert.equal(new Set(USE_ITEMS.map((item) => item.pic)).size, USE_ITEMS.length, "repeated picture");
         for (const item of USE_ITEMS) {
             assert.match(item.name, /^[A-ZČĆŽŠĐ][a-zčćžšđ]+$/u, item.id);
             assert.match(item.question, /^[A-ZČĆŽŠĐ].*\?$/u, item.id);
             assert.match(item.answer, /^[A-ZČĆŽŠĐ].*\.$/u, item.id);
-            for (const char of item.emoji) assert.ok(!isNewEmoji(char.codePointAt(0)!), `${item.id}: ${item.emoji} needs Unicode 12+`);
+            assert.ok(isPictureId(item.pic), `${item.id}: ${item.pic} is not drawn`);
         }
     });
 

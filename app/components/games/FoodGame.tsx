@@ -57,6 +57,7 @@ import {
 import { AnimalPicture } from "@/app/components/games/food/animals";
 import { AnimalEating, EAT_MS, EatStyles, FoodScene, type SceneMode } from "@/app/components/games/food/FoodScene";
 import { FoodPicture } from "@/app/components/games/food/foods";
+import { Picture } from "@/app/components/games/pictures";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
@@ -287,7 +288,7 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
             <GameStage>
                 {hud}
                 {/* Položen telefon: pitanje je jedan red u polju za igru, da životinje i hrana budu krupni */}
-                <GamePrompt key={`prompt-${shown.round}`} className="animate-fade-up flat:hidden" compact visual={<span aria-hidden="true">🧺</span>} title={question} />
+                <GamePrompt key={`prompt-${shown.round}`} className="animate-fade-up flat:hidden" compact visual={<Picture id="fruitBasket" className="h-full w-full p-1" />} title={question} />
                 <PlayArea accent={GAME.accent} className="flat:gap-2">
                     <p className="hidden text-center font-display text-lg font-extrabold leading-tight text-ink flat:block">{question}</p>
                     <FeedBoard

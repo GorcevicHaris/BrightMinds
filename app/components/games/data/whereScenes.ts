@@ -16,6 +16,7 @@
 import type { BaseView } from "@/app/components/games/kit/types";
 import type { FeedbackKind } from "@/app/components/games/kit/ui";
 import { toCount } from "@/app/components/games/kit/utils";
+import type { PictureId } from "@/app/components/games/pictures";
 
 export type Relation = "in" | "on" | "under" | "next" | "behind" | "front" | "above" | "between";
 export type FigureId = "cat" | "dog" | "teddy" | "ball" | "chick" | "duck" | "bunny" | "frog";
@@ -23,7 +24,8 @@ export type ObjectId = "box" | "basket" | "table" | "chair" | "bed";
 
 export interface Figure {
     id: FigureId;
-    emoji: string;
+    /** Slika iz zajedničkog kompleta (ne emodži — on je na svakom uređaju drugačiji) */
+    pic: PictureId;
     /** Nominativ, velikim početnim slovom (počinje rečenicu) */
     name: string;
 }
@@ -57,14 +59,14 @@ const PREPOSITION: Record<Relation, { word: string; takes: "loc" | "gen" | "pair
 };
 
 export const FIGURES: readonly Figure[] = [
-    { id: "cat", emoji: "🐱", name: "Mače" },
-    { id: "dog", emoji: "🐶", name: "Kuče" },
-    { id: "teddy", emoji: "🧸", name: "Meda" },
-    { id: "ball", emoji: "⚽", name: "Lopta" },
-    { id: "chick", emoji: "🐤", name: "Pile" },
-    { id: "duck", emoji: "🦆", name: "Patka" },
-    { id: "bunny", emoji: "🐰", name: "Zeka" },
-    { id: "frog", emoji: "🐸", name: "Žaba" },
+    { id: "cat", pic: "kitten", name: "Mače" },
+    { id: "dog", pic: "puppy", name: "Kuče" },
+    { id: "teddy", pic: "teddy", name: "Meda" },
+    { id: "ball", pic: "ball", name: "Lopta" },
+    { id: "chick", pic: "chick", name: "Pile" },
+    { id: "duck", pic: "toyDuck", name: "Patka" },
+    { id: "bunny", pic: "rabbit", name: "Zeka" },
+    { id: "frog", pic: "frog", name: "Žaba" },
 ];
 
 export const PLACE_OBJECTS: readonly PlaceObject[] = [

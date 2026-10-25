@@ -22,6 +22,7 @@ import {
     wordRest,
     type LetterTask,
 } from "@/app/components/games/data/lettersItems";
+import { isPictureId } from "@/app/components/games/pictures";
 import { BAND_PRESETS } from "@/lib/childSettings";
 import { toCyrillic } from "@/lib/script";
 
@@ -79,7 +80,7 @@ describe("Serbian alphabet", () => {
 
     it("gives every letter a spoken name and a word with a picture that starts with that letter, in both scripts", () => {
         assert.equal(new Set(LETTERS.map((item) => item.word)).size, LETTERS.length);
-        assert.equal(new Set(LETTERS.map((item) => item.emoji)).size, LETTERS.length);
+        assert.equal(new Set(LETTERS.map((item) => item.pic)).size, LETTERS.length);
         for (const item of LETTERS) {
             assert.match(item.name, /^[a-zčćđšž]+$/, item.id);
             assert.equal(item.word, item.word.toLocaleLowerCase("sr"), item.id);
@@ -88,13 +89,8 @@ describe("Serbian alphabet", () => {
         }
     });
 
-    it("uses pictures from Unicode 11 or older", () => {
-        for (const item of LETTERS) {
-            for (const char of item.emoji) {
-                const code = char.codePointAt(0)!;
-                assert.ok(code < 0x1fa70 && !(code >= 0x1f9cd && code <= 0x1f9ff) && !(code >= 0x1f9a5 && code <= 0x1f9aa), `${item.id}: ${item.emoji}`);
-            }
-        }
+    it("draws every word picture (no emoji, which look different on every device)", () => {
+        for (const item of LETTERS) assert.ok(isPictureId(item.pic), `${item.id}: ${item.pic}`);
     });
 
     it("finds the first letter of a child's name in either script", () => {

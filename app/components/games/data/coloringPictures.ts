@@ -169,7 +169,6 @@ export interface Picture {
     name: string;
     /** "Oboji kućicu" */
     acc: string;
-    emoji: string;
     viewBox: string;
     /** Delovi za bojenje, redom kojim se crtaju (kasniji su iznad ranijih) */
     zones: Zone[];
@@ -307,7 +306,6 @@ export const PICTURES: Picture[] = [
         id: "baloni",
         name: "Baloni",
         acc: "balone",
-        emoji: "🎈",
         viewBox: "60 30 280 350",
         zones: [
             z("levi", "levi balon", "levi balon", "m", "red", balloon(130, 160, 56, 68)),
@@ -321,7 +319,6 @@ export const PICTURES: Picture[] = [
         id: "jabuka",
         name: "Jabuka",
         acc: "jabuku",
-        emoji: "🍎",
         viewBox: "80 40 240 315",
         zones: [
             z(
@@ -342,7 +339,6 @@ export const PICTURES: Picture[] = [
         id: "pecurka",
         name: "Pečurka",
         acc: "pečurku",
-        emoji: "🍄",
         viewBox: "45 70 310 300",
         zones: [
             z("trava", "trava", "travu", "f", "green", "M55,330 Q200,302 345,330 L345,364 L55,364 Z"),
@@ -356,7 +352,6 @@ export const PICTURES: Picture[] = [
         id: "lubenica",
         name: "Lubenica",
         acc: "lubenicu",
-        emoji: "🍉",
         viewBox: "15 130 370 220",
         zones: [
             z("tanjir", "tanjir", "tanjir", "m", "blue", ellipse(200, 300, 180, 40)),
@@ -375,7 +370,6 @@ export const PICTURES: Picture[] = [
         id: "bubamara",
         name: "Bubamara",
         acc: "bubamaru",
-        emoji: "🐞",
         viewBox: "40 35 325 330",
         zones: [
             z("list", "list", "list", "m", "green", "M55,300 Q70,115 250,88 Q368,76 345,150 Q320,300 140,344 Q80,352 55,300 Z"),
@@ -395,7 +389,6 @@ export const PICTURES: Picture[] = [
         id: "sladoled",
         name: "Sladoled",
         acc: "sladoled",
-        emoji: "🍦",
         viewBox: "108 52 184 382",
         zones: [
             z("gornja", "gornja kugla", "gornju kuglu", "f", "pink", circle(200, 180, 62)),
@@ -410,7 +403,6 @@ export const PICTURES: Picture[] = [
         id: "puz",
         name: "Puž",
         acc: "puža",
-        emoji: "🐌",
         viewBox: "40 120 330 235",
         zones: [
             z("trava", "trava", "travu", "f", "green", "M45,318 Q200,294 360,318 L360,350 L45,350 Z"),
@@ -431,7 +423,6 @@ export const PICTURES: Picture[] = [
         id: "pile",
         name: "Pile",
         acc: "pile",
-        emoji: "🐥",
         viewBox: "80 45 240 325",
         zones: [
             z("telo", "telo", "telo", "n", "yellow", circle(200, 240, 86)),
@@ -455,7 +446,6 @@ export const PICTURES: Picture[] = [
         id: "kornjaca",
         name: "Kornjača",
         acc: "kornjaču",
-        emoji: "🐢",
         viewBox: "30 110 345 245",
         zones: [
             z("trava", "trava", "travu", "f", "green", "M35,312 Q200,292 370,312 L370,348 L35,348 Z"),
@@ -472,7 +462,6 @@ export const PICTURES: Picture[] = [
         id: "kruna",
         name: "Kruna",
         acc: "krunu",
-        emoji: "👑",
         viewBox: "55 85 290 280",
         zones: [
             z("kruna", "kruna", "krunu", "f", "yellow", "M120,300 L80,150 L160,250 L200,120 L240,250 L320,150 L280,300 Z"),
@@ -487,7 +476,6 @@ export const PICTURES: Picture[] = [
         id: "sunce",
         name: "Sunce",
         acc: "sunce",
-        emoji: "☀️",
         viewBox: "50 20 300 382",
         zones: [
             z("livada", "trava", "travu", "f", "green", "M52,345 Q200,300 348,345 L348,396 L52,396 Z"),
@@ -525,7 +513,6 @@ export const PICTURES: Picture[] = [
         id: "torta",
         name: "Torta",
         acc: "tortu",
-        emoji: "🎂",
         viewBox: "40 20 320 350",
         zones: [
             z("tanjir", "tanjir", "tanjir", "m", "sky", ellipse(200, 330, 152, 28)),
@@ -550,7 +537,6 @@ export const PICTURES: Picture[] = [
         id: "zeka",
         name: "Zeka",
         acc: "zeku",
-        emoji: "🐰",
         viewBox: "70 15 290 365",
         zones: [
             z("telo", "telo", "telo", "n", "gray", ellipse(200, 300, 80, 74)),
@@ -571,7 +557,6 @@ export const PICTURES: Picture[] = [
         id: "drvo",
         name: "Drvo",
         acc: "drvo",
-        emoji: "🌳",
         viewBox: "80 95 240 340",
         zones: [
             z("trava", "trava", "travu", "f", "green", "M88,402 Q200,380 312,402 L312,428 L88,428 Z"),
@@ -594,7 +579,6 @@ export const PICTURES: Picture[] = [
         id: "brod",
         name: "Brod",
         acc: "brod",
-        emoji: "⛵",
         viewBox: "30 55 345 365",
         zones: [
             z("sunce", "sunce", "sunce", "n", "yellow", circle(322, 112, 34)),
@@ -611,7 +595,6 @@ export const PICTURES: Picture[] = [
         id: "avion",
         name: "Avion",
         acc: "avion",
-        emoji: "✈️",
         viewBox: "20 55 370 290",
         zones: [
             z("oblak", "oblak", "oblak", "m", "sky", cloud(40, 335, 140)),
@@ -635,7 +618,6 @@ export const PICTURES: Picture[] = [
         id: "duga",
         name: "Duga",
         acc: "dugu",
-        emoji: "🌈",
         viewBox: "0 108 400 234",
         zones: [
             z("p1", "prva pruga", "prvu prugu", "f", "red", band(200, 300, 175, 147)),
@@ -651,7 +633,6 @@ export const PICTURES: Picture[] = [
         id: "cvet",
         name: "Cvet",
         acc: "cvet",
-        emoji: "🌸",
         viewBox: "70 25 320 405",
         zones: [
             z("oblak", "oblak", "oblak", "m", "blue", "M300,92 C280,92 272,70 288,60 C288,40 318,34 328,50 C342,40 366,48 362,66 C380,70 378,92 358,92 Z"),
@@ -674,7 +655,6 @@ export const PICTURES: Picture[] = [
         id: "kucica",
         name: "Kućica",
         acc: "kućicu",
-        emoji: "🏠",
         viewBox: "40 15 320 372",
         zones: [
             z("dimnjak", "dimnjak", "dimnjak", "m", "orange", "M245,85 L285,85 L285,180 L245,180 Z", 10),
@@ -698,7 +678,6 @@ export const PICTURES: Picture[] = [
         id: "leptir",
         name: "Leptir",
         acc: "leptira",
-        emoji: "🦋",
         viewBox: "45 105 310 340",
         zones: [
             z(
@@ -731,7 +710,6 @@ export const PICTURES: Picture[] = [
         id: "lopta",
         name: "Lopta",
         acc: "loptu",
-        emoji: "⚽",
         viewBox: "42 67 316 316",
         zones: [
             z("p1", "prvo polje", "prvo polje", "n", "red", "M200,225 L200,75 A150,150 0 0,1 329.9,150 Z"),
@@ -747,7 +725,6 @@ export const PICTURES: Picture[] = [
         id: "raketa",
         name: "Raketa",
         acc: "raketu",
-        emoji: "🚀",
         viewBox: "80 40 240 362",
         zones: [
             z("plamen", "vatra", "vatru", "f", "orange", "M178,283 L222,283 Q226,335 200,392 Q174,335 178,283 Z"),
@@ -764,7 +741,6 @@ export const PICTURES: Picture[] = [
         id: "autobus",
         name: "Autobus",
         acc: "autobus",
-        emoji: "🚌",
         viewBox: "15 115 375 240",
         zones: [
             z("put", "put", "put", "m", "gray", rect(20, 312, 365, 36)),
@@ -782,7 +758,6 @@ export const PICTURES: Picture[] = [
         id: "dino",
         name: "Dinosaurus",
         acc: "dinosaurusa",
-        emoji: "🦕",
         viewBox: "20 30 376 330",
         zones: [
             z("trava", "trava", "travu", "f", "green", "M25,318 Q200,294 385,318 L385,352 L25,352 Z"),
@@ -816,7 +791,6 @@ export const PICTURES: Picture[] = [
         id: "voz",
         name: "Voz",
         acc: "voz",
-        emoji: "🚂",
         viewBox: "10 50 385 295",
         zones: [
             z("sine", "šine", "šine", "fpl", "brown", rect(14, 316, 376, 18)),
@@ -837,7 +811,6 @@ export const PICTURES: Picture[] = [
         id: "meda",
         name: "Meda",
         acc: "medu",
-        emoji: "🧸",
         viewBox: "82 78 236 390",
         zones: [
             z(
@@ -867,7 +840,6 @@ export const PICTURES: Picture[] = [
         id: "auto",
         name: "Auto",
         acc: "auto",
-        emoji: "🚗",
         viewBox: "12 150 376 248",
         zones: [
             z("trava", "trava", "travu", "f", "lime", "M20,340 L380,340 L380,388 L20,388 Z"),
@@ -894,7 +866,6 @@ export const PICTURES: Picture[] = [
         id: "riba",
         name: "Riba",
         acc: "ribu",
-        emoji: "🐟",
         viewBox: "15 70 380 300",
         zones: [
             z(
@@ -925,7 +896,6 @@ export const PICTURES: Picture[] = [
         id: "sova",
         name: "Sova",
         acc: "sovu",
-        emoji: "🦉",
         viewBox: "35 20 330 360",
         zones: [
             z("mesec", "mesec", "mesec", "m", "yellow", "M104,36 A48,48 0 1,0 150,118 A38,38 0 1,1 104,36 Z"),
@@ -945,7 +915,6 @@ export const PICTURES: Picture[] = [
         id: "slon",
         name: "Slon",
         acc: "slona",
-        emoji: "🐘",
         viewBox: "15 20 385 420",
         zones: [
             z("trava", "trava", "travu", "f", "lime", "M20,402 Q200,386 395,402 L395,434 L20,434 Z"),
@@ -992,7 +961,6 @@ export const PICTURES: Picture[] = [
         id: "macka",
         name: "Mačka",
         acc: "mačku",
-        emoji: "🐱",
         viewBox: "25 105 350 332",
         zones: [
             z("tepih", "tepih", "tepih", "m", "purple", ellipse(200, 410, 165, 22)),
@@ -1032,7 +1000,6 @@ export const PICTURES: Picture[] = [
         id: "zamak",
         name: "Zamak",
         acc: "zamak",
-        emoji: "🏰",
         viewBox: "15 10 375 380",
         zones: [
             z("trava", "trava", "travu", "f", "green", rect(20, 346, 366, 40)),
@@ -1059,7 +1026,6 @@ export const PICTURES: Picture[] = [
         id: "robot",
         name: "Robot",
         acc: "robota",
-        emoji: "🤖",
         viewBox: "40 10 320 385",
         zones: [
             z("noge", "noge", "noge", "fpl", "gray", `${rrect(134, 306, 46, 72, 8)} ${rrect(220, 306, 46, 72, 8)}`),
@@ -1078,13 +1044,13 @@ export const PICTURES: Picture[] = [
         order: ["telo", "glava", "ruke", "noge", "ekran", "oci", "dugmad", "usta", "usi", "lampica"],
     },
     // ── Simetrične slike: leva polovina je obojena, dete boji drugu ─────────────
-    symmetric({ id: "pola-srce", name: "Srce", acc: "srce", emoji: "❤️", viewBox: "50 50 300 300" }, 200, [
+    symmetric({ id: "pola-srce", name: "Srce", acc: "srce", viewBox: "50 50 300 300" }, 200, [
         { id: "srce", name: "srce", acc: "srce", g: "n", c: "red", d: "M200,118 C178,78 92,70 82,148 C74,212 150,262 200,322 Z" },
         { id: "malo", name: "malo srce", acc: "malo srce", g: "n", c: "pink", d: "M200,178 C190,156 146,152 142,192 C140,226 174,250 200,274 Z" },
         { id: "tacka", name: "tačka", acc: "tačku", g: "f", c: "yellow", d: circle(98, 84, 18), hit: 10 },
     ]),
     {
-        ...symmetric({ id: "pola-bubamara", name: "Bubamara", acc: "bubamaru", emoji: "🐞", viewBox: "40 20 320 360" }, 200, [
+        ...symmetric({ id: "pola-bubamara", name: "Bubamara", acc: "bubamaru", viewBox: "40 20 320 360" }, 200, [
             { id: "list", name: "list", acc: "list", g: "m", c: "green", d: "M200,30 C120,40 50,120 56,220 C62,310 130,360 200,372 Z" },
             { id: "noge", name: "noge", acc: "noge", g: "fpl", c: "brown", d: `${ellipse(112, 198, 16, 6, -20)} ${ellipse(106, 250, 16, 6, 0)} ${ellipse(118, 300, 16, 6, 25)}`, hit: 8 },
             { id: "krilo", name: "krilo", acc: "krilo", g: "n", c: "red", d: "M200,128 C140,126 106,186 110,240 C114,300 160,330 200,330 Z" },
@@ -1097,7 +1063,7 @@ export const PICTURES: Picture[] = [
         lines: "M200,152 L200,330 M186,88 Q176,60 158,54 M214,88 Q224,60 242,54",
     },
     {
-        ...symmetric({ id: "pola-cvet", name: "Cvet", acc: "cvet", emoji: "🌷", viewBox: "60 20 280 360" }, 200, [
+        ...symmetric({ id: "pola-cvet", name: "Cvet", acc: "cvet", viewBox: "60 20 280 360" }, 200, [
             { id: "list", name: "list", acc: "list", g: "m", c: "green", d: "M196,292 C166,296 120,282 104,246 C142,238 182,258 196,282 Z" },
             { id: "saksija", name: "saksija", acc: "saksiju", g: "f", c: "orange", d: "M200,312 L128,312 L144,374 L200,374 Z" },
             { id: "gornja", name: "gornja latica", acc: "gornju laticu", g: "f", c: "pink", d: ellipse(150, 108, 40, 26, -25) },
@@ -1110,7 +1076,7 @@ export const PICTURES: Picture[] = [
         ],
     },
     {
-        ...symmetric({ id: "pola-leptir", name: "Leptir", acc: "leptira", emoji: "🦋", viewBox: "40 40 320 330" }, 200, [
+        ...symmetric({ id: "pola-leptir", name: "Leptir", acc: "leptira", viewBox: "40 40 320 330" }, 200, [
             { id: "gornje", name: "gornje krilo", acc: "gornje krilo", g: "n", c: "purple", d: "M196,150 C150,70 60,70 62,140 C64,200 140,214 196,190 Z" },
             { id: "donje", name: "donje krilo", acc: "donje krilo", g: "n", c: "pink", d: "M196,196 C140,200 92,250 112,300 C130,340 186,300 196,250 Z" },
             { id: "velika", name: "velika tačka", acc: "veliku tačku", g: "f", c: "yellow", d: circle(118, 140, 20), hit: 8 },
@@ -1123,7 +1089,7 @@ export const PICTURES: Picture[] = [
         lines: "M192,118 Q176,84 158,78 M208,118 Q224,84 242,78",
     },
     {
-        ...symmetric({ id: "pola-kuca", name: "Kuća", acc: "kuću", emoji: "🏠", viewBox: "40 50 320 320" }, 200, [
+        ...symmetric({ id: "pola-kuca", name: "Kuća", acc: "kuću", viewBox: "40 50 320 320" }, 200, [
             { id: "zid", name: "zid", acc: "zid", g: "m", c: "yellow", d: "M200,180 L92,180 L92,340 L200,340 Z" },
             { id: "krov", name: "krov", acc: "krov", g: "m", c: "red", d: "M200,66 L58,192 L200,192 Z" },
             { id: "prozor", name: "prozor", acc: "prozor", g: "m", c: "blue", d: rect(108, 214, 52, 46) },
@@ -1137,7 +1103,7 @@ export const PICTURES: Picture[] = [
         ],
     },
     {
-        ...symmetric({ id: "pola-robot", name: "Robot", acc: "robota", emoji: "🤖", viewBox: "40 10 320 300" }, 200, [
+        ...symmetric({ id: "pola-robot", name: "Robot", acc: "robota", viewBox: "40 10 320 300" }, 200, [
             { id: "glava", name: "glava", acc: "glavu", g: "f", c: "gray", d: "M200,80 L104,80 Q84,80 84,100 L84,240 Q84,260 104,260 L200,260 Z" },
             { id: "uvo", name: "uvo", acc: "uvo", g: "n", c: "orange", d: "M84,130 L62,130 Q54,130 54,138 L54,190 Q54,198 62,198 L84,198 Z", hit: 8 },
             { id: "oko", name: "oko", acc: "oko", g: "n", c: "sky", d: circle(150, 150, 26) },
@@ -1151,7 +1117,7 @@ export const PICTURES: Picture[] = [
         lines: "M200,55 L200,80",
     },
     {
-        ...symmetric({ id: "pola-raketa", name: "Raketa", acc: "raketu", emoji: "🚀", viewBox: "60 20 280 370" }, 200, [
+        ...symmetric({ id: "pola-raketa", name: "Raketa", acc: "raketu", viewBox: "60 20 280 370" }, 200, [
             { id: "telo", name: "telo", acc: "telo", g: "n", c: "blue", d: "M200,40 C160,80 146,150 150,300 L200,300 Z" },
             { id: "vrh", name: "vrh", acc: "vrh", g: "m", c: "red", d: "M200,40 C184,54 172,72 164,96 L200,96 Z" },
             { id: "krilo", name: "krilo", acc: "krilo", g: "n", c: "orange", d: "M152,220 L102,290 L102,326 L152,300 Z" },

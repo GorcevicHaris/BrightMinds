@@ -52,6 +52,7 @@ import {
 } from "@/app/components/games/data/lettersItems";
 import { outcomeFor, scoreSolved, traceResult } from "@/app/components/games/data/traceScore";
 import { GlyphPicture, TracePad } from "@/app/components/games/TracePad";
+import { Picture } from "@/app/components/games/pictures";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
@@ -263,7 +264,7 @@ export default function LettersGame({ childId, level, gender, childName, onCompl
                 key={`prompt-${shown.round}`}
                 className="animate-fade-up"
                 compact
-                visual={<span aria-hidden="true">{item.emoji}</span>}
+                visual={<Picture id={item.pic} className="h-full w-full p-1" />}
                 title={<TaskTitle task={task} />}
                 subtitle={
                     task.kind === "first" ? (
@@ -310,8 +311,8 @@ export default function LettersGame({ childId, level, gender, childName, onCompl
                             />
                             {solved && (
                                 // Slovo „oživi”: slika reči koja počinje ovim slovom
-                                <div aria-hidden="true" className="pointer-events-none absolute right-2 top-2 grid animate-pop place-items-center rounded-2xl bg-sun-50 px-3 py-2 text-5xl shadow-soft ring-2 ring-sun-200 sm:right-4 sm:top-4 sm:text-7xl">
-                                    {item.emoji}
+                                <div aria-hidden="true" className="pointer-events-none absolute right-2 top-2 grid animate-pop place-items-center rounded-2xl bg-sun-50 p-1.5 shadow-soft ring-2 ring-sun-200 sm:right-4 sm:top-4 sm:p-2">
+                                    <Picture id={item.pic} className="h-14 w-14 sm:h-24 sm:w-24" />
                                 </div>
                             )}
                         </div>

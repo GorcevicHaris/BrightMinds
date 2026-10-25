@@ -39,7 +39,7 @@ function isFile(candidate) {
 
 /** Putanja bez nastavka → postojeći fajl, redom kojim ih traži i Next.js. */
 function findSource(base) {
-    return [base, `${base}.ts`, `${base}.tsx`, path.join(base, "index.ts")].find(isFile) ?? null;
+    return [base, `${base}.ts`, `${base}.tsx`, path.join(base, "index.ts"), path.join(base, "index.tsx")].find(isFile) ?? null;
 }
 
 function isProjectSource(url) {

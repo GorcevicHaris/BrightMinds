@@ -15,12 +15,14 @@
 // Pravila pisanja:
 //  • Svako slovo ima naziv kako se izgovara u školi (a, be, ve, ge…) i jednu reč sa slikom
 //    koja počinje tim slovom: „A kao auto”.
-//  • Sličice su emodži iz Unicode 11 ili starijeg (stariji tableti) — test to proverava.
+//  • Slika reči je crtež iz zajedničkog kompleta slika (pictures/), ne emodži: emodži je na
+//    svakom uređaju drugačiji (negde siv ili ga nema) — test proverava da svaka reč ima sliku.
 //  • Glas kaže slovo i reč, nikad ne kaže gde treba dodirnuti.
 
 import type { BaseView } from "@/app/components/games/kit/types";
 import type { FeedbackKind } from "@/app/components/games/kit/ui";
 import { toCount } from "@/app/components/games/kit/utils";
+import type { PictureId } from "@/app/components/games/pictures";
 import { letterGlyph } from "@/app/components/games/data/letterGlyphs";
 import { TRACE_GUIDES, type Glyph, type TraceGuide } from "@/app/components/games/data/tracing";
 import type { Script } from "@/lib/childSettings";
@@ -35,43 +37,44 @@ export interface SerbianLetter {
     name: string;
     /** Reč koja počinje ovim slovom (malim slovima, latinicom) */
     word: string;
-    emoji: string;
+    /** Slika reči (zajednički komplet slika) */
+    pic: PictureId;
 }
 
-const letter = (id: string, name: string, word: string, emoji: string): SerbianLetter => ({ id, name, word, emoji });
+const letter = (id: string, name: string, word: string, pic: PictureId): SerbianLetter => ({ id, name, word, pic });
 
 /** Srpska latinica abecednim redom (30 slova, i dvoslovi DŽ, LJ, NJ) */
 export const LETTERS: readonly SerbianLetter[] = [
-    letter("A", "a", "auto", "🚗"),
-    letter("B", "be", "banana", "🍌"),
-    letter("C", "ce", "cvet", "🌼"),
-    letter("Č", "če", "čokolada", "🍫"),
-    letter("Ć", "će", "ćurka", "🦃"),
-    letter("D", "de", "duga", "🌈"),
-    letter("DŽ", "dže", "džip", "🚙"),
-    letter("Đ", "đe", "đevrek", "🥨"),
-    letter("E", "e", "ekran", "📺"),
-    letter("F", "ef", "fudbal", "⚽"),
-    letter("G", "ge", "grožđe", "🍇"),
-    letter("H", "ha", "hleb", "🍞"),
-    letter("I", "i", "irvas", "🦌"),
-    letter("J", "je", "jabuka", "🍎"),
-    letter("K", "ka", "kuća", "🏠"),
-    letter("L", "el", "lav", "🦁"),
-    letter("LJ", "lje", "ljubav", "❤️"),
-    letter("M", "em", "mačka", "🐱"),
-    letter("N", "en", "nos", "👃"),
-    letter("NJ", "nje", "njuška", "🐽"),
-    letter("O", "o", "oblak", "☁️"),
-    letter("P", "pe", "pas", "🐶"),
-    letter("R", "er", "riba", "🐟"),
-    letter("S", "es", "sunce", "☀️"),
-    letter("Š", "še", "šargarepa", "🥕"),
-    letter("T", "te", "torta", "🎂"),
-    letter("U", "u", "uvo", "👂"),
-    letter("V", "ve", "voz", "🚂"),
-    letter("Z", "ze", "zec", "🐰"),
-    letter("Ž", "že", "žaba", "🐸"),
+    letter("A", "a", "auto", "car"),
+    letter("B", "be", "banana", "banana"),
+    letter("C", "ce", "cvet", "flower"),
+    letter("Č", "če", "čokolada", "chocolate"),
+    letter("Ć", "će", "ćurka", "turkey"),
+    letter("D", "de", "duga", "rainbow"),
+    letter("DŽ", "dže", "džip", "jeep"),
+    letter("Đ", "đe", "đevrek", "pretzel"),
+    letter("E", "e", "ekran", "tv"),
+    letter("F", "ef", "fudbal", "soccerBall"),
+    letter("G", "ge", "grožđe", "grapes"),
+    letter("H", "ha", "hleb", "bread"),
+    letter("I", "i", "irvas", "reindeer"),
+    letter("J", "je", "jabuka", "apple"),
+    letter("K", "ka", "kuća", "house"),
+    letter("L", "el", "lav", "lion"),
+    letter("LJ", "lje", "ljubav", "heartRed"),
+    letter("M", "em", "mačka", "cat"),
+    letter("N", "en", "nos", "nose"),
+    letter("NJ", "nje", "njuška", "pig"),
+    letter("O", "o", "oblak", "cloud"),
+    letter("P", "pe", "pas", "dog"),
+    letter("R", "er", "riba", "fish"),
+    letter("S", "es", "sunce", "sunFace"),
+    letter("Š", "še", "šargarepa", "carrot"),
+    letter("T", "te", "torta", "cake"),
+    letter("U", "u", "uvo", "ear"),
+    letter("V", "ve", "voz", "train"),
+    letter("Z", "ze", "zec", "rabbit"),
+    letter("Ž", "že", "žaba", "frog"),
 ];
 
 /** Redosled azbuke (А Б В Г Д Ђ Е Ж З И Ј К Л Љ М Н Њ О П Р С Т Ћ У Ф Х Ц Ч Џ Ш), po latiničnom ključu */

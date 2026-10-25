@@ -42,7 +42,7 @@ import {
     type SocialSituation,
 } from "./data/socialSituations";
 import { socialScene } from "./data/socialScenes";
-import { OPTION_GRID, OptionPicture } from "./OptionPicture";
+import { OPTION_GRID, OptionPicture, OptionThumb } from "./OptionPicture";
 import { SceneArt } from "./scene/SceneArt";
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
@@ -476,7 +476,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                     {shown.picked !== null && (
                         <ExplainPanel
                             accent={ACCENT}
-                            icon={situation.options[shown.picked].emoji}
+                            icon={<OptionThumb text={situation.options[shown.picked].text} female={female} className="h-16 w-16 sm:h-20 sm:w-20 flat:h-12 flat:w-12" />}
                             text={
                                 <span className="flex flex-col gap-1.5">
                                     <span>{genderText(situation.options[shown.picked].note, female)}</span>
@@ -535,7 +535,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                         {triedOption && (
                             <TriedNote
                                 key={lastTried}
-                                emoji={triedOption.emoji}
+                                icon={<OptionThumb text={triedOption.text} female={female} className="h-9 w-9 rounded-lg" />}
                                 label={optionLabel(triedOption, female)}
                                 note={genderText(triedOption.note, female)}
                             />

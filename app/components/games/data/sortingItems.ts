@@ -16,13 +16,18 @@
 // Svaka nova vrsta razvrstavanja (boja, oblik, vrsta, pravilo) počinje modelom.
 //
 // Pravila pisanja:
-//  • Svaki predmet je jedan emodži koji svuda ima jasnu, jednu boju i jasnu vrstu.
+//  • Svaki predmet je crtež iz zajedničkog kompleta slika (pictures/), nikad emodži: emodži je na
+//    svakom uređaju drugačiji (negde siv ili ga nema), a crtež je svuda isti. Predmet u nivoima
+//    boja ima jednu jasnu boju (crvena jabuka, žuta banana, plavi kit), veliko i malo je isti
+//    crtež u dve veličine, a ista slika je baš isti crtež.
 //  • Naziv je u nominativu JEDNINE, uz gramatički rod (za „Banana je žuta.”) — bez reči koje
 //    postoje samo u množini (farmerke, makaze, sanke), jer bi „Farmerke je plava” bilo pogrešno.
 //  • Predmet nikad ne pripada dvema korpama istog nivoa (test to proverava).
 //  • Uz pravilo „šta se jede” nema životinja („Pas se ne jede.” ne pišemo).
 //  • Pravilo „leto / zima” trenutno nije u rasporedu nivoa, ali podaci ostaju (stanje sa
 //    monitora iz starije verzije aplikacije i dalje ima smisla).
+
+import type { PictureId } from "@/app/components/games/pictures";
 
 export type SortColor = "red" | "yellow" | "green" | "blue";
 export type SortCategory = "fruit" | "animals" | "vehicles" | "clothes" | "toys" | "music" | "school";
@@ -49,13 +54,14 @@ type Gender = "m" | "f" | "n";
 
 export interface SortItem {
     id: string;
-    emoji: string;
+    /** Slika iz zajedničkog kompleta (oblici je nemaju: crtaju se sami, u svojoj boji) */
+    pic?: PictureId;
     /** Naziv, nominativ jednine, malim slovom */
     name: string;
     g: Gender;
     color?: SortColor;
     category?: SortCategory;
-    /** Geometrijski oblik (crta se, nije emodži); boja oblika je `color` */
+    /** Geometrijski oblik (crta ga igra, nema sliku iz kompleta); boja oblika je `color` */
     shape?: SortShape;
     /** Manje tipičan predstavnik vrste — dolazi tek na teškim nivoima */
     hard?: boolean;
@@ -86,7 +92,7 @@ export interface Basket {
     swatch?: string;
     shape?: SortShape;
     size?: SortSize;
-    emoji?: string;
+    pic?: PictureId;
 }
 
 /** Boja kojom se crta geometrijski oblik (ista kao boja korpe) */
@@ -117,28 +123,28 @@ const SIZE_WORDS: Record<SortSize, { label: string; forms: Record<Gender, string
     small: { label: "Malo", forms: { m: "mali", f: "mala", n: "malo" } },
 };
 
-const CATEGORY_WORDS: Record<SortCategory, { label: string; emoji: string; noun: string }> = {
-    fruit: { label: "Voće", emoji: "🧺", noun: "voće" },
-    animals: { label: "Životinje", emoji: "🐾", noun: "životinja" },
-    vehicles: { label: "Vozila", emoji: "🚦", noun: "vozilo" },
-    clothes: { label: "Odeća", emoji: "👚", noun: "odeća" },
-    toys: { label: "Igračke", emoji: "🎁", noun: "igračka" },
-    music: { label: "Muzika", emoji: "🎵", noun: "muzički instrument" },
-    school: { label: "Škola", emoji: "🏫", noun: "školski pribor" },
+const CATEGORY_WORDS: Record<SortCategory, { label: string; pic: PictureId; noun: string }> = {
+    fruit: { label: "Voće", pic: "fruitBasket", noun: "voće" },
+    animals: { label: "Životinje", pic: "paw", noun: "životinja" },
+    vehicles: { label: "Vozila", pic: "trafficLight", noun: "vozilo" },
+    clothes: { label: "Odeća", pic: "hanger", noun: "odeća" },
+    toys: { label: "Igračke", pic: "gift", noun: "igračka" },
+    music: { label: "Muzika", pic: "notes", noun: "muzički instrument" },
+    school: { label: "Škola", pic: "school", noun: "školski pribor" },
 };
 
 /** Pravila: natpis, sličica, rečenica „da” i „ne” (ime predmeta ide na početak) */
-const RULE_WORDS: Record<SortRuleKey, { label: string; emoji: string; yes: (item: SortItem) => string; no: string }> = {
-    eat: { label: "Jede se", emoji: "😋", yes: () => "se jede", no: "se ne jede" },
-    noEat: { label: "Ne jede se", emoji: "🚫", yes: () => "se ne jede", no: "se jede" },
-    summer: { label: "Leto", emoji: "☀️", yes: () => "je za leto", no: "nije za leto" },
-    winter: { label: "Zima", emoji: "❄️", yes: () => "je za zimu", no: "nije za zimu" },
-    air: { label: "U vazduhu", emoji: "☁️", yes: (item) => item.goes ?? "leti", no: "ne leti" },
-    water: { label: "U vodi", emoji: "🌊", yes: (item) => item.goes ?? "pliva", no: "ne ide po vodi" },
-    land: { label: "Na zemlji", emoji: "🌳", yes: (item) => item.goes ?? "ide po zemlji", no: "ne ide po zemlji" },
-    meal: { label: "Za jelo", emoji: "😋", yes: () => "je za jelo", no: "nije za jelo" },
-    wash: { label: "Za pranje", emoji: "🛁", yes: () => "je za pranje", no: "nije za pranje" },
-    draw: { label: "Za crtanje", emoji: "🖼️", yes: () => "je za crtanje", no: "nije za crtanje" },
+const RULE_WORDS: Record<SortRuleKey, { label: string; pic: PictureId; yes: (item: SortItem) => string; no: string }> = {
+    eat: { label: "Jede se", pic: "yum", yes: () => "se jede", no: "se ne jede" },
+    noEat: { label: "Ne jede se", pic: "noEat", yes: () => "se ne jede", no: "se jede" },
+    summer: { label: "Leto", pic: "sunFace", yes: () => "je za leto", no: "nije za leto" },
+    winter: { label: "Zima", pic: "snowflake", yes: () => "je za zimu", no: "nije za zimu" },
+    air: { label: "U vazduhu", pic: "cloud", yes: (item) => item.goes ?? "leti", no: "ne leti" },
+    water: { label: "U vodi", pic: "waves", yes: (item) => item.goes ?? "pliva", no: "ne ide po vodi" },
+    land: { label: "Na zemlji", pic: "tree", yes: (item) => item.goes ?? "ide po zemlji", no: "ne ide po zemlji" },
+    meal: { label: "Za jelo", pic: "cutlery", yes: () => "je za jelo", no: "nije za jelo" },
+    wash: { label: "Za pranje", pic: "bathtub", yes: () => "je za pranje", no: "nije za pranje" },
+    draw: { label: "Za crtanje", pic: "picture", yes: () => "je za crtanje", no: "nije za crtanje" },
 };
 
 /** Pravila po grupama (korpe jednog nivoa sa pravilom) i šta glas kaže jednom, na početku */
@@ -164,7 +170,7 @@ export function basketFor(id: BasketId): Basket {
         return {
             id,
             label: capitalized(name),
-            emoji: model?.emoji,
+            pic: model?.pic,
             describe: () => name,
             yes: (item) => `Ista slika: ${item.name}.`,
             no: () => "To nije ista slika.",
@@ -201,7 +207,7 @@ export function basketFor(id: BasketId): Basket {
         return {
             id,
             label: word.label,
-            emoji: word.emoji,
+            pic: word.pic,
             describe: (item) => word.yes(item),
             yes: (item) => `${capitalized(item.name)} ${word.yes(item)}.`,
             no: (item) => `${capitalized(item.name)} ${word.no}.`,
@@ -211,7 +217,7 @@ export function basketFor(id: BasketId): Basket {
     return {
         id,
         label: word.label,
-        emoji: word.emoji,
+        pic: word.pic,
         describe: () => word.noun,
         yes: (item) => `${capitalized(item.name)} je ${word.noun}.`,
         no: (item) => `${capitalized(item.name)} nije ${word.noun}.`,
@@ -252,7 +258,6 @@ const SHAPE_GENDER: Record<SortShape, Gender> = { circle: "m", square: "m", tria
 const SHAPE_ITEMS: SortItem[] = (Object.keys(SHAPE_WORDS) as SortShape[]).flatMap((shape) =>
     (Object.keys(COLOR_WORDS) as SortColor[]).map((color) => ({
         id: `shape-${shape}-${color}`,
-        emoji: "",
         name: SHAPE_WORDS[shape].noun,
         g: SHAPE_GENDER[shape],
         color,
@@ -265,19 +270,19 @@ const SHAPE_ITEMS: SortItem[] = (Object.keys(SHAPE_WORDS) as SortShape[]).flatMa
  * veličina jasno vidi. Svaki je u nizu dvaput: veliki i mali. Ovi predmeti nemaju boju ni
  * vrstu — u drugim nivoima se ne pojavljuju.
  */
-const SIZE_BASES: readonly { key: string; emoji: string; name: string; g: Gender }[] = [
-    { key: "ball", emoji: "⚽", name: "lopta", g: "f" },
-    { key: "apple", emoji: "🍎", name: "jabuka", g: "f" },
-    { key: "house", emoji: "🏠", name: "kuća", g: "f" },
-    { key: "car", emoji: "🚗", name: "auto", g: "m" },
-    { key: "teddy", emoji: "🧸", name: "meda", g: "m" },
-    { key: "balloon", emoji: "🎈", name: "balon", g: "m" },
-    { key: "egg", emoji: "🥚", name: "jaje", g: "n" },
-    { key: "chick", emoji: "🐤", name: "pile", g: "n" },
+const SIZE_BASES: readonly { key: string; pic: PictureId; name: string; g: Gender }[] = [
+    { key: "ball", pic: "ball", name: "lopta", g: "f" },
+    { key: "apple", pic: "apple", name: "jabuka", g: "f" },
+    { key: "house", pic: "house", name: "kuća", g: "f" },
+    { key: "car", pic: "car", name: "auto", g: "m" },
+    { key: "teddy", pic: "teddy", name: "meda", g: "m" },
+    { key: "balloon", pic: "balloon", name: "balon", g: "m" },
+    { key: "egg", pic: "egg", name: "jaje", g: "n" },
+    { key: "chick", pic: "chick", name: "pile", g: "n" },
 ];
 
 const SIZE_ITEMS: SortItem[] = SIZE_BASES.flatMap((base) =>
-    (Object.keys(SIZE_WORDS) as SortSize[]).map((size) => ({ id: `size-${base.key}-${size}`, emoji: base.emoji, name: base.name, g: base.g, size }))
+    (Object.keys(SIZE_WORDS) as SortSize[]).map((size) => ({ id: `size-${base.key}-${size}`, pic: base.pic, name: base.name, g: base.g, size }))
 );
 
 /** Ista slika: predmeti koji se jasno razlikuju i oblikom i bojom (dve korpe su uvek dva različita) */
@@ -287,113 +292,113 @@ export const SORT_ITEMS: readonly SortItem[] = [
     ...SHAPE_ITEMS,
     ...SIZE_ITEMS,
     // Boje (lako): predmeti koji su na svakom telefonu iste, jasne boje
-    { id: "apple-red", emoji: "🍎", name: "jabuka", g: "f", color: "red", category: "fruit", eat: true },
-    { id: "strawberry", emoji: "🍓", name: "jagoda", g: "f", color: "red", category: "fruit", eat: true },
-    { id: "cherries", emoji: "🍒", name: "trešnja", g: "f", color: "red", category: "fruit", eat: true },
-    { id: "tomato", emoji: "🍅", name: "paradajz", g: "m", color: "red", eat: true },
-    { id: "fire-truck", emoji: "🚒", name: "vatrogasni kamion", g: "m", color: "red", category: "vehicles", eat: false },
-    { id: "heart-red", emoji: "❤️", name: "srce", g: "n", color: "red" },
-    { id: "banana", emoji: "🍌", name: "banana", g: "f", color: "yellow", category: "fruit", eat: true },
-    { id: "lemon", emoji: "🍋", name: "limun", g: "m", color: "yellow", category: "fruit" },
-    { id: "chick", emoji: "🐤", name: "pile", g: "n", color: "yellow", category: "animals" },
-    { id: "sun", emoji: "🌞", name: "sunce", g: "n", color: "yellow" },
-    { id: "star", emoji: "⭐", name: "zvezda", g: "f", color: "yellow" },
-    { id: "cheese", emoji: "🧀", name: "sir", g: "m", color: "yellow", eat: true },
-    { id: "frog", emoji: "🐸", name: "žaba", g: "f", color: "green", category: "animals" },
-    { id: "broccoli", emoji: "🥦", name: "brokoli", g: "m", color: "green", eat: true },
-    { id: "apple-green", emoji: "🍏", name: "jabuka", g: "f", color: "green", category: "fruit" },
-    { id: "cucumber", emoji: "🥒", name: "krastavac", g: "m", color: "green", eat: true },
-    { id: "leaf", emoji: "🍀", name: "detelina", g: "f", color: "green" },
-    { id: "turtle", emoji: "🐢", name: "kornjača", g: "f", color: "green", category: "animals" },
-    { id: "whale", emoji: "🐳", name: "kit", g: "m", color: "blue", category: "animals", where: "water", goes: "pliva u vodi" },
-    { id: "heart-blue", emoji: "💙", name: "srce", g: "n", color: "blue" },
-    { id: "drop", emoji: "💧", name: "kap vode", g: "f", color: "blue" },
-    { id: "butterfly", emoji: "🦋", name: "leptir", g: "m", color: "blue", category: "animals", where: "air", goes: "leti" },
+    { id: "apple-red", pic: "apple", name: "jabuka", g: "f", color: "red", category: "fruit", eat: true },
+    { id: "strawberry", pic: "strawberry", name: "jagoda", g: "f", color: "red", category: "fruit", eat: true },
+    { id: "cherries", pic: "cherry", name: "trešnja", g: "f", color: "red", category: "fruit", eat: true },
+    { id: "tomato", pic: "tomato", name: "paradajz", g: "m", color: "red", eat: true },
+    { id: "fire-truck", pic: "fireTruck", name: "vatrogasni kamion", g: "m", color: "red", category: "vehicles", eat: false },
+    { id: "heart-red", pic: "heartRed", name: "srce", g: "n", color: "red" },
+    { id: "banana", pic: "banana", name: "banana", g: "f", color: "yellow", category: "fruit", eat: true },
+    { id: "lemon", pic: "lemon", name: "limun", g: "m", color: "yellow", category: "fruit" },
+    { id: "chick", pic: "chick", name: "pile", g: "n", color: "yellow", category: "animals" },
+    { id: "sun", pic: "sunFace", name: "sunce", g: "n", color: "yellow" },
+    { id: "star", pic: "star", name: "zvezda", g: "f", color: "yellow" },
+    { id: "cheese", pic: "cheese", name: "sir", g: "m", color: "yellow", eat: true },
+    { id: "frog", pic: "frog", name: "žaba", g: "f", color: "green", category: "animals" },
+    { id: "broccoli", pic: "broccoli", name: "brokoli", g: "m", color: "green", eat: true },
+    { id: "apple-green", pic: "appleGreen", name: "jabuka", g: "f", color: "green", category: "fruit" },
+    { id: "cucumber", pic: "cucumber", name: "krastavac", g: "m", color: "green", eat: true },
+    { id: "leaf", pic: "clover", name: "detelina", g: "f", color: "green" },
+    { id: "turtle", pic: "turtle", name: "kornjača", g: "f", color: "green", category: "animals" },
+    { id: "whale", pic: "whale", name: "kit", g: "m", color: "blue", category: "animals", where: "water", goes: "pliva u vodi" },
+    { id: "heart-blue", pic: "heartBlue", name: "srce", g: "n", color: "blue" },
+    { id: "drop", pic: "drop", name: "kap vode", g: "f", color: "blue" },
+    { id: "butterfly", pic: "butterflyBlue", name: "leptir", g: "m", color: "blue", category: "animals", where: "air", goes: "leti" },
 
     // Vrste (srednje): tipični predstavnici
-    { id: "pear", emoji: "🍐", name: "kruška", g: "f", category: "fruit", eat: true },
-    { id: "grapes", emoji: "🍇", name: "grožđe", g: "n", category: "fruit", eat: true },
-    { id: "orange", emoji: "🍊", name: "pomorandža", g: "f", category: "fruit", eat: true },
-    { id: "watermelon", emoji: "🍉", name: "lubenica", g: "f", category: "fruit", eat: true, season: "summer" },
-    { id: "dog", emoji: "🐶", name: "pas", g: "m", category: "animals", where: "land" },
-    { id: "cat", emoji: "🐱", name: "mačka", g: "f", category: "animals", where: "land" },
-    { id: "cow", emoji: "🐮", name: "krava", g: "f", category: "animals", where: "land" },
-    { id: "pig", emoji: "🐷", name: "svinja", g: "f", category: "animals" },
-    { id: "rabbit", emoji: "🐰", name: "zec", g: "m", category: "animals", where: "land" },
-    { id: "car", emoji: "🚗", name: "auto", g: "m", category: "vehicles", eat: false, where: "land" },
-    { id: "bus", emoji: "🚌", name: "autobus", g: "m", category: "vehicles", where: "land" },
-    { id: "bicycle", emoji: "🚲", name: "bicikl", g: "m", category: "vehicles", where: "land" },
-    { id: "train", emoji: "🚂", name: "voz", g: "m", category: "vehicles" },
-    { id: "plane", emoji: "✈️", name: "avion", g: "m", category: "vehicles", where: "air", goes: "leti" },
-    { id: "tshirt", emoji: "👕", name: "majica", g: "f", category: "clothes", eat: false },
-    { id: "dress", emoji: "👗", name: "haljina", g: "f", category: "clothes" },
-    { id: "socks", emoji: "🧦", name: "čarapa", g: "f", category: "clothes", eat: false },
-    { id: "cap", emoji: "🧢", name: "kapa", g: "f", color: "blue", category: "clothes" },
-    { id: "coat", emoji: "🧥", name: "jakna", g: "f", category: "clothes", season: "winter" },
-    { id: "teddy", emoji: "🧸", name: "meda", g: "m", category: "toys", eat: false },
-    { id: "ball", emoji: "⚽", name: "lopta", g: "f", category: "toys", eat: false },
-    { id: "kite", emoji: "🪁", name: "zmaj", g: "m", category: "toys" },
-    { id: "puzzle", emoji: "🧩", name: "slagalica", g: "f", category: "toys", eat: false },
-    { id: "guitar", emoji: "🎸", name: "gitara", g: "f", category: "music" },
-    { id: "trumpet", emoji: "🎺", name: "truba", g: "f", category: "music" },
-    { id: "violin", emoji: "🎻", name: "violina", g: "f", category: "music" },
-    { id: "piano", emoji: "🎹", name: "klavir", g: "m", category: "music" },
-    { id: "pencil", emoji: "✏️", name: "olovka", g: "f", category: "school", eat: false, use: "draw" },
-    { id: "backpack", emoji: "🎒", name: "ranac", g: "m", category: "school" },
-    { id: "notebook", emoji: "📓", name: "sveska", g: "f", category: "school" },
-    { id: "crayon", emoji: "🖍️", name: "bojica", g: "f", category: "school", use: "draw" },
+    { id: "pear", pic: "pear", name: "kruška", g: "f", category: "fruit", eat: true },
+    { id: "grapes", pic: "grapes", name: "grožđe", g: "n", category: "fruit", eat: true },
+    { id: "orange", pic: "orange", name: "pomorandža", g: "f", category: "fruit", eat: true },
+    { id: "watermelon", pic: "watermelon", name: "lubenica", g: "f", category: "fruit", eat: true, season: "summer" },
+    { id: "dog", pic: "dog", name: "pas", g: "m", category: "animals", where: "land" },
+    { id: "cat", pic: "cat", name: "mačka", g: "f", category: "animals", where: "land" },
+    { id: "cow", pic: "cow", name: "krava", g: "f", category: "animals", where: "land" },
+    { id: "pig", pic: "pig", name: "svinja", g: "f", category: "animals" },
+    { id: "rabbit", pic: "rabbit", name: "zec", g: "m", category: "animals", where: "land" },
+    { id: "car", pic: "car", name: "auto", g: "m", category: "vehicles", eat: false, where: "land" },
+    { id: "bus", pic: "bus", name: "autobus", g: "m", category: "vehicles", where: "land" },
+    { id: "bicycle", pic: "bicycle", name: "bicikl", g: "m", category: "vehicles", where: "land" },
+    { id: "train", pic: "train", name: "voz", g: "m", category: "vehicles" },
+    { id: "plane", pic: "plane", name: "avion", g: "m", category: "vehicles", where: "air", goes: "leti" },
+    { id: "tshirt", pic: "tshirt", name: "majica", g: "f", category: "clothes", eat: false },
+    { id: "dress", pic: "dress", name: "haljina", g: "f", category: "clothes" },
+    { id: "socks", pic: "sock", name: "čarapa", g: "f", category: "clothes", eat: false },
+    { id: "cap", pic: "cap", name: "kapa", g: "f", color: "blue", category: "clothes" },
+    { id: "coat", pic: "jacket", name: "jakna", g: "f", category: "clothes", season: "winter" },
+    { id: "teddy", pic: "teddy", name: "meda", g: "m", category: "toys", eat: false },
+    { id: "ball", pic: "ball", name: "lopta", g: "f", category: "toys", eat: false },
+    { id: "kite", pic: "kite", name: "zmaj", g: "m", category: "toys" },
+    { id: "puzzle", pic: "puzzlePiece", name: "slagalica", g: "f", category: "toys", eat: false },
+    { id: "guitar", pic: "guitar", name: "gitara", g: "f", category: "music" },
+    { id: "trumpet", pic: "trumpet", name: "truba", g: "f", category: "music" },
+    { id: "violin", pic: "violin", name: "violina", g: "f", category: "music" },
+    { id: "piano", pic: "piano", name: "klavir", g: "m", category: "music" },
+    { id: "pencil", pic: "pencil", name: "olovka", g: "f", category: "school", eat: false, use: "draw" },
+    { id: "backpack", pic: "backpack", name: "ranac", g: "m", category: "school" },
+    { id: "notebook", pic: "notebook", name: "sveska", g: "f", category: "school" },
+    { id: "crayon", pic: "crayon", name: "bojica", g: "f", category: "school", use: "draw" },
 
     // Vrste (teško): manje tipični predstavnici
-    { id: "coconut", emoji: "🥥", name: "kokos", g: "m", category: "fruit", hard: true },
-    { id: "pineapple", emoji: "🍍", name: "ananas", g: "m", category: "fruit", hard: true },
-    { id: "kiwi", emoji: "🥝", name: "kivi", g: "m", category: "fruit", hard: true },
-    { id: "hedgehog", emoji: "🦔", name: "jež", g: "m", category: "animals", hard: true },
-    { id: "snail", emoji: "🐌", name: "puž", g: "m", category: "animals", hard: true, where: "land" },
-    { id: "owl", emoji: "🦉", name: "sova", g: "f", category: "animals", hard: true },
-    { id: "scooter", emoji: "🛴", name: "trotinet", g: "m", category: "vehicles", hard: true },
-    { id: "tractor", emoji: "🚜", name: "traktor", g: "m", category: "vehicles", hard: true, where: "land" },
-    { id: "boat", emoji: "⛵", name: "brod", g: "m", category: "vehicles", hard: true, where: "water", goes: "plovi po vodi" },
-    { id: "gloves", emoji: "🧤", name: "rukavica", g: "f", category: "clothes", hard: true, season: "winter" },
-    { id: "scarf", emoji: "🧣", name: "šal", g: "m", category: "clothes", hard: true, season: "winter" },
-    { id: "shirt", emoji: "👔", name: "košulja", g: "f", category: "clothes", hard: true },
-    { id: "balloon", emoji: "🎈", name: "balon", g: "m", category: "toys", hard: true, where: "air", goes: "leti" },
-    { id: "dice", emoji: "🎲", name: "kocka", g: "f", category: "toys", hard: true, eat: false },
-    { id: "drum", emoji: "🥁", name: "doboš", g: "m", category: "music", hard: true },
-    { id: "saxophone", emoji: "🎷", name: "saksofon", g: "m", category: "music", hard: true },
-    { id: "ruler", emoji: "📏", name: "lenjir", g: "m", category: "school", hard: true },
-    { id: "book", emoji: "📕", name: "knjiga", g: "f", category: "school", hard: true },
+    { id: "coconut", pic: "coconut", name: "kokos", g: "m", category: "fruit", hard: true },
+    { id: "pineapple", pic: "pineapple", name: "ananas", g: "m", category: "fruit", hard: true },
+    { id: "kiwi", pic: "kiwi", name: "kivi", g: "m", category: "fruit", hard: true },
+    { id: "hedgehog", pic: "hedgehog", name: "jež", g: "m", category: "animals", hard: true },
+    { id: "snail", pic: "snail", name: "puž", g: "m", category: "animals", hard: true, where: "land" },
+    { id: "owl", pic: "owl", name: "sova", g: "f", category: "animals", hard: true },
+    { id: "scooter", pic: "scooter", name: "trotinet", g: "m", category: "vehicles", hard: true },
+    { id: "tractor", pic: "tractor", name: "traktor", g: "m", category: "vehicles", hard: true, where: "land" },
+    { id: "boat", pic: "boat", name: "brod", g: "m", category: "vehicles", hard: true, where: "water", goes: "plovi po vodi" },
+    { id: "gloves", pic: "gloves", name: "rukavica", g: "f", category: "clothes", hard: true, season: "winter" },
+    { id: "scarf", pic: "scarf", name: "šal", g: "m", category: "clothes", hard: true, season: "winter" },
+    { id: "shirt", pic: "shirt", name: "košulja", g: "f", category: "clothes", hard: true },
+    { id: "balloon", pic: "balloon", name: "balon", g: "m", category: "toys", hard: true, where: "air", goes: "leti" },
+    { id: "dice", pic: "dice", name: "kocka", g: "f", category: "toys", hard: true, eat: false },
+    { id: "drum", pic: "drum", name: "doboš", g: "m", category: "music", hard: true },
+    { id: "saxophone", pic: "saxophone", name: "saksofon", g: "m", category: "music", hard: true },
+    { id: "ruler", pic: "ruler", name: "lenjir", g: "m", category: "school", hard: true },
+    { id: "book", pic: "book", name: "knjiga", g: "f", category: "school", hard: true },
 
     // Samo za pravila (šta se jede, leto i zima, gde)
-    { id: "bread", emoji: "🍞", name: "hleb", g: "m", eat: true },
-    { id: "cake", emoji: "🍰", name: "kolač", g: "m", eat: true },
-    { id: "carrot", emoji: "🥕", name: "šargarepa", g: "f", eat: true },
-    { id: "shoe", emoji: "👟", name: "patika", g: "f", eat: false },
-    { id: "key", emoji: "🔑", name: "ključ", g: "m", eat: false },
-    { id: "ice-cream", emoji: "🍦", name: "sladoled", g: "m", season: "summer" },
-    { id: "parasol", emoji: "⛱️", name: "suncobran", g: "m", season: "summer" },
-    { id: "sun-hat", emoji: "👒", name: "šešir", g: "m", season: "summer" },
-    { id: "shorts", emoji: "🩳", name: "šorc", g: "m", season: "summer" },
-    { id: "snowman", emoji: "⛄", name: "sneško", g: "m", season: "winter" },
-    { id: "ski", emoji: "🎿", name: "skija", g: "f", season: "winter" },
-    { id: "helicopter", emoji: "🚁", name: "helikopter", g: "m", where: "air", goes: "leti" },
-    { id: "bee", emoji: "🐝", name: "pčela", g: "f", where: "air", goes: "leti" },
-    { id: "rocket", emoji: "🚀", name: "raketa", g: "f", where: "air", goes: "leti" },
-    { id: "fish", emoji: "🐟", name: "riba", g: "f", where: "water", goes: "pliva u vodi" },
-    { id: "octopus", emoji: "🐙", name: "hobotnica", g: "f", where: "water", goes: "pliva u vodi" },
-    { id: "dolphin", emoji: "🐬", name: "delfin", g: "m", where: "water", goes: "pliva u vodi" },
+    { id: "bread", pic: "bread", name: "hleb", g: "m", eat: true },
+    { id: "cake", pic: "cakeSlice", name: "kolač", g: "m", eat: true },
+    { id: "carrot", pic: "carrot", name: "šargarepa", g: "f", eat: true },
+    { id: "shoe", pic: "shoe", name: "patika", g: "f", eat: false },
+    { id: "key", pic: "key", name: "ključ", g: "m", eat: false },
+    { id: "ice-cream", pic: "iceCream", name: "sladoled", g: "m", season: "summer" },
+    { id: "parasol", pic: "parasol", name: "suncobran", g: "m", season: "summer" },
+    { id: "sun-hat", pic: "sunHat", name: "šešir", g: "m", season: "summer" },
+    { id: "shorts", pic: "shorts", name: "šorc", g: "m", season: "summer" },
+    { id: "snowman", pic: "snowman", name: "sneško", g: "m", season: "winter" },
+    { id: "ski", pic: "ski", name: "skija", g: "f", season: "winter" },
+    { id: "helicopter", pic: "helicopter", name: "helikopter", g: "m", where: "air", goes: "leti" },
+    { id: "bee", pic: "bee", name: "pčela", g: "f", where: "air", goes: "leti" },
+    { id: "rocket", pic: "rocket", name: "raketa", g: "f", where: "air", goes: "leti" },
+    { id: "fish", pic: "fish", name: "riba", g: "f", where: "water", goes: "pliva u vodi" },
+    { id: "octopus", pic: "octopus", name: "hobotnica", g: "f", where: "water", goes: "pliva u vodi" },
+    { id: "dolphin", pic: "dolphin", name: "delfin", g: "m", where: "water", goes: "pliva u vodi" },
 
     // Samo za pravilo „čemu služi” (olovka i bojica su gore, uz školski pribor)
-    { id: "spoon", emoji: "🥄", name: "kašika", g: "f", use: "meal" },
-    { id: "fork", emoji: "🍴", name: "viljuška", g: "f", use: "meal" },
-    { id: "plate", emoji: "🍽️", name: "tanjir", g: "m", use: "meal" },
-    { id: "bowl", emoji: "🥣", name: "činija", g: "f", use: "meal" },
-    { id: "soap", emoji: "🧼", name: "sapun", g: "m", use: "wash" },
-    { id: "toothbrush", emoji: "🪥", name: "četkica za zube", g: "f", use: "wash" },
-    { id: "sponge", emoji: "🧽", name: "sunđer", g: "m", use: "wash" },
-    { id: "shampoo", emoji: "🧴", name: "šampon", g: "m", use: "wash" },
-    { id: "shower", emoji: "🚿", name: "tuš", g: "m", use: "wash" },
-    { id: "paintbrush", emoji: "🖌️", name: "kičica", g: "f", use: "draw" },
-    { id: "palette", emoji: "🎨", name: "paleta", g: "f", use: "draw" },
+    { id: "spoon", pic: "spoon", name: "kašika", g: "f", use: "meal" },
+    { id: "fork", pic: "fork", name: "viljuška", g: "f", use: "meal" },
+    { id: "plate", pic: "plate", name: "tanjir", g: "m", use: "meal" },
+    { id: "bowl", pic: "bowl", name: "činija", g: "f", use: "meal" },
+    { id: "soap", pic: "soap", name: "sapun", g: "m", use: "wash" },
+    { id: "toothbrush", pic: "toothbrush", name: "četkica za zube", g: "f", use: "wash" },
+    { id: "sponge", pic: "sponge", name: "sunđer", g: "m", use: "wash" },
+    { id: "shampoo", pic: "shampoo", name: "šampon", g: "m", use: "wash" },
+    { id: "shower", pic: "shower", name: "tuš", g: "m", use: "wash" },
+    { id: "paintbrush", pic: "paintbrush", name: "kičica", g: "f", use: "draw" },
+    { id: "palette", pic: "palette", name: "paleta", g: "f", use: "draw" },
 ];
 
 // ── Nivoi ─────────────────────────────────────────────────────────────────────

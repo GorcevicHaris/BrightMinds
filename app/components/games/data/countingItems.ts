@@ -18,11 +18,14 @@
 //    posle „Koliko ima…?” i „više / manje” (pet jabuka). `countPhrase` bira oblik i rod broja
 //    (jedan / jedna / jedno, dva / dve) — test to proverava.
 //  • Brojanje naglas je apstraktno: „Jedan. Dva. Tri.” (kao kad dete broji prstom).
-//  • Sličice su emodži iz Unicode 11 ili starijeg (stariji tableti) — test to proverava.
+//  • Sličice su crteži iz zajedničkog kompleta slika (pictures/), ne emodži: emodži je na svakom
+//    uređaju drugačiji (negde siv ili ga nema). Svaka sličica je jedan predmet (jedna trešnja, ne
+//    par), da se broji ono što se vidi — test proverava da svaka imenica ima svoju sliku.
 
 import type { BaseView, GameResult } from "@/app/components/games/kit/types";
 import type { FeedbackKind } from "@/app/components/games/kit/ui";
 import { demoRounds, toCount } from "@/app/components/games/kit/utils";
+import type { PictureId } from "@/app/components/games/pictures";
 
 // ── Brojevi i imenice ─────────────────────────────────────────────────────────
 
@@ -30,7 +33,7 @@ export type NounGender = "m" | "f" | "n";
 
 export interface CountNoun {
     id: string;
-    emoji: string;
+    pic: PictureId;
     gender: NounGender;
     /** Uz 1, 21…: jedna jabuka, jedan balon */
     one: string;
@@ -42,44 +45,44 @@ export interface CountNoun {
     moves?: boolean;
 }
 
-const n = (id: string, emoji: string, gender: NounGender, one: string, few: string, many: string, moves = false): CountNoun => ({ id, emoji, gender, one, few, many, moves });
+const n = (id: string, pic: PictureId, gender: NounGender, one: string, few: string, many: string, moves = false): CountNoun => ({ id, pic, gender, one, few, many, moves });
 
 export const COUNT_NOUNS: readonly CountNoun[] = [
     // Voće i stvari (ne kreću se same)
-    n("apple", "🍎", "f", "jabuka", "jabuke", "jabuka"),
-    n("pear", "🍐", "f", "kruška", "kruške", "krušaka"),
-    n("strawberry", "🍓", "f", "jagoda", "jagode", "jagoda"),
-    n("banana", "🍌", "f", "banana", "banane", "banana"),
-    n("star", "⭐", "f", "zvezda", "zvezde", "zvezda"),
-    n("ball", "⚽", "f", "lopta", "lopte", "lopti"),
-    n("flower", "🌼", "m", "cvet", "cveta", "cvetova"),
-    n("cupcake", "🧁", "m", "kolač", "kolača", "kolača"),
-    n("egg", "🥚", "n", "jaje", "jajeta", "jaja"),
+    n("apple", "apple", "f", "jabuka", "jabuke", "jabuka"),
+    n("pear", "pear", "f", "kruška", "kruške", "krušaka"),
+    n("strawberry", "strawberry", "f", "jagoda", "jagode", "jagoda"),
+    n("banana", "banana", "f", "banana", "banane", "banana"),
+    n("star", "star", "f", "zvezda", "zvezde", "zvezda"),
+    n("ball", "ball", "f", "lopta", "lopte", "lopti"),
+    n("flower", "flower", "m", "cvet", "cveta", "cvetova"),
+    n("cupcake", "cupcake", "m", "kolač", "kolača", "kolača"),
+    n("egg", "egg", "n", "jaje", "jajeta", "jaja"),
     // Životinje i prevoz (mogu da dođu i odu)
-    n("balloon", "🎈", "m", "balon", "balona", "balona", true),
-    n("car", "🚗", "m", "auto", "auta", "auta", true),
-    n("butterfly", "🦋", "m", "leptir", "leptira", "leptira", true),
-    n("dog", "🐶", "m", "pas", "psa", "pasa", true),
-    n("fish", "🐟", "f", "riba", "ribe", "riba", true),
-    n("duck", "🦆", "f", "patka", "patke", "pataka", true),
-    n("ladybug", "🐞", "f", "bubamara", "bubamare", "bubamara", true),
-    n("turtle", "🐢", "f", "kornjača", "kornjače", "kornjača", true),
+    n("balloon", "balloon", "m", "balon", "balona", "balona", true),
+    n("car", "car", "m", "auto", "auta", "auta", true),
+    n("butterfly", "butterfly", "m", "leptir", "leptira", "leptira", true),
+    n("dog", "dog", "m", "pas", "psa", "pasa", true),
+    n("fish", "fish", "f", "riba", "ribe", "riba", true),
+    n("duck", "duck", "f", "patka", "patke", "pataka", true),
+    n("ladybug", "ladybug", "f", "bubamara", "bubamare", "bubamara", true),
+    n("turtle", "turtle", "f", "kornjača", "kornjače", "kornjača", true),
     // Još voća, povrća i stvari
-    n("cherry", "🍒", "f", "trešnja", "trešnje", "trešanja"),
-    n("carrot", "🥕", "f", "šargarepa", "šargarepe", "šargarepa"),
-    n("lemon", "🍋", "m", "limun", "limuna", "limuna"),
-    n("mushroom", "🍄", "f", "pečurka", "pečurke", "pečuraka"),
-    n("gift", "🎁", "m", "poklon", "poklona", "poklona"),
-    n("heart", "❤️", "n", "srce", "srca", "srca"),
-    n("bell", "🔔", "n", "zvono", "zvona", "zvona"),
+    n("cherry", "cherry", "f", "trešnja", "trešnje", "trešanja"),
+    n("carrot", "carrot", "f", "šargarepa", "šargarepe", "šargarepa"),
+    n("lemon", "lemon", "m", "limun", "limuna", "limuna"),
+    n("mushroom", "mushroom", "f", "pečurka", "pečurke", "pečuraka"),
+    n("gift", "gift", "m", "poklon", "poklona", "poklona"),
+    n("heart", "heartRed", "n", "srce", "srca", "srca"),
+    n("bell", "bell", "n", "zvono", "zvona", "zvona"),
     // Još životinja (sa farme, iz bašte)
-    n("chick", "🐤", "n", "pile", "pileta", "pilića", true),
-    n("rabbit", "🐰", "m", "zec", "zeca", "zečeva", true),
-    n("sheep", "🐑", "f", "ovca", "ovce", "ovaca", true),
-    n("mouse", "🐭", "m", "miš", "miša", "miševa", true),
-    n("snail", "🐌", "m", "puž", "puža", "puževa", true),
-    n("frog", "🐸", "f", "žaba", "žabe", "žaba", true),
-    n("bee", "🐝", "f", "pčela", "pčele", "pčela", true),
+    n("chick", "chick", "n", "pile", "pileta", "pilića", true),
+    n("rabbit", "rabbit", "m", "zec", "zeca", "zečeva", true),
+    n("sheep", "sheep", "f", "ovca", "ovce", "ovaca", true),
+    n("mouse", "mouse", "m", "miš", "miša", "miševa", true),
+    n("snail", "snail", "m", "puž", "puža", "puževa", true),
+    n("frog", "frog", "f", "žaba", "žabe", "žaba", true),
+    n("bee", "bee", "f", "pčela", "pčele", "pčela", true),
 ];
 
 export function getCountNoun(id: unknown): CountNoun | undefined {
