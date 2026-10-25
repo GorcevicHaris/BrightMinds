@@ -405,7 +405,7 @@ export default function MarketGame({ childId, level, gender, onComplete, isMonit
 
 function PriceTag({ price, className }: { price: number; className?: string }) {
     return (
-        <span className={cn("inline-flex items-center rounded-md bg-white px-1.5 py-0.5 font-black leading-none text-ink ring-2 ring-[#c38a17]", className)}>
+        <span className={cn("inline-flex items-center rounded-md bg-white px-1.5 py-0.5 font-black leading-none text-ink ring-2 ring-honey-500", className)}>
             {price} din
         </span>
     );
@@ -495,7 +495,7 @@ function ShopBoard({ view, drag, ghost, calm, wiggle, demo, disabled, onBasket, 
                         })}
                     </ul>
                     {budget && (
-                        <p className="flex shrink-0 flex-col items-center rounded-xl bg-[#fcf6e8] px-2 py-1 text-center font-extrabold leading-tight text-[#7a560e] ring-1 ring-[#f0dcae]">
+                        <p className="flex shrink-0 flex-col items-center rounded-xl bg-honey-50 px-2 py-1 text-center font-extrabold leading-tight text-honey-700 ring-1 ring-honey-200">
                             <span className="text-xs sm:text-sm">Imaš {view.budget} din</span>
                             <span className="text-base text-ink sm:text-lg landscape:text-sm landscape:sm:text-base">Ostalo: {left} din</span>
                         </p>
@@ -645,7 +645,7 @@ function PayBoard({ view, drag, ghost, calm, wiggle, disabled, onTray, onTakeBac
                         data-open=""
                         disabled={disabled || view.selected === null}
                         onClick={onTray}
-                        aria-label={`Pult, plaćeno ${dinars(sum)} od ${dinars(view.price)}`}
+                        aria-label={view.wares.length === 1 ? `Pult, plaćeno ${dinars(sum)} od ${dinars(view.price)}` : `Pult, plaćeno ${dinars(sum)}`}
                         className={cn(
                             "flex min-h-[clamp(4.5rem,18cqh,8rem)] w-full flex-col items-center justify-center gap-1 rounded-card border-2 border-dashed p-1.5 outline-none transition-[background-color,box-shadow] focus-visible:ring-4 focus-visible:ring-brand-400 disabled:cursor-default landscape:min-h-0 landscape:flex-1",
                             over === TRAY || view.selected !== null ? "border-brand-300 bg-brand-50/80 ring-4 ring-brand-200" : "border-[#d9c39c] bg-[#fbf3e3]"
@@ -674,11 +674,13 @@ function PayBoard({ view, drag, ghost, calm, wiggle, disabled, onTray, onTakeBac
                                 </span>
                             ))}
                             {Array.from({ length: openSlots }, (_, i) => (
-                                <span key={`slot-${i}`} aria-hidden="true" className={cn(PAID_COIN, "rounded-full border-2 border-dashed border-[#c38a17]/60 bg-white/60")} />
+                                <span key={`slot-${i}`} aria-hidden="true" className={cn(PAID_COIN, "rounded-full border-2 border-dashed border-honey-500/60 bg-white/60")} />
                             ))}
                         </span>
                         <span className="pointer-events-none text-center text-sm font-extrabold leading-tight text-ink sm:text-lg landscape:text-xs landscape:sm:text-base">
-                            Plaćeno: {sum} din <span className="text-ink-soft">· cena {view.price} din</span>
+                            Plaćeno: {sum} din
+                            {/* Za dve stvari zbir se ne piše: to dete sabira samo */}
+                            {view.wares.length === 1 && <span className="text-ink-soft"> · cena {view.price} din</span>}
                         </span>
                     </button>
                 </div>

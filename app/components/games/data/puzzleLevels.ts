@@ -41,6 +41,14 @@ export interface PuzzlePicture {
     about: string;
     /** 1 = krupni, jasni oblici (laki nivoi), 2 = više sitnih delova */
     detail: 1 | 2;
+    /** Naziv počinje imenom („Amar i lopta”): u sredini rečenice ostaje veliko slovo */
+    named?: true;
+}
+
+/** Naziv slike u sredini rečenice („Na slici je: mačka.”, „Na slici je: Amar i lopta.”) */
+export function pictureInline(picture: PuzzlePicture | undefined): string {
+    if (!picture) return "";
+    return picture.named ? picture.name : picture.name.toLocaleLowerCase("sr");
 }
 
 export const PUZZLE_PICTURES: readonly PuzzlePicture[] = [
@@ -54,8 +62,8 @@ export const PUZZLE_PICTURES: readonly PuzzlePicture[] = [
     { id: "leptir", name: "Leptir", about: "Leptir leti iznad cveća.", detail: 2 },
     { id: "voz", name: "Voz", about: "Voz vozi po šinama.", detail: 2 },
     { id: "duga", name: "Duga", about: "Duga je na nebu posle kiše.", detail: 2 },
-    { id: "amar", name: "Amar i lopta", about: "Amar se igra loptom.", detail: 2 },
-    { id: "lejla", name: "Lejla i zmaj", about: "Lejla pušta zmaja.", detail: 2 },
+    { id: "amar", name: "Amar i lopta", about: "Amar se igra loptom.", detail: 2, named: true },
+    { id: "lejla", name: "Lejla i zmaj", about: "Lejla pušta zmaja.", detail: 2, named: true },
 ];
 
 export function getPuzzlePicture(id: unknown): PuzzlePicture | undefined {
@@ -376,7 +384,7 @@ export function roundIntro(round: Pick<PuzzleRound, "picture" | "given" | "tray"
     const picture = getPuzzlePicture(round.picture);
     if (round.given.length > 0) return TEXT_HALF;
     const decoys = round.tray.some((piece) => piece.picture !== round.picture);
-    const what = picture ? ` Na slici je: ${picture.name.toLocaleLowerCase("sr")}.` : "";
+    const what = picture ? ` Na slici je: ${pictureInline(picture)}.` : "";
     return `${TEXT_INTRO}${what}${decoys ? ` ${TEXT_DECOY_INTRO}` : ""}`;
 }
 

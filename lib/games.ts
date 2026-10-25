@@ -22,6 +22,8 @@ export type GameId =
     | "puzzle"
     | "inset"
     | "clock"
+    | "maze"
+    | "differences"
     | "weather"
     | "market";
 
@@ -46,6 +48,8 @@ export type GameType =
     | "puzzle"
     | "inset"
     | "clock"
+    | "maze"
+    | "differences"
     | "weather"
     | "market";
 
@@ -561,6 +565,56 @@ export const GAMES: GameDefinition[] = [
         order: 18,
     },
     {
+        id: "maze",
+        gameType: "maze",
+        activityId: 23,
+        title: "Lavirint",
+        description: "Pronađi put do cilja",
+        skill: "Fina motorika i planiranje",
+        icon: "🌿",
+        image: "/images/lavirint.svg",
+        accent: {
+            solid: "bg-moss-500",
+            edge: "border-moss-700",
+            soft: "bg-moss-50",
+            text: "text-moss-700",
+            border: "border-moss-200",
+            ring: "ring-moss-200",
+            gradient: "from-lime-400 to-moss-600",
+        },
+        offscreenTip:
+            "Nacrtajte kredom na asfaltu ili trakom na podu široku stazu sa jednim skretanjem i neka dete hoda po njoj do igračke na kraju. Kasnije crtajte lavirinte na papiru i vodite prst zajedno, pa olovku. Pitajte: „Kuda dalje?”, a ne pokazujte odmah.",
+        graded: true,
+        // 20. po redu: vođenje prsta po stazi i planiranje puta — posle umetaljke i slaganja slike
+        ages: { min: 3, max: 9 },
+        order: 20,
+    },
+    {
+        id: "differences",
+        gameType: "differences",
+        activityId: 24,
+        title: "Pronađi razlike",
+        description: "Dve slike, a nisu iste",
+        skill: "Vizuelna pažnja",
+        icon: "🔍",
+        image: "/images/razlike.svg",
+        accent: {
+            solid: "bg-coral-500",
+            edge: "border-coral-700",
+            soft: "bg-coral-50",
+            text: "text-coral-700",
+            border: "border-coral-200",
+            ring: "ring-coral-200",
+            gradient: "from-coral-400 to-pink-500",
+        },
+        offscreenTip:
+            "Postavite na sto tri-četiri predmeta, neka dete zatvori oči, pa jedan sklonite ili zamenite: „Šta se promenilo?” U slikovnici tražite iste stvari na dve stranice. Počnite od velikih promena (nema lopte), pa boja, pa sitnice.",
+        graded: true,
+        // 21. po redu: pažljivo poređenje dve slike — posle uparivanja oblika i slaganja slike
+        ages: { min: 4, max: 10 },
+        order: 21,
+    },
+    {
         id: "weather",
         gameType: "weather",
         activityId: 27,
@@ -570,20 +624,20 @@ export const GAMES: GameDefinition[] = [
         icon: "🧥",
         image: "/images/obucise.svg",
         accent: {
-            solid: "bg-[#4f7da8]",
-            edge: "border-[#34597d]",
-            soft: "bg-[#eef4fa]",
-            text: "text-[#34597d]",
-            border: "border-[#cddcea]",
-            ring: "ring-[#cddcea]",
-            gradient: "from-sky-300 to-[#4f7da8]",
+            solid: "bg-storm-500",
+            edge: "border-storm-700",
+            soft: "bg-storm-50",
+            text: "text-storm-700",
+            border: "border-storm-200",
+            ring: "ring-storm-200",
+            gradient: "from-storm-300 to-storm-600",
         },
         offscreenTip:
             "Svako jutro pogledajte zajedno kroz prozor: „Pada kiša. Šta nam treba?” Neka dete samo izabere kišobran ili kapu. Zalepite pored vrata sličice odeće redom (čarape, pa patike; majica, pa jakna), a starije dete neka uveče pogleda prognozu i spremi odeću za sutra.",
         graded: true,
         // Oblačenje prema vremenu: od jedne stvari do cele odeće, redosleda i nedeljne prognoze
         ages: { min: 4, max: 9 },
-        order: 20,
+        order: 22,
     },
     {
         id: "market",
@@ -595,20 +649,20 @@ export const GAMES: GameDefinition[] = [
         icon: "🛒",
         image: "/images/prodavnica.svg",
         accent: {
-            solid: "bg-[#c38a17]",
-            edge: "border-[#8c6210]",
-            soft: "bg-[#fcf6e8]",
-            text: "text-[#7a560e]",
-            border: "border-[#f0dcae]",
-            ring: "ring-[#f0dcae]",
-            gradient: "from-yellow-300 to-[#c38a17]",
+            solid: "bg-honey-500",
+            edge: "border-honey-700",
+            soft: "bg-honey-50",
+            text: "text-honey-700",
+            border: "border-honey-200",
+            ring: "ring-honey-200",
+            gradient: "from-honey-300 to-honey-600",
         },
         offscreenTip:
             "Igrajte se prodavnice kod kuće: na igračke zalepite cene od 1 do 10 dinara i plaćajte pravim novčićima. U pravoj prodavnici neka dete samo plati nešto malo i dobije račun. Starije dete neka unapred sabere cene sa spiska i proveri koliko je kusura dobilo.",
         graded: true,
         // Novac posle brojanja i brojeva: od spiska sa slikama do kusura i budžeta (školski uzrast)
         ages: { min: 5, max: 10 },
-        order: 21,
+        order: 23,
     },
 ];
 

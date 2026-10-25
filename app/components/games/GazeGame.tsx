@@ -229,14 +229,16 @@ export default function GazeGame({ childId, level, gender, childName, onComplete
         <GameStage className="gap-3 sm:gap-4">
             <GameHud round={shown.round} totalRounds={shown.totalRounds} score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
-            <GamePrompt key={`prompt-${shown.round}`} className="animate-fade-up" compact title={question} />
+            {/* Položen telefon: pitanje je jedan red u polju za igru, da slika bude što veća */}
+            <GamePrompt key={`prompt-${shown.round}`} className="animate-fade-up flat:hidden" compact title={question} />
 
-            <PlayArea accent={GAME.accent} className="p-2.5 sm:p-4">
+            <PlayArea accent={GAME.accent} className="p-2.5 sm:p-4 flat:gap-2">
+                <p className="hidden text-center font-display text-lg font-extrabold leading-tight text-ink flat:block">{question}</p>
                 {/* Slika je glavni deo zadatka: što veća. Na položenom tabletu kartice su desno od nje, inače ispod. */}
                 <div className="flex w-full flex-col items-center justify-center gap-3 sm:gap-4 md:landscape:flex-row md:landscape:gap-5">
                     <div
                         key={`scene-${shown.round}`}
-                        className="w-full max-w-[min(100%,50dvh)] animate-fade-up overflow-hidden rounded-2xl bg-surface ring-1 ring-blue-100 short:max-w-[min(100%,40dvh)] md:landscape:max-w-[min(64%,calc(max(12rem,100dvh-28.5rem)*1.5))]!"
+                        className="w-full max-w-[min(100%,50dvh)] animate-fade-up overflow-hidden rounded-2xl bg-surface ring-1 ring-blue-100 short:max-w-[min(100%,40dvh)] md:landscape:max-w-[min(64%,calc(max(12rem,100dvh-28.5rem)*1.5))]! flat:max-w-[min(64%,calc((67dvh-4.7rem)*1.5))]!"
                     >
                         <SceneArt spec={picture} className="h-auto w-full" />
                     </div>
@@ -245,7 +247,7 @@ export default function GazeGame({ childId, level, gender, childName, onComplete
                         role="group"
                         aria-label={know ? "Deca" : "Predmeti"}
                         className={cn(
-                            "grid w-full gap-2 sm:gap-3",
+                            "grid w-full gap-2 sm:gap-3 flat:sm:gap-2",
                             count === 2 ? "max-w-md grid-cols-2" : count === 3 ? "max-w-xl grid-cols-3" : "max-w-2xl grid-cols-4",
                             // Položen tablet: kartice pored slike — dve jedna ispod druge, tri i četiri u dve kolone
                             count === 2 ? "md:landscape:w-48 md:landscape:shrink-0 md:landscape:grid-cols-1" : "md:landscape:w-72 md:landscape:shrink-0 md:landscape:grid-cols-2",
@@ -265,12 +267,12 @@ export default function GazeGame({ childId, level, gender, childName, onComplete
                                     disabled={isMonitor || solved || state !== "idle"}
                                     onClick={() => handlePick(id)}
                                     aria-label={`${label}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
-                                    className="animate-pop min-h-0 flex-col gap-1 px-1 py-2 sm:gap-1.5 sm:p-3"
+                                    className="animate-pop min-h-0 flex-col gap-1 px-1 py-2 sm:gap-1.5 sm:p-3 flat:sm:gap-1 flat:sm:p-1.5"
                                 >
                                     {object && <ObjectPicture object={object} className="h-[clamp(2.75rem,9dvh,5.5rem)] w-auto max-w-full" />}
                                     {person && <PersonPicture look={person.id} className="h-[clamp(3rem,10dvh,6rem)] w-auto max-w-full" />}
                                     {/* Natpis je za odrasle i decu koja čitaju; pitanje ne imenuje predmet */}
-                                    <span className="text-sm leading-tight sm:text-lg">{label}</span>
+                                    <span className="text-sm leading-tight sm:text-lg flat:sm:text-base">{label}</span>
                                     {demo && id === shown.target && <DemoHand />}
                                 </ChoiceCard>
                             );

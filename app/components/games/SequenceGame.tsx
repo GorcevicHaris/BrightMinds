@@ -373,15 +373,20 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
         <GameStage className="gap-3 sm:gap-4">
             <GameHud round={shown.round} totalRounds={shown.totalRounds} unit="Niz" score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
+            {/* Položen telefon: uputstvo je jedan red u polju za igru, da niz i kartice budu krupni */}
             <GamePrompt
                 key={`prompt-${sequence.id}`}
-                className="animate-fade-up"
+                className="animate-fade-up flat:hidden"
                 compact
                 title={sequence.title}
                 subtitle={solved ? "Složeno!" : questionFor(shown.placed, total)}
             />
 
-            <PlayArea accent={GAME.accent} className="gap-3 p-2.5 sm:gap-5 sm:p-4">
+            <PlayArea accent={GAME.accent} className="gap-3 p-2.5 sm:gap-5 sm:p-4 flat:gap-2.5 flat:sm:gap-3">
+                <p className="hidden text-center font-display text-lg font-extrabold leading-tight text-ink flat:block">
+                    {sequence.title}
+                    <span className="text-ink-soft"> · {solved ? "Složeno!" : questionFor(shown.placed, total)}</span>
+                </p>
                 {/* Mesta u nizu: složeni koraci sa slikom i brojem; prazna mesta isprekidana (uz senku tačne slike na lakim nivoima) */}
                 <ol aria-label="Redosled" className={cn("grid w-full gap-1.5 sm:gap-3", SLOT_COLUMNS[total] ?? SLOT_COLUMNS[5], SLOT_WIDTH[total] ?? SLOT_WIDTH[5])}>
                     {sequence.steps.map((step, index) => {

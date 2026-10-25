@@ -241,20 +241,20 @@ function feedbackText(view: ColoringView, plan: ColoringPlan, task: ColoringTask
 }
 
 // ── Nizak ekran (položen telefon) ────────────────────────────────────────────
-// Na ekranu niskom do 30rem (npr. 844 × 390) slika, natpis i paleta se zbijaju, da bojenje stane
-// bez pomeranja: manji razmaci, niže pločice boja (i dalje ≥ 40 px, cela pločica je dugme), bez
+// Na položenom telefonu i niskom laptopu (`flat`, npr. 844 × 390, 1000 × 560) slika, natpis i paleta se zbijaju, da bojenje stane
+// bez pomeranja: manji razmaci, niže pločice boja (i dalje ≥ 48 px, cela pločica je dugme), bez
 // naziva boja ispod pločica (naziv se čuje pri dodiru). Klase sa `!` jer pobeđuju sm:/short: veličine.
 
 const SHORT = {
-    stage: "[@media(max-height:30rem)]:pb-0",
-    card: "[@media(max-height:30rem)]:p-2!",
-    captionRow: "[@media(max-height:30rem)]:mb-1!",
-    caption: "[@media(max-height:30rem)]:text-lg! [@media(max-height:30rem)]:min-h-6",
-    palette: "[@media(max-height:30rem)]:gap-2 [@media(max-height:30rem)]:p-2!",
-    hide: "[@media(max-height:30rem)]:hidden!",
-    swatch: "[@media(max-height:30rem)]:h-11!",
-    tool: "[@media(max-height:30rem)]:min-h-12 [@media(max-height:30rem)]:flex-row [@media(max-height:30rem)]:gap-2",
-    art: "[@media(max-height:30rem)]:max-h-[calc(100dvh-13.5rem)]!",
+    stage: "flat:pb-0",
+    card: "flat:p-2!",
+    captionRow: "flat:mb-1!",
+    caption: "flat:text-lg! flat:min-h-6",
+    palette: "flat:gap-2 flat:p-2!",
+    hide: "flat:hidden!",
+    swatch: "flat:h-12!",
+    tool: "flat:min-h-12 flat:flex-row flat:gap-2",
+    art: "[@media(max-height:30rem)]:max-h-[calc(100dvh-13.25rem)]! [@media(orientation:landscape)_and_(min-height:30.01rem)_and_(max-height:37.5rem)]:max-h-[calc(100dvh-17rem)]!",
 };
 
 // ── Pokazivanje ───────────────────────────────────────────────────────────────
@@ -885,7 +885,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                             stroke={OUTLINE}
                             strokeWidth={plan.level.showZone ? 4 : 3}
                             strokeLinejoin="round"
-                            aria-label={paint ? colorSentence(zone, paint) : `${zone.name}: nije obojeno`}
+                            aria-label={paint ? colorSentence(zone, paint) : `${zone.name}: bez boje`}
                             className={cn("transition-[fill] duration-200", interactive && "cursor-pointer")}
                             {...zoneProps(zone)}
                         />
@@ -982,9 +982,10 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
             )}
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:gap-4 lg:gap-5">
-                {/* Primer: na velikom ekranu u svojoj koloni levo od slike */}
+                {/* Primer: na velikom ekranu u svojoj koloni levo od slike (od 1280 px; uže bi slika uz
+                    drugara pored igre ostala sitna — tada je primer mala kartica uz natpis) */}
                 {hasModel && (
-                    <div className="hidden w-52 shrink-0 lg:block xl:w-60">
+                    <div className="hidden w-52 shrink-0 xl:block xl:w-60">
                         <ModelCard
                             picture={picture}
                             open={showModel}
@@ -1008,7 +1009,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                     <div className={cn("mb-2 flex items-center gap-3 sm:mb-3", SHORT.captionRow)}>
                         {/* Primer na telefonu i manjem tabletu, uz široku sliku: mala kartica levo od natpisa */}
                         {hasModel && !tall && (
-                            <div className="w-28 shrink-0 sm:w-32 lg:hidden">
+                            <div className="w-28 shrink-0 sm:w-32 xl:hidden flat:hidden">
                                 <ModelCard
                                     picture={picture}
                                     open={showModel}
@@ -1031,9 +1032,9 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                         </p>
                     </div>
                     <div className="flex items-start gap-2 sm:gap-3">
-                        {/* Uz visoku sliku primer stoji levo od nje: tako slika ostaje velika */}
-                        {hasModel && tall && (
-                            <div className="w-28 shrink-0 sm:w-32 lg:hidden">
+                        {/* Uz visoku sliku (i na položenom telefonu uz svaku) primer stoji levo od nje: tako slika ostaje velika */}
+                        {hasModel && (
+                            <div className={cn("w-28 shrink-0 sm:w-32 xl:hidden", !tall && "hidden flat:block")}>
                                 <ModelCard
                                     picture={picture}
                                     open={showModel}
@@ -1050,12 +1051,12 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
                 {/* Boje i alat */}
                 {/* Na uskom telefonu manji razmaci, da šest boja u redu budu dovoljno široke za dodir (48 px) */}
-                <div className={cn("flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-2 shadow-soft sm:p-3", SHORT.palette, mode === "free" ? "sm:w-72" : "sm:w-60 lg:w-64")}>
+                <div className={cn("flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-2 shadow-soft sm:p-3", SHORT.palette, mode === "free" ? "sm:w-72 flat:sm:w-80" : "sm:w-60 lg:w-64")}>
                     <p className={cn("hidden px-1 font-display text-base font-extrabold sm:block", SHORT.hide, accent.text)}>{mode === "number" ? "Brojevi i boje" : "Boje"}</p>
                     <div
                         className={cn(
                             "grid gap-1.5 sm:gap-3",
-                            mode === "free" ? "grid-cols-6 sm:grid-cols-4" : cn(PALETTE_COLS[swatches.length] ?? "grid-cols-6", swatches.length > 8 ? "sm:grid-cols-3" : "sm:grid-cols-2")
+                            mode === "free" ? "grid-cols-6 sm:grid-cols-4 flat:sm:grid-cols-6 flat:sm:gap-1.5" : cn(PALETTE_COLS[swatches.length] ?? "grid-cols-6", swatches.length > 8 ? "sm:grid-cols-3" : "sm:grid-cols-2")
                         )}
                     >
                         {swatches.map((color) => (
@@ -1076,7 +1077,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                     </div>
 
                     {mode !== "verbal" && (
-                        <div className={cn("grid gap-3", mode === "free" ? "grid-cols-3 sm:grid-cols-2" : "grid-cols-1")}>
+                        <div className={cn("grid gap-3 flat:gap-2", mode === "free" ? "grid-cols-3 sm:grid-cols-2 flat:sm:grid-cols-3" : "grid-cols-1")}>
                             {mode === "free" && (
                                 <ToolButton
                                     label="Gumica"
@@ -1098,7 +1099,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                     disabled={!interactive || colored < neededForDone}
                                     onClick={() => finish(viewRef.current)}
                                     className={cn(
-                                        "min-h-14 w-full rounded-2xl border-2 border-b-[5px] border-emerald-900 bg-emerald-700 px-4 text-lg font-extrabold text-white transition-[transform,background-color,border-width,opacity] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 disabled:cursor-default disabled:opacity-45 disabled:hover:bg-emerald-500 sm:col-span-2 sm:min-h-16 sm:text-xl",
+                                        "min-h-14 w-full rounded-2xl border-2 border-b-[5px] border-emerald-900 bg-emerald-700 px-4 text-lg font-extrabold text-white transition-[transform,background-color,border-width,opacity] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 disabled:cursor-default disabled:opacity-45 disabled:hover:bg-emerald-500 sm:col-span-2 sm:min-h-16 sm:text-xl flat:sm:col-span-1 flat:sm:min-h-12 flat:sm:px-2 flat:sm:text-base",
                                         interactive && allColored && "animate-soft-pulse"
                                     )}
                                 >
@@ -1201,7 +1202,7 @@ function ModelCard({ picture, open, onRequest, mark, large = false }: ModelCardP
         );
     }
     return (
-        <div role="img" aria-label={`Primer: obojen ${picture.name.toLowerCase()}`} className={frame}>
+        <div role="img" aria-label={`Obojen primer: ${picture.name.toLowerCase()}`} className={frame}>
             {body}
         </div>
     );
@@ -1275,7 +1276,7 @@ function Swatch({ color, count, named, selected, tried, hinted, hand, number, di
             </span>
             {/* Naziv boje: boja nikad nije jedini znak (na telefonu naziv se čuje pri dodiru) */}
             {named && (
-                <span aria-hidden="true" className={cn("hidden text-xs font-extrabold leading-tight text-ink-soft sm:block", SHORT.hide)}>
+                <span aria-hidden="true" className={cn("hidden text-sm font-extrabold leading-tight text-ink-soft sm:block", SHORT.hide)}>
                     {color.nom}
                 </span>
             )}
