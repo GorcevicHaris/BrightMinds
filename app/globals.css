@@ -170,8 +170,12 @@ h1, h2, h3 {
   border-radius: 0.5rem;
 }
 
-button, a, [role="button"] {
-  touch-action: manipulation;
+/* U sloju „base”, da ga klasa `touch-none` (komad koji se prevlači prstom) može nadjačati: inače
+   pregledač prevlačenje prstom shvati kao pomeranje strane i prekine ga (pointercancel) */
+@layer base {
+  button, a, [role="button"] {
+    touch-action: manipulation;
+  }
 }
 
 button:not(:disabled), [role="button"] {
