@@ -6,8 +6,9 @@ import * as THREE from "three";
 import type { CompanionKind, FigureBody, ItemBuild, Wear } from "../../contract";
 import { companionBuilder, isHumanKind, itemBuilder } from "../../contract";
 import { makeItemContext } from "../../engine/figure";
-import { buildHuman } from "../../engine/human";
+import { buildHuman, isHumanBody } from "../../engine/human";
 import { HIJAB_COLORS, HUMAN_DEFAULT, NO_HIJAB, hasHijabOption } from "../../looks";
+import { getItem } from "../../manifest";
 import "../../animals";
 
 // ── Probni lik ────────────────────────────────────────────────────────────────
@@ -56,7 +57,9 @@ export function wearItem(figure: TestFigure, id: string, wear: Wear, quality: "h
     if (!entry) return null;
     const { builder } = entry;
     const { body } = figure;
-    if (figure.hijab && builder.withHijab === "hide") return { objects: [], hidden: [] };
+    if (figure.hijab && (builder.withHijab === "hide" || getItem(id)?.hijab === "hide")) return { objects: [], hidden: [] };
+    // Hidžab se kroji po odeći ispod (kao u motoru)
+    if (figure.hijab && isHumanBody(body)) body.fitHijab(wear.outfit);
     const { ctx, objects: made } = makeItemContext(body, wear, { hairCrown: figure.hairCrown, quality, hijab: figure.hijab });
     body.root.updateMatrixWorld(true);
     const result: ItemBuild = builder.build(ctx);

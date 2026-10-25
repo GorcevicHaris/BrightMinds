@@ -8,7 +8,7 @@ import type { ItemData } from "../data";
 export const ITEMS: readonly ItemData[] = [
     { id: "kapa", slot: "hat", label: "Kapa", price: 4, group: "kape" },
     { id: "sesir", slot: "hat", label: "Šešir", price: 5, group: "sesiri" },
-    { id: "masna", slot: "hat", label: "Mašna", price: 3, group: "za-kosu" },
+    { id: "masna", slot: "hat", label: "Mašna", price: 3, group: "za-kosu", hijab: "hide" },
     { id: "cvetni-venac", slot: "hat", label: "Cvetni venac", price: 6, group: "za-kosu" },
     { id: "cilindar", slot: "hat", label: "Cilindar", price: 8, group: "sesiri" },
     { id: "kruna", slot: "hat", label: "Kruna", price: 12, group: "krune" },
@@ -45,8 +45,8 @@ export const ITEMS: readonly ItemData[] = [
     { id: "crna-opustena-kapa", slot: "hat", label: "Crna opuštena kapa", price: 6, group: "kape" },
     { id: "krem-opustena-kapa", slot: "hat", label: "Krem opuštena kapa", price: 6, group: "kape" },
     { id: "zelena-opustena-kapa", slot: "hat", label: "Maslinasta opuštena kapa", price: 6, group: "kape" },
-    { id: "traka-za-kosu", slot: "hat", label: "Traka za kosu", price: 3, group: "za-kosu" },
-    { id: "traka-marama", slot: "hat", label: "Traka-marama sa čvorom", price: 4, group: "za-kosu" },
+    { id: "traka-za-kosu", slot: "hat", label: "Traka za kosu", price: 3, group: "za-kosu", hijab: "hide" },
+    { id: "traka-marama", slot: "hat", label: "Traka-marama sa čvorom", price: 4, group: "za-kosu", hijab: "hide" },
     // ── Novo (porodica, škola, sport, praznik, zima, kiša, spavanje) ──
     { id: "bela-kapica", slot: "hat", label: "Bela kapica (takija)", price: 6, group: "kape" },
     { id: "vezena-kapica", slot: "hat", label: "Vezena krem kapica", price: 7, group: "kape" },
@@ -55,5 +55,5 @@ export const ITEMS: readonly ItemData[] = [
     { id: "teget-zimska-kapa", slot: "hat", label: "Teget zimska kapa", price: 6, group: "kape" },
     { id: "zuta-kapa-siltom", slot: "hat", label: "Žuta kapa sa šiltom", price: 6, group: "kape" },
     { id: "lila-opustena-kapa", slot: "hat", label: "Lila opuštena kapa", price: 6, group: "kape" },
-    { id: "roze-traka-za-kosu", slot: "hat", label: "Roze traka za kosu", price: 3, group: "za-kosu" },
+    { id: "roze-traka-za-kosu", slot: "hat", label: "Roze traka za kosu", price: 3, group: "za-kosu", hijab: "hide" },
 ];

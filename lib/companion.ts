@@ -26,13 +26,16 @@ export const COINS_PER_STAR = 2;
 
 /**
  * Pratioci koje dete može da izabere: ljudi (devojčica, dečak, učiteljica, učitelj, tinejdžerka,
- * tinejdžer, nana, dedo), životinje i novi drugari (robotić, vanzemaljac, bubamara, pčelica…).
+ * tinejdžer, nana, dedo, devojčica, tinejdžerka i mama sa hidžabom), životinje i novi drugari
+ * (robotić, vanzemaljac, bubamara, pčelica…).
  * 3D crteži: app/components/avatar3d; 2D (kad WebGL ne radi): app/components/avatar/Companion.
  */
 export const COMPANION_KINDS = [
     "girl", "boy", "woman", "man",
     // ── Ljudi, porodica (tinejdžerka, tinejdžer, nana, dedo) — posebna grupa, odmah posle ljudi ──
     "teengirl", "teenboy", "grandma", "grandpa",
+    // ── Ljudi sa hidžabom (devojčica, tinejdžerka, mama) — uvek nose hidžab ──
+    "hijabgirl", "hijabteen", "hijabwoman",
     // ── Životinje ──
     "cat", "dog", "bunny", "bear", "fox", "lion", "penguin", "unicorn",
     "panda", "koala", "elephant", "monkey", "owl", "tiger", "dinosaur", "giraffe",

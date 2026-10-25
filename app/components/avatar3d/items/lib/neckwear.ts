@@ -6,6 +6,7 @@
 import * as THREE from "three";
 import type { BodyShape, ItemContext } from "../../contract";
 import { torsoPoint } from "../../engine/body";
+import { hijabOuter } from "../../engine/hijab";
 import { ringTube, taperedTube, polyPath } from "../../engine/surface";
 import { res, seg, weighTorso } from "./common";
 import { mergeSimple, Tailor } from "./tailor";
@@ -21,7 +22,8 @@ export function neckLayer(ctx: ItemContext): { off: number; back: number } {
         off = 0.026;
         back = 0.034;
     } else if (/dzemper|kostim|odelo|pidzama|super-ogrtac/.test(id)) off = 0.022;
-    if (ctx.hijab) off = Math.max(off, 0.046);
+    // Preko hidžaba (deo preko ramena je odmaknut po odeći ispod)
+    if (ctx.hijab) off = Math.max(off, hijabOuter(ctx.wear.outfit) + 0.015);
     return { off, back };
 }
 

@@ -21,6 +21,23 @@ export function torsoTop(shape: BodyShape): number {
     return shape.headBoneY + 0.035;
 }
 
+/**
+ * Ugao a (kao u torsoPoint) čija tačka na trupu leži u pravcu `phi` od ose tela (presek je
+ * superelipsa, pa a i pravac nisu isti). Grudi i zaobljeno dno se zanemaruju (mala razlika).
+ */
+export function torsoAngle(shape: BodyShape, phi: number, y: number, offset: number): number {
+    const e = 2 + 0.7 * gauss(y, shape.shoulderY - 0.02, 0.06) + 0.25 * gauss(y, shape.hipY, 0.05);
+    const w = shape.torsoW(y) + offset;
+    const d = (Math.cos(phi) >= 0 ? shape.torsoFront(y) : shape.torsoBack(y)) + offset;
+    // tan φ = (w/d)·(|tan a|)^(2/e) → |tan a| = (|tan φ|·d/w)^(e/2)
+    const s = Math.abs(Math.sin(phi));
+    const c = Math.abs(Math.cos(phi));
+    const a = Math.atan2(Math.pow(s * d, e / 2), Math.pow(c * w, e / 2));
+    const front = Math.cos(phi) >= 0;
+    const base = front ? a : Math.PI - a;
+    return Math.sin(phi) >= 0 ? base : -base;
+}
+
 /** Dodatak poluprečniku trupa (odeća: širi kroj, nabori) */
 export type TorsoExtra = (a: number, y: number) => number;
 

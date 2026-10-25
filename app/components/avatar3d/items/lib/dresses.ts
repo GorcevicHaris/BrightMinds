@@ -161,9 +161,10 @@ export function tracksuitTop(t: Tailor, o: { color: string; stripe: string }) {
     t.torso(hem + 0.012, neckY, off, shell, extra, 40);
     t.ring(hem + 0.012, off + 0.004, 0.0055, 0.014, rib);
     // Kragna koja stoji
-    const collarH = 0.026 * Math.min(1.3, s.height / 1.19);
-    t.torso(neckY - 0.004, neckY + collarH, off - 0.008, rib, () => 0.006, 6, 44);
-    t.ring(neckY + collarH, off - 0.003, 0.0035, 0.004, rib);
+    // Uz hidžab kragna ne stoji uz vrat (ispod je tkanine)
+    const collarH = t.ctx.hijab ? 0 : 0.026 * Math.min(1.3, s.height / 1.19);
+    if (collarH > 0) t.torso(neckY - 0.004, neckY + collarH, off - 0.008, rib, () => 0.006, 6, 44);
+    if (collarH > 0) t.ring(neckY + collarH, off - 0.003, 0.0035, 0.004, rib);
     const stripe = fabric(o.stripe, "cotton");
     for (const side of SIDES) {
         t.sleeve(side, 0, 0.92, off - 0.002, shell, sleeveFolds(1.1, 0.003));
@@ -171,7 +172,7 @@ export function tracksuitTop(t: Tailor, o: { color: string; stripe: string }) {
         // Dve trake niz rukav (spolja)
         stripeAlongArm(t, side, off + 0.0012, stripe);
     }
-    t.zipper(hem + 0.01, neckY + collarH - 0.002, off + extra(0, s.chestY) + 0.001, fabric(darker(o.color, 0.2), "cotton"), metal("#E8E8EC"), extra);
+    t.zipper(hem + 0.01, collarH > 0 ? neckY + collarH - 0.002 : s.shoulderY - 0.03, off + extra(0, s.chestY) + 0.001, fabric(darker(o.color, 0.2), "cotton"), metal("#E8E8EC"), extra);
     seams(t, hem + 0.02, off + 0.003, o.color, extra);
 }
 
@@ -355,7 +356,7 @@ export function coat(t: Tailor, o: CoatOptions) {
             else collarFlap(t, side, main, { offset: off, frontA: 0.38, height: 0.03, tip: 0.02, frontDrop: s.neckBaseY - s.chestY - 0.01, yNeck: neck, lift: 0.009 });
         }
     }
-    if (o.hood) hoodRing(t, neck, off, main);
+    if (o.hood && !t.ctx.hijab) hoodRing(t, neck, off, main);
     if (o.belt) {
         const belt = fabric(o.body.color, o.body.kind ?? "felt", { sheen: 0.8 });
         t.ring(s.waistY - 0.01, off + 0.0015, 0.004, 0.016, belt);
