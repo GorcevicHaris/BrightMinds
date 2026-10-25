@@ -53,6 +53,26 @@
   --color-sun-600: #d97f06;
   --color-sun-700: #955005;
 
+  /* Mahovina (igra „Lavirint”: živa ograda) */
+  --color-moss-50: #f4f8e8;
+  --color-moss-100: #e6efcc;
+  --color-moss-200: #cfe09f;
+  --color-moss-300: #b2cc6c;
+  --color-moss-400: #96b646;
+  --color-moss-500: #7a9a2e;
+  --color-moss-600: #607c22;
+  --color-moss-700: #4b5f1d;
+
+  /* Korali (igra „Pronađi razlike”) */
+  --color-coral-50: #fff3f0;
+  --color-coral-100: #ffe3dc;
+  --color-coral-200: #ffc9bc;
+  --color-coral-300: #ffa38f;
+  --color-coral-400: #fb7a5f;
+  --color-coral-500: #f25c3f;
+  --color-coral-600: #de4227;
+  --color-coral-700: #b9331d;
+
   --radius-card: 1.5rem;
   --radius-tile: 1.25rem;
 

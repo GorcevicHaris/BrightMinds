@@ -22,6 +22,8 @@ export type GameId =
     | "puzzle"
     | "inset"
     | "clock"
+    | "maze"
+    | "differences"
     | "families"
     | "backpack";
 
@@ -46,6 +48,8 @@ export type GameType =
     | "puzzle"
     | "inset"
     | "clock"
+    | "maze"
+    | "differences"
     | "families"
     | "backpack";
 
@@ -561,6 +565,56 @@ export const GAMES: GameDefinition[] = [
         order: 18,
     },
     {
+        id: "maze",
+        gameType: "maze",
+        activityId: 23,
+        title: "Lavirint",
+        description: "Pronađi put do cilja",
+        skill: "Fina motorika i planiranje",
+        icon: "🌿",
+        image: "/images/lavirint.svg",
+        accent: {
+            solid: "bg-moss-500",
+            edge: "border-moss-700",
+            soft: "bg-moss-50",
+            text: "text-moss-700",
+            border: "border-moss-200",
+            ring: "ring-moss-200",
+            gradient: "from-lime-400 to-moss-600",
+        },
+        offscreenTip:
+            "Nacrtajte kredom na asfaltu ili trakom na podu široku stazu sa jednim skretanjem i neka dete hoda po njoj do igračke na kraju. Kasnije crtajte lavirinte na papiru i vodite prst zajedno, pa olovku. Pitajte: „Kuda dalje?”, a ne pokazujte odmah.",
+        graded: true,
+        // 20. po redu: vođenje prsta po stazi i planiranje puta — posle umetaljke i slaganja slike
+        ages: { min: 3, max: 9 },
+        order: 20,
+    },
+    {
+        id: "differences",
+        gameType: "differences",
+        activityId: 24,
+        title: "Pronađi razlike",
+        description: "Dve slike, a nisu iste",
+        skill: "Vizuelna pažnja",
+        icon: "🔍",
+        image: "/images/razlike.svg",
+        accent: {
+            solid: "bg-coral-500",
+            edge: "border-coral-700",
+            soft: "bg-coral-50",
+            text: "text-coral-700",
+            border: "border-coral-200",
+            ring: "ring-coral-200",
+            gradient: "from-coral-400 to-pink-500",
+        },
+        offscreenTip:
+            "Postavite na sto tri-četiri predmeta, neka dete zatvori oči, pa jedan sklonite ili zamenite: „Šta se promenilo?” U slikovnici tražite iste stvari na dve stranice. Počnite od velikih promena (nema lopte), pa boja, pa sitnice.",
+        graded: true,
+        // 21. po redu: pažljivo poređenje dve slike — posle uparivanja oblika i slaganja slike
+        ages: { min: 4, max: 10 },
+        order: 21,
+    },
+    {
         id: "families",
         gameType: "families",
         activityId: 20,
@@ -581,9 +635,9 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Uz slikovnicu ili na selu pitajte: „Gde je mama od teleta?”, „Kako se zove beba od ovce?” Neka dete pokaže ili kaže, a vi ponovite: „Ovca i njeno jagnje.” Igrajte se plišanim životinjama: velika i mala zajedno, pa tata, mama i beba u istu kutiju-kućicu.",
         graded: true,
-        // 20. po redu: uparivanje mame i bebe, pa porodice — od izgleda ka znanju
+        // 22. po redu: uparivanje mame i bebe, pa porodice — od izgleda ka znanju
         ages: { min: 3, max: 8 },
-        order: 20,
+        order: 22,
     },
     {
         id: "backpack",
@@ -606,9 +660,9 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Uveče pred školu napravite zajedno slikovnu listu (sveska, pernica, flašica, užina) i neka dete samo pakuje i štiklira. Starije dete neka pogleda raspored časova i kaže šta treba za koji čas, pa ujutru proverite: „Šta fali u rancu?”",
         graded: true,
-        // 21. po redu: lista, pamćenje liste i raspored časova — za školski uzrast
+        // 23. po redu: lista, pamćenje liste i raspored časova — za školski uzrast
         ages: { min: 5, max: 10 },
-        order: 21,
+        order: 23,
     },
 ];
 

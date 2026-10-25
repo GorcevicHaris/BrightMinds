@@ -10,9 +10,11 @@ import type { GameId } from "./games";
 /**
  * Igre u kojima smena posle svakog zadatka ima smisla (kratki zadaci, jasan kraj poteza).
  * U „Umetaljci” i „Satu” zadatak je jedan komad, pa igrači istu tablu slažu na smenu.
+ * U „Lavirintu” svako vodi lik kroz svoj lavirint, a u „Pronađi razlike” igrači traže razlike
+ * na istim slikama na smenu (jedna razlika — jedan potez).
  * U igrama „Mama i beba” i „Spakuj ranac” jedan zadatak je jedna tabla (ili jedan ranac).
  */
-export const TOGETHER_GAMES: readonly GameId[] = ["memory", "counting", "gaze", "where", "puzzle", "inset", "clock", "families", "backpack"];
+export const TOGETHER_GAMES: readonly GameId[] = ["memory", "counting", "gaze", "where", "puzzle", "inset", "clock", "maze", "differences", "families", "backpack"];
 
 export function isTogetherGame(id: GameId | null | undefined): boolean {
     return Boolean(id) && TOGETHER_GAMES.includes(id as GameId);
