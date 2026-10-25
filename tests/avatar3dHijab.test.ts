@@ -101,8 +101,8 @@ describe("3D likovi sa hidžabom", () => {
         assert.ok(!isHijabKind("girl") && !isHijabKind("grandma"));
     });
 
-    it("spisak drugara je po grupama: deca (devojčica sa hidžabom odmah do devojčice), tinejdžeri, odrasli, nana i dedo, pa životinje", () => {
-        assert.deepEqual(COMPANION_GROUPS.map((g) => g.label), ["Deca", "Tinejdžeri", "Odrasli", "Nana i dedo", "Životinje"]);
+    it("spisak drugara je po grupama: deca (devojčica sa hidžabom odmah do devojčice), tinejdžeri, odrasli, nana i dedo, životinje, još drugara", () => {
+        assert.deepEqual(COMPANION_GROUPS.map((g) => g.label), ["Deca", "Tinejdžeri", "Odrasli", "Nana i dedo", "Životinje", "Još drugara"]);
         assert.deepEqual([...COMPANION_GROUPS[0].kinds], ["girl", "hijabgirl", "boy"]);
         assert.deepEqual([...COMPANION_GROUPS[1].kinds], ["teengirl", "hijabteen", "teenboy"]);
         assert.deepEqual([...COMPANION_GROUPS[2].kinds], ["woman", "hijabwoman", "man"]);

@@ -12,3 +12,4 @@ import "./penguin";
 import "./unicorn";
 import "./extra";
 import "./more";
+import "./friends";

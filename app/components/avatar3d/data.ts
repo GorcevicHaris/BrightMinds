@@ -101,6 +101,16 @@ export function isMoreAnimalKind(kind: string): kind is MoreAnimalKind {
 }
 // ── kraj: još životinja ──
 
+// ── Novi drugari (animals/friends/, izgledi u animals/friends/skins.data.ts) ──
+/** Novi drugari: robotić, vanzemaljac, bubamara, pčelica, leptirić, pužić, hobotnica, lenjivac */
+export const FRIEND_KINDS = ["robot", "alien", "ladybug", "bee", "butterfly", "snail", "octopus", "sloth"] as const;
+export type FriendKind = (typeof FRIEND_KINDS)[number];
+
+export function isFriendKind(kind: string): kind is FriendKind {
+    return (FRIEND_KINDS as readonly string[]).includes(kind);
+}
+// ── kraj: novi drugari ──
+
 export function isHumanKind(kind: string): kind is HumanKind {
     return (HUMAN_KINDS as readonly string[]).includes(kind);
 }
@@ -181,19 +191,30 @@ export const COMPANION_LABELS: Record<CompanionKind, string> = {
     bat: "Slepi miš",
     dragon: "Zmaj",
     // ── kraj: još životinja ──
+    // ── Novi drugari (animals/friends/) ──
+    robot: "Robotić",
+    alien: "Vanzemaljac",
+    ladybug: "Bubamara",
+    bee: "Pčelica",
+    butterfly: "Leptirić",
+    snail: "Pužić",
+    octopus: "Hobotnica",
+    sloth: "Lenjivac",
+    // ── kraj: novi drugari ──
 };
 
 /**
- * Grupe na spisku drugara (Lik → Drugar): deca, tinejdžeri, odrasli, nana i dedo, pa životinje.
- * Lik sa hidžabom stoji odmah pored svog vršnjaka (ne na kraju spiska). Životinje su svi ostali
- * drugari redom kao u COMPANION_KINDS (nove životinje se same pojave na kraju).
+ * Grupe na spisku drugara (Lik → Drugar): deca, tinejdžeri, odrasli, nana i dedo, životinje, pa
+ * još drugara (robotić, vanzemaljac…). Lik sa hidžabom stoji odmah pored svog vršnjaka (ne na kraju
+ * spiska). Životinje su sve ostale životinje redom kao u COMPANION_KINDS (nove se same pojave).
  */
 export const COMPANION_GROUPS: readonly { id: string; label: string; kinds: readonly CompanionKind[] }[] = [
     { id: "deca", label: "Deca", kinds: ["girl", "hijabgirl", "boy"] },
     { id: "tinejdzeri", label: "Tinejdžeri", kinds: ["teengirl", "hijabteen", "teenboy"] },
     { id: "odrasli", label: "Odrasli", kinds: ["woman", "hijabwoman", "man"] },
     { id: "stariji", label: "Nana i dedo", kinds: ["grandma", "grandpa"] },
-    { id: "zivotinje", label: "Životinje", kinds: COMPANION_KINDS.filter((kind) => !isHumanKind(kind)) },
+    { id: "zivotinje", label: "Životinje", kinds: COMPANION_KINDS.filter((kind) => !isHumanKind(kind) && !isFriendKind(kind)) },
+    { id: "drugari", label: "Još drugara", kinds: FRIEND_KINDS },
 ];
 
 /** Proporcije tela: kroj odeće i kadar kamere zavise od njih */
