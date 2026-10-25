@@ -499,16 +499,17 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
             {shown.phase === "cover" && (
                 <section
                     aria-label={`Priča: ${story.title}`}
-                    className="mx-auto w-full max-w-2xl animate-pop overflow-hidden rounded-card border border-line bg-surface shadow-lift"
+                    // Položen telefon: slika levo, naslov i izbor načina čitanja desno
+                    className="mx-auto w-full max-w-2xl animate-pop overflow-hidden rounded-card border border-line bg-surface shadow-lift flat:grid flat:max-w-4xl flat:grid-cols-2 flat:items-center"
                 >
-                    <div aria-hidden="true" className={cn("h-2 bg-linear-to-r", ACCENT.gradient)} />
+                    <div aria-hidden="true" className={cn("h-2 bg-linear-to-r flat:col-span-2 flat:self-start", ACCENT.gradient)} />
                     <Scene emojis={story.cover} tone={story.tone} size="cover" picture={storyScene(level, "cover")} female={female} />
-                    <div className="flex flex-col items-center gap-3 px-4 py-5 text-center sm:gap-4 sm:px-8 sm:py-8 short:sm:gap-3 short:sm:py-5">
-                        <p className={cn("rounded-full border px-3 py-1 text-sm font-extrabold", ACCENT.soft, ACCENT.text, ACCENT.border)}>
+                    <div className="flex flex-col items-center gap-3 px-4 py-5 text-center sm:gap-4 sm:px-8 sm:py-8 short:sm:gap-3 short:sm:py-5 flat:gap-2 flat:sm:gap-2 flat:sm:px-4 flat:sm:py-2">
+                        <p className={cn("rounded-full border px-3 py-1 text-sm font-extrabold flat:hidden", ACCENT.soft, ACCENT.text, ACCENT.border)}>
                             Priča u {story.steps.length} koraka
                         </p>
-                        <h2 className="text-3xl font-extrabold leading-tight text-ink sm:text-5xl short:sm:text-3xl">{story.title}</h2>
-                        <p className="max-w-md text-lg font-bold leading-snug text-ink-soft sm:text-xl short:sm:text-lg">{t(story.intro)}</p>
+                        <h2 className="text-3xl font-extrabold leading-tight text-ink sm:text-5xl short:sm:text-3xl flat:text-2xl flat:sm:text-2xl">{story.title}</h2>
+                        <p className="max-w-md text-lg font-bold leading-snug text-ink-soft sm:text-xl short:sm:text-lg flat:text-base flat:sm:text-base [@media(max-height:30rem)]:text-[0.9rem]! [@media(max-height:30rem)]:leading-tight!">{t(story.intro)}</p>
 
                         <div role="radiogroup" aria-label="Način čitanja" className="mt-1 grid w-full max-w-md grid-cols-2 gap-3">
                             {MODES.map((item) => {
@@ -522,11 +523,11 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                         disabled={isMonitor}
                                         onClick={() => selectMode(item.id)}
                                         className={cn(
-                                            "flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-2 py-2 text-base font-extrabold leading-tight transition-colors disabled:cursor-default sm:text-lg short:sm:min-h-16",
+                                            "flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-2 py-2 text-base font-extrabold leading-tight transition-colors disabled:cursor-default sm:text-lg short:sm:min-h-16 flat:min-h-12 flat:flex-row flat:gap-2 flat:py-1 flat:sm:min-h-12 flat:sm:text-base",
                                             selected ? "border-brand-500 bg-brand-50 text-brand-800" : "border-line bg-surface text-ink-soft"
                                         )}
                                     >
-                                        <span aria-hidden="true" className="text-3xl leading-none">
+                                        <span aria-hidden="true" className="text-3xl leading-none flat:text-2xl">
                                             {item.icon}
                                         </span>
                                         {item.label}
@@ -535,7 +536,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                             })}
                         </div>
 
-                        <PrimaryButton onClick={begin} disabled={isMonitor} className="mt-2 w-full sm:w-auto sm:min-w-56 short:sm:mt-0">
+                        <PrimaryButton onClick={begin} disabled={isMonitor} className="mt-2 w-full sm:w-auto sm:min-w-56 short:sm:mt-0 flat:mt-0 flat:sm:min-h-12 flat:sm:text-xl">
                             Počni priču
                         </PrimaryButton>
                     </div>
@@ -546,9 +547,15 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                 <>
                     <div
                         key={`${level}-${shown.stepIndex}`}
-                        className={cn("grid animate-fade-up sm:gap-5", choosing ? "gap-3" : "gap-4", choosing ? "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start" : "mx-auto w-full max-w-2xl")}
+                        className={cn(
+                            "grid animate-fade-up sm:gap-5 flat:sm:gap-3",
+                            choosing ? "gap-3" : "gap-4",
+                            // Položen telefon: korak sa izborom u dve kolone (priča levo, pitanje i izbori desno)
+                            choosing ? "lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start flat:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] flat:items-start" : "mx-auto w-full max-w-2xl flat:max-w-4xl"
+                        )}
                     >
-                        <article className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+                        {/* Položen telefon: stranica priče je slika levo i tekst desno */}
+                        <article className={cn("overflow-hidden rounded-card border border-line bg-surface shadow-soft", !choosing && "flat:grid flat:grid-cols-2 flat:items-center")}>
                             {/* Korak sa izborom na telefonu: slika je sličica pored teksta, da izbori stanu na ekran */}
                             <div className={cn(choosing && "hidden lg:block")}>
                                 <Scene
@@ -560,9 +567,9 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                     female={female}
                                 />
                             </div>
-                            <div className={cn("flex gap-3 px-4 sm:px-6 sm:py-5 short:sm:py-4", choosing ? "flex-row items-start py-3 lg:flex-col" : "flex-col py-4")}>
+                            <div className={cn("flex gap-3 px-4 sm:px-6 sm:py-5 short:sm:py-4 flat:gap-2 flat:sm:px-3 flat:sm:py-3", choosing ? "flex-row items-start py-3 lg:flex-col flat:flex-col" : "flex-col py-4")}>
                                 {choosing && (
-                                    <div className="w-20 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/5 sm:w-32 lg:hidden">
+                                    <div className="w-20 shrink-0 overflow-hidden rounded-xl ring-1 ring-black/5 sm:w-32 lg:hidden flat:mx-auto flat:sm:w-[min(100%,24dvh)] [@media(max-height:30rem)]:hidden">
                                         <Scene emojis={step.scene} tone={story.tone} size="thumb" picture={storyScene(level, shown.stepIndex)} female={female} />
                                     </div>
                                 )}
@@ -577,7 +584,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                 <p
                                     className={cn(
                                         "font-bold leading-snug text-ink",
-                                        choosing ? "text-lg sm:text-xl short:sm:text-lg" : "text-xl sm:text-2xl sm:leading-relaxed short:sm:text-xl short:sm:leading-snug"
+                                        choosing ? "text-lg sm:text-xl short:sm:text-lg flat:sm:text-base" : "text-xl sm:text-2xl sm:leading-relaxed short:sm:text-xl short:sm:leading-snug flat:sm:text-lg"
                                     )}
                                 >
                                     {t(step.text)}
@@ -602,7 +609,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                         </article>
 
                         {choosing && decision && (
-                            <section aria-label="Pitanje i izbori" className="flex min-w-0 flex-col gap-3">
+                            <section aria-label="Pitanje i izbori" className="flex min-w-0 flex-col gap-3 flat:gap-2">
                                 {/* Odgovor stoji na mestu pitanja (ne ispod izbora): stranica tako staje na ekran bez pomeranja */}
                                 <div aria-live="polite" className="min-w-0">
                                     {record.picked !== null ? (
@@ -684,7 +691,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                                         disabled={locked}
                                                         onClick={() => choose(optionIndex)}
                                                         aria-label={`${label}${status}`}
-                                                        className="h-full w-full min-w-0 flex-1 p-1.5! sm:p-2.5!"
+                                                        className="h-full w-full min-w-0 flex-1 p-1.5! sm:p-2.5! flat:sm:p-1.5!"
                                                     >
                                                         {/* Izbor je slika: dete radi baš to; natpis je ispod */}
                                                         <OptionPicture text={option.label} label={label} emoji={option.emoji} female={female}>
@@ -692,7 +699,8 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                                         </OptionPicture>
                                                     </ChoiceCard>
                                                     {!isMonitor && (
-                                                        <span className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2 [&>button]:min-h-9 [&>button]:w-9 [&>button]:rounded-xl sm:[&>button]:min-h-10 sm:[&>button]:w-10">
+                                                        // Zvučnik je mali da ne pokrije sliku, a nevidljiv okvir oko njega daje dodiru bar 48 px
+                                                        <span className="absolute right-1 top-1 z-10 sm:right-2 sm:top-2 [&>button]:relative [&>button]:min-h-9 [&>button]:w-9 [&>button]:rounded-xl [&>button]:after:absolute [&>button]:after:-inset-1.5 [&>button]:after:content-[''] sm:[&>button]:min-h-10 sm:[&>button]:w-10 sm:[&>button]:after:-inset-1">
                                                             <OptionSpeaker label={`Pročitaj: ${label}`} disabled={shown.listening} onClick={() => speakOption(optionIndex)} />
                                                         </span>
                                                     )}
@@ -705,7 +713,11 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                         )}
                     </div>
 
-                    <div ref={bottomRef} className={cn("flex scroll-mb-4 items-stretch gap-3", !choosing && "mx-auto w-full max-w-2xl")}>
+                    {/* Položen telefon, korak sa izborom: dugmad stoje ispod priče u levoj koloni (desno su izbori) */}
+                    <div
+                        ref={bottomRef}
+                        className={cn("flex scroll-mb-4 items-stretch gap-3", !choosing && "mx-auto w-full max-w-2xl flat:max-w-4xl", choosing && "flat:absolute flat:bottom-0 flat:left-0 flat:w-[calc(41.667%-0.5rem)]")}
+                    >
                         {shown.stepIndex > 0 && <BackButton onClick={back} disabled={isMonitor} />}
                         {canAdvance && (
                             <PrimaryButton onClick={advance} disabled={isMonitor} className="ml-auto min-w-0 flex-1 sm:min-w-56 sm:flex-none">
@@ -766,8 +778,8 @@ interface SceneProps {
 
 /** Najveća širina crteža: tolika da mu visina (2/3 širine) ne pređe zadati deo ekrana */
 const PICTURE_WIDTH = {
-    page: "max-w-[min(100%,30dvh)] lg:max-w-[min(100%,32dvh)] short:max-w-[min(100%,20dvh)]",
-    cover: "max-w-[min(100%,42dvh)] short:max-w-[min(100%,20dvh)]",
+    page: "max-w-[min(100%,30dvh)] lg:max-w-[min(100%,32dvh)] short:max-w-[min(100%,20dvh)] flat:max-w-[min(100%,52dvh)]",
+    cover: "max-w-[min(100%,42dvh)] short:max-w-[min(100%,20dvh)] flat:max-w-[min(100%,52dvh)]",
     choice: "max-w-[min(100%,26dvh)] short:max-w-[min(100%,22dvh)]",
     thumb: "",
 };

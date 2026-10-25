@@ -184,6 +184,12 @@ export function WoodBoard({ width, height, radius = 28 }: { width: number; heigh
 // bar 44 px (dugme za mali prst), a redovi staju u visinu.
 
 /** Tabla je široka i niska: korpa ide ispod nje i na položenom ekranu */
+/**
+ * Rupa kao dugme (dodir komada, pa rupe): kad je rupa sitna (sat na položenom telefonu), nevidljiv
+ * okvir oko nje proširuje dodir na najmanje 48 px — slika rupe ostaje ista.
+ */
+export const HOLE_HIT = "before:absolute before:inset-[min(0px,calc(50%-1.5rem))] before:rounded-2xl before:content-['']";
+
 export function isWideBoard(width: number, height: number): boolean {
     return width / height >= 1.6;
 }
@@ -218,19 +224,19 @@ export function trayPieceSize(count: number, wide = false): string {
     const rows = Math.ceil(count / side);
     const flat = wide
         ? count <= 4
-            ? "landscape:w-[clamp(2.75rem,min(16dvh,11vw),6.5rem)]"
+            ? "landscape:w-[clamp(3rem,min(16dvh,11vw),6.5rem)]"
             : count <= 6
-              ? "landscape:w-[clamp(2.75rem,min(15dvh,8vw),5.5rem)]"
-              : "landscape:w-[clamp(2.75rem,min(14dvh,5.6vw),5.5rem)]"
+              ? "landscape:w-[clamp(3rem,min(15dvh,8vw),5.5rem)]"
+              : "landscape:w-[clamp(3rem,min(14dvh,5.6vw),5.5rem)]"
         : rows <= 1
-          ? "landscape:w-[clamp(2.75rem,17dvh,6rem)]"
+          ? "landscape:w-[clamp(3rem,17dvh,6rem)]"
           : rows === 2
-            ? "landscape:w-[clamp(2.75rem,16dvh,5.5rem)]"
-            : "landscape:w-[clamp(2.75rem,14dvh,5rem)]";
+            ? "landscape:w-[clamp(3rem,16dvh,5.5rem)]"
+            : "landscape:w-[clamp(3rem,14dvh,5rem)]";
     if (count <= 3) return `w-[clamp(3.5rem,min(24vw,12dvh),7rem)] ${flat}`;
     if (count <= 4) return `w-[clamp(3.25rem,min(20vw,11dvh),6.5rem)] ${flat}`;
-    if (count <= 6) return `w-[clamp(2.75rem,min(14.5vw,9dvh),5.5rem)] ${flat}`;
-    if (count <= 8) return `w-[clamp(2.75rem,min(19vw,9dvh),5.5rem)] ${flat}`;
-    if (count <= 10) return `w-[clamp(2.75rem,min(16vw,8dvh),5rem)] ${flat}`;
-    return `w-[clamp(2.75rem,min(14vw,7.5dvh),5rem)] ${flat}`;
+    if (count <= 6) return `w-[clamp(3rem,min(14.5vw,9dvh),5.5rem)] ${flat}`;
+    if (count <= 8) return `w-[clamp(3rem,min(19vw,9dvh),5.5rem)] ${flat}`;
+    if (count <= 10) return `w-[clamp(3rem,min(16vw,8dvh),5rem)] ${flat}`;
+    return `w-[clamp(3rem,min(14vw,7.5dvh),5rem)] ${flat}`;
 }

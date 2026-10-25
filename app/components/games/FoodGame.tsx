@@ -286,8 +286,10 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
         return (
             <GameStage>
                 {hud}
-                <GamePrompt key={`prompt-${shown.round}`} className="animate-fade-up" compact visual={<span aria-hidden="true">🧺</span>} title={question} />
-                <PlayArea accent={GAME.accent}>
+                {/* Položen telefon: pitanje je jedan red u polju za igru, da životinje i hrana budu krupni */}
+                <GamePrompt key={`prompt-${shown.round}`} className="animate-fade-up flat:hidden" compact visual={<span aria-hidden="true">🧺</span>} title={question} />
+                <PlayArea accent={GAME.accent} className="flat:gap-2">
+                    <p className="hidden text-center font-display text-lg font-extrabold leading-tight text-ink flat:block">{question}</p>
                     <FeedBoard
                         key={shown.round}
                         view={shown}
@@ -309,7 +311,7 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
     const animals = animalChoices(shown.kind);
 
     return (
-        <GameStage>
+        <GameStage split>
             {hud}
 
             <GamePrompt
@@ -325,7 +327,7 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
                 <div
                     role="group"
                     aria-label={animals ? "Životinje" : "Hrana"}
-                    className={cn("grid w-full max-w-3xl gap-3 sm:gap-4", count === 2 ? "grid-cols-2" : count === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4", isMonitor && "pointer-events-none")}
+                    className={cn("grid w-full max-w-3xl gap-3 sm:gap-4 flat:gap-2 flat:sm:gap-2", count === 2 ? "grid-cols-2" : count === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4 flat:sm:grid-cols-2", isMonitor && "pointer-events-none")}
                 >
                     {shown.choices.map((id) => {
                         const name = pictureName(shown, id);
@@ -338,15 +340,15 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(id)}
                                 aria-label={`${name}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
-                                className={cn("animate-pop flex-col gap-1 px-1.5 sm:gap-2", count <= 3 ? "min-h-32 sm:min-h-52" : "min-h-28 sm:min-h-48")}
+                                className={cn("animate-pop flex-col gap-1 px-1.5 sm:gap-2", count <= 3 ? "min-h-32 sm:min-h-52 short:sm:min-h-36" : "min-h-28 sm:min-h-48 short:sm:min-h-28", "flat:min-h-0 flat:sm:min-h-0 flat:gap-0.5 flat:py-1.5 flat:sm:gap-0.5")}
                             >
                                 {animals ? (
-                                    <AnimalPicture id={id as AnimalId} className={cn("aspect-square w-auto", count <= 3 ? "h-[clamp(4.5rem,15dvh,9.5rem)]" : "h-[clamp(3.5rem,11.5dvh,8rem)]")} />
+                                    <AnimalPicture id={id as AnimalId} className={cn("aspect-square w-auto", count <= 3 ? "h-[clamp(4.5rem,15dvh,9.5rem)] short:sm:h-[clamp(4.5rem,12.5dvh,9rem)]" : "h-[clamp(3.5rem,11.5dvh,8rem)]")} />
                                 ) : (
-                                    <FoodPicture id={id as FoodId} className={cn("aspect-square w-auto", count <= 3 ? "h-[clamp(4.5rem,14dvh,9rem)]" : "h-[clamp(3.25rem,10.5dvh,7.5rem)]")} />
+                                    <FoodPicture id={id as FoodId} className={cn("aspect-square w-auto", count <= 3 ? "h-[clamp(4.5rem,14dvh,9rem)] short:sm:h-[clamp(4.5rem,12.5dvh,9rem)]" : "h-[clamp(3.25rem,10.5dvh,7.5rem)]")} />
                                 )}
                                 {/* Natpis je za odrasle i decu koja čitaju */}
-                                <span className="text-base leading-tight sm:text-xl">{name}</span>
+                                <span className="text-base leading-tight sm:text-xl flat:sm:text-base">{name}</span>
                                 {showHand && id === shown.answer && <DemoHand />}
                             </ChoiceCard>
                         );

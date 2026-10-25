@@ -29,6 +29,11 @@ interface GameStageProps {
     children: React.ReactNode;
     /** Uži okvir za igre sa pitanjima, širi za table */
     width?: "narrow" | "normal" | "wide";
+    /**
+     * Položen telefon / nizak laptop (`flat`): dve kolone. Prvo dete (traka napretka) ide preko
+     * cele širine, drugo (uputstvo) levo, a sve ostalo (izbori, poruka, objašnjenje) desno.
+     */
+    split?: boolean;
     className?: string;
 }
 
@@ -40,10 +45,15 @@ const STAGE_WIDTH = {
     wide: "max-w-6xl xl:max-w-none",
 };
 
-export function GameStage({ children, width = "normal", className }: GameStageProps) {
+/** Dve kolone na položenom ekranu (vidi `split`) */
+const SPLIT =
+    "flat:grid flat:max-w-none flat:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] flat:grid-rows-[auto_minmax(0,1fr)_auto] flat:gap-x-3 flat:gap-y-0 flat:*:first:col-span-2 flat:*:first:mb-2 flat:*:nth-2:row-span-2 flat:*:nth-[n+3]:col-start-2 flat:*:nth-[n+3]:min-w-0 flat:*:nth-[n+4]:mt-2";
+
+export function GameStage({ children, width = "normal", split = false, className }: GameStageProps) {
     return (
-        // Na telefonu nešto manji razmaci: na niskom ekranu (360 × 740) zadatak i izbori staju bez skrolovanja
-        <div className={cn("relative mx-auto flex w-full flex-1 flex-col gap-3 sm:gap-5", STAGE_WIDTH[width], className)}>
+        // Na telefonu nešto manji razmaci: na niskom ekranu (360 × 740) zadatak i izbori staju bez skrolovanja;
+        // na položenom telefonu još manji, da polje za igru bude što veće
+        <div className={cn("relative mx-auto flex w-full flex-1 flex-col gap-3 sm:gap-5 [@media(max-height:30rem)]:gap-2", STAGE_WIDTH[width], split && SPLIT, className)}>
             {children}
         </div>
     );
@@ -74,7 +84,7 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
     // Ako dete dugo ništa ne dodirne, dugme „Ponovi” blago zasvetli — bez glasa i bez požurivanja
     const idle = useIdle(IDLE_HINT_MS, round);
     return (
-        <div className={cn("flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 shadow-soft sm:gap-4 sm:px-5 sm:py-3", className)}>
+        <div className={cn("flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 shadow-soft sm:gap-4 sm:px-5 sm:py-3 flat:py-1.5 flat:sm:py-1.5", className)}>
             <HudTeacher />
             <div className="min-w-0 flex-1">
                 <p className="mb-1.5 text-xs font-extrabold text-ink-soft sm:text-sm">
@@ -238,8 +248,8 @@ interface GamePromptProps {
 
 /** Najveća širina slike situacije: tolika da joj visina (2/3 širine) ne pređe zadati deo ekrana */
 const ILLUSTRATION_WIDTH = {
-    normal: "max-w-[min(100%,39dvh)] short:max-w-[min(100%,33dvh)]",
-    compact: "max-w-[min(100%,27dvh)] short:max-w-[min(100%,24dvh)]",
+    normal: "max-w-[min(100%,39dvh)] short:max-w-[min(100%,33dvh)] flat:max-w-[min(100%,34dvh)]",
+    compact: "max-w-[min(100%,27dvh)] short:max-w-[min(100%,24dvh)] flat:max-w-[min(100%,26dvh)]",
 };
 
 /**
@@ -264,7 +274,7 @@ export function GamePrompt({ title, subtitle, visual, illustration, compact = fa
         return (
             <div
                 className={cn(
-                    "relative flex flex-col items-stretch gap-2.5 rounded-card border border-line bg-surface shadow-soft sm:gap-4 sm:p-5 short:sm:p-3",
+                    "relative flex flex-col items-stretch gap-2.5 rounded-card border border-line bg-surface shadow-soft sm:gap-4 sm:p-5 short:sm:p-3 flat:justify-center flat:gap-2 flat:sm:p-2.5",
                     compact ? "p-2.5" : "p-3",
                     tail,
                     className
@@ -274,8 +284,8 @@ export function GamePrompt({ title, subtitle, visual, illustration, compact = fa
                     {illustration}
                 </div>
                 <div className="min-w-0 px-1 text-center">
-                    <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{title}</p>
-                    {subtitle && <p className="mt-1 text-base font-bold text-ink-soft sm:text-lg">{subtitle}</p>}
+                    <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl flat:text-lg flat:sm:text-lg">{title}</p>
+                    {subtitle && <p className="mt-1 text-base font-bold text-ink-soft sm:text-lg flat:sm:text-base">{subtitle}</p>}
                 </div>
             </div>
         );
@@ -283,7 +293,7 @@ export function GamePrompt({ title, subtitle, visual, illustration, compact = fa
     return (
         <div
             className={cn(
-                "relative flex items-center gap-4 rounded-card border border-line bg-surface shadow-soft sm:gap-6 sm:p-6 short:sm:p-4",
+                "relative flex items-center gap-4 rounded-card border border-line bg-surface shadow-soft sm:gap-6 sm:p-6 short:sm:p-4 flat:flex-col flat:justify-center flat:gap-3 flat:text-center flat:sm:gap-3 flat:sm:p-3",
                 compact ? "p-3" : "p-4",
                 tail,
                 className
@@ -299,9 +309,9 @@ export function GamePrompt({ title, subtitle, visual, illustration, compact = fa
                     {visual}
                 </div>
             )}
-            <div className="min-w-0 flex-1">
-                <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{title}</p>
-                {subtitle && <p className="mt-1 text-base font-bold text-ink-soft sm:text-lg">{subtitle}</p>}
+            <div className="min-w-0 flex-1 flat:flex-none">
+                <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl flat:sm:text-xl">{title}</p>
+                {subtitle && <p className="mt-1 text-base font-bold text-ink-soft sm:text-lg flat:sm:text-base">{subtitle}</p>}
             </div>
         </div>
     );
@@ -319,7 +329,7 @@ interface PlayAreaProps {
 
 export function PlayArea({ accent, children, className }: PlayAreaProps) {
     return (
-        <div className={cn("flex min-h-0 flex-1 flex-col items-center justify-center rounded-card border p-3 sm:p-5", accent.border, accent.soft, className)}>
+        <div className={cn("flex min-h-0 flex-1 flex-col items-center justify-center rounded-card border p-3 sm:p-5 flat:p-2 flat:sm:p-3", accent.border, accent.soft, className)}>
             {children}
         </div>
     );
@@ -346,14 +356,25 @@ const CHOICE_STATES: Record<ChoiceState, string> = {
     dimmed: "border-line bg-surface opacity-45",
 };
 
+/**
+ * `cn` ne spaja klase: uz `min-h-0` iz igre ostalo bi i `min-h-20` iz kartice, a pobedi ono koje je
+ * kasnije u CSS-u (veće), pa bi igra tiho dobila višu karticu. Zato se podrazumevana visina i
+ * unutrašnji razmak dodaju samo kad ih igra ne zada sama.
+ */
+const SETS_MIN_HEIGHT = /(^|\s)min-h-/;
+const SETS_PADDING = /(^|\s)(sm:)?p-[\d.]/;
+
 export function ChoiceCard({ state = "idle", children, className, disabled, ...props }: ChoiceCardProps) {
+    const own = className ?? "";
     return (
         <button
             type="button"
             disabled={disabled}
             data-state={state}
             className={cn(
-                "relative flex min-h-20 w-full select-none items-center justify-center rounded-tile border-2 border-b-[5px] p-3 text-center font-extrabold text-ink shadow-soft transition-[transform,background-color,border-color,opacity] duration-150 disabled:cursor-default sm:p-4",
+                "relative flex w-full select-none items-center justify-center rounded-tile border-2 border-b-[5px] text-center font-extrabold text-ink shadow-soft transition-[transform,background-color,border-color,opacity] duration-150 disabled:cursor-default",
+                !SETS_MIN_HEIGHT.test(own) && "min-h-20",
+                !SETS_PADDING.test(own) && "p-3 sm:p-4",
                 CHOICE_STATES[state],
                 className
             )}
@@ -391,7 +412,8 @@ interface FeedbackProps {
 
 export function Feedback({ kind, correctText = "Tačno.", wrongText = "Probaj opet.", className }: FeedbackProps) {
     return (
-        <div aria-live="polite" className={cn("pointer-events-none flex min-h-12 items-center justify-center", className)}>
+        // Položen telefon: poruka lebdi preko donje ivice polja za igru umesto da zauzima svoj red
+        <div aria-live="polite" className={cn("pointer-events-none flex min-h-12 items-center justify-center flat:absolute flat:inset-x-0 flat:bottom-1 flat:z-30 flat:min-h-0", className)}>
             {kind && (
                 <div
                     key={kind}
@@ -435,13 +457,15 @@ export function ExplainPanel({ text, icon, accent, onNext, nextLabel = "Dalje", 
         <section
             aria-label="Objašnjenje"
             className={cn(
-                "flex animate-fade-up flex-col gap-4 rounded-card border-2 p-4 shadow-soft sm:flex-row sm:items-center sm:gap-5 sm:p-5",
+                "flex animate-fade-up flex-col gap-4 rounded-card border-2 p-4 shadow-soft sm:flex-row sm:items-center sm:gap-5 sm:p-5 flat:gap-2 flat:sm:gap-3 flat:sm:p-3",
+                // Položen telefon: objašnjenje je traka preko donjeg dela igre (izbori su tada već odigrani)
+                "flat:absolute flat:inset-x-0 flat:bottom-0 flat:z-30 flat:shadow-pop flat:[grid-column:1/-1]!",
                 accent.soft,
                 accent.border,
                 className
             )}
         >
-            <p id={textId} className="flex flex-1 items-center gap-3 text-lg font-bold leading-snug text-ink sm:text-xl">
+            <p id={textId} className="flex flex-1 items-center gap-3 text-lg font-bold leading-snug text-ink sm:text-xl flat:sm:text-base">
                 {icon !== undefined && (
                     <span aria-hidden="true" className="text-4xl">
                         {icon}
@@ -462,7 +486,7 @@ export function ExplainPanel({ text, icon, accent, onNext, nextLabel = "Dalje", 
                         onClick={onNext}
                         aria-describedby={textId}
                         className={cn(
-                            "inline-flex min-h-16 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] px-8 font-display text-xl font-extrabold text-white transition-[transform,border-width] active:translate-y-[3px] active:border-b-2 sm:text-2xl",
+                            "inline-flex min-h-16 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] px-8 font-display text-xl font-extrabold text-white transition-[transform,border-width] active:translate-y-[3px] active:border-b-2 sm:text-2xl flat:min-h-12 flat:px-5 flat:sm:text-xl",
                             accent.solid,
                             accent.edge
                         )}
@@ -490,12 +514,12 @@ interface TriedNoteProps {
 
 export function TriedNote({ emoji, label, note }: TriedNoteProps) {
     return (
-        <div className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 p-4 sm:p-5">
+        <div className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 p-4 sm:p-5 flat:p-2.5 flat:sm:p-2.5">
             <p className="mb-1 text-sm font-extrabold text-ink-soft sm:text-base">
                 <span aria-hidden="true">{emoji} </span>
                 {label}
             </p>
-            <p className="text-lg font-bold leading-snug text-ink sm:text-xl">{note}</p>
+            <p className="text-lg font-bold leading-snug text-ink sm:text-xl flat:text-base flat:sm:text-base">{note}</p>
         </div>
     );
 }

@@ -721,7 +721,7 @@ const STORIES: readonly Story[] = [
                     "Šta možeš da radiš u vozu?",
                     [
                         o("🪟", "Gledam kroz prozor", "Kroz prozor vidim polja, kuće i reke."),
-                        o("🎧", "Slušam muziku na slušalice", "Sa slušalicama muziku čujem samo ja. Putnici mogu da se odmaraju."),
+                        o("🎧", "Slušam muziku na slušalicama", "Sa slušalicama muziku čujem samo ja. Putnici mogu da se odmaraju."),
                     ],
                     [
                         o("🤸", "Skačem po sedištu", "Voz se ljulja. Na sedištu mogu da padnem."),
@@ -760,7 +760,7 @@ const STORIES: readonly Story[] = [
         steps: [
             {
                 scene: ["🏥", "🪑"],
-                text: "Dolazim sa mamom na pregled. U čekaonici čeka još troje dece. Oni su došli pre mene. Sestra proziva decu po redu.",
+                text: "Dolazim sa mamom na pregled. U čekaonici čeka još troje dece. Ona su došla pre mene. Sestra proziva decu po redu.",
                 decision: choice(
                     "Šta može da pomogne dok čekaš svoj red?",
                     [

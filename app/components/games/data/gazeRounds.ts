@@ -342,7 +342,7 @@ export function gazeAnswer(round: Pick<GazeView, "kind" | "hero" | "target">): s
  */
 export function gazeWrong(round: Pick<GazeView, "kind" | "hero" | "objects">, picked: string, hint: boolean): string {
     const name = getGazeCharacter(round.hero)?.name ?? "";
-    const how = hint ? "Prati tačkice od očiju." : round.kind === "know" ? "Pogledaj u šta gleda koje dete." : `Pogledaj kuda ${name} gleda.`;
+    const how = hint ? "Prati tačkice od očiju." : round.kind === "know" ? "Pogledaj koje dete gleda u kutiju." : `Pogledaj kuda ${name} gleda.`;
     if (round.kind === "know") {
         const other = getGazeCharacter(picked)?.name ?? "";
         const far = getGazeObject(round.objects[0]?.id);

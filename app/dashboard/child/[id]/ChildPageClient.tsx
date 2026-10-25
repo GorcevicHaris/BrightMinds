@@ -241,7 +241,9 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, 
         );
 
     return (
-        <ChildSettingsProvider settings={settings} className="relative isolate min-h-dvh bg-canvas pb-24 md:pb-10">
+        // Dok je igra otvorena, strana ispod nje nije viša od ekrana: na niskom ekranu (položen telefon)
+        // inače bi se ispod igre mogla pomeriti (i na telefonu povući traku pregledača)
+        <ChildSettingsProvider settings={settings} className={cn("relative isolate min-h-dvh bg-canvas", gameOpen ? "h-dvh overflow-hidden" : "pb-24 md:pb-10")}>
             {/* Kupljena pozadina drugara iza cele strane (ispod svega, ništa ne hvata dodir) */}
             {showAvatar && <CompanionWorld />}
             <header inert={gameOpen} className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">

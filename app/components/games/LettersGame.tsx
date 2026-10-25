@@ -256,7 +256,7 @@ export default function LettersGame({ childId, level, gender, childName, onCompl
     const showHand = !isMonitor && !tracing && demoRounds(level, shown.totalRounds) > 0 && shown.round === 1 && shown.wrong.length === 0 && !solved;
 
     return (
-        <GameStage>
+        <GameStage split>
             <GameHud round={shown.round} totalRounds={shown.totalRounds} score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
             <GamePrompt
@@ -285,12 +285,12 @@ export default function LettersGame({ childId, level, gender, childName, onCompl
             <PlayArea accent={GAME.accent} className="relative p-2 sm:p-4">
                 {tracing && glyph ? (
                     // Nizak ekran: tabla dobija ono što ostane posle zaglavlja, uputstva i poruke (bar 12rem)
-                    <div className="flex h-[min(50dvh,34rem)] w-full max-w-3xl items-stretch justify-center gap-2 sm:gap-4 short:h-[max(12rem,calc(100dvh-29rem))]">
+                    <div className="flex h-[min(48dvh,34rem)] w-full max-w-3xl items-stretch justify-center gap-2 sm:gap-4 short:h-[max(12rem,calc(100dvh-29rem))] flat:h-[calc(60dvh-2rem)]">
                         {task.guide === "copy" && (
                             // Uzor za prepisivanje: slovo sa strane, na tabli je samo početna tačka
                             <div className="flex w-[26%] max-w-44 shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 border-line bg-surface p-2 shadow-soft">
                                 <GlyphPicture glyph={glyph} className="h-full max-h-40 w-full" />
-                                <span className="text-xs font-extrabold text-ink-soft sm:text-sm">Uzor</span>
+                                <span className="text-sm font-extrabold text-ink-soft">Uzor</span>
                             </div>
                         )}
                         <div className="relative flex min-w-0 flex-1 rounded-3xl border-2 border-line bg-surface shadow-soft">
