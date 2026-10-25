@@ -1040,7 +1040,7 @@ function VersusStrip() {
         <>
             {/* Stub pored igre — ja i moje zvezdice, „VS”, drug i njegove zvezdice; na uspravnom telefonu traka ispod */}
             <div className={cn("hidden w-28 shrink-0 flex-col items-center gap-1.5 self-start rounded-2xl border-2 px-2 py-2.5 text-center md:flex landscape:flex lg:w-32 [@media(max-height:30rem)]:gap-1 [@media(max-height:30rem)]:py-1.5", tone)} role="status" aria-live="polite">
-                <PlayerPicture player={me} look={LOOKS[0]} className="h-12 w-12 lg:h-14 lg:w-14 [@media(max-height:30rem)]:h-9 [@media(max-height:30rem)]:w-9" />
+                <PlayerPicture player={me} look={LOOKS[0]} hype className="h-12 w-12 lg:h-14 lg:w-14 [@media(max-height:30rem)]:h-9 [@media(max-height:30rem)]:w-9" />
                 <ScorePill name={me.name} stars={mine} className="text-base" />
                 <VsMark className="h-8 w-8 text-xs" />
                 <span className="relative">
@@ -1061,7 +1061,7 @@ function VersusStrip() {
             </div>
             <div className={cn("flex items-center gap-1.5 rounded-2xl border-2 px-2 py-1.5 min-[400px]:gap-2 sm:gap-3 sm:px-3 md:hidden landscape:hidden", tone)} role="status" aria-live="polite">
                 <span className="flex shrink-0 items-center gap-1.5">
-                    <PlayerPicture player={me} look={LOOKS[0]} className="h-11 w-11 sm:h-14 sm:w-14" />
+                    <PlayerPicture player={me} look={LOOKS[0]} hype className="h-11 w-11 sm:h-14 sm:w-14" />
                     <ScorePill name={me.name} stars={mine} className="text-base sm:text-lg" />
                 </span>
                 <VsMark className="h-8 w-8 text-xs sm:h-10 sm:w-10 sm:text-sm" />

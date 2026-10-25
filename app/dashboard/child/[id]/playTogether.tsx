@@ -181,9 +181,19 @@ export function TogetherProvider({ childId, childName, gender, preview = false, 
 
 // ── Portret igrača ────────────────────────────────────────────────────────────
 
-export function PlayerPicture({ player, look, className, dim = false, onReady }: { player: TogetherPlayer; look: (typeof LOOKS)[number]; className?: string; dim?: boolean; onReady?: () => void }) {
+interface PlayerPictureProps {
+    player: TogetherPlayer;
+    look: (typeof LOOKS)[number];
+    className?: string;
+    dim?: boolean;
+    onReady?: () => void;
+    /** Ovde sleću zvezdice za tačan odgovor (igrač koji je na redu) */
+    hype?: boolean;
+}
+
+export function PlayerPicture({ player, look, className, dim = false, onReady, hype = false }: PlayerPictureProps) {
     return (
-        <span className={cn("relative block shrink-0 overflow-hidden rounded-2xl ring-4", look.soft, look.ring, dim && "opacity-60 grayscale", className)}>
+        <span data-hype-target={hype ? "" : undefined} className={cn("relative block shrink-0 overflow-hidden rounded-2xl ring-4", look.soft, look.ring, dim && "opacity-60 grayscale", className)}>
             <CompanionPicture kind={player.kind} skin={player.skin} wear={player.wear as Wear | undefined} variant="bust" eager onReady={onReady} className="h-full w-full" />
         </span>
     );
@@ -580,7 +590,7 @@ export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
         <GameEventTapProvider value={onUpdate}>
             {/* Tablet, računar i telefon na boku: ko je na redu stoji u stubu pored igre, pa igra
                 ima celu visinu kao i kad dete igra samo (traka iznad igre samo na uspravnom telefonu) */}
-            <div className="relative flex flex-1 flex-col gap-2 sm:gap-3 md:flex-row landscape:flex-row">
+            <div className="relative flex flex-1 flex-col gap-1.5 sm:gap-3 md:flex-row landscape:flex-row">
                 <TurnStrip
                     key={now}
                     player={players[now]}
@@ -591,7 +601,7 @@ export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
                 />
                 <div
                     className={cn(
-                        "relative flex min-w-0 flex-1 flex-col rounded-[1.75rem] border-4 border-dashed p-1 transition-colors md:rounded-none md:border-0 md:border-l-4 md:p-0 md:pl-2 landscape:rounded-none landscape:border-0 landscape:border-l-4 landscape:p-0 landscape:pl-2",
+                        "relative flex min-w-0 flex-1 flex-col rounded-[1.75rem] border-4 border-dashed p-0.5 transition-colors sm:p-1 md:rounded-none md:border-0 md:border-l-4 md:p-0 md:pl-2 landscape:rounded-none landscape:border-0 landscape:border-l-4 landscape:p-0 landscape:pl-2",
                         LOOKS[now].border
                     )}
                 >
@@ -627,8 +637,9 @@ function TurnBar({ player, look, other, otherLook, scores = null }: TurnStripPro
     const versus = scores !== null;
     return (
         <div className="flex items-stretch gap-2 sm:gap-3 md:hidden landscape:hidden" role="status" aria-live="polite">
-            <div className={cn("flex min-w-0 flex-1 items-center rounded-2xl px-2.5 py-2 text-white shadow-soft sm:gap-3 sm:px-4", versus ? "gap-2" : "gap-3", look.solid, !calm && "animate-pop")}>
-                <PlayerPicture player={player} look={look} className={cn("h-12 w-12 bg-white sm:h-16 sm:w-16", versus && "max-[400px]:h-10 max-[400px]:w-10")} />
+            {/* Uzak telefon (do 400 px): manji drugar i tanja traka, da igri ostane cela visina kao kad dete igra samo */}
+            <div className={cn("flex min-w-0 flex-1 items-center rounded-2xl px-2.5 py-2 text-white shadow-soft max-[400px]:py-1.5 sm:gap-3 sm:px-4", versus ? "gap-2" : "gap-3", look.solid, !calm && "animate-pop")}>
+                <PlayerPicture player={player} look={look} hype className="h-12 w-12 bg-white max-[400px]:h-10 max-[400px]:w-10 sm:h-16 sm:w-16" />
                 <span className="min-w-0 flex-1">
                     <span className={cn("block text-xs font-extrabold uppercase text-white/85 sm:text-sm", versus ? "truncate max-[400px]:text-[0.7rem] max-[400px]:tracking-tight" : "tracking-wide")}>
                         <span className={cn(versus && "max-[400px]:hidden")} aria-hidden="true">
@@ -640,9 +651,9 @@ function TurnBar({ player, look, other, otherLook, scores = null }: TurnStripPro
                 </span>
                 {versus && <ScorePill name={player.name} stars={scores[0]} className="bg-white px-2 text-base max-[400px]:px-1.5 sm:px-2.5 sm:text-lg" />}
             </div>
-            <div className={cn("flex shrink-0 items-center gap-2 rounded-2xl border-2 border-line bg-surface px-2 py-1.5 sm:px-3", versus && "max-[400px]:gap-1.5 max-[400px]:px-1.5")}>
+            <div className={cn("flex shrink-0 items-center gap-2 rounded-2xl border-2 border-line bg-surface px-2 py-1.5 max-[400px]:py-1 sm:px-3", versus && "max-[400px]:gap-1.5 max-[400px]:px-1.5")}>
                 <span className="relative shrink-0">
-                    <PlayerPicture player={other} look={otherLook} dim className="h-10 w-10 sm:h-12 sm:w-12" />
+                    <PlayerPicture player={other} look={otherLook} dim className="h-10 w-10 max-[400px]:h-9 max-[400px]:w-9 sm:h-12 sm:w-12" />
                     {/* Kartica „Sačekaj svoj red” u malom: ruka, i kad za tekst nema mesta */}
                     <span className="absolute -bottom-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full bg-sky-600 text-white shadow-soft ring-2 ring-white" aria-hidden="true">
                         <Hand className="h-3.5 w-3.5" />
@@ -674,7 +685,7 @@ function TurnRail({ player, look, other, otherLook, scores = null }: TurnStripPr
         <div className="hidden w-28 shrink-0 flex-col gap-2 md:flex landscape:flex lg:w-32" role="status" aria-live="polite">
             {/* Nizak položen ekran (telefon na boku): manji drugari, ruka bez natpisa */}
             <div className={cn("flex flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-center text-white shadow-soft [@media(max-height:30rem)]:gap-0.5 [@media(max-height:30rem)]:py-1.5", look.solid, !calm && "animate-pop")}>
-                <PlayerPicture player={player} look={look} className="h-14 w-14 bg-white lg:h-16 lg:w-16 [@media(max-height:30rem)]:h-11 [@media(max-height:30rem)]:w-11" />
+                <PlayerPicture player={player} look={look} hype className="h-14 w-14 bg-white lg:h-16 lg:w-16 [@media(max-height:30rem)]:h-11 [@media(max-height:30rem)]:w-11" />
                 <span className="text-xs font-extrabold uppercase tracking-wide text-white/85">
                     <span aria-hidden="true">{look.mark} </span>
                     {versus ? "Na redu je" : "Tvoj red"}
