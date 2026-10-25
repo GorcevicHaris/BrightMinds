@@ -527,7 +527,7 @@ function FirstLetterWord({ letter, rest }: { letter: string | null; rest: string
                 data-fly="first"
                 className={cn(
                     "mr-1 inline-grid min-w-[1.1em] place-items-center rounded-lg px-1 py-0.5",
-                    letter ? "bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400" : "border-2 border-dashed border-[#a8b452] bg-white text-transparent"
+                    letter ? "bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400" : "border-2 border-dashed border-pine-300 bg-white text-transparent"
                 )}
             >
                 {letter ?? "A"}
@@ -589,8 +589,8 @@ function BuildBoard({ view, style, columnTitle, calm, landscape, showHand, disab
                                     filled
                                         ? solved
                                             ? "bg-emerald-50 text-emerald-700 ring-2 ring-emerald-400"
-                                            : "bg-surface text-ink shadow-soft ring-2 ring-[#a8b452]"
-                                        : "border-2 border-dashed border-[#a8b452] bg-white/70",
+                                            : "bg-surface text-ink shadow-soft ring-2 ring-pine-300"
+                                        : "border-2 border-dashed border-pine-300 bg-white/70",
                                     filled && solved && !calm && "animate-pop"
                                 )}
                                 style={box}

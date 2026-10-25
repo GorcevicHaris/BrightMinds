@@ -819,14 +819,14 @@ function Curtain({ closed, calm }: { closed: boolean; calm: boolean }) {
             <div className="absolute inset-y-0 left-0 w-1/2" style={half("left")} />
             <div className="absolute inset-y-0 right-0 w-1/2" style={half("right")} />
             {/* Zavesa je uvek „okačena”: gornja traka sa resama */}
-            <div className="absolute inset-x-0 top-0 h-3 bg-[#7a2650] sm:h-4" style={{ boxShadow: "0 2px 4px rgb(0 0 0 / 0.2)" }} />
+            <div className="absolute inset-x-0 top-0 h-3 bg-berry-700 sm:h-4" style={{ boxShadow: "0 2px 4px rgb(0 0 0 / 0.2)" }} />
             <div
                 className={cn("absolute inset-0 grid place-items-center transition-opacity", closed ? "opacity-100 delay-300" : "opacity-0")}
                 style={{ transitionDuration: `${CURTAIN_MOVE_MS / 2}ms` }}
             >
                 <span className="flex flex-col items-center gap-1 rounded-2xl bg-white/90 px-4 py-2 shadow-soft sm:gap-2 sm:px-6 sm:py-3">
                     <ClosedEyes />
-                    <span className="font-display text-lg font-extrabold text-[#7a2650] sm:text-2xl">{CURTAIN_TEXT}</span>
+                    <span className="font-display text-lg font-extrabold text-berry-700 sm:text-2xl">{CURTAIN_TEXT}</span>
                 </span>
             </div>
         </div>

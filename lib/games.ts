@@ -22,6 +22,8 @@ export type GameId =
     | "puzzle"
     | "inset"
     | "clock"
+    | "maze"
+    | "differences"
     | "missing"
     | "words";
 
@@ -46,6 +48,8 @@ export type GameType =
     | "puzzle"
     | "inset"
     | "clock"
+    | "maze"
+    | "differences"
     | "missing"
     | "words";
 
@@ -561,29 +565,79 @@ export const GAMES: GameDefinition[] = [
         order: 18,
     },
     {
+        id: "maze",
+        gameType: "maze",
+        activityId: 23,
+        title: "Lavirint",
+        description: "Pronađi put do cilja",
+        skill: "Fina motorika i planiranje",
+        icon: "🌿",
+        image: "/images/lavirint.svg",
+        accent: {
+            solid: "bg-moss-500",
+            edge: "border-moss-700",
+            soft: "bg-moss-50",
+            text: "text-moss-700",
+            border: "border-moss-200",
+            ring: "ring-moss-200",
+            gradient: "from-lime-400 to-moss-600",
+        },
+        offscreenTip:
+            "Nacrtajte kredom na asfaltu ili trakom na podu široku stazu sa jednim skretanjem i neka dete hoda po njoj do igračke na kraju. Kasnije crtajte lavirinte na papiru i vodite prst zajedno, pa olovku. Pitajte: „Kuda dalje?”, a ne pokazujte odmah.",
+        graded: true,
+        // 20. po redu: vođenje prsta po stazi i planiranje puta — posle umetaljke i slaganja slike
+        ages: { min: 3, max: 9 },
+        order: 20,
+    },
+    {
+        id: "differences",
+        gameType: "differences",
+        activityId: 24,
+        title: "Pronađi razlike",
+        description: "Dve slike, a nisu iste",
+        skill: "Vizuelna pažnja",
+        icon: "🔍",
+        image: "/images/razlike.svg",
+        accent: {
+            solid: "bg-coral-500",
+            edge: "border-coral-700",
+            soft: "bg-coral-50",
+            text: "text-coral-700",
+            border: "border-coral-200",
+            ring: "ring-coral-200",
+            gradient: "from-coral-400 to-pink-500",
+        },
+        offscreenTip:
+            "Postavite na sto tri-četiri predmeta, neka dete zatvori oči, pa jedan sklonite ili zamenite: „Šta se promenilo?” U slikovnici tražite iste stvari na dve stranice. Počnite od velikih promena (nema lopte), pa boja, pa sitnice.",
+        graded: true,
+        // 21. po redu: pažljivo poređenje dve slike — posle uparivanja oblika i slaganja slike
+        ages: { min: 4, max: 10 },
+        order: 21,
+    },
+    {
         id: "missing",
         gameType: "missing",
         activityId: 25,
         title: "Šta fali?",
         description: "Zapamti i pronađi šta fali",
         skill: "Vizuelno pamćenje i opažanje",
-        icon: "🔍",
+        icon: "🙈",
         image: "/images/stafali.svg",
         accent: {
-            solid: "bg-[#a24d7a]",
-            edge: "border-[#7a2f58]",
-            soft: "bg-[#fbf1f6]",
-            text: "text-[#7a2f58]",
-            border: "border-[#efcfe0]",
-            ring: "ring-[#efcfe0]",
-            gradient: "from-pink-300 to-[#a24d7a]",
+            solid: "bg-berry-500",
+            edge: "border-berry-700",
+            soft: "bg-berry-50",
+            text: "text-berry-700",
+            border: "border-berry-200",
+            ring: "ring-berry-200",
+            gradient: "from-berry-300 to-berry-600",
         },
         offscreenTip:
             "Kimova igra kod kuće: stavite tri igračke na sto, neka ih dete pogleda i imenuje, pa neka zatvori oči dok sklonite jednu. „Šta fali?” Kasnije stavite više stvari ili zamenite dve stvari mesta. Uz slikovnicu pitajte: „Šta fali autu?”, „Šta fali kući?”",
         graded: true,
-        // 20. po redu: dopunjavanje slike, pa pamćenje šta je bilo na polici (Kimova igra)
+        // 22. po redu: dopunjavanje slike, pa pamćenje šta je bilo na polici (Kimova igra)
         ages: { min: 3, max: 8 },
-        order: 20,
+        order: 22,
     },
     {
         id: "words",
@@ -595,20 +649,20 @@ export const GAMES: GameDefinition[] = [
         icon: "📝",
         image: "/images/prvereci.svg",
         accent: {
-            solid: "bg-[#6b7a1f]",
-            edge: "border-[#4d5916]",
-            soft: "bg-[#f6f8ea]",
-            text: "text-[#4d5916]",
-            border: "border-[#dfe5bd]",
-            ring: "ring-[#dfe5bd]",
-            gradient: "from-lime-300 to-[#6b7a1f]",
+            solid: "bg-pine-500",
+            edge: "border-pine-700",
+            soft: "bg-pine-50",
+            text: "text-pine-700",
+            border: "border-pine-200",
+            ring: "ring-pine-200",
+            gradient: "from-pine-300 to-pine-600",
         },
         offscreenTip:
             "Napišite krupnim štampanim slovima MAMA, TATA i ime deteta i zalepite kartice na vrata ili fotografije. Čitajte po slogovima uz tapšanje: LO-PTA. U šetnji pitajte: „Na koje slovo počinje reč lopta?” Starijem detetu napišite kratku rečenicu („Amar ima loptu.”) i neka nacrta šta piše.",
         graded: true,
-        // 21. po redu: rano čitanje — slika i reč, prvo slovo, slogovi, slova i rečenica (posle igre „Slova”)
+        // 23. po redu: rano čitanje — slika i reč, prvo slovo, slogovi, slova i rečenica (posle igre „Slova”)
         ages: { min: 5, max: 8 },
-        order: 21,
+        order: 23,
     },
 ];
 
