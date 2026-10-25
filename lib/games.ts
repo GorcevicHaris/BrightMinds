@@ -18,7 +18,9 @@ export type GameId =
     | "gaze"
     | "letters"
     | "numbers"
-    | "food";
+    | "food"
+    | "families"
+    | "backpack";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -37,7 +39,9 @@ export type GameType =
     | "gaze"
     | "letters"
     | "numbers"
-    | "food";
+    | "food"
+    | "families"
+    | "backpack";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -473,6 +477,56 @@ export const GAMES: GameDefinition[] = [
         // 7. po redu: ko šta jede — poznate životinje i hrana, pre pitanja o nameni predmeta
         ages: { min: 3, max: 7 },
         order: 7,
+    },
+    {
+        id: "families",
+        gameType: "families",
+        activityId: 20,
+        title: "Mama i beba",
+        description: "Svaka beba traži svoju mamu",
+        skill: "Uparivanje i svet oko nas",
+        icon: "🐣",
+        image: "/images/mamaibeba.svg",
+        accent: {
+            solid: "bg-[#c07a45]",
+            edge: "border-[#8f5428]",
+            soft: "bg-[#fbf3ec]",
+            text: "text-[#8f5428]",
+            border: "border-[#efd6c2]",
+            ring: "ring-[#efd6c2]",
+            gradient: "from-amber-300 to-[#c07a45]",
+        },
+        offscreenTip:
+            "Uz slikovnicu ili na selu pitajte: „Gde je mama od teleta?”, „Kako se zove beba od ovce?” Neka dete pokaže ili kaže, a vi ponovite: „Ovca i njeno jagnje.” Igrajte se plišanim životinjama: velika i mala zajedno, pa tata, mama i beba u istu kutiju-kućicu.",
+        graded: true,
+        // 17. po redu: uparivanje mame i bebe, pa porodice — od izgleda ka znanju
+        ages: { min: 3, max: 8 },
+        order: 17,
+    },
+    {
+        id: "backpack",
+        gameType: "backpack",
+        activityId: 21,
+        title: "Spakuj ranac",
+        description: "Spakuj ono što treba za školu",
+        skill: "Radno pamćenje i planiranje",
+        icon: "🎒",
+        image: "/images/spakujranac.svg",
+        accent: {
+            solid: "bg-[#2f86a6]",
+            edge: "border-[#1f5f7a]",
+            soft: "bg-[#eef7fa]",
+            text: "text-[#1f5f7a]",
+            border: "border-[#c6e2ec]",
+            ring: "ring-[#c6e2ec]",
+            gradient: "from-sky-300 to-[#2f86a6]",
+        },
+        offscreenTip:
+            "Uveče pred školu napravite zajedno slikovnu listu (sveska, pernica, flašica, užina) i neka dete samo pakuje i štiklira. Starije dete neka pogleda raspored časova i kaže šta treba za koji čas, pa ujutru proverite: „Šta fali u rancu?”",
+        graded: true,
+        // 18. po redu: lista, pamćenje liste i raspored časova — za školski uzrast
+        ages: { min: 5, max: 10 },
+        order: 18,
     },
 ];
 

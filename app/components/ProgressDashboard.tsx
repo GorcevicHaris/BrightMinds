@@ -119,6 +119,8 @@ const GAME_SERIES: Record<GameId, Series> = {
     letters: { swatch: "bg-rose-600", color: "var(--color-rose-600)" },
     numbers: { swatch: "bg-green-600", color: "var(--color-green-600)" },
     food: { swatch: "bg-red-600", color: "var(--color-red-600)" },
+    families: { swatch: "bg-[#a8653a]", color: "#a8653a" },
+    backpack: { swatch: "bg-[#246f8f]", color: "#246f8f" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */
