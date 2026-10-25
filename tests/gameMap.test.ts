@@ -1,7 +1,7 @@
 // app/dashboard/child/[id]/gameMapLayout.ts — raspored „Mape” igara.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { currentStop, curvesPath, defaultPickerView, lanesFor, mapLayout, parsePickerView, stopStars } from "@/app/dashboard/child/[id]/gameMapLayout";
+import { currentStop, curvesPath, lanesFor, mapLayout, stopStars } from "@/app/dashboard/child/[id]/gameMapLayout";
 
 describe("mapLayout", () => {
     for (const width of [320, 375, 768, 1024, 1440]) {
@@ -67,6 +67,16 @@ describe("mapLayout", () => {
         });
     }
 
+    it("leaves room for the gate and its star chip at the end of a world (7 games)", () => {
+        for (const width of [328, 358, 398, 736, 1216]) {
+            const layout = mapLayout(7, width);
+            // Kapija (oko 140 px visoka) i oznaka „⭐ 5 / 7” ispod nje staju u mapu, ne izlaze sa strane
+            assert.ok(layout.end.y - 120 > layout.nodes[6].y - layout.nodeSize / 2 || layout.end.x !== layout.nodes[6].x, `w=${width}`);
+            assert.ok(layout.end.y + 58 + 36 <= layout.height, `chip fits at w=${width}`);
+            assert.ok(layout.end.x - 70 >= 0 && layout.end.x + 70 <= layout.width, `gate inside at w=${width}`);
+        }
+    });
+
     it("works with very few stops", () => {
         assert.equal(mapLayout(0, 375).nodes.length, 0);
         assert.equal(mapLayout(1, 1024).nodes.length, 1);
@@ -84,16 +94,5 @@ describe("map progress", () => {
 
     it("gives one star per finished difficulty", () => {
         assert.deepEqual([0, 4, 5, 9, 10, 14, 15, 99].map(stopStars), [0, 0, 1, 1, 2, 2, 3, 3]);
-    });
-});
-
-describe("map or cards", () => {
-    it("defaults to the map up to 7 years and to cards for older children", () => {
-        assert.equal(defaultPickerView(3), "map");
-        assert.equal(defaultPickerView(7), "map");
-        assert.equal(defaultPickerView(8), "grid");
-        assert.equal(defaultPickerView(null), "map");
-        assert.equal(parsePickerView("grid"), "grid");
-        assert.equal(parsePickerView("tabla"), null);
     });
 });

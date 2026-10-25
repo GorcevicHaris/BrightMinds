@@ -60,6 +60,11 @@ export interface ChildSettings {
      * deteta — sledeća kad dete završi 3. nivo prethodne (videti lib/gameAccess.ts).
      */
     unlockInOrder: boolean;
+    /**
+     * „Sve mape otvorene (bez ključeva)”: sve mape igara su otvorene, bez kapija i zvezdica za
+     * ključ (videti lib/gameWorlds.ts) — za decu kojoj katanci i čekanje stvaraju nemir.
+     */
+    openAllMaps: boolean;
     /** Blag dnevni podsetnik na početnom ekranu (bez obaveštenja i mejlova) */
     reminder: ReminderSettings;
 }
@@ -161,6 +166,7 @@ export function defaultSettings(band: AgeBand): ChildSettings {
         plan: [],
         disabledGames: [],
         unlockInOrder: false,
+        openAllMaps: false,
         reminder: { ...DEFAULT_REMINDER, days: [...DEFAULT_REMINDER.days] },
     };
 }
@@ -241,6 +247,7 @@ export function sanitizeSettings(raw: unknown, ageBand: AgeBand): ChildSettings 
         // Isključena igra ne može biti u planu: plan bi inače čekao igru koju dete ne vidi
         ...withoutDisabledInPlan(sanitizePlan(source.plan), sanitizeDisabledGames(source.disabledGames)),
         unlockInOrder: bool(source.unlockInOrder, base.unlockInOrder),
+        openAllMaps: bool(source.openAllMaps, base.openAllMaps),
         reminder: sanitizeReminder(source.reminder),
     };
 }

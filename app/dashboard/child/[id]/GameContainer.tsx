@@ -50,7 +50,7 @@ import {
     type GameId,
     type Mood,
 } from "@/lib/games";
-import { pickerGames } from "@/lib/gameAccess";
+import { gameAccess } from "@/lib/gameAccess";
 import { remoteStartState } from "@/lib/invite";
 import { useGameBroadcast } from "@/lib/realtime";
 import { useSpeech } from "@/lib/speech";
@@ -246,8 +246,8 @@ interface GameContainerProps {
     preview?: boolean;
     /** Samo u probnom prikazu: sledeći otključani nivo u svim igrama (podrazumevano je sve otključano) */
     previewUnlocked?: number;
-    /** Uzrast u godinama (mapa je podrazumevana do 7 godina); null = nepoznat */
-    ageYears?: number | null;
+    /** Samo u probnom prikazu: napredak prvih igara redom za dete (prvi nepoložen nivo), npr. [16, 16, 6] */
+    previewProgress?: number[];
 }
 
 /** Čuva rezultat nivoa; kod prekida mreže ili greške servera pokušava još dva puta. */
@@ -275,7 +275,7 @@ async function saveResult(payload: Record<string, unknown>): Promise<{ logId?: u
     throw lastError;
 }
 
-export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, onOverlayChange, preview = false, previewUnlocked = MAX_LEVEL + 1, ageYears = null }: GameContainerProps) {
+export default function GameContainer({ childId, childName, gender, watched = false, onExperienceChange, onOverlayChange, preview = false, previewUnlocked = MAX_LEVEL + 1, previewProgress }: GameContainerProps) {
     const settings = useChildSettings();
     const { say } = useSpeech(gender);
     const publish = useGameBroadcast(childId, !preview);
@@ -293,9 +293,13 @@ export default function GameContainer({ childId, childName, gender, watched = fa
      */
     const [breakFor, setBreakFor] = useState<string | null>(null);
 
-    const [unlocked, setUnlocked] = useState<Record<string, number>>(() =>
-        preview ? Object.fromEntries(GAMES.map((g) => [g.id, previewUnlocked])) : {}
-    );
+    const [unlocked, setUnlocked] = useState<Record<string, number>>(() => {
+        if (!preview) return {};
+        if (!previewProgress) return Object.fromEntries(GAMES.map((g) => [g.id, previewUnlocked]));
+        // Probni napredak po mapama: prve igre redom za dete dobijaju zadate nivoe, ostale nisu počete
+        const order = gameAccess(settings, {}, GAMES).map((a) => a.game.id);
+        return Object.fromEntries(GAMES.map((g) => [g.id, previewProgress[order.indexOf(g.id)] ?? 1]));
+    });
     const [levelsLoading, setLevelsLoading] = useState(!preview);
     const [levelsError, setLevelsError] = useState(false);
     const [levelsAttempt, setLevelsAttempt] = useState(0);
@@ -323,6 +327,8 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const [planDone, markPlanDone] = usePlanProgress(childId);
     const nextPlanned = plan.find((id) => !planDone.includes(id)) ?? null;
     const planActive = plan.length > 0 && nextPlanned !== null;
+    // Sve mape otvorene: izbor roditelja, ili probni prikaz sa svim nivoima (`?unlocked=16`)
+    const openAllMaps = settings.openAllMaps || (preview && !previewProgress && previewUnlocked > MAX_LEVEL);
 
     const playKey = `${gameId}-${level}-${attempt}`;
     // Igra sa drugom (isti uređaj ili drugi uređaj): kraj nivoa je zajednička pohvala
@@ -631,8 +637,12 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         if (clock.limitReached) {
             return <RestCard childName={childName} onExtend={() => clock.addMinutes(ADULT_EXTRA_MINUTES)} />;
         }
-        // Sa planom: prikazujemo samo igre iz plana, redom. Kad je plan završen, dete bira samo.
-        const shown = planActive ? plan.map((id) => getGame(id)) : pickerGames(settings, unlocked);
+        // Sa planom: samo igre iz plana, redom. Kad je plan završen, dete bira samo, na mapama.
+        // Mape dele sve uključene igre (i one koje „Otključavanje redom” još drži zaključanim),
+        // a igra sa drugom nudi sve otvorene igre, bez mapa.
+        const access = gameAccess(settings, unlocked, GAMES);
+        const playable = access.filter((a) => a.state === "open").map((a) => a.game);
+        const planStatus = (id: GameId) => (planDone.includes(id) ? "done" : id === nextPlanned ? "now" : "later") as "done" | "now" | "later";
         return (
             <section aria-labelledby="games-heading" className="space-y-4 sm:space-y-5">
                 {plan.length > 0 && <PlanStrip plan={plan} done={planDone} current={nextPlanned} />}
@@ -647,40 +657,23 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         </Button>
                     </div>
                 )}
-                {/* Mapa ili kartice (GameMap.tsx); igre su već poređane po uzrastu i bez zaključanih (pickerGames) */}
+                {/* Mape igara (GameMap.tsx): igre poređane po uzrastu i težini, raspoređene u mape (lib/gameWorlds.ts) */}
                 <GamePicker
-                    ageYears={ageYears}
-                    games={shown}
+                    childId={childId}
+                    gender={gender}
+                    access={access}
+                    playable={playable}
+                    progress={unlocked}
                     unlockedFor={unlockedFor}
-                    statusFor={planActive ? (id) => (planDone.includes(id) ? "done" : id === nextPlanned ? "now" : "later") : undefined}
+                    openAll={openAllMaps}
+                    plan={planActive ? { games: plan.map((id) => getGame(id)), statusFor: planStatus } : null}
+                    planIds={plan}
                     pending={levelsLoading}
                     unavailable={levelsError}
-                    planActive={planActive}
                     onOpen={openGame}
                     onOpenLevel={openAtLevel}
                     remoteStart={startState}
                     onRetry={retryLevels}
-                    grid={
-                <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
-                    {shown.map((g, index) => {
-                        const status = !planActive ? undefined : planDone.includes(g.id) ? "done" : g.id === nextPlanned ? "now" : "later";
-                        return (
-                            <li key={g.id}>
-                                <GameCard
-                                    game={g}
-                                    unlocked={unlockedFor(g.id)}
-                                    loading={levelsLoading}
-                                    pending={levelsLoading}
-                                    unavailable={levelsError}
-                                    priority={index < 3}
-                                    status={status}
-                                    onOpen={() => openGame(g.id)}
-                                />
-                            </li>
-                        );
-                    })}
-                </ul>
-                    }
                 />
             </section>
         );
@@ -941,92 +934,6 @@ export function WatchedBadge() {
             <span className="hidden sm:inline">Odrasli gleda</span>
             <span className="sr-only sm:hidden">Odrasli gleda tvoju igru</span>
         </span>
-    );
-}
-
-// ── Kartica igre ──────────────────────────────────────────────────────────────
-
-type PlanStatus = "done" | "now" | "later";
-
-const PLAN_STATUS_LABEL: Record<PlanStatus, string> = { done: "Odigrano", now: "Sada", later: "Zatim" };
-
-interface GameCardProps {
-    game: GameDefinition;
-    unlocked: number;
-    loading: boolean;
-    priority: boolean;
-    /** Mesto igre u dnevnom planu (bez plana: undefined) */
-    status?: PlanStatus;
-    /** Učitavanje napretka nije uspelo — igra se ne otvara dok se ne pokuša ponovo */
-    unavailable?: boolean;
-    /** Napredak se još učitava: kartica izgleda uobičajeno (nije „zaključana”), samo se još ne otvara */
-    pending?: boolean;
-    onOpen: () => void;
-}
-
-function GameCard({ game, unlocked, loading, priority, status, unavailable = false, pending = false, onOpen }: GameCardProps) {
-    // `unlocked` = poslednji položeni nivo + 1 (16 znači da je položeno svih 15)
-    const done = Math.min(Math.max(unlocked - 1, 0), MAX_LEVEL);
-    const allDone = done >= MAX_LEVEL;
-    const waiting = status === "later" || unavailable;
-    return (
-        <button
-            type="button"
-            onClick={onOpen}
-            disabled={waiting || pending}
-            className={cn(
-                "group relative flex w-full flex-col overflow-hidden rounded-card border-2 border-b-[6px] bg-surface text-left shadow-soft transition-[transform,border-color,box-shadow]",
-                waiting
-                    ? "cursor-not-allowed border-line"
-                    : pending
-                      ? "cursor-progress"
-                      : "hover:border-brand-300 hover:shadow-lift active:translate-y-[3px] active:border-b-2",
-                status === "now" ? "border-brand-500" : "border-line"
-            )}
-        >
-            {status && (
-                <span
-                    className={cn(
-                        "absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-extrabold shadow-soft",
-                        status === "done" ? "bg-emerald-700 text-white" : status === "now" ? "bg-brand-600 text-white" : "bg-surface text-ink-soft"
-                    )}
-                >
-                    {status === "done" && <Check className="h-4 w-4" aria-hidden="true" />}
-                    {status === "later" && <Lock className="h-4 w-4" aria-hidden="true" />}
-                    {PLAN_STATUS_LABEL[status]}
-                </span>
-            )}
-            <span className={cn("relative block aspect-[16/9] w-full overflow-hidden bg-brand-50", waiting && "opacity-50 grayscale")}>
-                <Image
-                    src={game.image}
-                    alt=""
-                    fill
-                    priority={priority}
-                    sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                    className="object-cover"
-                />
-            </span>
-            <span className="flex items-center gap-3 p-4">
-                <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-2xl", game.accent.gradient)} aria-hidden="true">
-                    {game.icon}
-                </span>
-                <span className="min-w-0 flex-1">
-                    <span className="block truncate font-display text-lg font-extrabold text-ink sm:text-xl">{game.title}</span>
-                    <span className="block truncate text-sm font-semibold text-ink-soft">{game.description}</span>
-                </span>
-            </span>
-            <span className="flex items-center gap-3 border-t border-line px-4 py-3">
-                <span className="h-2.5 flex-1 overflow-hidden rounded-full bg-brand-100" aria-hidden="true">
-                    <span
-                        className={cn("block h-full rounded-full transition-[width] duration-500", game.accent.solid, loading && "opacity-0")}
-                        style={{ width: `${(done / MAX_LEVEL) * 100}%` }}
-                    />
-                </span>
-                <span className="shrink-0 text-xs font-extrabold text-ink-soft">
-                    {loading ? "…" : allDone ? "Sve završeno 🏆" : `${done} / ${MAX_LEVEL} nivoa`}
-                </span>
-            </span>
-        </button>
     );
 }
 

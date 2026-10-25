@@ -1,11 +1,13 @@
 // Probni prikaz dečjeg ekrana sa izmišljenim profilom — samo u razvoju.
 // Parametri: ?gender=male|female &viewer=parent &age=4 &script=cyrillic &caps=0|1 &motion=reduced &avatar=0 &limit=10 &plan=shapes,coloring &unlocked=8
 //            &order=1 (otključavanje redom) &off=memory,coloring (isključene igre) &remind=1 (podsetnik)
+//            &prog=16,16,6 (napredak prvih igara redom za dete, za mape: zvezdice, ključ, zaključane mape)
+//            &maps=1 (sve mape otvorene)
 import { notFound } from "next/navigation";
 import ChildPageClient from "@/app/dashboard/child/[id]/ChildPageClient";
 import { resolveSettings } from "@/lib/childSettings";
 
-type Params = Partial<Record<"gender" | "viewer" | "age" | "script" | "caps" | "motion" | "avatar" | "limit" | "plan" | "unlocked" | "order" | "off" | "remind", string>>;
+type Params = Partial<Record<"gender" | "viewer" | "age" | "script" | "caps" | "motion" | "avatar" | "limit" | "plan" | "unlocked" | "order" | "off" | "remind" | "prog" | "maps", string>>;
 
 export default async function DevChildPage({ searchParams }: { searchParams: Promise<Params> }) {
     if (process.env.NODE_ENV === "production") notFound();
@@ -24,6 +26,7 @@ export default async function DevChildPage({ searchParams }: { searchParams: Pro
             ...(p.plan ? { plan: p.plan.split(",") } : {}),
             ...(p.order ? { unlockInOrder: p.order === "1" } : {}),
             ...(p.off ? { disabledGames: p.off.split(",") } : {}),
+            ...(p.maps ? { openAllMaps: p.maps === "1" } : {}),
             ...(p.remind === "1" ? { reminder: { enabled: true, time: "00:00", days: [1, 2, 3, 4, 5, 6, 7] } } : {}),
         },
         birth.toISOString().slice(0, 10)
@@ -36,6 +39,7 @@ export default async function DevChildPage({ searchParams }: { searchParams: Pro
             settings={settings}
             preview
             previewUnlocked={p.unlocked ? Math.min(Math.max(Math.round(Number(p.unlocked)) || 1, 1), 16) : undefined}
+            previewProgress={p.prog ? p.prog.split(",").map((n) => Math.min(Math.max(Math.round(Number(n)) || 1, 1), 16)) : undefined}
             reminder={p.remind === "1" ? { playedToday: false, initialDue: true } : undefined}
         />
     );

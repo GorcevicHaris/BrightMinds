@@ -264,6 +264,14 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                                     onChange={(v) => set("unlockInOrder", v)}
                                 />
                             </div>
+                            <div className="mt-2">
+                                <Switch
+                                    label="Sve mape otvorene (bez ključeva)"
+                                    description="Igre su na mapama po težini: livada, pustinja, vulkan i ledeni vrhovi. Sledeća mapa se inače otvara ključem kad dete skupi dovoljno zvezdica na prethodnoj. Uključite ako katanci i čekanje dete uznemiravaju."
+                                    checked={settings.openAllMaps}
+                                    onChange={(v) => set("openAllMaps", v)}
+                                />
+                            </div>
                         </Section>
 
                         <Section

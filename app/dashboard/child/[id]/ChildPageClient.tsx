@@ -40,6 +40,8 @@ interface Props {
     /** Probni režim (razvoj): bez mreže */
     preview?: boolean;
     previewUnlocked?: number;
+    /** Samo u probnom prikazu: napredak prvih igara redom za dete (videti GameContainer) */
+    previewProgress?: number[];
     /** Dnevni podsetnik (samo kad ga je roditelj uključio): da li je dete danas igralo i da li je sada vreme */
     reminder?: { playedToday: boolean; initialDue: boolean };
     /** Drugar i novčići sa servera, poslati uz stranicu (bez treptaja podrazumevanog drugara) */
@@ -155,7 +157,7 @@ function FloatingCompanion({ onOpen }: { onOpen: () => void }) {
     );
 }
 
-function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, reminder }: Omit<Props, "realtimeTopic">) {
+function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, previewProgress, reminder }: Omit<Props, "realtimeTopic">) {
     const router = useRouter();
     const [view, setView] = useState<View>("games");
     const [points, setPoints] = useState(child.experience_points ?? 0);
@@ -309,7 +311,7 @@ function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, 
                                 onOverlayChange={setGameOpen}
                                 preview={preview}
                                 previewUnlocked={previewUnlocked}
-                                ageYears={child.age_years ?? null}
+                                previewProgress={previewProgress}
                             />
                         </TogetherProvider>
 
