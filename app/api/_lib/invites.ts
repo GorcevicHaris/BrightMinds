@@ -185,6 +185,8 @@ export function hostView(childId: number, invite: StoredInvite, now = Date.now()
         channel: channelOf(childId, invite),
         game: invite.game,
         level: invite.level,
+        // Takmičenje se šalje samo kad je izabrano: bez polja je „zajedno” (kao stari pozivi)
+        ...(invite.mode === "versus" ? { mode: invite.mode } : {}),
         ...(status === "waiting" && invite.code ? { code: invite.code.split(",") } : {}),
         ...(status === "joined" && invite.guest ? { friend: invite.guest } : {}),
     };

@@ -2,7 +2,8 @@
 
 // Bojanka — dete bira boju i dodirom boji deo slike (dodir je jedini potreban pokret).
 // Podrška se povlači od nivoa do nivoa (videti data/coloringLevels.ts): prvo se boji po primeru
-// u boji, uz označen deo i boju; zatim primer bez oznaka, pa primer samo na zahtev; na težim
+// u boji, uz označen deo i boju; zatim primer bez oznaka, pa primer samo na zahtev; zatim po
+// brojevima i „druga polovina” (simetrična slika čija je leva polovina obojena); na težim
 // nivoima samo po izgovorenom uputstvu; poslednji nivo je slobodno bojenje.
 
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -29,7 +30,7 @@ import {
     usePraise,
 } from "@/app/components/games/kit";
 import type { BaseView, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
-import { buildColoringPlan, colorNumber, type ColoringPlan, type ColoringTask } from "@/app/components/games/data/coloringLevels";
+import { buildColoringPlan, colorNumber, mirrorPartner, type ColoringPlan, type ColoringTask } from "@/app/components/games/data/coloringLevels";
 import { COLOR_BY_ID, colorSentence, PAPER, VERB, type PaintColor, type Picture, type Zone } from "@/app/components/games/data/coloringPictures";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
@@ -42,8 +43,8 @@ const HIGHLIGHT = "#6C61F0";
 // ── Stanje ────────────────────────────────────────────────────────────────────
 
 type Fills = Record<string, string>;
-/** correct: tačno obojeno · zone/color: pogrešan deo ili boja (po uputstvu) · mismatch: boja nije kao na primeru · pick: prvo boja */
-type ColoringFeedback = "correct" | "zone" | "color" | "mismatch" | "pick" | null;
+/** correct: tačno obojeno · zone/color: pogrešan deo ili boja (po uputstvu) · mismatch: boja nije kao na primeru · pick: prvo boja · side: ta polovina je već obojena */
+type ColoringFeedback = "correct" | "zone" | "color" | "mismatch" | "pick" | "side" | null;
 
 /**
  * Po primeru: `correctCount` = delovi obojeni kao na primeru iz prvog pokušaja (bez pomoći),
@@ -102,7 +103,7 @@ function initialView(plan: ColoringPlan): ColoringView {
         fills,
         color: mode === "free" ? plan.palette[0] : null,
         options: mode === "verbal" ? (plan.tasks[0]?.options ?? []) : plan.palette,
-        suggest: mode === "copy" || mode === "number" ? nextSuggestion(plan, fills) : null,
+        suggest: mode === "copy" || mode === "number" || mode === "mirror" ? nextSuggestion(plan, fills) : null,
         resolved: [],
         tries: [],
         wrongColors: [],
@@ -135,7 +136,7 @@ function strings(value: unknown): string[] {
     return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
-const FEEDBACKS: ColoringFeedback[] = ["correct", "zone", "color", "mismatch", "pick"];
+const FEEDBACKS: ColoringFeedback[] = ["correct", "zone", "color", "mismatch", "pick", "side"];
 
 /** Monitor dobija delimično (ili prazno) stanje — sve što fali ili je pogrešnog tipa menja podrazumevana vrednost. */
 function mergeMonitor(base: ColoringView, incoming: Partial<ColoringView> | null | undefined): ColoringView {
@@ -184,6 +185,21 @@ const TEXT_COPY_REQUEST = "Pogledaj primer, pa oboji sliku isto.";
 const TEXT_OTHER_COLOR = "Na primeru je druga boja.";
 const TEXT_NUMBERS = "Svaki broj je jedna boja. Oboji sliku po brojevima.";
 const TEXT_LOOK_NUMBER = "Pogledaj broj i nađi tu boju.";
+const TEXT_MIRROR = "Jedna polovina je obojena. Oboji drugu polovinu isto, kao u ogledalu.";
+const TEXT_MIRROR_OTHER = "Na drugoj strani je druga boja.";
+const TEXT_SIDE = "Ova polovina je već obojena.";
+
+/** "Na drugoj strani je krilo crveno." */
+function mirrorSentence(zone: Zone): string {
+    const color = COLOR_BY_ID[zone.c];
+    return color ? `Na drugoj strani ${VERB[zone.g]} ${zone.name} ${color.adj[zone.g]}.` : TEXT_MIRROR_OTHER;
+}
+
+/** Pokazni deo: "Na obe strane je krilo crveno." */
+function bothSidesSentence(zone: Zone): string {
+    const color = COLOR_BY_ID[zone.c];
+    return color ? `Na obe strane ${VERB[zone.g]} ${zone.name} ${color.adj[zone.g]}.` : TEXT_DONE;
+}
 
 /** "Broj 2 je plava boja." */
 function numberSentence(plan: ColoringPlan, zone: Zone): string {
@@ -201,13 +217,17 @@ function modelSentence(zone: Zone): string {
 /** Tačno: imenuje se obojeni deo. Prva greška: poziv na novi pokušaj. Svaka sledeća: ponavlja se šta tražimo. */
 function feedbackText(view: ColoringView, plan: ColoringPlan, task: ColoringTask | undefined, lastZone: Zone | undefined): string {
     if (view.feedback === "pick") return TEXT_PICK;
-    if (plan.level.mode === "copy" || plan.level.mode === "number") {
+    if (view.feedback === "side") return TEXT_SIDE;
+    if (plan.level.mode === "copy" || plan.level.mode === "number" || plan.level.mode === "mirror") {
         if (view.feedback === "correct" && lastZone) {
+            // Pokazni deo druge polovine: natpis je isti kao rečenica koju drugar kaže
+            if (plan.level.mode === "mirror" && plan.level.demo && view.resolved.length === 1 && view.resolved[0] === lastZone.id) return bothSidesSentence(lastZone);
             const color = COLOR_BY_ID[lastZone.c];
             return color ? colorSentence(lastZone, color) : TEXT_DONE;
         }
         if (view.feedback === "mismatch" && lastZone) {
             if (plan.level.mode === "number") return view.tries.length < 2 ? TEXT_LOOK_NUMBER : numberSentence(plan, lastZone);
+            if (plan.level.mode === "mirror") return view.tries.length < 2 ? TEXT_MIRROR_OTHER : mirrorSentence(lastZone);
             return view.tries.length < 2 ? TEXT_OTHER_COLOR : modelSentence(lastZone);
         }
         return TEXT_DONE;
@@ -219,6 +239,23 @@ function feedbackText(view: ColoringView, plan: ColoringPlan, task: ColoringTask
     if (view.wrongColors.length + view.wrongZones.length < 2) return TEXT_WRONG_FIRST;
     return view.feedback === "color" ? `Tražimo ${color.acc} boju.` : `Tražimo ${zone.acc}.`;
 }
+
+// ── Nizak ekran (položen telefon) ────────────────────────────────────────────
+// Na ekranu niskom do 30rem (npr. 844 × 390) slika, natpis i paleta se zbijaju, da bojenje stane
+// bez pomeranja: manji razmaci, niže pločice boja (i dalje ≥ 40 px, cela pločica je dugme), bez
+// naziva boja ispod pločica (naziv se čuje pri dodiru). Klase sa `!` jer pobeđuju sm:/short: veličine.
+
+const SHORT = {
+    stage: "[@media(max-height:30rem)]:pb-0",
+    card: "[@media(max-height:30rem)]:p-2!",
+    captionRow: "[@media(max-height:30rem)]:mb-1!",
+    caption: "[@media(max-height:30rem)]:text-lg! [@media(max-height:30rem)]:min-h-6",
+    palette: "[@media(max-height:30rem)]:gap-2 [@media(max-height:30rem)]:p-2!",
+    hide: "[@media(max-height:30rem)]:hidden!",
+    swatch: "[@media(max-height:30rem)]:h-11!",
+    tool: "[@media(max-height:30rem)]:min-h-12 [@media(max-height:30rem)]:flex-row [@media(max-height:30rem)]:gap-2",
+    art: "[@media(max-height:30rem)]:max-h-[calc(100dvh-13.5rem)]!",
+};
 
 // ── Pokazivanje ───────────────────────────────────────────────────────────────
 
@@ -258,6 +295,8 @@ const PALETTE_COLS: Record<number, string> = {
  *    su deo i boja istaknuti kao pomoć. Stalne oznake nižih nivoa su deo nivoa, a ne pomoć.
  *  • Po uputstvu (nivoi 9–14): total = broj zadataka, correct = rešeni samostalno iz prvog pokušaja,
  *    prompted = rešeni tek pošto su traženi deo i boja istaknuti.
+ *  • Druga polovina (nivoi 10–11): kao po primeru, ali primer je leva polovina slike; pogrešna boja
+ *    se ne nanosi. Prvi deo na 10. nivou oboji drugar (pokazni deo, ne ocenjuje se).
  *  • Slobodno bojenje (nivo 15): svaka slika je tačna — total = delovi slike, correct = total.
  *    "Gotovo" se otključava kad je obojena bar polovina slike.
  * Nivo se ne može "pasti": dete uvek stigne do kraja, a završen nivo donosi bar jednu zvezdicu.
@@ -291,6 +330,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
     const viewRef = useRef(view);
     const startedRef = useRef(false);
+    const mirrorDemoPending = useRef(!isMonitor && mode === "mirror" && Boolean(plan.level.demo) && plan.zones.length > 1);
     const finishedRef = useRef(false);
     const lockedRef = useRef(false);
     const announcedRef = useRef(false);
@@ -302,8 +342,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     const task = mode === "verbal" && plan.tasks.length > 0 ? plan.tasks[Math.min(Math.max(shown.round, 1), plan.tasks.length) - 1] : undefined;
     const taskZone = zoneById(task?.zone);
     const taskColor = task ? COLOR_BY_ID[task.color] : undefined;
-    /** Po primeru i po brojevima: boji se slobodnim redom, a jedan deo se predlaže */
-    const copyLike = mode === "copy" || mode === "number";
+    /** Po primeru, po brojevima i druga polovina: boji se slobodnim redom, a jedan deo se predlaže */
+    const copyLike = mode === "copy" || mode === "number" || mode === "mirror";
     const suggestZone = copyLike ? zoneById(shown.suggest) : undefined;
     const suggestColor = suggestZone ? COLOR_BY_ID[suggestZone.c] : undefined;
     const lastZone = zoneById(lastZoneId);
@@ -313,10 +353,21 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     if (mode === "verbal") instruction = taskZone && taskColor ? `Oboji ${taskZone.acc} ${taskColor.inst} bojom` : `Oboji ${picture.acc}`;
     else if (mode === "copy") instruction = "Oboji kao na primeru";
     else if (mode === "number") instruction = "Oboji po brojevima";
+    else if (mode === "mirror") instruction = "Oboji drugu polovinu isto";
     else instruction = `Oboji ${picture.acc} kako želiš`;
     /** Ono što se izgovara na početku i na dugme „Ponovi” */
     const prompt =
-        mode === "verbal" ? `${instruction}.` : mode === "copy" ? (modelOnRequest ? TEXT_COPY_REQUEST : TEXT_COPY) : mode === "number" ? TEXT_NUMBERS : `${instruction}. ${TEXT_FREE_STEPS}`;
+        mode === "verbal"
+            ? `${instruction}.`
+            : mode === "copy"
+              ? modelOnRequest
+                  ? TEXT_COPY_REQUEST
+                  : TEXT_COPY
+              : mode === "number"
+                ? TEXT_NUMBERS
+                : mode === "mirror"
+                  ? TEXT_MIRROR
+                  : `${instruction}. ${TEXT_FREE_STEPS}`;
     /** Jedan korak po korak: prvo boja, pa deo slike */
     const step =
         mode === "verbal" && taskZone && taskColor
@@ -334,7 +385,11 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     const score = isMonitor || settings.preset.showPoints ? shown.score : undefined;
     /** Na ranim nivoima isticanje stiže već posle prve greške (osim kad ga je roditelj isključio) */
     const hintAfter = plan.level.earlyHint && settings.hintAfter > 0 ? 1 : settings.hintAfter;
-    const demoCount = mode === "copy" ? demoRounds(level, plan.zones.length) : 0;
+    // Pokazni deo: na prvom nivou ga pokazuje ruka (po primeru), na prvom nivou „druga polovina” ga oboji drugar
+    const demoCount = mode === "copy" ? demoRounds(level, plan.zones.length) : mode === "mirror" && plan.level.demo && plan.zones.length > 1 ? 1 : 0;
+    /** Druga polovina, pokazni deo: prvo se istakne odraz („look”), pa se izabere boja i ruka je na delu („pick”) */
+    const [mirrorDemo, setMirrorDemo] = useState<"look" | "pick" | null>(null);
+    const mirrorDemoStarted = useRef(false);
 
     // ── Pomoćne funkcije ──────────────────────────────────────────────────────
 
@@ -369,15 +424,18 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     }, [isMonitor, sync, guard]);
 
     // Uputstvo se izgovara na početku nivoa i svaki put kada stigne novi zadatak.
+    const runMirrorDemo = useRef<() => void>(() => {});
     useEffect(() => {
         if (isMonitor) return;
         // Traženi deo zasvetli u trenutku kad se izgovori, a ne pre toga
         const id = setTimeout(() => {
             showDemo();
-            say(prompt);
+            // Druga polovina (prvi put): kad se uputstvo izgovori, drugar oboji prvi deo
+            if (mirrorDemoPending.current) sayThen(prompt, () => runMirrorDemo.current(), { min: 1800, max: 7000 });
+            else say(prompt);
         }, SPEAK_DELAY_MS);
         return () => clearTimeout(id);
-    }, [isMonitor, say, prompt, showDemo]);
+    }, [isMonitor, say, sayThen, prompt, showDemo]);
 
     // ── Potezi ────────────────────────────────────────────────────────────────
 
@@ -463,9 +521,20 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         }
     };
 
-    /** Po primeru: boja se nanosi uvek (to je bojenje); ako nije kao na primeru, dete mirno čuje šta je na primeru i može da preboji. */
-    const paintCopy = (zone: Zone) => {
+    /**
+     * Po primeru: boja se nanosi uvek (to je bojenje); ako nije kao na primeru, dete mirno čuje šta je na primeru i može da preboji.
+     * Druga polovina: boji se samo desna polovina, a pogrešna boja se ne nanosi (deo ostaje beo). `shown` = pokazni deo (boji drugar).
+     */
+    const paintCopy = (zone: Zone, shownByCompanion = false) => {
         const current = viewRef.current;
+        const mirrored = mode === "mirror";
+        if (mirrored && !plan.zones.some((z) => z.id === zone.id)) {
+            // Leva polovina (ili deo koji je već obojen od početka): ništa se ne menja, to nije greška
+            commit({ ...current, feedback: "side" });
+            clearFeedbackSoon();
+            say(TEXT_SIDE);
+            return;
+        }
         const picked = current.color ? COLOR_BY_ID[current.color] : undefined;
         if (!picked) {
             commit({ ...current, feedback: "pick" });
@@ -475,12 +544,14 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         }
         if (current.fills[zone.id] === picked.id) return;
 
-        const fills = { ...current.fills, [zone.id]: picked.id };
-        setHistory((prev) => [...prev.slice(-29), current.fills]);
+        const matches = picked.id === zone.c;
+        // Druga polovina: pogrešna boja se ne nanosi
+        const fills = mirrored && !matches ? current.fills : { ...current.fills, [zone.id]: picked.id };
+        if (fills !== current.fills) setHistory((prev) => [...prev.slice(-29), current.fills]);
         setLastZoneId(zone.id);
         cancelFeedbackTimer();
 
-        if (picked.id === zone.c) {
+        if (matches) {
             const isNew = !current.resolved.includes(zone.id) && plan.zones.some((z) => z.id === zone.id);
             // Prvi deo na prvom nivou pokazuje ruka: to je pokazivanje, ne zadatak (ne boduje se)
             const modeled = isNew && demoCount > 0 && current.resolved.length === 0;
@@ -502,7 +573,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                 feedback: "correct",
             };
             const how = !isNew ? "ponovo" : modeled ? "pokazni deo" : firstTry ? "iz prvog pokušaja" : prompted ? "uz pomoć" : "posle više pokušaja";
-            const sentence = colorSentence(zone, picked);
+            const sentence = shownByCompanion ? bothSidesSentence(zone) : colorSentence(zone, picked);
             if (zonesMatching(plan, fills) === plan.zones.length) {
                 viewRef.current = matched;
                 sync.update(matched, `Kao na primeru (${how}): ${sentence}`);
@@ -510,8 +581,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                 return;
             }
             commit(matched, `Kao na primeru (${how}): ${sentence}`);
-            playSfx("correct");
-            say(isNew ? praise(sentence, firstTry) : sentence, undefined, "happy");
+            playSfx(shownByCompanion ? "flip" : "correct");
+            say(isNew && !shownByCompanion ? praise(sentence, firstTry) : sentence, undefined, "happy");
             clearFeedbackSoon();
             // Dodir koji je ostao od prethodnog dela ne sme odmah da oboji sledeći
             guard.hold();
@@ -536,9 +607,33 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         playSfx("wrong");
         commit(missed, `Nije kao na primeru: ${zone.name} (${picked.nom}, na primeru ${COLOR_BY_ID[zone.c]?.nom ?? "?"})${hint && !current.hint ? " (prikazana pomoć)" : ""}`);
         clearFeedbackSoon();
-        say(tries.length < 2 ? TEXT_OTHER_COLOR : modelSentence(zone), undefined, "gentle");
+        say(mirrored ? (tries.length < 2 ? TEXT_MIRROR_OTHER : mirrorSentence(zone)) : tries.length < 2 ? TEXT_OTHER_COLOR : modelSentence(zone), undefined, "gentle");
         guard.hold();
     };
+
+    /** Druga polovina, prvi put: drugar pokaže odraz, izabere njegovu boju i oboji prvi deo (dete gleda) */
+    const mirrorDemoSteps = () => {
+        const zone = plan.zones[0];
+        if (!mirrorDemoPending.current || mirrorDemoStarted.current || finishedRef.current || !zone) return;
+        mirrorDemoStarted.current = true;
+        lockedRef.current = true;
+        setMirrorDemo("look");
+        after(1400, () => {
+            const color = COLOR_BY_ID[zone.c];
+            commit({ ...viewRef.current, color: zone.c }, `Pokazni deo: ${color?.nom ?? ""} boja`);
+            playSfx("tap");
+            setMirrorDemo("pick");
+            after(1300, () => {
+                setMirrorDemo(null);
+                lockedRef.current = false;
+                mirrorDemoPending.current = false;
+                paintCopy(zone, true);
+            });
+        });
+    };
+    useEffect(() => {
+        runMirrorDemo.current = mirrorDemoSteps;
+    });
 
     const paintVerbal = (zone: Zone) => {
         if (lockedRef.current || !task || !taskZone) return;
@@ -703,6 +798,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
           : copyLike && (plan.level.showZone || shown.hint)
             ? suggestZone
             : undefined;
+    /** Druga polovina: uz predloženi deo označen je i njegov odraz (i dok drugar pokazuje prvi deo) */
+    const partnerId = mode === "mirror" && playing ? mirrorPartner(picture, mirrorDemo ? plan.zones[0]?.id : outlined?.id) : undefined;
     /** Boja koja je istaknuta u paleti */
     const hintedColor = !playing ? undefined : mode === "verbal" ? (shown.hint ? task?.color : undefined) : copyLike && (plan.level.showColor || shown.hint) ? suggestZone?.c : undefined;
     /** Po brojevima (najlakši nivo): kad je boja izabrana, označeni su svi još neobojeni delovi sa njenim brojem */
@@ -710,7 +807,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     /** Kratko pokazivanje traženog dela kad se izgovori uputstvo (po uputstvu) */
     const demoZone = playing && demo.on && mode === "verbal" && plan.level.pulseZone ? taskZone : undefined;
     /** Ruka (prvi deo prvog nivoa): prvo na boju, pa na deo */
-    const handOn = !isMonitor && playing && demoCount > 0 && shown.resolved.length === 0 && shown.tries.length === 0 && suggestZone ? (shown.color === suggestZone.c ? "zone" : "color") : null;
+    const handOn = !isMonitor && playing && mode === "copy" && demoCount > 0 && shown.resolved.length === 0 && shown.tries.length === 0 && suggestZone ? (shown.color === suggestZone.c ? "zone" : "color") : null;
     const feedbackKind: FeedbackKind = shown.feedback === null ? null : shown.feedback === "correct" ? "correct" : "wrong";
     const message = feedbackText(shown, plan, task, lastZone);
     const showModel = plan.level.model === "shown" || (modelOnRequest && (shown.peek || shown.done));
@@ -774,6 +871,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                 mode !== "verbal"
                     ? "sm:max-h-[max(13rem,calc(100dvh-31rem))] lg:max-h-[max(13rem,calc(100dvh-24rem))] short:sm:max-h-[max(13rem,calc(100dvh-27rem))] short:lg:max-h-[max(13rem,calc(100dvh-22rem))]"
                     : "sm:max-h-[max(13rem,calc(100dvh-32.5rem))] short:sm:max-h-[max(13rem,calc(100dvh-29rem))]",
+                SHORT.art,
                 shown.done && "animate-wiggle"
             )}
         >
@@ -794,7 +892,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                         {/* Oznake i nevidljiva šira ivica (mali deo se lakše pogađa prstom) crtaju se
                             odmah iznad svog dela, pa ih delovi koji ga prekrivaju i dalje prekrivaju. */}
                         {playing && mode === "verbal" && shown.wrongZones.includes(zone.id) && <path d={zone.d} fill={OUTLINE} fillOpacity={0.16} pointerEvents="none" />}
-                        {(outlined?.id === zone.id || (matchesOf !== null && zone.c === matchesOf && shown.fills[zone.id] !== zone.c && !(zone.id in plan.prefilled))) && (
+                        {(outlined?.id === zone.id || partnerId === zone.id || (mirrorDemo === "pick" && plan.zones[0]?.id === zone.id) || (matchesOf !== null && zone.c === matchesOf && shown.fills[zone.id] !== zone.c && !(zone.id in plan.prefilled))) && (
                             <path
                                 d={zone.d}
                                 fill="none"
@@ -805,7 +903,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                 strokeDasharray="1 13"
                                 pointerEvents="none"
                                 // Stalna oznaka miruje; blago pulsira samo kad je pomoć
-                                className={shown.hint ? "animate-pulse" : undefined}
+                                className={shown.hint || mirrorDemo === "look" ? "animate-pulse" : undefined}
                             />
                         )}
                         {demoZone?.id === zone.id && (
@@ -839,13 +937,15 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                 );
             })}
             <PictureExtras picture={picture} />
+            {picture.mirror && <MirrorLine picture={picture} />}
             {mode === "number" && <ZoneNumbers plan={plan} fills={shown.fills} />}
             {handOn === "zone" && suggestZone && <ZoneHand zoneId={suggestZone.id} picture={picture} />}
+            {mirrorDemo === "pick" && plan.zones[0] && <ZoneHand zoneId={plan.zones[0].id} picture={picture} />}
         </svg>
     );
 
     return (
-        <GameStage width="wide" className="pb-6">
+        <GameStage width="wide" className={`pb-6 ${SHORT.stage}`}>
             <GameHud
                 round={shown.round}
                 totalRounds={shown.totalRounds}
@@ -896,7 +996,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                 )}
 
                 {/* Slika */}
-                <div className={cn("relative min-w-0 flex-1 rounded-card border-2 bg-surface p-3 shadow-soft sm:p-4", accent.border)}>
+                <div className={cn("relative min-w-0 flex-1 rounded-card border-2 bg-surface p-3 shadow-soft sm:p-4", SHORT.card, accent.border)}>
                     {mode !== "verbal" && demo.on && (
                         <span
                             key={demo.run}
@@ -905,7 +1005,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                             style={PULSE_ONCE}
                         />
                     )}
-                    <div className="mb-2 flex items-center gap-3 sm:mb-3">
+                    <div className={cn("mb-2 flex items-center gap-3 sm:mb-3", SHORT.captionRow)}>
                         {/* Primer na telefonu i manjem tabletu, uz široku sliku: mala kartica levo od natpisa */}
                         {hasModel && !tall && (
                             <div className="w-28 shrink-0 sm:w-32 lg:hidden">
@@ -922,6 +1022,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                         <p
                             className={cn(
                                 "min-h-8 flex-1 items-center justify-center gap-2 text-center text-lg font-extrabold leading-tight text-ink sm:text-2xl",
+                                SHORT.caption,
                                 mode === "verbal" ? "hidden sm:flex" : "flex"
                             )}
                             aria-live="polite"
@@ -949,8 +1050,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
 
                 {/* Boje i alat */}
                 {/* Na uskom telefonu manji razmaci, da šest boja u redu budu dovoljno široke za dodir (48 px) */}
-                <div className={cn("flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-2 shadow-soft sm:p-3", mode === "free" ? "sm:w-72" : "sm:w-60 lg:w-64")}>
-                    <p className={cn("hidden px-1 font-display text-base font-extrabold sm:block", accent.text)}>{mode === "number" ? "Brojevi i boje" : "Boje"}</p>
+                <div className={cn("flex shrink-0 flex-col gap-3 rounded-card border border-line bg-surface p-2 shadow-soft sm:p-3", SHORT.palette, mode === "free" ? "sm:w-72" : "sm:w-60 lg:w-64")}>
+                    <p className={cn("hidden px-1 font-display text-base font-extrabold sm:block", SHORT.hide, accent.text)}>{mode === "number" ? "Brojevi i boje" : "Boje"}</p>
                     <div
                         className={cn(
                             "grid gap-1.5 sm:gap-3",
@@ -1037,6 +1138,15 @@ function PictureExtras({ picture }: { picture: Picture }) {
             ))}
             {picture.lines && <path d={picture.lines} fill="none" stroke={OUTLINE} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" pointerEvents="none" />}
         </>
+    );
+}
+
+/** Linija ogledala na simetričnoj slici (isprekidana, ne može se dodirnuti) */
+function MirrorLine({ picture }: { picture: Picture }) {
+    const [, y, , h] = picture.viewBox.split(/\s+/).map(Number);
+    const axis = picture.mirror?.axis ?? 0;
+    return (
+        <path d={`M${axis},${y + 4} L${axis},${y + h - 4}`} stroke={HIGHLIGHT} strokeOpacity={0.7} strokeWidth={4} strokeDasharray="10 9" strokeLinecap="round" pointerEvents="none" aria-hidden="true" />
     );
 }
 
@@ -1130,6 +1240,7 @@ function Swatch({ color, count, named, selected, tried, hinted, hand, number, di
                     "relative grid w-full place-items-center rounded-2xl border-2 border-black/15 transition-opacity duration-150",
                     // Do četiri boje u jednom redu su visoke pločice; više boja staje u jedan ili dva niža reda
                     count <= 4 ? "h-16" : count <= 6 ? "h-12 sm:h-14" : "h-11 sm:h-14",
+                    SHORT.swatch,
                     selected && "ring-4 ring-ink ring-offset-2 ring-offset-surface",
                     // Istaknuta boja: stalni prsten (vidi se i bez animacija) i blag puls
                     // (obris, a ne prsten: puls i prsten oba crtaju senku, pa bi puls „pojeo” prsten)
@@ -1164,7 +1275,7 @@ function Swatch({ color, count, named, selected, tried, hinted, hand, number, di
             </span>
             {/* Naziv boje: boja nikad nije jedini znak (na telefonu naziv se čuje pri dodiru) */}
             {named && (
-                <span aria-hidden="true" className="hidden text-xs font-extrabold leading-tight text-ink-soft sm:block">
+                <span aria-hidden="true" className={cn("hidden text-xs font-extrabold leading-tight text-ink-soft sm:block", SHORT.hide)}>
                     {color.nom}
                 </span>
             )}
@@ -1347,6 +1458,7 @@ function ToolButton({ label, icon, onClick, selected = false, disabled = false }
             aria-pressed={selected}
             className={cn(
                 "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl border-2 border-b-4 px-2 py-1.5 text-base font-extrabold transition-[transform,background-color,border-color,opacity] disabled:cursor-default disabled:opacity-45",
+                SHORT.tool,
                 selected ? "border-ink bg-brand-50 text-ink" : "border-line bg-surface text-ink-soft",
                 !disabled && !selected && "hover:border-brand-300 hover:bg-brand-50 active:translate-y-[2px]"
             )}

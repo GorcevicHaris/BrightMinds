@@ -5,13 +5,15 @@
 // za prijavu) i tajni naziv kanala. Drug na SVOM uređaju, prijavljen u SVOJ profil, izabere te
 // četiri sličice i dobije isti kanal. Oboje zatim igraju istu igru i isti nivo istovremeno,
 // svako na svom uređaju (rezultati idu svakom u njegov profil), a preko kanala vide traku sa
-// drugom: drugar, ime, zadatak i zvezdice. Sve je zajedničko — nikad poređenje.
+// drugom: drugar, ime, zadatak i zvezdice. Podrazumevano je sve zajedničko — nikad poređenje;
+// samo kad dete ili odrasli izabere „Takmičenje” (lib/versus.ts), traka postaje „VS” rezultat.
 //
 // Poziv se čuva u podešavanjima domaćina (`children.settings.invite`), bez nove tabele.
 // Ovde su: oblik poziva i njegovo čišćenje, rokovi, poruke kanala i zajedničke zvezdice.
 
 import { GAMES, MAX_LEVEL, starsForGame, type GameId } from "./games";
 import { PIN_LENGTH, VISUAL_PIN_CATEGORIES } from "./visualPinData";
+import { playModeOr, type PlayMode } from "./versus";
 
 /** Kod važi 10 minuta (detetu se vreme ne prikazuje; posle toga „Kod više ne važi”). */
 export const INVITE_CODE_TTL_MS = 10 * 60 * 1000;
@@ -49,6 +51,8 @@ export interface StoredInvite {
     hostFirstName: string;
     game: GameId;
     level: number;
+    /** „Zajedno” ili „Takmičenje”; stari pozivi bez ovog polja su „zajedno” */
+    mode: PlayMode;
     createdAt: string;
     guest?: InviteGuest;
     joinedAt?: string;
@@ -117,7 +121,7 @@ export function parseStoredInvite(raw: unknown): StoredInvite | null {
         if (firstName && companion) guest = { firstName, companion };
     }
     const joinedAt = isoOrNull(raw.joinedAt) ?? undefined;
-    return { code, channelKey, expiresAt, hostFirstName, game: raw.game, level, createdAt, ...(guest ? { guest } : {}), ...(guest && joinedAt ? { joinedAt } : {}) };
+    return { code, channelKey, expiresAt, hostFirstName, game: raw.game, level, mode: playModeOr(raw.mode), createdAt, ...(guest ? { guest } : {}), ...(guest && joinedAt ? { joinedAt } : {}) };
 }
 
 export type InviteStatus = "waiting" | "joined" | "expired";
