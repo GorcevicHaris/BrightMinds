@@ -94,6 +94,8 @@ const GAME_LOADERS = {
     clock: () => import("@/app/components/games/ClockGame"),
     maze: () => import("@/app/components/games/MazeGame"),
     differences: () => import("@/app/components/games/DifferencesGame"),
+    weather: () => import("@/app/components/games/WeatherGame"),
+    market: () => import("@/app/components/games/MarketGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -118,6 +120,8 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     clock: dynamic(GAME_LOADERS["clock"], { ssr: false, loading: GameLoading }),
     maze: dynamic(GAME_LOADERS["maze"], { ssr: false, loading: GameLoading }),
     differences: dynamic(GAME_LOADERS["differences"], { ssr: false, loading: GameLoading }),
+    weather: dynamic(GAME_LOADERS["weather"], { ssr: false, loading: GameLoading }),
+    market: dynamic(GAME_LOADERS["market"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {

@@ -11,7 +11,7 @@ const SHAPES = 1;
 const MEMORY = 3;
 const EMOTIONS = 8;
 
-const EVERYTHING_LOCKED = { shapes: 1, memory: 1, coloring: 1, "sound-to-image": 1, social: 1, "social-story": 1, emotions: 1, sorting: 1, sequence: 1, where: 1, uses: 1, counting: 1, gaze: 1, letters: 1, numbers: 1, food: 1, puzzle: 1, clock: 1, inset: 1, maze: 1, differences: 1 };
+const EVERYTHING_LOCKED = { shapes: 1, memory: 1, coloring: 1, "sound-to-image": 1, social: 1, "social-story": 1, emotions: 1, sorting: 1, sequence: 1, where: 1, uses: 1, counting: 1, gaze: 1, letters: 1, numbers: 1, food: 1, puzzle: 1, clock: 1, inset: 1, maze: 1, differences: 1, weather: 1, market: 1 };
 
 async function unlocked(childId = CHILD_ID): Promise<Record<string, number>> {
     const response = await GET(jsonRequest("GET"), idParams(childId));

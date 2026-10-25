@@ -124,6 +124,8 @@ const GAME_SERIES: Record<GameId, Series> = {
     clock: { swatch: "bg-stone-600", color: "var(--color-stone-600)" },
     maze: { swatch: "bg-moss-600", color: "var(--color-moss-600)" },
     differences: { swatch: "bg-coral-600", color: "var(--color-coral-600)" },
+    weather: { swatch: "bg-storm-600", color: "var(--color-storm-600)" },
+    market: { swatch: "bg-honey-600", color: "var(--color-honey-600)" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */
