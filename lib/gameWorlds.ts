@@ -115,6 +115,8 @@ export interface WorldState<G extends { id: GameId }> {
     earned: boolean;
     /** Mapa je otvorena: igre na njoj se mogu igrati */
     open: boolean;
+    /** Dete je do mape stiglo samo (zvezdicama ili igrom na njoj), bez „Sve mape otvorene” */
+    reached: boolean;
     /** Poslednja mapa: na kraju je cilj, ne put u sledeću mapu */
     final: boolean;
     /** Da li je na mapi dovršena svaka igra (svih 15 nivoa) */
@@ -135,6 +137,7 @@ export function buildWorlds<G extends { id: GameId }>(games: readonly G[], progr
         const need = starsToOpen(group.length);
         const previous = worlds[index - 1];
         const started = done.some((d) => d > 0);
+        const reached = index === 0 || Boolean(previous?.earned) || started;
         worlds.push({
             id: WORLD_IDS[index],
             index,
@@ -143,7 +146,8 @@ export function buildWorlds<G extends { id: GameId }>(games: readonly G[], progr
             maxStars: group.length * 3,
             need,
             earned: stars >= need,
-            open: index === 0 || Boolean(options.openAll) || Boolean(previous?.earned) || started,
+            open: reached || Boolean(options.openAll),
+            reached,
             final: index === groups.length - 1,
             complete: done.every((d) => d >= MAX_LEVEL),
         });
@@ -176,10 +180,12 @@ export function lockedByWorld(world: Pick<WorldState<{ id: GameId }>, "open">, i
 
 /**
  * Mapa koja se prikazuje kad dete dođe: najviša otvorena mapa na kojoj još ima
- * nedovršenih igara; kad je sve dovršeno — poslednja otvorena.
+ * nedovršenih igara; kad je sve dovršeno — poslednja otvorena. Kad je roditelj otvorio sve
+ * mape, računaju se samo mape do kojih je dete stiglo samo (novo dete kreće od livade, a ne
+ * od najteže mape).
  */
-export function defaultWorld(worlds: readonly Pick<WorldState<{ id: GameId }>, "id" | "open" | "complete">[]): WorldId | null {
-    const open = worlds.filter((w) => w.open);
+export function defaultWorld(worlds: readonly Pick<WorldState<{ id: GameId }>, "id" | "open" | "reached" | "complete">[]): WorldId | null {
+    const open = worlds.filter((w) => w.open && w.reached);
     if (open.length === 0) return worlds[0]?.id ?? null;
     for (let i = open.length - 1; i >= 0; i -= 1) if (!open[i].complete) return open[i].id;
     return open[open.length - 1].id;
@@ -189,7 +195,7 @@ export function defaultWorld(worlds: readonly Pick<WorldState<{ id: GameId }>, "
  * Mapa za prikaz: prvo mapa čiji ključ čeka kapiju (`waiting`, da dete doživi otvaranje), pa
  * zapamćena mapa ako je i dalje otvorena, inače podrazumevana.
  */
-export function chooseWorld(worlds: readonly Pick<WorldState<{ id: GameId }>, "id" | "open" | "complete">[], remembered: unknown, waiting: WorldId | null = null): WorldId | null {
+export function chooseWorld(worlds: readonly Pick<WorldState<{ id: GameId }>, "id" | "open" | "reached" | "complete">[], remembered: unknown, waiting: WorldId | null = null): WorldId | null {
     if (waiting && worlds.some((w) => w.id === waiting)) return waiting;
     if (isWorldId(remembered) && worlds.some((w) => w.id === remembered && w.open)) return remembered;
     return defaultWorld(worlds);

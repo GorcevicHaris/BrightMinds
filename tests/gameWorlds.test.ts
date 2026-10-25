@@ -198,6 +198,9 @@ describe("default world", () => {
         const worlds = buildWorlds(games(27), progressOf(Array(14).fill(6)));
         assert.equal(defaultWorld(worlds), "volcano");
         assert.equal(defaultWorld(buildWorlds(games(27), {})), "meadow");
+        // „Sve mape otvorene”: novo dete ipak kreće od livade, a dete koje je stiglo do pustinje — od pustinje
+        assert.equal(defaultWorld(buildWorlds(games(27), {}, { openAll: true })), "meadow");
+        assert.equal(defaultWorld(buildWorlds(games(27), progressOf(Array(7).fill(6)), { openAll: true })), "desert");
     });
 
     it("falls back to the last open world when everything is finished", () => {

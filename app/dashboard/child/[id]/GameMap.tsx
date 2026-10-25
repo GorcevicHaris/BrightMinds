@@ -2,7 +2,7 @@
 "use client";
 
 // „Mape” igara: igre su raspoređene u do četiri nacrtane mape po težini (lib/gameWorlds.ts) —
-// Zelena livada, Peščana pustinja, Vatreni vulkan i Ledeni vrhovi. Iznad mape su kartice mapa
+// Zelena livada, Peščana pustinja, Vatreni vulkan i Ledeni vrhovi. Iznad mape su jezičci mapa
 // (sa zvezdicama), a na mapi vijugav put sa stanicama: svaka stanica je jedna igra, redom kojim
 // se preporučuje; drugar stoji na stanici na kojoj je dete sada. Na kraju puta je kapija: kad
 // su zvezdice skupljene, ključ otvara kapiju i sledeću mapu. Crteži su u mapWorlds.tsx.
@@ -317,7 +317,7 @@ function WorldMaps({ childId, gender, access, progress, openAll, planIds, pendin
     );
 }
 
-// ── Kartice mapa ──────────────────────────────────────────────────────────────
+// ── Jezičci mapa ───────────────────────────────────────────────────────────────
 
 function WorldTabs({ worlds, selected, openAll, onSelect }: { worlds: WorldState<GameDefinition>[]; selected: WorldId; openAll: boolean; onSelect: (id: WorldId) => void }) {
     const refs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -500,13 +500,13 @@ export default function GameMap({ world, label, stops, current, locked = null, g
 // ── Kapija na kraju puta ─────────────────────────────────────────────────────────
 
 /**
- * Mesta na crtežu kapije (mapWorlds.tsx), u odnosu na `layout.end`: kapija je oko 140 × 115 px,
+ * Mesta na crtežu kapije (mapWorlds.tsx), u odnosu na `layout.end`: kapija je oko 140 × 140 px,
  * a poslednja mapa ima viši dvorac i kovčeg blaga ispod njega (katanac je na kovčegu).
  */
 function gateSpots(final: boolean) {
     return final
         ? { box: { x: -90, y: -118, w: 180, h: 200 }, key: { x: 37, y: 28 }, lock: { x: 0, y: 58 }, chip: 90 }
-        : { box: { x: -72, y: -68, w: 144, h: 122 }, key: { x: 34, y: -28 }, lock: { x: 0, y: 6 }, chip: 60 };
+        : { box: { x: -74, y: -94, w: 148, h: 146 }, key: { x: 34, y: -28 }, lock: { x: 0, y: 6 }, chip: 60 };
 }
 
 function GateControl({ layout, gate, calm }: { layout: MapLayout; gate: GateProps; calm: boolean }) {
