@@ -81,6 +81,26 @@
   --color-coral-600: #de4227;
   --color-coral-700: #b9331d;
 
+  /* Kišno nebo (igra „Obuci se”) */
+  --color-storm-50: #eef4fa;
+  --color-storm-100: #dbe7f3;
+  --color-storm-200: #bcd2e8;
+  --color-storm-300: #93b6d8;
+  --color-storm-400: #6d97c2;
+  --color-storm-500: #4f7da8;
+  --color-storm-600: #40698f;
+  --color-storm-700: #34597d;
+
+  /* Med, boja novčića (igra „Prodavnica”) */
+  --color-honey-50: #fcf6e8;
+  --color-honey-100: #f8eacb;
+  --color-honey-200: #f0d494;
+  --color-honey-300: #e6bd5c;
+  --color-honey-400: #d6a432;
+  --color-honey-500: #c38a17;
+  --color-honey-600: #a87510;
+  --color-honey-700: #8c6210;
+
   --radius-card: 1.5rem;
   --radius-tile: 1.25rem;
 
