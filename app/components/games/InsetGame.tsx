@@ -128,7 +128,7 @@ export default function InsetGame({ childId, level, gender, onComplete, isMonito
         if (!board) return;
         guard.hold();
         const current = viewRef.current;
-        commit({ ...current, ...insetBoardView(board, index), round: Math.min(current.round + 1, current.totalRounds) }, `Tabla ${index + 1}: ${board.holes.join(", ")}`);
+        commit({ ...current, ...insetBoardView(board, index), round: Math.min(current.round + 1, current.totalRounds) }, `Tabla ${index + 1}: ${board.holes.map((id) => getInsetShape(id)?.name.toLowerCase() ?? id).join(", ")}`);
         say(insetIntro(board));
     };
 

@@ -325,10 +325,14 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const planActive = plan.length > 0 && nextPlanned !== null;
 
     const playKey = `${gameId}-${level}-${attempt}`;
-    // Položen tablet i računar: drugar stoji u velikom panelu pored igre (inače je portret u traci)
+    // Igra sa drugom (isti uređaj ili drugi uređaj): kraj nivoa je zajednička pohvala
+    const togetherEnd = useTogetherEnd(gameId);
+    const remoteEnd = useRemoteEnd(gameId);
+    // Položen tablet i računar: drugar stoji u velikom panelu pored igre (inače je portret u traci).
+    // U igri sa drugom panela nema: oba igrača su u stubu pored igre, a igri treba ta širina.
     const wide = useWideScreen();
     const hasCompanion = useCompanion() !== null;
-    const panel = wide && settings.avatar && hasCompanion;
+    const panel = wide && settings.avatar && hasCompanion && !togetherEnd && !remoteEnd;
     const listening = useSpeakingLock();
     // Dodir dok učitelj govori se ne prihvata, ali dete to vidi: kratko „Slušaj do kraja”
     const [listenNote, setListenNote] = useState(0);
@@ -348,8 +352,6 @@ export default function GameContainer({ childId, childName, gender, watched = fa
     const clock = useSessionClock(childId, preview ? 0 : settings.sessionMinutes, screen === "playing" && !outcome && !onBreak);
 
     const game = gameId ? getGame(gameId) : null;
-    const togetherEnd = useTogetherEnd(gameId);
-    const remoteEnd = useRemoteEnd(gameId);
     const tier = tierOf(tierId);
     const unlockedFor = (id: GameId) => unlocked[id] ?? 1;
 
@@ -782,8 +784,10 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     <MoodPicker title="Kako se osećaš sada?" teacher={settings.avatar ? (gender ?? undefined) : null} onSelect={handleMoodAfter} />
                 )}
 
+                {/* U igri sa drugom drugar ne viri iz trake napretka: oba igrača su u traci ili stubu
+                    „Sada igra …”, a zvezdice sleću na onoga ko je na redu */}
                 {screen === "playing" && (
-                    <CompanionPanelContext value={panel}>
+                    <CompanionPanelContext value={panel || togetherEnd || remoteEnd}>
                     <div className={cn("relative flex flex-1", panel ? "flex-row gap-4 xl:gap-6" : "flex-col")}>
                     {/* Drugar pored igre: navija, hvata zvezdice i kaže pohvalu */}
                     {panel && <CompanionPanel />}

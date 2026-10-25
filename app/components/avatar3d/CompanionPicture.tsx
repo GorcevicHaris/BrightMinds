@@ -34,6 +34,8 @@ export interface CompanionPictureProps {
     alt?: string;
     /** Šta se crta kad 3D nije moguć (nema WebGL-a, ili predmet još nema 3D crtež) */
     fallback?: ReactNode;
+    /** Slika je nacrtana (snimak učitan ili se crta 2D drugar) — npr. ekran „VS” tek tada broji vreme */
+    onReady?: () => void;
 }
 
 /** Veličine se zaokružuju (manje različitih snimaka, više pogodaka u kešu) */
@@ -60,8 +62,12 @@ function useVisible(ref: React.RefObject<HTMLElement | null>, eager: boolean): b
     return visible;
 }
 
-export default function CompanionPicture({ kind, skin, wear = {}, variant = "bust", emotion, background = false, item, pose, className, eager = false, alt = "", fallback }: CompanionPictureProps) {
+export default function CompanionPicture({ kind, skin, wear = {}, variant = "bust", emotion, background = false, item, pose, className, eager = false, alt = "", fallback, onReady }: CompanionPictureProps) {
     const ref = useRef<HTMLSpanElement>(null);
+    const onReadyRef = useRef(onReady);
+    useEffect(() => {
+        onReadyRef.current = onReady;
+    }, [onReady]);
     const visible = useVisible(ref, eager);
     const engineState = useEngine(visible);
     const engine: Engine | null = engineState.status === "ready" ? engineState.engine : null;
@@ -104,13 +110,16 @@ export default function CompanionPicture({ kind, skin, wear = {}, variant = "bus
     }, [engine, supported, visible, kind, skin, wearKey, variant, expression, bg, item?.id, item?.slot, pose]);
 
     const noThree = engineState.status === "none" || (engine && !supported);
+    useEffect(() => {
+        if (noThree) onReadyRef.current?.();
+    }, [noThree]);
     return (
         <span ref={ref} className={cn("relative block overflow-hidden", className)} role={alt ? "img" : undefined} aria-label={alt || undefined}>
             {noThree ? (
                 fallback !== undefined ? fallback : item ? null : <Companion kind={kind} wear={wear} skin={skin} variant={variant === "full" ? "full" : variant === "portrait" ? "portrait" : variant === "face" ? "face" : "bust"} emotion={emotion ?? "happy"} still className="h-full w-full" />
             ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                url && <img src={url} alt="" draggable={false} className="absolute inset-0 h-full w-full object-contain transition-opacity duration-200" />
+                url && <img src={url} alt="" draggable={false} onLoad={() => onReadyRef.current?.()} className="absolute inset-0 h-full w-full object-contain transition-opacity duration-200" />
             )}
         </span>
     );

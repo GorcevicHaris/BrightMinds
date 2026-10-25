@@ -96,13 +96,19 @@ interface IntroProps {
     onDone: () => void;
 }
 
+/** Najduže koliko ekran „VS” čeka da se oba drugara nacrtaju pre nego što počne da broji vreme */
+const PICTURES_WAIT_MS = 3000;
+
 /**
  * Kratak ekran pre takmičenja: dva velika drugara okrenuta jedno drugom, imena ispod, krupno
  * „VS” između i naziv igre. Sam prelazi u igru posle oko dve sekunde; dodir ga preskače.
+ * Vreme kreće tek kad su oba drugara nacrtana (slike se prave redom, pa na sporijem uređaju
+ * prvi drugar ume da stigne kasnije) — dete uvek vidi i sebe i druga.
  */
 export function VsIntro({ players, gameTitle, onDone }: IntroProps) {
     const calm = useCalmMotion();
     const doneRef = useRef(onDone);
+    const drawn = useRef(new Set<number>());
     useEffect(() => {
         doneRef.current = onDone;
     }, [onDone]);
@@ -112,9 +118,11 @@ export function VsIntro({ players, gameTitle, onDone }: IntroProps) {
         let timer: ReturnType<typeof setTimeout> | undefined;
         let shown = 0;
         let last = 0;
+        const since = performance.now();
         const tick = () => {
             const now = performance.now();
-            shown += Math.min(now - last, 250);
+            // Dok se drugari ne nacrtaju (najduže PICTURES_WAIT_MS), vreme stoji
+            if (drawn.current.size >= 2 || now - since >= PICTURES_WAIT_MS) shown += Math.min(now - last, 250);
             last = now;
             if (shown >= VS_INTRO_MS) doneRef.current();
             else timer = setTimeout(tick, 100);
@@ -145,6 +153,7 @@ export function VsIntro({ players, gameTitle, onDone }: IntroProps) {
                         <PlayerPicture
                             player={player}
                             look={LOOKS[index]}
+                            onReady={() => drawn.current.add(index)}
                             // Drugari gledaju jedan u drugog: desni je u ogledalu
                             className={cn(
                                 "aspect-square w-full max-w-36 min-[400px]:max-w-40 sm:max-w-56 [@media(max-height:30rem)]:max-w-28",

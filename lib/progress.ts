@@ -637,7 +637,8 @@ export function buildProgress(
         game.seen += 1;
     });
 
-    const games: GameProgress[] = GAMES.map((definition) => {
+    // Istim redom kao na početnom ekranu deteta i u podešavanjima (redosled učenja)
+    const games: GameProgress[] = [...GAMES].sort((a, b) => a.order - b.order).map((definition) => {
         const game = perGame.get(definition.id) ?? emptyGameTally();
         const currentLevel = Math.min(game.highestLevelCompleted + 1, MAX_LEVEL);
         const tier = tierForLevel(currentLevel);

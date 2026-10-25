@@ -430,7 +430,10 @@ export function RemoteProvider({ childId, childName, gender, preview = false, ch
     }, [session, sendState]);
 
     const recentlySeen = seenAt > 0 && now - seenAt < FRIEND_TIMEOUT_MS;
-    const presenceSaysGone = channel.present === false && seenAt > 0;
+    // Presence kaže „otišao” samo za druga koji je već bio na kanalu, i samo dok od njega posle
+    // toga nije stigla nijedna poruka: kad Presence kasni pri ulasku (ili je mreža zagušena),
+    // dete ne vidi „Drug je otišao” dok mu drug upravo igra
+    const presenceSaysGone = channel.leftAt > 0 && seenAt <= channel.leftAt;
     const friendHere = hasFriend && recentlySeen && !presenceSaysGone && !friendLeft;
     const friendGone = hasFriend && seenAt > 0 && !friendHere;
 
@@ -909,9 +912,10 @@ export function RemoteFriendLayer({ gameId, children }: LayerProps) {
     }
     return (
         <GameEventTapProvider value={onUpdate}>
-            <div className="relative flex flex-1 flex-col gap-2 sm:gap-3">
+            {/* Tablet, računar i telefon na boku: drug stoji u stubu pored igre, pa igra ima celu visinu kao i inače */}
+            <div className="relative flex flex-1 flex-col gap-2 sm:gap-3 md:flex-row landscape:flex-row">
                 <FriendStrip />
-                <div className="relative flex flex-1 flex-col">{children}</div>
+                <div className="relative flex min-w-0 flex-1 flex-col">{children}</div>
             </div>
         </GameEventTapProvider>
     );
@@ -938,39 +942,55 @@ function FriendStrip() {
     const state = remote.friendState;
     const cheering = remote.cheerAt > 0 && remote.friendHere && (calm ? remote.now - remote.cheerAt < 3000 : true);
 
-    let line: ReactNode;
-    if (remote.friendGone) line = "Drug je otišao";
-    else if (!remote.friendHere || !state) line = "Čekamo druga…";
-    else if (state.phase === "playing") {
-        line = (
-            <>
-                Zadatak {Math.max(1, state.round)} od {state.total}
-                <StarRow stars={state.stars} className="ml-2 text-sm sm:text-base" />
-            </>
-        );
-    } else if (state.phase === "done") line = "Nivo je gotov ✓";
-    else line = "Sprema se…";
+    let status: string;
+    if (remote.friendGone) status = "Drug je otišao";
+    else if (!remote.friendHere || !state) status = "Čekamo druga…";
+    else if (state.phase === "playing") status = `Zadatak ${Math.max(1, state.round)} od ${state.total}`;
+    else if (state.phase === "done") status = "Nivo je gotov ✓";
+    else status = "Sprema se…";
+    const stars = !remote.friendGone && remote.friendHere && state?.phase === "playing" ? state.stars : null;
+    const line: ReactNode = (
+        <>
+            {status}
+            {stars !== null && <StarRow stars={stars} className="ml-2 text-sm sm:text-base" />}
+        </>
+    );
+    const cheer = cheering && (
+        <span
+            key={remote.cheerAt}
+            className={cn("absolute -right-2 -top-2 grid h-8 w-8 place-items-center rounded-full bg-white text-lg shadow-soft ring-2 ring-orange-300", !calm && "animate-cheer")}
+            aria-hidden="true"
+        >
+            👏
+        </span>
+    );
+    const tone = remote.friendGone ? "border-line bg-surface" : "border-orange-200 bg-orange-50";
 
     return (
-        <div className={cn("flex items-center gap-2 rounded-2xl border-2 px-2 py-1.5 sm:gap-3 sm:px-3", remote.friendGone ? "border-line bg-surface" : "border-orange-200 bg-orange-50")} role="status" aria-live="polite">
-            <span className="relative shrink-0">
-                <PlayerPicture player={friend} look={LOOKS[1]} dim={remote.friendGone} className="h-12 w-12 sm:h-14 sm:w-14" />
-                {cheering && (
-                    <span
-                        key={remote.cheerAt}
-                        className={cn("absolute -right-2 -top-2 grid h-8 w-8 place-items-center rounded-full bg-white text-lg shadow-soft ring-2 ring-orange-300", !calm && "animate-cheer")}
-                        aria-hidden="true"
-                    >
-                        👏
-                    </span>
-                )}
-            </span>
-            <span className="min-w-0 flex-1">
-                <span className="block truncate font-display text-base font-extrabold leading-tight text-ink sm:text-lg">{friend.name}</span>
-                <span className={cn("flex items-center text-sm font-bold sm:text-base", remote.friendGone ? "text-ink-soft" : "text-orange-700")}>{line}</span>
-            </span>
-            <TogetherPill stars={remote.togetherStars} className="text-sm sm:text-base" />
-        </div>
+        <>
+            {/* Stub pored igre (drug, šta radi, zajedničke zvezdice); na uspravnom telefonu traka ispod */}
+            <div className={cn("hidden w-28 shrink-0 flex-col items-center gap-1.5 self-start rounded-2xl border-2 px-2 py-2.5 text-center md:flex landscape:flex lg:w-32 [@media(max-height:30rem)]:gap-1 [@media(max-height:30rem)]:py-1.5", tone)} role="status" aria-live="polite">
+                <span className="relative">
+                    <PlayerPicture player={friend} look={LOOKS[1]} dim={remote.friendGone} className="h-14 w-14 lg:h-16 lg:w-16 [@media(max-height:30rem)]:h-11 [@media(max-height:30rem)]:w-11" />
+                    {cheer}
+                </span>
+                <span className="block w-full truncate font-display text-base font-extrabold leading-tight text-ink lg:text-lg">{friend.name}</span>
+                <span className={cn("text-sm font-bold leading-tight", remote.friendGone ? "text-ink-soft" : "text-orange-700")}>{status}</span>
+                {stars !== null && <StarRow stars={stars} className="text-sm" />}
+                <TogetherPill stars={remote.togetherStars} className="px-2 text-sm" />
+            </div>
+            <div className={cn("flex items-center gap-2 rounded-2xl border-2 px-2 py-1.5 sm:gap-3 sm:px-3 md:hidden landscape:hidden", tone)} role="status" aria-live="polite">
+                <span className="relative shrink-0">
+                    <PlayerPicture player={friend} look={LOOKS[1]} dim={remote.friendGone} className="h-12 w-12 sm:h-14 sm:w-14" />
+                    {cheer}
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block truncate font-display text-base font-extrabold leading-tight text-ink sm:text-lg">{friend.name}</span>
+                    <span className={cn("flex items-center text-sm font-bold sm:text-base", remote.friendGone ? "text-ink-soft" : "text-orange-700")}>{line}</span>
+                </span>
+                <TogetherPill stars={remote.togetherStars} className="text-sm sm:text-base" />
+            </div>
+        </>
     );
 }
 
@@ -1008,21 +1028,23 @@ function VersusStrip() {
     } else if (state.phase === "done") line = "Gotovo ✓";
     else line = "Sprema se…";
 
+    const tone = remote.friendGone ? "border-line bg-surface" : "border-sun-200 bg-sun-50";
+    let status: string;
+    if (remote.friendGone) status = "Drug je otišao";
+    else if (!remote.friendHere || !state) status = "Čekamo druga…";
+    else if (state.phase === "playing") status = `Zadatak ${Math.max(1, state.round)} od ${state.total}`;
+    else if (state.phase === "done") status = "Gotovo ✓";
+    else status = "Sprema se…";
+
     return (
-        <div
-            className={cn("flex items-center gap-1.5 rounded-2xl border-2 px-2 py-1.5 min-[400px]:gap-2 sm:gap-3 sm:px-3", remote.friendGone ? "border-line bg-surface" : "border-sun-200 bg-sun-50")}
-            role="status"
-            aria-live="polite"
-        >
-            <span className="flex shrink-0 items-center gap-1.5">
-                <PlayerPicture player={me} look={LOOKS[0]} className="h-11 w-11 sm:h-14 sm:w-14" />
-                <ScorePill name={me.name} stars={mine} className="text-base sm:text-lg" />
-            </span>
-            <VsMark className="h-8 w-8 text-xs sm:h-10 sm:w-10 sm:text-sm" />
-            <span className="flex shrink-0 items-center gap-1.5">
-                <ScorePill name={friend.name} stars={theirs} className="text-base sm:text-lg" />
-                <span className="relative shrink-0">
-                    <PlayerPicture player={friend} look={LOOKS[1]} dim={remote.friendGone} className="h-11 w-11 -scale-x-100 sm:h-14 sm:w-14" />
+        <>
+            {/* Stub pored igre — ja i moje zvezdice, „VS”, drug i njegove zvezdice; na uspravnom telefonu traka ispod */}
+            <div className={cn("hidden w-28 shrink-0 flex-col items-center gap-1.5 self-start rounded-2xl border-2 px-2 py-2.5 text-center md:flex landscape:flex lg:w-32 [@media(max-height:30rem)]:gap-1 [@media(max-height:30rem)]:py-1.5", tone)} role="status" aria-live="polite">
+                <PlayerPicture player={me} look={LOOKS[0]} hype className="h-12 w-12 lg:h-14 lg:w-14 [@media(max-height:30rem)]:h-9 [@media(max-height:30rem)]:w-9" />
+                <ScorePill name={me.name} stars={mine} className="text-base" />
+                <VsMark className="h-8 w-8 text-xs" />
+                <span className="relative">
+                    <PlayerPicture player={friend} look={LOOKS[1]} dim={remote.friendGone} className="h-12 w-12 -scale-x-100 lg:h-14 lg:w-14 [@media(max-height:30rem)]:h-9 [@media(max-height:30rem)]:w-9" />
                     {cheering && (
                         <span
                             key={remote.cheerAt}
@@ -1033,12 +1055,37 @@ function VersusStrip() {
                         </span>
                     )}
                 </span>
-            </span>
-            <span className="min-w-0 flex-1">
-                <span className="block truncate font-display text-sm font-extrabold leading-tight text-ink min-[400px]:text-base sm:text-lg">{friend.name}</span>
-                <span className={cn("block truncate text-xs font-bold min-[400px]:text-sm sm:text-base", remote.friendGone ? "text-ink-soft" : "text-orange-700")}>{line}</span>
-            </span>
-        </div>
+                <ScorePill name={friend.name} stars={theirs} className="text-base" />
+                <span className="block w-full truncate font-display text-sm font-extrabold leading-tight text-ink lg:text-base">{friend.name}</span>
+                <span className={cn("text-xs font-bold leading-tight lg:text-sm", remote.friendGone ? "text-ink-soft" : "text-orange-700")}>{status}</span>
+            </div>
+            <div className={cn("flex items-center gap-1.5 rounded-2xl border-2 px-2 py-1.5 min-[400px]:gap-2 sm:gap-3 sm:px-3 md:hidden landscape:hidden", tone)} role="status" aria-live="polite">
+                <span className="flex shrink-0 items-center gap-1.5">
+                    <PlayerPicture player={me} look={LOOKS[0]} hype className="h-11 w-11 sm:h-14 sm:w-14" />
+                    <ScorePill name={me.name} stars={mine} className="text-base sm:text-lg" />
+                </span>
+                <VsMark className="h-8 w-8 text-xs sm:h-10 sm:w-10 sm:text-sm" />
+                <span className="flex shrink-0 items-center gap-1.5">
+                    <ScorePill name={friend.name} stars={theirs} className="text-base sm:text-lg" />
+                    <span className="relative shrink-0">
+                        <PlayerPicture player={friend} look={LOOKS[1]} dim={remote.friendGone} className="h-11 w-11 -scale-x-100 sm:h-14 sm:w-14" />
+                        {cheering && (
+                            <span
+                                key={remote.cheerAt}
+                                className={cn("absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-white text-base shadow-soft ring-2 ring-orange-300", !calm && "animate-cheer")}
+                                aria-hidden="true"
+                            >
+                                👏
+                            </span>
+                        )}
+                    </span>
+                </span>
+                <span className="min-w-0 flex-1">
+                    <span className="block truncate font-display text-sm font-extrabold leading-tight text-ink min-[400px]:text-base sm:text-lg">{friend.name}</span>
+                    <span className={cn("block truncate text-xs font-bold min-[400px]:text-sm sm:text-base", remote.friendGone ? "text-ink-soft" : "text-orange-700")}>{line}</span>
+                </span>
+            </div>
+        </>
     );
 }
 
