@@ -122,6 +122,8 @@ const GAME_SERIES: Record<GameId, Series> = {
     puzzle: { swatch: "bg-purple-600", color: "var(--color-purple-600)" },
     inset: { swatch: "bg-slate-600", color: "var(--color-slate-600)" },
     clock: { swatch: "bg-stone-600", color: "var(--color-stone-600)" },
+    missing: { swatch: "bg-[#8f3f6a]", color: "#8f3f6a" },
+    words: { swatch: "bg-[#5b6a17]", color: "#5b6a17" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */

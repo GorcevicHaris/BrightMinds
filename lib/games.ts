@@ -21,7 +21,9 @@ export type GameId =
     | "food"
     | "puzzle"
     | "inset"
-    | "clock";
+    | "clock"
+    | "missing"
+    | "words";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -43,7 +45,9 @@ export type GameType =
     | "food"
     | "puzzle"
     | "inset"
-    | "clock";
+    | "clock"
+    | "missing"
+    | "words";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -555,6 +559,56 @@ export const GAMES: GameDefinition[] = [
         // 18. po redu: uparivanje oblika sa rupom, rukom i okom — posle slaganja slike
         ages: { min: 3, max: 7 },
         order: 18,
+    },
+    {
+        id: "missing",
+        gameType: "missing",
+        activityId: 25,
+        title: "Šta fali?",
+        description: "Zapamti i pronađi šta fali",
+        skill: "Vizuelno pamćenje i opažanje",
+        icon: "🔍",
+        image: "/images/stafali.svg",
+        accent: {
+            solid: "bg-[#a24d7a]",
+            edge: "border-[#7a2f58]",
+            soft: "bg-[#fbf1f6]",
+            text: "text-[#7a2f58]",
+            border: "border-[#efcfe0]",
+            ring: "ring-[#efcfe0]",
+            gradient: "from-pink-300 to-[#a24d7a]",
+        },
+        offscreenTip:
+            "Kimova igra kod kuće: stavite tri igračke na sto, neka ih dete pogleda i imenuje, pa neka zatvori oči dok sklonite jednu. „Šta fali?” Kasnije stavite više stvari ili zamenite dve stvari mesta. Uz slikovnicu pitajte: „Šta fali autu?”, „Šta fali kući?”",
+        graded: true,
+        // 20. po redu: dopunjavanje slike, pa pamćenje šta je bilo na polici (Kimova igra)
+        ages: { min: 3, max: 8 },
+        order: 20,
+    },
+    {
+        id: "words",
+        gameType: "words",
+        activityId: 26,
+        title: "Prve reči",
+        description: "Čitaj reči, slogove i slova",
+        skill: "Rano čitanje",
+        icon: "📝",
+        image: "/images/prvereci.svg",
+        accent: {
+            solid: "bg-[#6b7a1f]",
+            edge: "border-[#4d5916]",
+            soft: "bg-[#f6f8ea]",
+            text: "text-[#4d5916]",
+            border: "border-[#dfe5bd]",
+            ring: "ring-[#dfe5bd]",
+            gradient: "from-lime-300 to-[#6b7a1f]",
+        },
+        offscreenTip:
+            "Napišite krupnim štampanim slovima MAMA, TATA i ime deteta i zalepite kartice na vrata ili fotografije. Čitajte po slogovima uz tapšanje: LO-PTA. U šetnji pitajte: „Na koje slovo počinje reč lopta?” Starijem detetu napišite kratku rečenicu („Amar ima loptu.”) i neka nacrta šta piše.",
+        graded: true,
+        // 21. po redu: rano čitanje — slika i reč, prvo slovo, slogovi, slova i rečenica (posle igre „Slova”)
+        ages: { min: 5, max: 8 },
+        order: 21,
     },
 ];
 

@@ -30,3 +30,5 @@ export { CelebrationLayer, celebrate, celebrateBig, celebrateBigWhenSettled } fr
 export { announcePraise, flyItems, useWideScreen, FLY_MS } from "./hype";
 export { useCompanionHype, HypeBubble, HypePlus, type CompanionHype } from "./CompanionCheer";
 export { GamePauseContext, useGamePaused } from "./pause";
+export { boxOf, flyIn, FLY_IN_MS, type Box } from "./flyIn";
+export { useLandscape, useShortScreen } from "./useLandscape";
