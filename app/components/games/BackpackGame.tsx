@@ -329,7 +329,7 @@ export default function BackpackGame({ childId, level, gender, onComplete, isMon
                                 >
                                     <ItemPicture id={item.id} className={cn("pointer-events-none aspect-square w-auto landscape:h-[clamp(1.9rem,8dvh,4.5rem)]", deskPicture)} />
                                     {/* Natpis samo kad ima mesta (do osam stvari); inače ga čuje čitač ekrana (aria-label) */}
-                                    {labels && <span className="pointer-events-none max-w-full truncate text-[0.65rem] leading-tight sm:text-sm [@media(max-height:30rem)]:hidden">{item.name}</span>}
+                                    {labels && <span className="pointer-events-none line-clamp-1 max-w-full text-[0.65rem] leading-tight break-words sm:text-sm portrait:line-clamp-2 [@media(max-height:30rem)]:hidden">{item.name}</span>}
                                 </ChoiceCard>
                             );
                         })}
@@ -386,7 +386,7 @@ function Tick({ on }: { on: boolean }) {
 
 function ListPanel({ view, onReopen }: { view: BackpackView; onReopen: () => void }) {
     const base =
-        "flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1 rounded-card border-2 border-line bg-surface p-1.5 shadow-soft sm:gap-1.5 sm:p-3 landscape:basis-[32%] landscape:flex-none short:landscape:gap-0.5 short:landscape:p-1.5! [@media(max-height:30rem)]:p-1!";
+        "flex min-h-0 min-w-0 flex-1 flex-col justify-center gap-1 rounded-card border-2 border-line bg-surface p-1.5 shadow-soft sm:gap-1.5 sm:p-3 landscape:basis-[32%] landscape:flex-none [@media(max-height:40rem)]:gap-0.5 [@media(max-height:40rem)]:p-1.5! [@media(max-height:30rem)]:p-1!";
 
     if (view.kind === "peek" && !view.listOpen) {
         return (
@@ -408,15 +408,15 @@ function ListPanel({ view, onReopen }: { view: BackpackView; onReopen: () => voi
     if (view.kind === "timetable" && isDay(view.day)) {
         return (
             <div className={base} role="list" aria-label={`Raspored: ${DAYS[view.day].name}`}>
-                <p className="text-center font-display text-base font-extrabold text-ink sm:text-xl short:landscape:text-sm! [@media(max-height:30rem)]:hidden">{DAYS[view.day].name}</p>
+                <p className="text-center font-display text-base font-extrabold text-ink sm:text-xl [@media(max-height:40rem)]:text-sm! [@media(max-height:30rem)]:hidden">{DAYS[view.day].name}</p>
                 {view.subjects.map((id) => {
                     const subject = getSubject(id);
                     if (!subject) return null;
                     const on = view.packed.includes(itemForSubject(id as SubjectId));
                     return (
                         <div key={id} role="listitem" className="flex min-w-0 items-center gap-1.5 rounded-xl px-1 py-0.5 sm:gap-2" style={{ backgroundColor: `${subject.color}1f` }}>
-                            <SubjectBadge id={subject.id} className="h-6 w-6 shrink-0 sm:h-8 sm:w-8 short:landscape:h-6! short:landscape:w-6!" />
-                            <span className="min-w-0 flex-1 truncate text-xs font-extrabold text-ink sm:text-base short:landscape:text-xs!">{subject.name}</span>
+                            <SubjectBadge id={subject.id} className="h-6 w-6 shrink-0 sm:h-8 sm:w-8 [@media(max-height:40rem)]:h-6! [@media(max-height:40rem)]:w-6!" />
+                            <span className="min-w-0 flex-1 truncate text-xs font-extrabold text-ink sm:text-base [@media(max-height:40rem)]:text-xs!">{subject.name}</span>
                             <Tick on={on} />
                         </div>
                     );
@@ -428,7 +428,7 @@ function ListPanel({ view, onReopen }: { view: BackpackView; onReopen: () => voi
 
     return (
         <div className={base} role="list" aria-label="Lista">
-            <p className="text-center font-display text-base font-extrabold text-ink sm:text-xl short:landscape:text-sm! [@media(max-height:30rem)]:hidden">Lista</p>
+            <p className="text-center font-display text-base font-extrabold text-ink sm:text-xl [@media(max-height:40rem)]:text-sm! [@media(max-height:30rem)]:hidden">Lista</p>
             {view.needed.map((id) => {
                 const item = getItem(id);
                 if (!item) return null;
@@ -436,7 +436,7 @@ function ListPanel({ view, onReopen }: { view: BackpackView; onReopen: () => voi
                 const on = view.kind === "missing" ? view.feedback === "correct" : view.packed.includes(id);
                 return (
                     <div key={id} role="listitem" className="flex min-w-0 items-center gap-1.5 sm:gap-2">
-                        <ItemPicture id={item.id} className="h-7 w-7 shrink-0 sm:h-10 sm:w-10 short:landscape:h-7! short:landscape:w-7! [@media(max-height:30rem)]:h-6! [@media(max-height:30rem)]:w-6!" />
+                        <ItemPicture id={item.id} className="h-7 w-7 shrink-0 sm:h-10 sm:w-10 [@media(max-height:40rem)]:h-7! [@media(max-height:40rem)]:w-7! [@media(max-height:30rem)]:h-6! [@media(max-height:30rem)]:w-6!" />
                         <span className="min-w-0 flex-1 truncate text-xs font-extrabold text-ink sm:text-base">{item.name}</span>
                         <Tick on={on} />
                     </div>
@@ -449,19 +449,19 @@ function ListPanel({ view, onReopen }: { view: BackpackView; onReopen: () => voi
 /** Svakog dana: pernica, flašica i užina (slike na lakšim nivoima rasporeda, kasnije samo reči) */
 function DailyRow({ view }: { view: BackpackView }) {
     return (
-        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 border-t border-line pt-1 sm:gap-1.5 sm:pt-1.5 short:landscape:gap-0.5 short:landscape:pt-0.5!">
-            <span className="w-full text-[0.7rem] font-extrabold text-ink-soft sm:text-sm short:landscape:hidden">Svaki dan:</span>
+        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 border-t border-line pt-1 sm:gap-1.5 sm:pt-1.5 [@media(max-height:40rem)]:gap-0.5 [@media(max-height:40rem)]:pt-0.5!">
+            <span className="w-full text-[0.7rem] font-extrabold text-ink-soft sm:text-sm [@media(max-height:40rem)]:hidden">Svaki dan:</span>
             {DAILY_ITEMS.map((id) => {
                 const item = getItem(id);
                 if (!item) return null;
                 const on = view.packed.includes(id);
                 return view.dailyPictures ? (
                     <span key={id} className={cn("relative grid place-items-center rounded-lg", on && "bg-emerald-50")} aria-label={`${item.name}${on ? ", spakovano" : ""}`}>
-                        <ItemPicture id={id} className={cn("h-7 w-7 sm:h-9 sm:w-9 short:landscape:h-6! short:landscape:w-6! [@media(max-height:30rem)]:h-5! [@media(max-height:30rem)]:w-5!", on && "opacity-60")} />
+                        <ItemPicture id={id} className={cn("h-7 w-7 sm:h-9 sm:w-9 [@media(max-height:40rem)]:h-6! [@media(max-height:40rem)]:w-6! [@media(max-height:30rem)]:h-5! [@media(max-height:30rem)]:w-5!", on && "opacity-60")} />
                         {on && <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-emerald-600 text-[0.6rem] font-black text-white">✓</span>}
                     </span>
                 ) : (
-                    <span key={id} className={cn("rounded-md px-1 text-xs font-extrabold sm:text-sm short:landscape:text-[0.65rem]!", on ? "bg-emerald-600 text-white" : "bg-canvas text-ink")}>
+                    <span key={id} className={cn("rounded-md px-1 text-xs font-extrabold sm:text-sm [@media(max-height:40rem)]:text-[0.65rem]!", on ? "bg-emerald-600 text-white" : "bg-canvas text-ink")}>
                         {item.name.toLocaleLowerCase("sr")}
                     </span>
                 );
@@ -474,7 +474,7 @@ function DailyRow({ view }: { view: BackpackView }) {
 function WeekTable({ view, className }: { view: BackpackView; className: string }) {
     return (
         <div className={className} role="table" aria-label="Raspored časova">
-            <p className="text-center font-display text-sm font-extrabold text-ink sm:text-lg short:landscape:text-xs! [@media(max-height:30rem)]:hidden">Raspored</p>
+            <p className="text-center font-display text-sm font-extrabold text-ink sm:text-lg [@media(max-height:40rem)]:text-xs! [@media(max-height:30rem)]:hidden">Raspored</p>
             {view.week.map((row) => (
                 <div key={row.day} role="row" className="flex min-w-0 items-center gap-1 sm:portrait:gap-1.5">
                     <span role="rowheader" className="w-8 shrink-0 text-xs font-extrabold text-ink-soft sm:w-10 sm:text-sm lg:w-24">
