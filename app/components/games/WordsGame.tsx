@@ -472,7 +472,10 @@ function ChoiceBoard({ view, style, calm, landscape, showHand, disabled, onSpeak
     const landscapePicture = first ? "min(calc(100cqh - 4.5rem), 22rem, 34cqw)" : "min(calc(100cqh - 0.5rem), 22rem, 34cqw)";
     // Položeno: izbori dobijaju ostatak širine (pored uputstva i slike)
     const row = landscape ? `min(26rem, calc(100cqw - var(--title) - ${landscapePicture} - 2.5rem))` : "min(42rem, 100cqw)";
-    const choiceFont = first ? `min(3rem, ${landscape ? 18 : 9}cqh)` : `min(2.25rem, calc((${row} / ${count} - 2rem) / ${(longest * 0.7).toFixed(2)}), ${landscape ? 14 : 8}cqh)`;
+    // Položeno: reči stoje jedna ispod druge (u redu bi bile sitne pored slike)
+    const stacked = landscape && !first;
+    const perRow = stacked ? 1 : count;
+    const choiceFont = first ? `min(3rem, ${landscape ? 18 : 9}cqh)` : `min(2.25rem, calc((${row} / ${perRow} - 2rem) / ${(longest * 0.7).toFixed(2)}), ${landscape ? 12 : 8}cqh)`;
 
     return (
         <>
@@ -483,7 +486,7 @@ function ChoiceBoard({ view, style, calm, landscape, showHand, disabled, onSpeak
             <div
                 role="group"
                 aria-label={first ? "Slova" : "Reči"}
-                className={cn("grid w-full max-w-2xl shrink-0 gap-2.5 sm:gap-4", count === 2 ? "grid-cols-2" : "grid-cols-3")}
+                className={cn("grid w-full max-w-2xl shrink-0 gap-2.5 sm:gap-4", stacked ? "grid-cols-1" : count === 2 ? "grid-cols-2" : "grid-cols-3")}
                 style={landscape ? { width: row } : undefined}
             >
                 {view.choices.map((id) => {
@@ -497,6 +500,7 @@ function ChoiceBoard({ view, style, calm, landscape, showHand, disabled, onSpeak
                             onClick={(event) => onPick(id, event)}
                             aria-label={`${text}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                             className="animate-pop min-h-[clamp(3.5rem,14cqh,6.5rem)] px-1.5 py-2"
+                            style={stacked ? { minHeight: `min(5rem, calc((100cqh - 1.5rem) / ${count}))`, paddingBlock: "0.25rem" } : undefined}
                         >
                             {/* Reči i slova su bez prevođenja u velika slova preko CSS-a: oblik prati podešavanje */}
                             <span
