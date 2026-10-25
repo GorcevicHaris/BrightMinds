@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { WEAR_ITEMS, WEAR_SETS } from "@/app/components/avatar/wearables";
 import { ANIMAL_SKINS as SKINS_2D } from "@/app/components/avatar/skins";
-import { ANIMAL_KINDS, EXTRA_ANIMAL_KINDS, HUMAN_KINDS, MORE_ANIMAL_KINDS, SLOTS, SLOT_LABELS } from "@/app/components/avatar3d/data";
+import { ANIMAL_KINDS, EXTRA_ANIMAL_KINDS, FRIEND_KINDS, HUMAN_KINDS, MORE_ANIMAL_KINDS, SLOTS, SLOT_LABELS } from "@/app/components/avatar3d/data";
 import { ANIMAL_SKINS } from "@/app/components/avatar3d/animals/skins.data";
 import { COMPANION_CATALOG, ITEMS, SETS, animalSkins, getItem, getSet, skinPrice } from "@/app/components/avatar3d/manifest";
 import { HAIRSTYLES, HUMAN_DEFAULT, NO_HIJAB, humanLook, humanLookId, parseHumanLook } from "@/app/components/avatar3d/looks";
@@ -14,7 +14,7 @@ import { COMPANION_KINDS, WEAR_SLOT_IDS } from "@/lib/companion";
 describe("3D manifest", () => {
     it("mesta i drugari su konačan spisak iz ugovora", () => {
         assert.deepEqual([...WEAR_SLOT_IDS], ["hat", "glasses", "neck", "outfit", "bottom", "feet", "hand", "back", "pet", "background"]);
-        assert.deepEqual([...COMPANION_KINDS], [...HUMAN_KINDS, ...ANIMAL_KINDS, ...EXTRA_ANIMAL_KINDS, ...MORE_ANIMAL_KINDS]);
+        assert.deepEqual([...COMPANION_KINDS], [...HUMAN_KINDS, ...ANIMAL_KINDS, ...EXTRA_ANIMAL_KINDS, ...MORE_ANIMAL_KINDS, ...FRIEND_KINDS]);
         for (const slot of SLOTS) assert.ok(SLOT_LABELS[slot]);
     });
 
@@ -50,7 +50,7 @@ describe("3D manifest", () => {
         for (const [kind, list] of Object.entries(SKINS_2D)) {
             for (const old of list) assert.equal(skinPrice(kind, old.id), old.price, `${kind}/${old.id}`);
         }
-        for (const kind of [...ANIMAL_KINDS, ...EXTRA_ANIMAL_KINDS, ...MORE_ANIMAL_KINDS]) {
+        for (const kind of [...ANIMAL_KINDS, ...EXTRA_ANIMAL_KINDS, ...MORE_ANIMAL_KINDS, ...FRIEND_KINDS]) {
             const list = animalSkins(kind);
             assert.ok(list.length >= 1, kind);
             assert.equal(list[0].price, 0, kind);

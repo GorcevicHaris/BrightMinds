@@ -55,6 +55,11 @@ export interface AnimalSpec {
     cheeks: number;
     /** Perje/glatko krzno (pingvin) */
     sleek?: boolean;
+    /**
+     * Sopstvena površina tela umesto krzna (robotić: sjajna plastika). Mora da crta boje
+     * temena (vertexColors), jer su šare i senke u njima; podrazumevano krzno (furMaterial).
+     */
+    material?: (coat: Coat) => THREE.Material;
     /** Spljoštene ruke (peraja) */
     flatArms?: number;
     /** Posebni delovi vrste (griva, rog, kljun…) */
@@ -248,7 +253,7 @@ export function buildAnimal(spec: AnimalSpec, look: CompanionLook, ctx: FigureCo
         cheeks: spec.cheeks,
         custom: spec.paint,
     };
-    const fur = furMaterial({ sheen: coat.light, shimmer: coat.shimmer, sleek: spec.sleek });
+    const fur = spec.material?.(coat) ?? furMaterial({ sheen: coat.light, shimmer: coat.shimmer, sleek: spec.sleek });
     const parts: Partial<Record<BodyPart, THREE.Object3D[]>> = {};
     const addPart = (kind: BodyPart, object: THREE.Object3D) => {
         (parts[kind] ??= []).push(object);

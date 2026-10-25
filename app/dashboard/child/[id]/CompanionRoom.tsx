@@ -43,7 +43,7 @@ import {
 import type { CompanionAction as CompanionMove } from "@/app/components/avatar/motion";
 import CompanionPicture from "@/app/components/avatar3d/CompanionPicture";
 import CompanionStage from "@/app/components/avatar3d/CompanionStage";
-import { COMPANION_KINDS, COMPANION_LABELS, isHumanKind, type CompanionKind, type ItemData, type SetData, type SkinData, type Slot, type Wear } from "@/app/components/avatar3d/data";
+import { COMPANION_KINDS, COMPANION_LABELS, isFriendKind, isHumanKind, type CompanionKind, type ItemData, type SetData, type SkinData, type Slot, type Wear } from "@/app/components/avatar3d/data";
 import {
     EYE_COLORS,
     HAIR_COLORS,
@@ -802,7 +802,8 @@ function LookPanel({ tab, onTab, kind, skin, human, companionSkins, busy, coins,
           ]
         : [
               { id: "companion", label: "Drugar", Icon: UserRound },
-              { id: "fur", label: "Krzno", Icon: PawPrint },
+              // Robotić, vanzemaljac, bube, pužić i hobotnica nemaju krzno — za njih je to „Boja”
+              isFriendKind(kind) && kind !== "sloth" ? { id: "fur", label: "Boja", Icon: Palette } : { id: "fur", label: "Krzno", Icon: PawPrint },
           ];
     const active = tabs.some((t) => t.id === tab) ? tab : "companion";
     const look = human ? humanLook(kind as never, skin) : null;

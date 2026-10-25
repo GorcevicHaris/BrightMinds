@@ -4,7 +4,7 @@
 //
 // Novi fajl sa podacima se dodaje ovde (jedan uvoz) — imena fajlova su deo ugovora.
 
-import { isAnimalKind, isExtraAnimalKind, isHumanKind, isMoreAnimalKind, SLOTS, type CompanionKind, type ItemData, type SetData, type SkinData, type Slot } from "./data";
+import { isAnimalKind, isExtraAnimalKind, isFriendKind, isHumanKind, isMoreAnimalKind, SLOTS, type CompanionKind, type ItemData, type SetData, type SkinData, type Slot } from "./data";
 import { ANIMAL_SKINS } from "./animals/skins.data";
 import { ITEMS as BACK } from "./items/back.data";
 import { ITEMS as BACKGROUND } from "./items/background.data";
@@ -56,7 +56,7 @@ export function getSet(id: string): SetData | undefined {
 
 /** Izgledi životinje (prvi je podrazumevani); za ljude prazno — njihov izgled je looks.ts */
 export function animalSkins(kind: string): readonly SkinData[] {
-    return isAnimalKind(kind) || isExtraAnimalKind(kind) || isMoreAnimalKind(kind) ? (ANIMAL_SKINS[kind] ?? []) : [];
+    return isAnimalKind(kind) || isExtraAnimalKind(kind) || isMoreAnimalKind(kind) || isFriendKind(kind) ? (ANIMAL_SKINS[kind] ?? []) : [];
 }
 
 /** Cena izgleda (0 = besplatno), ili undefined za nepoznat drugar ili izgled */
