@@ -32,6 +32,9 @@ export const BACKGROUND_IDS = [
     "train",
     "plain",
     "sky",
+    // Igra „Pronađi razlike”: pijaca sa tezgama i akvarijum
+    "market",
+    "aquarium",
 ] as const;
 export type BackgroundId = (typeof BACKGROUND_IDS)[number];
 
@@ -376,6 +379,16 @@ export const PROP_IDS = [
     "drum",
     "web",
     "sunscreen",
+    // Igra „Pronađi razlike”: more i akvarijum, pijaca, plaža, zima (boja se može zadati)
+    "seaweed",
+    "starfish",
+    "crab",
+    "coral",
+    "stall",
+    "crate",
+    "parasol",
+    "bucket",
+    "pine",
 ] as const;
 export type PropId = (typeof PROP_IDS)[number];
 
