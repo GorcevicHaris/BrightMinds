@@ -547,11 +547,11 @@ function PairsGame({ childId, level, gender, onComplete, isMonitor = false, moni
             // Zvuk kraja nivoa pušta strana koja prikazuje rezultat — ovde samo potvrda para
             playSfx("correct");
             if (allFound) {
-                sayThen(praise(`To je ${animal.name.toLowerCase()}.`, firstTry), finish, { emotion: "happy" });
+                sayThen(praise(`${animal.plural ? "To su" : "To je"} ${animal.name.toLowerCase()}.`, firstTry), finish, { emotion: "happy" });
                 return;
             }
             // Ime u rečenici: samu reč („Krokodil.”) glas ume da pročita kao englesku
-            say(praise(`To je ${animal.name.toLowerCase()}.`, firstTry), undefined, "happy");
+            say(praise(`${animal.plural ? "To su" : "To je"} ${animal.name.toLowerCase()}.`, firstTry), undefined, "happy");
             feedbackTimer.current = after(MATCH_FEEDBACK_MS, () => {
                 feedbackTimer.current = null;
                 commit({ ...viewRef.current, feedback: null });

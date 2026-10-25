@@ -32,6 +32,7 @@ import {
     buildPuzzleLevel,
     emptyPuzzleView,
     getPuzzlePicture,
+    pictureInline,
     isDecoy,
     mergePuzzleMonitor,
     nextPictureView,
@@ -99,7 +100,7 @@ export default function PuzzleGame({ childId, level, gender, onComplete, isMonit
         [sync]
     );
 
-    const pictureName = (round: PuzzleRound | null) => getPuzzlePicture(round?.picture)?.name.toLocaleLowerCase("sr") ?? "";
+    const pictureName = (round: PuzzleRound | null) => pictureInline(getPuzzlePicture(round?.picture));
     const hasDemo = demoRounds(level, view.totalRounds) > 0;
 
     const finish = () => {
@@ -275,7 +276,7 @@ export default function PuzzleGame({ childId, level, gender, onComplete, isMonit
     const picture = getPuzzlePicture(round.picture);
     const half = round.given.length > 0;
     const decoys = round.tray.some((piece) => isDecoy(round, piece));
-    const name = picture?.name.toLocaleLowerCase("sr") ?? "";
+    const name = pictureInline(picture);
     const title = shown.solved ? (picture?.name ?? "Slika je cela") : half ? "Nađi drugu polovinu" : `Složi sliku: ${name}`;
     const subtitle = shown.solved ? undefined : decoys && !half ? "Jedan deo nije sa ove slike." : undefined;
     const message = shown.feedback === "correct" ? (picture?.about ?? "Slika je cela.") : shown.lastDecoy ? TEXT_DECOY : TEXT_WRONG_PLACE;
