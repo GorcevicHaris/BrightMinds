@@ -1,12 +1,14 @@
 // app/dashboard/child/[id]/gameMapLayout.ts
 // Geometrija „Mape” igara (čist modul, bez Reacta): gde stoji koja stanica, kuda vijuga put,
-// gde reka seče put (most), gde rastu drveća. Sve zavisi samo od broja stanica i širine
+// gde reka seče put (most), gde rastu drveća. Isti raspored služi svakoj mapi
+// (livada, pustinja, vulkan, led — crteži su u mapWorlds.tsx). Sve zavisi samo od broja stanica i širine
 // ekrana, pa se ista mapa uvek iscrta isto (bez nasumičnosti između dva crtanja).
 //
 // Telefon: jedna vijugava traka odozgo nadole (skrol). Tablet i računar: zmijasti put sa
 // 3–5 stanica u redu, koji se na kraju reda okreće u sledeći red.
 
 import { LEVELS_PER_TIER, MAX_LEVEL } from "@/lib/games";
+import { gameStars } from "@/lib/gameWorlds";
 
 export interface MapPoint {
     x: number;
@@ -47,11 +49,11 @@ export interface MapLayout {
     nodeSize: number;
     /** Središta stanica, redom */
     nodes: MapPoint[];
-    /** Selo na početku puta */
+    /** Početak puta (selo, oaza…) */
     start: MapPoint;
-    /** Zamak na kraju puta */
+    /** Kapija (cilj) na kraju puta */
     end: MapPoint;
-    /** Delovi puta: početak → stanice (i okreti) → zamak */
+    /** Delovi puta: početak → stanice (i okreti) → kapija */
     curves: MapCurve[];
     /** Za svaku stanicu: koliko prvih delova puta (`curves`) vodi do nje; od tog indeksa kreće dalje */
     nodeCurve: number[];
@@ -127,10 +129,10 @@ export function mapLayout(count: number, width: number): MapLayout {
     const w = Math.max(Math.round(width), 280);
     const lanes = lanesFor(w);
     const nodeSize = lanes === 1 ? (w < 400 ? 80 : 88) : 96;
-    const slots = Math.max(count, 0) + 1; // + zamak na kraju
+    const slots = Math.max(count, 0) + 1; // + kapija na kraju
     const top = lanes === 1 ? 190 : 200;
 
-    /** Tačke kroz koje put prolazi: stanice (i zamak) i okreti na krajevima redova */
+    /** Tačke kroz koje put prolazi: stanice (i kapija) i okreti na krajevima redova */
     const route: { p: MapPoint; turn: boolean }[] = [];
     // Reka teče kroz poseban razmak između dva reda (ne ispod natpisa stanica)
     const RIVER_GAP = 96;
@@ -284,24 +286,5 @@ export function currentStop(stops: MapStopState[]): number {
     return -1;
 }
 
-/** Zvezdice stanice: po jedna za svaku pređenu težinu (lako, srednje, teško) */
-export function stopStars(done: number): 0 | 1 | 2 | 3 {
-    return Math.min(Math.floor(Math.max(done, 0) / LEVELS_PER_TIER), 3) as 0 | 1 | 2 | 3;
-}
-
-// ── Prikaz: mapa ili kartice ─────────────────────────────────────────────────────
-
-export type PickerView = "map" | "grid";
-
-/** Ključ u localStorage — izbor važi za ovaj uređaj */
-export const PICKER_VIEW_KEY = "bm-games-view";
-
-export function parsePickerView(raw: unknown): PickerView | null {
-    return raw === "map" || raw === "grid" ? raw : null;
-}
-
-/** Mapa je podrazumevana do 7 godina; nepoznat uzrast → mapa (mlađa deca je lakše prate) */
-export function defaultPickerView(ageYears: number | null | undefined): PickerView {
-    if (typeof ageYears !== "number" || !Number.isFinite(ageYears)) return "map";
-    return ageYears <= 7 ? "map" : "grid";
-}
+/** Zvezdice stanice: po jedna za svaku pređenu težinu (lako, srednje, teško); isto pravilo broji i mape */
+export const stopStars = gameStars;
