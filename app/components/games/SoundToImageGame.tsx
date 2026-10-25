@@ -66,7 +66,7 @@ const NUDGES = ["Evo novog zvuka.", "Slušaj dalje.", "Šta li je sad?", "Hajde,
 const NUDGE_MS = 7000;
 /** Pitanje posle zvuka, takođe u nekoliko oblika */
 const CHOOSE_LINES = [SAY_CHOOSE, "Šta je to bilo?", "Šta se čulo?"];
-const SAY_LISTEN_FIRST = "Prvo pusti zvuk.";
+const SAY_LISTEN_FIRST = "Prvo poslušaj zvuk.";
 const WRONG_TEXT = "Nije to. Poslušaj još jednom.";
 const WRONG_HINT_TEXT = "Nije to. Probaj još jednom, polako.";
 const SOUND_OFF_TEXT = "Zvuk je isključen. Za ovu igru treba zvuk.";
@@ -144,13 +144,15 @@ function mergeMonitor(incoming: Partial<SoundToImageView> | null | undefined): S
 }
 
 // Raspored i veličine slika po broju ponuđenih odgovora (potpune klase, bez sklapanja).
+// Položen telefon (`flat`): sve slike u jednom redu, a širina reda tolika da slike sa natpisom
+// stanu u visinu koja ostaje ispod trake i dugmeta (oko 70% visine ekrana manje zaglavlje).
 const GRID: Record<number, string> = {
-    2: "mx-auto max-w-xl grid-cols-2 xl:max-w-3xl 2xl:max-w-4xl",
-    3: "mx-auto max-w-2xl grid-cols-3 xl:max-w-5xl 2xl:max-w-6xl",
-    4: "grid-cols-2 md:grid-cols-4",
+    2: "mx-auto max-w-xl grid-cols-2 xl:max-w-3xl 2xl:max-w-4xl flat:max-w-[min(100%,calc(170dvh-23.5rem))]",
+    3: "mx-auto max-w-2xl grid-cols-3 xl:max-w-5xl 2xl:max-w-6xl flat:max-w-[min(100%,calc(255dvh-35rem))]",
+    4: "grid-cols-2 md:grid-cols-4 flat:mx-auto flat:grid-cols-4 flat:max-w-[min(100%,calc(340dvh-46.5rem))]",
     // Šest slika: tri kolone u dva reda, a širina tolika da oba reda stanu u visinu ekrana
     // (na položenom telefonu bar 20rem — inače bi se slike skupile u uzane trake)
-    6: "mx-auto max-w-[min(100%,max(20rem,calc((100dvh-25rem)*1.15)))] grid-cols-2 sm:grid-cols-3",
+    6: "mx-auto max-w-[min(100%,max(20rem,calc((100dvh-25rem)*1.15)))] grid-cols-2 sm:grid-cols-3 flat:max-w-none flat:grid-cols-6 flat:sm:grid-cols-6",
 };
 
 const IMAGE_SIZES: Record<number, string> = {
@@ -181,7 +183,7 @@ function PlayButton({ playing, cue, demo = false, onClick }: PlayButtonProps) {
             type="button"
             onClick={onClick}
             className={cn(
-                "relative inline-flex min-h-20 w-full min-w-48 shrink-0 items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] px-7 font-display text-xl font-extrabold text-white transition-[transform,background-color,border-width] active:translate-y-[3px] active:border-b-2 sm:w-auto sm:text-2xl",
+                "relative inline-flex min-h-20 w-full min-w-48 shrink-0 items-center justify-center gap-3 rounded-2xl border-2 border-b-[5px] px-7 font-display text-xl font-extrabold text-white transition-[transform,background-color,border-width] active:translate-y-[3px] active:border-b-2 sm:w-auto sm:text-2xl flat:min-h-14 flat:sm:text-xl",
                 playing ? "border-emerald-800 bg-emerald-600" : "border-brand-700 bg-brand-500 hover:bg-brand-600",
                 cue && !playing && "animate-[soft-pulse_1.8s_ease-in-out_3]"
             )}
@@ -593,8 +595,8 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                 </section>
             ) : (
                 <>
-                    <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-card border-2 bg-surface p-3 shadow-soft sm:gap-6 sm:p-6 short:sm:p-4", accent.border, tail)}>
-                        <p className="min-w-0 flex-1 basis-40 font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl">{instruction}</p>
+                    <div className={cn("flex flex-wrap items-center justify-between gap-3 rounded-card border-2 bg-surface p-3 shadow-soft sm:gap-6 sm:p-6 short:sm:p-4 flat:sm:p-2.5", accent.border, tail)}>
+                        <p className="min-w-0 flex-1 basis-40 font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl flat:sm:text-2xl">{instruction}</p>
                         {isMonitor ? (
                             <p className={cn("rounded-2xl px-4 py-3 text-base font-extrabold", accent.soft, accent.text)}>
                                 Traženi zvuk: {target ? target.label.toLowerCase() : "…"}
@@ -617,9 +619,9 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                                         disabled={!interactive || solved || state === "dimmed" || state === "wrong"}
                                         onClick={() => pick(item.id)}
                                         aria-label={item.label}
-                                        className="flex-col gap-2"
+                                        className="flex-col gap-2 flat:min-h-0 flat:gap-1 flat:p-2 flat:sm:p-2"
                                     >
-                                        <span className="relative block aspect-[5/4] w-full overflow-hidden rounded-xl bg-brand-50 sm:aspect-square">
+                                        <span className="relative block aspect-[5/4] w-full overflow-hidden rounded-xl bg-brand-50 sm:aspect-square short:sm:aspect-[5/4] flat:sm:aspect-[5/4]">
                                             {item.Art ? (
                                                 <item.Art className="absolute inset-0 h-full w-full" />
                                             ) : (

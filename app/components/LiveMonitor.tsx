@@ -60,6 +60,14 @@ export const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
     puzzle: dynamic(() => import("@/app/components/games/PuzzleGame"), { ssr: false, loading: MirrorLoading }),
     inset: dynamic(() => import("@/app/components/games/InsetGame"), { ssr: false, loading: MirrorLoading }),
     clock: dynamic(() => import("@/app/components/games/ClockGame"), { ssr: false, loading: MirrorLoading }),
+    maze: dynamic(() => import("@/app/components/games/MazeGame"), { ssr: false, loading: MirrorLoading }),
+    differences: dynamic(() => import("@/app/components/games/DifferencesGame"), { ssr: false, loading: MirrorLoading }),
+    weather: dynamic(() => import("@/app/components/games/WeatherGame"), { ssr: false, loading: MirrorLoading }),
+    market: dynamic(() => import("@/app/components/games/MarketGame"), { ssr: false, loading: MirrorLoading }),
+    families: dynamic(() => import("@/app/components/games/FamilyGame"), { ssr: false, loading: MirrorLoading }),
+    backpack: dynamic(() => import("@/app/components/games/BackpackGame"), { ssr: false, loading: MirrorLoading }),
+    missing: dynamic(() => import("@/app/components/games/MissingGame"), { ssr: false, loading: MirrorLoading }),
+    words: dynamic(() => import("@/app/components/games/WordsGame"), { ssr: false, loading: MirrorLoading }),
 };
 
 const noop = () => {};

@@ -86,9 +86,9 @@ function choiceState(view: CountingView, value: number): ChoiceState {
 function BoardPrompt({ children, title, className }: { children: ReactNode; title: string; className?: string }) {
     const tail = useBubbleTail();
     return (
-        <div className={cn("relative flex flex-col items-stretch gap-2.5 rounded-card border border-line bg-surface p-2.5 shadow-soft sm:gap-4 sm:p-5 short:sm:gap-2.5 short:sm:p-3", tail, className)}>
-            <div className="flex justify-center rounded-2xl bg-blue-50 px-2 py-3 ring-1 ring-blue-100 sm:py-4 short:sm:py-2.5">{children}</div>
-            <p className="px-1 text-center font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl short:sm:text-2xl">{title}</p>
+        <div className={cn("relative flex flex-col items-stretch gap-2.5 rounded-card border border-line bg-surface p-2.5 shadow-soft sm:gap-4 sm:p-5 short:sm:gap-2.5 short:sm:p-3 flat:justify-center flat:sm:gap-2 flat:sm:p-2.5", tail, className)}>
+            <div className="flex justify-center rounded-2xl bg-blue-50 px-2 py-3 ring-1 ring-blue-100 sm:py-4 short:sm:py-2.5 flat:[--count-k:1.5] flat:[--count-w:0.32]">{children}</div>
+            <p className="px-1 text-center font-display text-xl font-extrabold leading-snug text-ink sm:text-3xl short:sm:text-2xl flat:sm:text-xl">{title}</p>
         </div>
     );
 }
@@ -299,7 +299,7 @@ export default function CountingGame({ childId, level, gender, onComplete, isMon
     const count = task.choices.length;
 
     return (
-        <GameStage>
+        <GameStage split>
             <GameHud round={shown.round} totalRounds={shown.totalRounds} score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
             {groups ? (
@@ -342,7 +342,7 @@ export default function CountingGame({ childId, level, gender, onComplete, isMon
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(value)}
                                 aria-label={`${choiceLabel(task, value)}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
-                                className={cn("animate-pop", groups ? "min-h-0 px-2 py-2.5 sm:min-h-36 sm:py-4 short:sm:min-h-0 short:sm:py-3" : "min-h-28 px-1 sm:min-h-40 short:sm:min-h-28")}
+                                className={cn("animate-pop", groups ? "min-h-0 px-2 py-2.5 sm:min-h-36 sm:py-4 short:sm:min-h-0 short:sm:py-3 flat:min-h-12 flat:sm:min-h-12 flat:sm:py-2" : "min-h-28 px-1 sm:min-h-40 short:sm:min-h-28 flat:min-h-24 flat:sm:min-h-24")}
                             >
                                 {groups ? <GroupPicture noun={noun} count={value} lit={shown.lit[groupKey(value)] ?? 0} /> : <NumeralFace value={value} dots={task.dots} />}
                                 {showHand && value === task.answer && <DemoHand />}

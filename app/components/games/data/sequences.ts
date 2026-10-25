@@ -161,7 +161,7 @@ export const SEQUENCES: readonly Sequence[] = [
         id: "light",
         title: "Lampa",
         steps: [
-            s("U sobi je mrak.", art("bedroom", [prop("table", 180, 160, { s: 1.4 }), draw("tableLamp", 180, 113, { s: 1.6 }), me(80, Y, { at: [180, 80], face: "neutral" })], "dark")),
+            s("U sobi je mrak.", art("bedroom", [prop("table", 180, 160, { s: 1.4 }), draw("tableLamp", 180, 113, { s: 1.6 }), me(80, Y, { at: [180, 80], face: "neutral" })], "dark"), "je u sobi mrak"),
             s("Upalim lampu.", art("bedroom", [prop("table", 180, 160, { s: 1.4 }), draw("tableLampOn", 180, 113, { s: 1.6 }), me(110, Y, { pose: "give", at: [180, 80], face: "happy" })], "night")),
         ],
     },

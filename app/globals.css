@@ -12,6 +12,14 @@
   }
 }
 
+/* Položen telefon i nizak laptop (širok, a nizak ekran): igra sa pitanjem ide u dve kolone —
+   uputstvo levo, izbori desno — da sve stane bez skrolovanja */
+@custom-variant flat {
+  @media (orientation: landscape) and (max-height: 37.5rem) {
+    @slot;
+  }
+}
+
 /* Drugar levo, prodavnica desno: računar, i položen tablet ili nizak laptop (širok, a nizak ekran) */
 @custom-variant side {
   @media (min-width: 64rem), (min-width: 48rem) and (orientation: landscape) {
@@ -52,6 +60,65 @@
   --color-sun-500: #f59e0b;
   --color-sun-600: #d97f06;
   --color-sun-700: #955005;
+
+  /* Mahovina (igra „Lavirint”: živa ograda) */
+  --color-moss-50: #f4f8e8;
+  --color-moss-100: #e6efcc;
+  --color-moss-200: #cfe09f;
+  --color-moss-300: #b2cc6c;
+  --color-moss-400: #96b646;
+  --color-moss-500: #7a9a2e;
+  --color-moss-600: #607c22;
+  --color-moss-700: #4b5f1d;
+
+  /* Korali (igra „Pronađi razlike”) */
+  --color-coral-50: #fff3f0;
+  --color-coral-100: #ffe3dc;
+  --color-coral-200: #ffc9bc;
+  --color-coral-300: #ffa38f;
+  --color-coral-400: #fb7a5f;
+  --color-coral-500: #f25c3f;
+  --color-coral-600: #de4227;
+  --color-coral-700: #b9331d;
+
+  /* Kišno nebo (igra „Obuci se”) */
+  --color-storm-50: #eef4fa;
+  --color-storm-100: #dbe7f3;
+  --color-storm-200: #bcd2e8;
+  --color-storm-300: #93b6d8;
+  --color-storm-400: #6d97c2;
+  --color-storm-500: #4f7da8;
+  --color-storm-600: #40698f;
+  --color-storm-700: #34597d;
+
+  /* Med, boja novčića (igra „Prodavnica”) */
+  --color-honey-50: #fcf6e8;
+  --color-honey-100: #f8eacb;
+  --color-honey-200: #f0d494;
+  --color-honey-300: #e6bd5c;
+  --color-honey-400: #d6a432;
+  --color-honey-500: #c38a17;
+  --color-honey-600: #a87510;
+  --color-honey-700: #8c6210;
+  /* Bobice (igra „Šta fali?”: somotska zavesa) */
+  --color-berry-50: #fbf1f6;
+  --color-berry-100: #f7e1ec;
+  --color-berry-200: #efc6da;
+  --color-berry-300: #dd9cbd;
+  --color-berry-400: #c6719c;
+  --color-berry-500: #a24d7a;
+  --color-berry-600: #8f3f6a;
+  --color-berry-700: #7a2f58;
+
+  /* Školska tabla (igra „Prve reči”) */
+  --color-pine-50: #eef7f2;
+  --color-pine-100: #d6eee1;
+  --color-pine-200: #b0dcc4;
+  --color-pine-300: #7fc2a0;
+  --color-pine-400: #4fa37c;
+  --color-pine-500: #2f8462;
+  --color-pine-600: #256b50;
+  --color-pine-700: #1f5641;
 
   --radius-card: 1.5rem;
   --radius-tile: 1.25rem;
@@ -170,8 +237,12 @@ h1, h2, h3 {
   border-radius: 0.5rem;
 }
 
-button, a, [role="button"] {
-  touch-action: manipulation;
+/* U sloju „base”, da ga klasa `touch-none` (komad koji se prevlači prstom) može nadjačati: inače
+   pregledač prevlačenje prstom shvati kao pomeranje strane i prekine ga (pointercancel) */
+@layer base {
+  button, a, [role="button"] {
+    touch-action: manipulation;
+  }
 }
 
 button:not(:disabled), [role="button"] {

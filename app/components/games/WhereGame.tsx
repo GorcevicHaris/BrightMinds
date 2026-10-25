@@ -234,7 +234,7 @@ export default function WhereGame({ childId, level, gender, onComplete, isMonito
     const count = shown.choices.length;
 
     return (
-        <GameStage>
+        <GameStage split>
             <GameHud round={shown.round} totalRounds={shown.totalRounds} score={score} onSpeak={isMonitor ? undefined : repeatInstruction} />
 
             <GamePrompt key={`prompt-${shown.round}`} className="animate-fade-up" compact title={sentence} />
@@ -243,7 +243,7 @@ export default function WhereGame({ childId, level, gender, onComplete, isMonito
                 <div
                     role="group"
                     aria-label="Slike"
-                    className={cn("grid w-full gap-3 sm:gap-4", count === 3 ? "max-w-4xl grid-cols-2 sm:grid-cols-3" : count === 2 ? "max-w-3xl grid-cols-2" : "max-w-3xl grid-cols-2 lg:max-w-5xl lg:grid-cols-4", isMonitor && "pointer-events-none")}
+                    className={cn("grid w-full gap-3 sm:gap-4 flat:gap-2 flat:sm:gap-2", count === 3 ? "max-w-4xl grid-cols-2 sm:grid-cols-3" : count === 2 ? "max-w-3xl grid-cols-2" : "max-w-3xl grid-cols-2 lg:max-w-5xl lg:grid-cols-4", isMonitor && "pointer-events-none")}
                 >
                     {shown.choices.map((relation, index) => {
                         const state = choiceState(shown, relation);
@@ -255,12 +255,12 @@ export default function WhereGame({ childId, level, gender, onComplete, isMonito
                                 onClick={() => handlePick(relation)}
                                 aria-label={`${shownSentence(figure, relation, object)}${state === "correct" ? " Tačno." : state === "wrong" ? " Netačno." : ""}`}
                                 className={cn(
-                                    "animate-pop p-1.5 sm:p-2",
+                                    "animate-pop p-1.5 sm:p-2 flat:min-h-0",
                                     // Tri slike na telefonu: dve gore, treća ispod u sredini — veće slike nego tri u redu
                                     count === 3 && index === 2 && "col-span-2 mx-auto max-w-[calc(50%-0.375rem)] sm:col-span-1 sm:max-w-none"
                                 )}
                             >
-                                <WhereScene figure={figure.id} object={object.id} relation={relation} className="max-h-[min(19dvh,15rem)] w-full" />
+                                <WhereScene figure={figure.id} object={object.id} relation={relation} className="max-h-[min(19dvh,15rem)] w-full flat:max-h-[min(15dvh,15rem)]" />
                                 {showHand && relation === target && <DemoHand />}
                             </ChoiceCard>
                         );

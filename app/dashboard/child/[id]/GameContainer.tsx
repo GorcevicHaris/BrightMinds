@@ -92,6 +92,14 @@ const GAME_LOADERS = {
     puzzle: () => import("@/app/components/games/PuzzleGame"),
     inset: () => import("@/app/components/games/InsetGame"),
     clock: () => import("@/app/components/games/ClockGame"),
+    maze: () => import("@/app/components/games/MazeGame"),
+    differences: () => import("@/app/components/games/DifferencesGame"),
+    weather: () => import("@/app/components/games/WeatherGame"),
+    market: () => import("@/app/components/games/MarketGame"),
+    families: () => import("@/app/components/games/FamilyGame"),
+    backpack: () => import("@/app/components/games/BackpackGame"),
+    missing: () => import("@/app/components/games/MissingGame"),
+    words: () => import("@/app/components/games/WordsGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -114,6 +122,14 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     puzzle: dynamic(GAME_LOADERS["puzzle"], { ssr: false, loading: GameLoading }),
     inset: dynamic(GAME_LOADERS["inset"], { ssr: false, loading: GameLoading }),
     clock: dynamic(GAME_LOADERS["clock"], { ssr: false, loading: GameLoading }),
+    maze: dynamic(GAME_LOADERS["maze"], { ssr: false, loading: GameLoading }),
+    differences: dynamic(GAME_LOADERS["differences"], { ssr: false, loading: GameLoading }),
+    weather: dynamic(GAME_LOADERS["weather"], { ssr: false, loading: GameLoading }),
+    market: dynamic(GAME_LOADERS["market"], { ssr: false, loading: GameLoading }),
+    families: dynamic(GAME_LOADERS["families"], { ssr: false, loading: GameLoading }),
+    backpack: dynamic(GAME_LOADERS["backpack"], { ssr: false, loading: GameLoading }),
+    missing: dynamic(GAME_LOADERS["missing"], { ssr: false, loading: GameLoading }),
+    words: dynamic(GAME_LOADERS["words"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {
@@ -693,7 +709,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                             setScreen("tiers");
                         }}
                         aria-label="Nazad na izbor težine"
-                        className="grid h-11 w-11 shrink-0 place-items-center rounded-xl text-ink-soft transition-colors hover:bg-brand-50 hover:text-ink"
+                        className="grid h-12 w-12 shrink-0 place-items-center rounded-xl text-ink-soft transition-colors hover:bg-brand-50 hover:text-ink"
                     >
                         <ArrowLeft className="h-6 w-6" aria-hidden="true" />
                     </button>
@@ -728,18 +744,18 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                             setBreakFor(playKey);
                             announcePause("start");
                         }}
-                        className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border-2 border-sun-200 bg-sun-50 px-3 text-sm font-extrabold text-sun-700 transition-colors hover:bg-sun-100 sm:px-4"
+                        className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-xl border-2 border-sun-200 bg-sun-50 px-3 text-sm font-extrabold text-sun-700 transition-colors hover:bg-sun-100 sm:px-4"
                     >
                         <Pause className="h-5 w-5" fill="currentColor" aria-hidden="true" />
                         <span className="hidden sm:inline">Pauza</span>
                         <span className="sr-only sm:hidden">Pauza</span>
                     </button>
                 )}
-                <SoundToggle />
+                <SoundToggle className="h-12 w-12" />
                 <button
                     type="button"
                     onClick={leaveGame}
-                    className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border-2 border-line bg-surface px-3 text-sm font-extrabold text-ink-soft transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 sm:px-4"
+                    className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-1.5 rounded-xl border-2 border-line bg-surface px-3 text-sm font-extrabold text-ink-soft transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 sm:px-4"
                 >
                     <X className="h-5 w-5" aria-hidden="true" />
                     <span className="hidden sm:inline">Zatvori</span>
@@ -1169,14 +1185,14 @@ function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
             aria-label="Pauza"
             // Uspravno: drugar, naslov, krug, poruka i dugme jedno ispod drugog. Položen telefon (nizak ekran):
             // drugar, krug i kolona sa naslovom i dugmetom u jednom redu, da se krug ne spljošti
-            className="absolute inset-0 z-20 flex animate-fade flex-col items-center justify-center-safe gap-6 overflow-y-auto bg-gradient-to-b from-sky-50 to-brand-50 p-6 text-center outline-none [@media(max-height:30rem)]:flex-row [@media(max-height:30rem)]:gap-8 [@media(max-height:30rem)]:p-4"
+            className="absolute inset-0 z-20 flex animate-fade flex-col items-center justify-center-safe gap-6 overflow-y-auto bg-gradient-to-b from-sky-50 to-brand-50 p-6 text-center outline-none flat:flex-row flat:gap-8 flat:p-4"
         >
             {teacher !== null && (
-                <span className="grid h-40 w-32 shrink-0 place-items-end overflow-hidden rounded-3xl bg-white/70 ring-2 ring-white sm:h-52 sm:w-40 [@media(max-height:30rem)]:h-48 [@media(max-height:30rem)]:w-36">
+                <span className="grid h-40 w-32 shrink-0 place-items-end overflow-hidden rounded-3xl bg-white/70 ring-2 ring-white sm:h-52 sm:w-40 flat:h-48 flat:w-36">
                     <Teacher gender={teacher ?? undefined} variant="scene" emotion="gentle" className="h-full w-full" />
                 </span>
             )}
-            <div className="contents [@media(max-height:30rem)]:order-3 [@media(max-height:30rem)]:flex [@media(max-height:30rem)]:flex-col [@media(max-height:30rem)]:items-center [@media(max-height:30rem)]:gap-4">
+            <div className="contents flat:order-3 flat:flex flat:flex-col flat:items-center flat:gap-4">
                 <h2 className="order-1 font-display text-3xl font-extrabold text-ink sm:text-4xl">Pauza</h2>
                 <p className="order-3 text-lg font-bold text-ink-soft">Kad budeš {female ? "spremna" : "spreman"}, nastavi igru.</p>
                 <Button
@@ -1194,7 +1210,7 @@ function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
                     Nastavi igru
                 </Button>
             </div>
-            <div className="relative order-2 grid h-56 w-56 shrink-0 place-items-center sm:h-72 sm:w-72 [@media(max-height:30rem)]:h-52 [@media(max-height:30rem)]:w-52" aria-hidden="true">
+            <div className="relative order-2 grid h-56 w-56 shrink-0 place-items-center sm:h-72 sm:w-72 flat:h-52 flat:w-52" aria-hidden="true">
                 <span className="absolute inset-0 animate-breathe rounded-full bg-sky-200/70" />
                 <span className="absolute inset-[18%] animate-breathe rounded-full bg-sky-300/60 [animation-delay:150ms]" />
                 <span className="relative font-display text-2xl font-extrabold text-sky-900 sm:text-3xl">{inhale ? "Udahni…" : "Izdahni…"}</span>
@@ -1229,7 +1245,7 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
     const started = unlocked > 1;
 
     return (
-        <div className="mx-auto grid w-full max-w-6xl flex-1 animate-fade-up content-center gap-3 sm:gap-5 md:landscape:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:landscape:content-stretch 2xl:max-w-7xl">
+        <div className="mx-auto grid w-full max-w-6xl flex-1 animate-fade-up content-center gap-3 sm:gap-5 md:landscape:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] md:landscape:content-stretch 2xl:max-w-7xl [@media(max-height:30rem)]:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]!">
             {/* Drugar u svom svetu (bez drugara: velika slika igre) */}
             <section
                 aria-label={teacher !== null ? "Tvoj drugar" : undefined}
@@ -1251,25 +1267,26 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
                 )}
             </section>
 
-            <div className="flex min-w-0 flex-col justify-center gap-3 sm:gap-4">
+            <div className="flex min-w-0 flex-col justify-center gap-3 sm:gap-4 [@media(max-height:30rem)]:gap-2!">
                 {/* Igra + veliko dugme */}
-                <section className="relative overflow-hidden rounded-card border border-line bg-surface p-3 pt-4 shadow-soft sm:p-5 sm:pt-6">
+                {/* Položen telefon i nizak laptop (`flat`): zbijenije, da i put kroz sve nivoe stane bez skrolovanja */}
+                <section className="relative overflow-hidden rounded-card border border-line bg-surface p-3 pt-4 shadow-soft sm:p-5 sm:pt-6 flat:sm:p-3 flat:sm:pt-4 [@media(max-height:30rem)]:p-2.5! [@media(max-height:30rem)]:pt-3!">
                     <div className={cn("absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r", game.accent.gradient)} aria-hidden="true" />
                     <div className="flex items-center gap-3 sm:gap-4">
                         {teacher !== null && (
-                            <div className="relative aspect-[16/10] w-24 shrink-0 overflow-hidden rounded-xl ring-1 ring-line sm:w-36 lg:w-44">
+                            <div className="relative aspect-[16/10] w-24 shrink-0 overflow-hidden rounded-xl ring-1 ring-line sm:w-36 lg:w-44 flat:sm:w-28 [@media(max-height:30rem)]:hidden">
                                 <Image src={game.image} alt="" fill sizes="176px" className="object-cover" priority />
                             </div>
                         )}
                         <div className="min-w-0">
-                            <h2 className="font-display text-xl font-extrabold leading-tight text-ink sm:text-3xl lg:text-4xl">{game.title}</h2>
-                            <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-ink-soft sm:text-base lg:text-lg">{game.description}</p>
+                            <h2 className="font-display text-xl font-extrabold leading-tight text-ink sm:text-3xl lg:text-4xl flat:sm:text-2xl">{game.title}</h2>
+                            <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-ink-soft sm:text-base lg:text-lg flat:sm:text-base [@media(max-height:30rem)]:hidden">{game.description}</p>
                         </div>
                     </div>
                     <button
                         type="button"
                         onClick={() => onChoose(nextTier, nextLevel)}
-                        className="mt-3 flex min-h-16 w-full items-center gap-4 rounded-2xl border-2 border-b-[6px] border-emerald-900 bg-emerald-700 px-5 text-left text-white shadow-soft transition-[transform,background-color,border-width] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 sm:mt-5 sm:min-h-20 sm:px-7"
+                        className="mt-3 flex min-h-16 w-full items-center gap-4 rounded-2xl border-2 border-b-[6px] border-emerald-900 bg-emerald-700 px-5 text-left text-white shadow-soft transition-[transform,background-color,border-width] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 sm:mt-5 sm:min-h-20 sm:px-7 flat:sm:mt-3 flat:sm:min-h-16 [@media(max-height:30rem)]:mt-2! [@media(max-height:30rem)]:min-h-12!"
                     >
                         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/20 sm:h-12 sm:w-12" aria-hidden="true">
                             <svg viewBox="0 0 24 24" className="h-5 w-5 translate-x-0.5 sm:h-6 sm:w-6" fill="currentColor">
@@ -1277,7 +1294,7 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
                             </svg>
                         </span>
                         <span className="min-w-0">
-                            <span className="block font-display text-xl font-extrabold leading-tight sm:text-2xl">{allDone ? "Igraj ponovo" : started ? "Nastavi" : "Igraj"}</span>
+                            <span className="block font-display text-xl font-extrabold leading-tight sm:text-2xl [@media(max-height:30rem)]:text-xl!">{allDone ? "Igraj ponovo" : started ? "Nastavi" : "Igraj"}</span>
                             <span className="block text-sm font-bold text-emerald-50 sm:text-base">
                                 {nextTier.label} · nivo {nextLevel - nextTier.min + 1} od {LEVELS_PER_TIER}
                             </span>
@@ -1286,8 +1303,8 @@ function LevelMap({ game, unlocked, teacher, onChoose }: LevelMapProps) {
                 </section>
 
                 {/* Put kroz nivoe */}
-                <section aria-label="Svi nivoi" className="rounded-card border border-line bg-surface p-2 shadow-soft sm:p-3">
-                    <ul className="grid gap-2">
+                <section aria-label="Svi nivoi" className="rounded-card border border-line bg-surface p-2 shadow-soft sm:p-3 flat:sm:p-2">
+                    <ul className="grid gap-2 flat:gap-1.5">
                         {TIERS.map((tier) => (
                             <TierRow key={tier.id} tier={tier} unlocked={unlocked} next={allDone ? null : unlocked} onChoose={onChoose} />
                         ))}
@@ -1333,12 +1350,12 @@ function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
     const status = !open ? tier.lockedHint : done === LEVELS_PER_TIER ? "Sve završeno" : done === 0 ? tier.hint : `Završeno ${done} od ${LEVELS_PER_TIER}`;
 
     return (
-        <li className={cn("@container rounded-2xl px-2 py-2 @sm:p-3", open ? tier.look.soft : "bg-canvas")}>
+        <li className={cn("@container rounded-2xl px-2 py-2 @sm:p-3 flat:py-1!", open ? tier.look.soft : "bg-canvas")}>
             <div className="flex items-center gap-2 @sm:gap-4">
                 <div className="flex w-14 shrink-0 flex-col items-center gap-0.5 @sm:w-40 @sm:flex-row @sm:gap-3 @xl:w-48">
                     <span
                         className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center gap-px rounded-xl border-2 border-b-4 @sm:h-12 @sm:w-12 @sm:rounded-2xl @xl:h-14 @xl:w-14",
+                            "flex h-10 w-10 shrink-0 items-center justify-center gap-px rounded-xl border-2 border-b-4 @sm:h-12 @sm:w-12 @sm:rounded-2xl @xl:h-14 @xl:w-14 [@media(max-height:30rem)]:h-10! [@media(max-height:30rem)]:w-10!",
                             open ? cn(tier.look.solid, tier.look.edge, "text-white") : "border-line bg-surface text-ink-faint"
                         )}
                         aria-hidden="true"
@@ -1351,7 +1368,7 @@ function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
                     </span>
                     <div className="min-w-0 text-center @sm:text-left">
                         <h3 className={cn("font-display text-xs font-extrabold leading-tight @sm:text-lg @xl:text-xl", open ? "text-ink" : "text-ink-faint")}>{tier.label}</h3>
-                        <p className={cn("hidden text-sm font-bold leading-tight @sm:block", open ? tier.look.text : "text-ink-faint")}>{status}</p>
+                        <p className={cn("hidden text-sm font-bold leading-tight @sm:block [@media(max-height:30rem)]:hidden!", open ? tier.look.text : "text-ink-faint")}>{status}</p>
                     </div>
                 </div>
 
@@ -1377,7 +1394,7 @@ function TierRow({ tier, unlocked, next, onChoose }: TierRowProps) {
                                     aria-label={`${tier.label}, nivo ${i + 1}${isDone ? ", završen" : isNext ? ", sledeći" : ", zaključan"}`}
                                     className={cn(
                                         // Krug je na telefonu 44 px, a nevidljiv okvir oko njega daje dodiru 48 px (susedni krugovi se ne preklapaju)
-                                        "relative grid h-11 w-11 place-items-center rounded-full border-2 border-b-4 font-display text-lg font-extrabold transition-[transform,border-width] after:absolute after:-inset-0.5 @sm:h-12 @sm:w-12 @xl:h-14 @xl:w-14 @xl:text-xl",
+                                        "relative grid h-11 w-11 place-items-center rounded-full border-2 border-b-4 font-display text-lg font-extrabold transition-[transform,border-width] after:absolute after:-inset-0.5 @sm:h-12 @sm:w-12 @xl:h-14 @xl:w-14 @xl:text-xl [@media(max-height:30rem)]:h-11! [@media(max-height:30rem)]:w-11!",
                                         isDone && cn(tier.look.solid, tier.look.edge, "text-white active:translate-y-[2px] active:border-b-2"),
                                         isNext && cn("bg-surface ring-4 active:translate-y-[2px] active:border-b-2", tier.look.edge, tier.look.text, tier.look.ring, "animate-soft-pulse"),
                                         locked && "cursor-not-allowed border-line bg-surface text-ink-faint"
@@ -1412,7 +1429,7 @@ function CompanionPanel() {
     if (!companion) return null;
     return (
         // Položen telefon: igra je viša od ekrana, pa drugar stoji u mestu (vidljiv) dok se igra pomera
-        <aside aria-label="Tvoj drugar" className="relative w-[clamp(12rem,26vw,26rem)] shrink-0 [@media(max-height:30rem)]:sticky [@media(max-height:30rem)]:top-0 [@media(max-height:30rem)]:h-[calc(100dvh-4.5rem)] [@media(max-height:30rem)]:self-start">
+        <aside aria-label="Tvoj drugar" className="relative w-[clamp(12rem,26vw,26rem)] shrink-0 flat:w-[clamp(10rem,22vw,26rem)] [@media(max-height:30rem)]:sticky [@media(max-height:30rem)]:top-0 [@media(max-height:30rem)]:h-[calc(100dvh-4.5rem)] [@media(max-height:30rem)]:self-start">
             <div
                 data-hype-target=""
                 className={cn(
@@ -1483,18 +1500,18 @@ function MoodPicker({ title, teacher = null, onSelect }: MoodPickerProps) {
                 </div>
             )}
             <div className="flex flex-col items-center text-center">
-                <h2 className="text-2xl font-extrabold text-ink sm:text-4xl">{title}</h2>
-                <ul className="mt-5 grid w-full grid-cols-3 gap-3 sm:mt-8 sm:gap-5">
+                <h2 className="text-2xl font-extrabold text-ink sm:text-4xl flat:sm:text-3xl [@media(max-height:30rem)]:text-2xl!">{title}</h2>
+                <ul className="mt-5 grid w-full grid-cols-3 gap-3 sm:mt-8 sm:gap-5 flat:sm:mt-4">
                     {MOODS_THREE.map((mood) => (
                         <li key={mood.value}>
                             <button
                                 type="button"
                                 onClick={() => choose(mood.value)}
-                                className="flex w-full flex-col items-center gap-2 rounded-tile border-2 border-b-[5px] border-line bg-surface px-2 py-5 shadow-soft transition-[transform,border-color] hover:border-brand-300 hover:bg-brand-50 active:translate-y-[3px] active:border-b-2 sm:py-8 short:py-4"
+                                className="flex w-full flex-col items-center gap-2 rounded-tile border-2 border-b-[5px] border-line bg-surface px-2 py-5 shadow-soft transition-[transform,border-color] hover:border-brand-300 hover:bg-brand-50 active:translate-y-[3px] active:border-b-2 sm:py-8 short:py-4 flat:py-3!"
                             >
                                 {/* Crtano lice: isto na svakom uređaju (emodži se razlikuju od telefona do telefona) */}
                                 {MOOD_FACE[mood.value] ? (
-                                    <MoodFace mood={MOOD_FACE[mood.value]!} className="h-20 w-20 sm:h-28 sm:w-28 short:sm:h-24 short:sm:w-24" />
+                                    <MoodFace mood={MOOD_FACE[mood.value]!} className="h-20 w-20 sm:h-28 sm:w-28 short:sm:h-24 short:sm:w-24 [@media(max-height:30rem)]:h-20! [@media(max-height:30rem)]:w-20!" />
                                 ) : (
                                     <span className="text-6xl sm:text-7xl" aria-hidden="true">{mood.emoji}</span>
                                 )}
@@ -1506,7 +1523,7 @@ function MoodPicker({ title, teacher = null, onSelect }: MoodPickerProps) {
                 <button
                     type="button"
                     onClick={() => choose(null)}
-                    className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl px-5 text-base font-extrabold text-ink-soft hover:bg-brand-50 hover:text-ink sm:mt-6"
+                    className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl px-5 text-base font-extrabold text-ink-soft hover:bg-brand-50 hover:text-ink sm:mt-6 flat:sm:mt-2"
                 >
                     <SkipForward className="h-5 w-5" aria-hidden="true" />
                     Preskoči
@@ -1624,22 +1641,23 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                         />
                     </div>
                 )}
-                <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3 pt-4 text-center sm:p-8 md:landscape:flex md:landscape:flex-col md:landscape:justify-center-safe">
+                {/* Položen telefon i nizak laptop (`flat`): zbijeno, a dugmad jedno pored drugog, da sve stane bez skrolovanja */}
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-3 pt-4 text-center sm:p-8 md:landscape:flex md:landscape:flex-col md:landscape:justify-center-safe flat:sm:px-5 flat:sm:py-3">
                     {outcome.practice ? (
                         // Pročitana priča nije „rezultat”: bez zvezdica koje bi izgledale kao slaba ocena
                         <p className="mb-3 text-6xl animate-pop" aria-hidden="true">
                             📖
                         </p>
                     ) : (
-                        <div className="mb-3 flex justify-center gap-2 sm:gap-3" aria-label={`${outcome.stars} od 3 zvezdice`}>
+                        <div className="mb-3 flex justify-center gap-2 sm:gap-3 flat:mb-1" aria-label={`${outcome.stars} od 3 zvezdice`}>
                             {[1, 2, 3].map((s) => (
-                                <span key={s} className={cn("text-5xl sm:text-6xl", s <= outcome.stars ? "animate-pop" : "opacity-20 grayscale")} aria-hidden="true">
+                                <span key={s} className={cn("text-5xl sm:text-6xl flat:sm:text-5xl [@media(max-height:30rem)]:text-4xl!", s <= outcome.stars ? "animate-pop" : "opacity-20 grayscale")} aria-hidden="true">
                                     ⭐
                                 </span>
                             ))}
                         </div>
                     )}
-                    <h2 className="text-2xl font-extrabold text-ink sm:text-3xl">
+                    <h2 className="text-2xl font-extrabold text-ink sm:text-3xl flat:sm:text-2xl">
                         {champion ? "🏆 " : ""}
                         {title}
                     </h2>
@@ -1660,27 +1678,27 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                         <p className="mt-3 rounded-xl bg-sun-50 px-3 py-2 text-base font-extrabold text-sun-700">Još jedan nivo, pa pauza.</p>
                     )}
 
-                    <div className="mt-5 flex flex-col gap-3">
+                    <div className="mt-5 flex flex-col gap-3 flat:mt-3 flat:grid flat:grid-cols-2 flat:gap-2 flat:*:last:odd:col-span-2">
                         {!limitReached && !outcome.advance && (
-                            <Button chunky size="xl" variant="sun" block onClick={onRetry}>
+                            <Button chunky size="xl" className="flat:px-3 flat:text-lg" variant="sun" block onClick={onRetry}>
                                 <RotateCcw className="h-6 w-6" aria-hidden="true" />
                                 {outcome.practice ? "Čitaj ponovo" : "Igraj još jednom"}
                             </Button>
                         )}
                         {!limitReached && outcome.advance && !lastInTier && (
-                            <Button chunky size="xl" variant="success" block onClick={onNext}>
+                            <Button chunky size="xl" className="flat:px-3 flat:text-lg" variant="success" block onClick={onNext}>
                                 Sledeći nivo
                                 <ArrowRight className="h-6 w-6" aria-hidden="true" />
                             </Button>
                         )}
                         {!limitReached && outcome.advance && lastInTier && nextTier && (
-                            <Button chunky size="xl" variant="success" block onClick={() => onNextTier(nextTier)}>
+                            <Button chunky size="xl" className="flat:px-3 flat:text-lg" variant="success" block onClick={() => onNextTier(nextTier)}>
                                 Igraj „{nextTier.label}”
                                 <ArrowRight className="h-6 w-6" aria-hidden="true" />
                             </Button>
                         )}
                         {/* „Gotovo” je jednako veliko kao nastavak: prestanak igre je dobar izbor */}
-                        <Button chunky size="xl" variant="secondary" block onClick={onLeave}>
+                        <Button chunky size="xl" className="flat:px-3 flat:text-lg" variant="secondary" block onClick={onLeave}>
                             <Check className="h-6 w-6" aria-hidden="true" />
                             {limitReached ? "Gotovo za danas" : "Gotovo"}
                         </Button>
@@ -1692,7 +1710,7 @@ function LevelResult({ outcome, childName, game, tier, level, showNumbers, limit
                         )}
                     </div>
 
-                    <p className="mt-4 border-t border-line pt-3 text-sm font-semibold normal-case text-ink-faint">
+                    <p className="mt-4 border-t border-line pt-3 text-sm font-semibold normal-case text-ink-faint flat:mt-2 flat:pt-2 [@media(max-height:30rem)]:hidden">
                         <span className="font-extrabold text-ink-soft">Za odrasle:</span> {game.offscreenTip}
                     </p>
                     <p className="mt-1 min-h-5 text-xs font-bold normal-case text-ink-faint" aria-live="polite">

@@ -225,7 +225,7 @@ const GROUPS: Draft[][] = [
             script: "Zdravo!",
             good: [
                 say("🙂", "Zdravo!", "Kad nas neko pozdravi, možemo i mi njega da pozdravimo."),
-                act("👋", "Mahnem rukom.", "I kad mahneš, to je pozdrav. Mogu da pozdravim i kad ne gledam u oči."),
+                act("👋", "Mahnem rukom.", "I kad mahneš, to je pozdrav. Možemo da pozdravimo i kad ne gledamo u oči."),
             ],
             other: [
                 say("😠", "Beži odavde!", "Drug je hteo da te pozdravi. Posle tih reči može da se rastuži."),
@@ -398,7 +398,7 @@ const ADVOCACY: Draft[] = [
         kind: "advocacy",
         scene: "🥣",
         model: "Emir je još gladan. Emir kaže: „Mogu li još malo, molim te?”",
-        text: "Ješ užinu kod kuće. Tanjir je prazan. Još si {gladan|gladna}.",
+        text: "Jedeš užinu kod kuće. Tanjir je prazan. Još si {gladan|gladna}.",
         ask: ASK_SAY_OR_DO,
         script: "Hoću još.",
         good: [
@@ -411,7 +411,7 @@ const ADVOCACY: Draft[] = [
         id: 50,
         kind: "advocacy",
         scene: "🤗",
-        model: "Tetka želi da zagrli Selmu. Selma kaže: „Ne bih zagrljaj. Daj da ti mahnem.”",
+        model: "Tetka želi da zagrli Selmu. Selma kaže: „Ne bih da se grlim. Mogu da ti mahnem.”",
         text: "Tetka želi da te zagrli. Ti ne želiš zagrljaj.",
         ask: ASK_SAY_OR_DO,
         script: "Ne želim zagrljaj. Mogu da mahnem.",
@@ -501,7 +501,7 @@ const ADVOCACY: Draft[] = [
         script: "Ne želim.",
         good: [
             say("🙅", "Ne želim.", "Smeš da kažeš „Ne želim”. Tako drug zna šta ti ne prija."),
-            say("🎲", "Ne želim. Hajde da igramo nešto drugo.", "Kažeš šta ne želiš i predložiš novu igru. Tako oboje možete da se igrate."),
+            say("🎲", "Ne želim. Hajde da igramo nešto drugo.", "Kažeš šta ne želiš i predložiš novu igru. Tako možete zajedno da se igrate."),
         ],
         other: [
             act("😣", "Rvem se, iako ne želim.", "Ne moraš da radiš ono što ti ne prija. Smeš da kažeš: „Ne želim.”"),
@@ -591,7 +591,7 @@ const ADVOCACY: Draft[] = [
         ask: ASK_SAY_OR_DO,
         script: "Treba mi pauza.",
         good: [
-            act("✋", "Podignem ruku. To je znak za pauzu.", "Podignuta ruka kaže zubaru: „Stani.” Zubar tada zastane."),
+            act("✋", "Podignem ruku. To je znak za pauzu.", "Podignuta ruka kaže zubaru: „Stanite.” Zubar tada zastane."),
             say("⏸️", "Treba mi pauza.", "Kad zubar izvadi alat iz usta, možeš da kažeš šta ti treba."),
         ],
         other: [
@@ -698,12 +698,12 @@ const FRESH: Draft[] = [
         id: 66,
         kind: "polite",
         scene: "🤧",
-        model: "Drug kija. Faris mu kaže: „Nazdravlje, drugar!”",
+        model: "Drug kija. Faris mu kaže: „Na zdravlje, drugar!”",
         text: "Drug pored tebe kine.",
         ask: ASK_SAY_OR_DO,
-        script: "Nazdravlje!",
+        script: "Na zdravlje!",
         good: [
-            say("🙂", "Nazdravlje!", "„Nazdravlje” kažemo kad neko kine. Drug zna da mislimo na njega."),
+            say("🙂", "Na zdravlje!", "„Na zdravlje” kažemo kad neko kine. Drug zna da mislimo na njega."),
             act("🧻", "Dam mu maramicu.", "Maramica mu pomaže da obriše nos."),
         ],
         other: [
@@ -718,9 +718,9 @@ const FRESH: Draft[] = [
         model: "Lamija se plaši mraka. Lamija kaže: „Mama, ostavi malo svetla, molim te.”",
         text: "Uveče je mrak u sobi. Ti se plašiš mraka.",
         ask: ASK_SAY_OR_DO,
-        script: "Mogu li da ostane svetlo?",
+        script: "Može li da ostane svetlo?",
         good: [
-            say("💡", "Mogu li da ostane svetlo?", "Kad kažemo šta nam treba, mama može da ostavi malo svetla."),
+            say("💡", "Može li da ostane svetlo?", "Kad kažemo šta nam treba, mama može da ostavi malo svetla."),
             act("🧸", "Uzmem medu u krevet.", "Meda u krevetu pomaže da se osećamo sigurno."),
         ],
         other: [
@@ -766,8 +766,8 @@ const FRESH: Draft[] = [
         id: 70,
         kind: "advocacy",
         scene: "🚌",
-        model: "U autobusu je buka. Adnan kaže mami: „Previše mi je glasno. Mogu li da stavim slušalice?”",
-        text: "U autobusu je gužva i buka. Tebi je previše.",
+        model: "U vozu je buka. Adnan kaže mami: „Previše mi je glasno. Mogu li da stavim slušalice?”",
+        text: "U vozu je gužva i buka. Tebi je previše.",
         ask: ASK_SAY_OR_DO,
         script: "Previše mi je buke.",
         good: [
@@ -862,7 +862,7 @@ const FRESH: Draft[] = [
         ],
         other: [
             act("👉", "Pokazujem ga prstom i smejem se.", "Dečak ne zna zašto se smejemo. Može da mu bude neprijatno."),
-            say("🙅", "Kažem drugima: „Ne igrajte se sa njim.”", "Dečak ostaje sam. Može da se rastuži."),
+            act("🙅", "Kažem drugima: „Ne igrajte se sa njim.”", "Dečak ostaje sam. Može da se rastuži."),
         ],
     },
 ];

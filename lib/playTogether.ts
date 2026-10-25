@@ -11,6 +11,11 @@ import type { GameId } from "./games";
  * Igre u kojima smena posle svakog zadatka ima smisla (kratki zadaci, jasan kraj poteza) i koje
  * sa trakom ili stubom „Sada igra …” staju na ekran kao i kad dete igra samo. U „Umetaljci”,
  * „Satu” i „Složi sliku” zadatak je jedan komad, pa igrači istu tablu slažu na smenu.
+ * U „Lavirintu” svako vodi lik kroz svoj lavirint, a u „Pronađi razlike” igrači traže razlike
+ * na istim slikama na smenu (jedna razlika — jedan potez).
+ * U igrama „Obuci se” i „Prodavnica” jedan zadatak je jedna odeća (ili jedna kupovina).
+ * U igrama „Mama i beba” i „Spakuj ranac” jedan zadatak je jedna tabla (ili jedan ranac), a u
+ * igrama „Šta fali?” i „Prve reči” jedna polica, slika, reč ili rečenica.
  * Bez smene ostaju „Bojanka” (slobodno stvaranje, nema jasnog kraja poteza), „Socijalne priče”
  * (priča se sluša u komadu; koraci bez izbora bi samo prebacivali red) i „Slova” i „Brojevi”
  * (tabla za pisanje prstom je stalne visine, pa uz traku na uspravnom telefonu ne staje).
@@ -32,6 +37,14 @@ export const TOGETHER_GAMES: readonly GameId[] = [
     "puzzle",
     "inset",
     "clock",
+    "maze",
+    "differences",
+    "weather",
+    "market",
+    "families",
+    "backpack",
+    "missing",
+    "words",
 ];
 
 export function isTogetherGame(id: GameId | null | undefined): boolean {

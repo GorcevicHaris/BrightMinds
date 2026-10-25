@@ -21,7 +21,15 @@ export type GameId =
     | "food"
     | "puzzle"
     | "inset"
-    | "clock";
+    | "clock"
+    | "maze"
+    | "differences"
+    | "weather"
+    | "market"
+    | "families"
+    | "backpack"
+    | "missing"
+    | "words";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -43,7 +51,15 @@ export type GameType =
     | "food"
     | "puzzle"
     | "inset"
-    | "clock";
+    | "clock"
+    | "maze"
+    | "differences"
+    | "weather"
+    | "market"
+    | "families"
+    | "backpack"
+    | "missing"
+    | "words";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -555,6 +571,206 @@ export const GAMES: GameDefinition[] = [
         // 18. po redu: uparivanje oblika sa rupom, rukom i okom — posle slaganja slike
         ages: { min: 3, max: 7 },
         order: 18,
+    },
+    {
+        id: "maze",
+        gameType: "maze",
+        activityId: 23,
+        title: "Lavirint",
+        description: "Pronađi put do cilja",
+        skill: "Fina motorika i planiranje",
+        icon: "🌿",
+        image: "/images/lavirint.svg",
+        accent: {
+            solid: "bg-moss-500",
+            edge: "border-moss-700",
+            soft: "bg-moss-50",
+            text: "text-moss-700",
+            border: "border-moss-200",
+            ring: "ring-moss-200",
+            gradient: "from-lime-400 to-moss-600",
+        },
+        offscreenTip:
+            "Nacrtajte kredom na asfaltu ili trakom na podu široku stazu sa jednim skretanjem i neka dete hoda po njoj do igračke na kraju. Kasnije crtajte lavirinte na papiru i vodite prst zajedno, pa olovku. Pitajte: „Kuda dalje?”, a ne pokazujte odmah.",
+        graded: true,
+        // 20. po redu: vođenje prsta po stazi i planiranje puta — posle umetaljke i slaganja slike
+        ages: { min: 3, max: 9 },
+        order: 20,
+    },
+    {
+        id: "differences",
+        gameType: "differences",
+        activityId: 24,
+        title: "Pronađi razlike",
+        description: "Dve slike, a nisu iste",
+        skill: "Vizuelna pažnja",
+        icon: "🔍",
+        image: "/images/razlike.svg",
+        accent: {
+            solid: "bg-coral-500",
+            edge: "border-coral-700",
+            soft: "bg-coral-50",
+            text: "text-coral-700",
+            border: "border-coral-200",
+            ring: "ring-coral-200",
+            gradient: "from-coral-400 to-pink-500",
+        },
+        offscreenTip:
+            "Postavite na sto tri-četiri predmeta, neka dete zatvori oči, pa jedan sklonite ili zamenite: „Šta se promenilo?” U slikovnici tražite iste stvari na dve stranice. Počnite od velikih promena (nema lopte), pa boja, pa sitnice.",
+        graded: true,
+        // 21. po redu: pažljivo poređenje dve slike — posle uparivanja oblika i slaganja slike
+        ages: { min: 4, max: 10 },
+        order: 21,
+    },
+    {
+        id: "weather",
+        gameType: "weather",
+        activityId: 27,
+        title: "Obuci se",
+        description: "Pogledaj kroz prozor i obuci lik",
+        skill: "Vreme i svakodnevne veštine",
+        icon: "🧥",
+        image: "/images/obucise.svg",
+        accent: {
+            solid: "bg-storm-500",
+            edge: "border-storm-700",
+            soft: "bg-storm-50",
+            text: "text-storm-700",
+            border: "border-storm-200",
+            ring: "ring-storm-200",
+            gradient: "from-storm-300 to-storm-600",
+        },
+        offscreenTip:
+            "Svako jutro pogledajte zajedno kroz prozor: „Pada kiša. Šta nam treba?” Neka dete samo izabere kišobran ili kapu. Zalepite pored vrata sličice odeće redom (čarape, pa patike; majica, pa jakna), a starije dete neka uveče pogleda prognozu i spremi odeću za sutra.",
+        graded: true,
+        // Oblačenje prema vremenu: od jedne stvari do cele odeće, redosleda i nedeljne prognoze
+        ages: { min: 4, max: 9 },
+        order: 22,
+    },
+    {
+        id: "market",
+        gameType: "market",
+        activityId: 28,
+        title: "Prodavnica",
+        description: "Kupi sa spiska i plati kod Emine",
+        skill: "Brojanje i novac",
+        icon: "🛒",
+        image: "/images/prodavnica.svg",
+        accent: {
+            solid: "bg-honey-500",
+            edge: "border-honey-700",
+            soft: "bg-honey-50",
+            text: "text-honey-700",
+            border: "border-honey-200",
+            ring: "ring-honey-200",
+            gradient: "from-honey-300 to-honey-600",
+        },
+        offscreenTip:
+            "Igrajte se prodavnice kod kuće: na igračke zalepite cene od 1 do 10 dinara i plaćajte pravim novčićima. U pravoj prodavnici neka dete samo plati nešto malo i dobije račun. Starije dete neka unapred sabere cene sa spiska i proveri koliko je kusura dobilo.",
+        graded: true,
+        // Novac posle brojanja i brojeva: od spiska sa slikama do kusura i budžeta (školski uzrast)
+        ages: { min: 5, max: 10 },
+        order: 23,
+    },
+    {
+        id: "families",
+        gameType: "families",
+        activityId: 20,
+        title: "Mama i beba",
+        description: "Svaka beba traži svoju mamu",
+        skill: "Uparivanje i svet oko nas",
+        icon: "🐣",
+        image: "/images/mamaibeba.svg",
+        accent: {
+            solid: "bg-[#c07a45]",
+            edge: "border-[#8f5428]",
+            soft: "bg-[#fbf3ec]",
+            text: "text-[#8f5428]",
+            border: "border-[#efd6c2]",
+            ring: "ring-[#efd6c2]",
+            gradient: "from-amber-300 to-[#c07a45]",
+        },
+        offscreenTip:
+            "Uz slikovnicu ili na selu pitajte: „Gde je mama od teleta?”, „Kako se zove beba od ovce?” Neka dete pokaže ili kaže, a vi ponovite: „Ovca i njeno jagnje.” Igrajte se plišanim životinjama: velika i mala zajedno, pa tata, mama i beba u istu kutiju-kućicu.",
+        graded: true,
+        // 24. po redu: uparivanje mame i bebe, pa porodice — od izgleda ka znanju
+        ages: { min: 3, max: 8 },
+        order: 24,
+    },
+    {
+        id: "backpack",
+        gameType: "backpack",
+        activityId: 21,
+        title: "Spakuj ranac",
+        description: "Spakuj ono što treba za školu",
+        skill: "Radno pamćenje i planiranje",
+        icon: "🎒",
+        image: "/images/spakujranac.svg",
+        accent: {
+            solid: "bg-[#2f86a6]",
+            edge: "border-[#1f5f7a]",
+            soft: "bg-[#eef7fa]",
+            text: "text-[#1f5f7a]",
+            border: "border-[#c6e2ec]",
+            ring: "ring-[#c6e2ec]",
+            gradient: "from-sky-300 to-[#2f86a6]",
+        },
+        offscreenTip:
+            "Uveče pred školu napravite zajedno slikovnu listu (sveska, pernica, flašica, užina) i neka dete samo pakuje i štiklira. Starije dete neka pogleda raspored časova i kaže šta treba za koji čas, pa ujutru proverite: „Šta fali u rancu?”",
+        graded: true,
+        // 25. po redu: lista, pamćenje liste i raspored časova — za školski uzrast
+        ages: { min: 5, max: 10 },
+        order: 25,
+    },
+    {
+        id: "missing",
+        gameType: "missing",
+        activityId: 25,
+        title: "Šta fali?",
+        description: "Zapamti i pronađi šta fali",
+        skill: "Vizuelno pamćenje i opažanje",
+        icon: "🙈",
+        image: "/images/stafali.svg",
+        accent: {
+            solid: "bg-berry-500",
+            edge: "border-berry-700",
+            soft: "bg-berry-50",
+            text: "text-berry-700",
+            border: "border-berry-200",
+            ring: "ring-berry-200",
+            gradient: "from-berry-300 to-berry-600",
+        },
+        offscreenTip:
+            "Kimova igra kod kuće: stavite tri igračke na sto, neka ih dete pogleda i imenuje, pa neka zatvori oči dok sklonite jednu. „Šta fali?” Kasnije stavite više stvari ili zamenite dve stvari mesta. Uz slikovnicu pitajte: „Šta fali autu?”, „Šta fali kući?”",
+        graded: true,
+        // 26. po redu: dopunjavanje slike, pa pamćenje šta je bilo na polici (Kimova igra)
+        ages: { min: 3, max: 8 },
+        order: 26,
+    },
+    {
+        id: "words",
+        gameType: "words",
+        activityId: 26,
+        title: "Prve reči",
+        description: "Čitaj reči, slogove i slova",
+        skill: "Rano čitanje",
+        icon: "📝",
+        image: "/images/prvereci.svg",
+        accent: {
+            solid: "bg-pine-500",
+            edge: "border-pine-700",
+            soft: "bg-pine-50",
+            text: "text-pine-700",
+            border: "border-pine-200",
+            ring: "ring-pine-200",
+            gradient: "from-pine-300 to-pine-600",
+        },
+        offscreenTip:
+            "Napišite krupnim štampanim slovima MAMA, TATA i ime deteta i zalepite kartice na vrata ili fotografije. Čitajte po slogovima uz tapšanje: LO-PTA. U šetnji pitajte: „Na koje slovo počinje reč lopta?” Starijem detetu napišite kratku rečenicu („Amar ima loptu.”) i neka nacrta šta piše.",
+        graded: true,
+        // 27. po redu: rano čitanje — slika i reč, prvo slovo, slogovi, slova i rečenica (posle igre „Slova”)
+        ages: { min: 5, max: 8 },
+        order: 27,
     },
 ];
 

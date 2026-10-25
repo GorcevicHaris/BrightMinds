@@ -22,6 +22,8 @@ export interface MemoryCardArt {
     src?: string;
     /** Oblik u boji (crta se u kodu) */
     shape?: { kind: ShapeKind; color: string };
+    /** Naziv je u množini („Kocke”): „To su kocke.”, „Kocke su na svom mestu.” */
+    plural?: true;
 }
 
 const animal = (id: AnimalId): MemoryCardArt => ({ id, name: ANIMAL_PICTURES[id].name, src: ANIMAL_PICTURES[id].image });
@@ -35,7 +37,7 @@ const TOYS: MemoryCardArt[] = [
     { id: "book", name: "Knjiga", src: "/pins/items/book.webp" },
     { id: "car", name: "Autić", src: "/pins/items/car.webp" },
     { id: "drums", name: "Bubanj", src: "/pins/items/drums.webp" },
-    { id: "lego", name: "Kocke", src: "/pins/items/lego.webp" },
+    { id: "lego", name: "Kocke", plural: true, src: "/pins/items/lego.webp" },
     { id: "spinner", name: "Spiner", src: "/pins/items/spinner.webp" },
     { id: "phone", name: "Telefon", src: "/pins/items/phone.webp" },
     { id: "tablet", name: "Tablet", src: "/pins/items/tablet.webp" },
