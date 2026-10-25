@@ -120,7 +120,10 @@ export function GameHud({ round, totalRounds, score, unit = "Zadatak", onSpeak, 
             {extra}
             {score !== undefined && (
                 <div className="flex shrink-0 items-center gap-1.5 rounded-xl bg-sun-50 px-3 py-2 text-sm font-extrabold text-sun-700 ring-1 ring-sun-200 sm:text-base">
-                    <span aria-hidden="true">⭐</span>
+                    {/* Nacrtana zvezdica (emodži je na svakom uređaju drugačiji) */}
+                    <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5">
+                        <path d="M50 8 L62 36 L92 38 L69 58 L77 88 L50 72 L23 88 L31 58 L8 38 L38 36Z" fill="#f6c518" stroke="#c9971a" strokeWidth={6} strokeLinejoin="round" />
+                    </svg>
                     <span aria-label={`${score} poena`}>{score}</span>
                 </div>
             )}
@@ -436,7 +439,7 @@ export function Feedback({ kind, correctText = "Tačno.", wrongText = "Probaj op
 interface ExplainPanelProps {
     /** Zašto je odgovor tačan */
     text: React.ReactNode;
-    /** Emodži levo od teksta */
+    /** Slika levo od teksta */
     icon?: React.ReactNode;
     /** Boje igre (`getGame(id).accent`) */
     accent: GameAccent;
@@ -505,18 +508,19 @@ export function ExplainPanel({ text, icon, accent, onNext, nextLabel = "Dalje", 
 // Roditelj daje `key` (probani izbor) da se kartica pri svakom novom pokušaju ponovo pojavi.
 
 interface TriedNoteProps {
-    emoji: string;
+    /** Mala slika probanog izbora */
+    icon?: React.ReactNode;
     /** Tekst probanog izbora */
     label: React.ReactNode;
     /** Šta bi se verovatno desilo */
     note: React.ReactNode;
 }
 
-export function TriedNote({ emoji, label, note }: TriedNoteProps) {
+export function TriedNote({ icon, label, note }: TriedNoteProps) {
     return (
         <div className="animate-fade-up rounded-card border-2 border-sun-200 bg-sun-50 p-4 sm:p-5 flat:p-2.5 flat:sm:p-2.5">
-            <p className="mb-1 text-sm font-extrabold text-ink-soft sm:text-base">
-                <span aria-hidden="true">{emoji} </span>
+            <p className="mb-1 flex items-center gap-2 text-sm font-extrabold text-ink-soft sm:text-base">
+                {icon}
                 {label}
             </p>
             <p className="text-lg font-bold leading-snug text-ink sm:text-xl flat:text-base flat:sm:text-base">{note}</p>

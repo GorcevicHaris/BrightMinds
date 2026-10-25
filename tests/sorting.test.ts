@@ -17,11 +17,11 @@ function seeded(seed: number) {
 const LEVELS = Array.from({ length: SORT_MAX_LEVEL }, (_, i) => i + 1);
 
 describe("sorting game content", () => {
-    it("has unique items, each with a name, an emoji and something to sort by", () => {
+    it("has unique items, each with a name, a picture and something to sort by", () => {
         const ids = SORT_ITEMS.map((item) => item.id);
         assert.equal(new Set(ids).size, ids.length);
         for (const item of SORT_ITEMS) {
-            assert.ok((item.emoji || item.shape) && item.name.trim(), item.id);
+            assert.ok((item.pic || item.shape) && item.name.trim(), item.id);
             assert.ok(item.color || item.category || item.shape || item.size || item.use || item.eat !== undefined || item.season || item.where, item.id);
             assert.equal(item.name, item.name.toLocaleLowerCase("sr"), `${item.id}: name is lowercase`);
         }
@@ -44,7 +44,7 @@ describe("sorting game content", () => {
         assert.equal(yes("same:apple-red", "apple-red"), "Ista slika: jabuka.");
         assert.equal(basketFor("same:apple-red").no(getSortItem("ball")!), "To nije ista slika.");
         assert.equal(basketFor("same:ball").label, "Lopta");
-        assert.equal(basketFor("same:ball").emoji, "⚽");
+        assert.equal(basketFor("same:ball").pic, "ball");
     });
 
     it("follows the planned level table: same picture first, then color, shape, size, kinds and rules", () => {
@@ -83,7 +83,7 @@ describe("sorting game content", () => {
             for (const round of built.rounds) {
                 const item = getSortItem(round.itemId)!;
                 assert.equal(built.baskets.filter((basket) => belongsTo(item, basket))[0], `same:${item.id}`);
-                assert.ok(item.emoji, item.id);
+                assert.ok(item.pic, item.id);
             }
             for (const [basket, itemId] of Object.entries(built.models) as [BasketId, string][]) assert.equal(basket, `same:${itemId}`);
             assert.equal(Object.keys(built.models).length, 2);
@@ -98,7 +98,7 @@ describe("sorting game content", () => {
         for (const name of names) {
             const both = sized.filter((item) => item.name === name);
             assert.deepEqual(both.map((item) => item.size).sort(), ["big", "small"], name);
-            assert.equal(new Set(both.map((item) => item.emoji)).size, 1, `${name}: same picture`);
+            assert.equal(new Set(both.map((item) => item.pic)).size, 1, `${name}: same picture`);
             // Bez boje i vrste: ovi predmeti ne dolaze u druge nivoe
             for (const item of both) assert.ok(!item.color && !item.category && !item.shape, item.id);
         }
@@ -227,13 +227,13 @@ describe("sorting game content", () => {
         for (const use of ["meal", "wash", "draw"] as const) {
             const items = SORT_ITEMS.filter((item) => item.use === use);
             assert.ok(items.length >= 4, use);
-            assert.ok(items.every((item) => !item.hard && item.emoji), use);
+            assert.ok(items.every((item) => !item.hard && item.pic), use);
         }
         const names = SORT_ITEMS.filter((item) => item.use).map((item) => item.name);
         assert.equal(new Set(names).size, names.length, "no two use items share a name");
-        // Predmet za namenu nosi ime koje drugi predmet sa drugim emodžijem nema (npr. lenjir ostaje školski pribor)
+        // Predmet za namenu nosi ime koje drugi predmet sa drugom slikom nema (npr. lenjir ostaje školski pribor)
         for (const item of SORT_ITEMS.filter((it) => it.use)) {
-            for (const other of SORT_ITEMS) if (other.name === item.name && !other.size) assert.equal(other.emoji, item.emoji, `${item.id} / ${other.id}`);
+            for (const other of SORT_ITEMS) if (other.name === item.name && !other.size) assert.equal(other.pic, item.pic, `${item.id} / ${other.id}`);
         }
     });
 

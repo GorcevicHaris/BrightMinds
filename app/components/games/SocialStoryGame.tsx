@@ -35,7 +35,7 @@ import { decisionCount, storyForLevel, type SceneTone, type Story, type StoryDec
 import { storyScene } from "./data/storyScenes";
 import { storyHero } from "./scene/heroes";
 import { SceneArt } from "./scene/SceneArt";
-import { OPTION_GRID, OptionPicture } from "./OptionPicture";
+import { OPTION_GRID, OptionPicture, OptionThumb } from "./OptionPicture";
 import type { SceneSpec } from "./scene/types";
 
 // ── Stanje igre ───────────────────────────────────────────────────────────────
@@ -595,9 +595,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                         <ul className="mt-2 grid gap-2 short:sm:mt-1.5 short:sm:gap-1.5">
                                             {decision.acceptable.map((optionIndex) => (
                                                 <li key={optionIndex} className="flex items-center gap-3 text-lg font-bold leading-snug text-ink sm:text-xl short:sm:text-lg">
-                                                    <span aria-hidden="true" className="grid h-11 min-w-11 shrink-0 place-items-center rounded-xl bg-surface text-2xl leading-none short:sm:h-9 short:sm:min-w-9 short:sm:text-xl">
-                                                        {decision.options[optionIndex].emoji}
-                                                    </span>
+                                                    <OptionThumb text={decision.options[optionIndex].label} female={female} className="h-11 w-11 short:sm:h-9 short:sm:w-9" />
                                                     {t(decision.options[optionIndex].label)}
                                                 </li>
                                             ))}
@@ -629,7 +627,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                                     {ALSO_HEADING}{" "}
                                                     {alsoHelpful.map((optionIndex) => (
                                                         <span key={optionIndex} className="mr-2 inline-block">
-                                                            <span aria-hidden="true">{decision.options[optionIndex].emoji} </span>
+                                                            <OptionThumb text={decision.options[optionIndex].label} female={female} className="mr-1 inline-block h-7 w-7 rounded-md align-middle" />
                                                             {t(decision.options[optionIndex].label)}
                                                         </span>
                                                     ))}
@@ -639,7 +637,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                     ) : lastTried !== null ? (
                                         <TriedNote
                                             key={lastTried}
-                                            emoji={decision.options[lastTried].emoji}
+                                            icon={<OptionThumb text={decision.options[lastTried].label} female={female} className="h-9 w-9 rounded-lg" />}
                                             label={t(decision.options[lastTried].label)}
                                             note={
                                                 <>

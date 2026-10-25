@@ -14,6 +14,7 @@ import {
     whereRule,
     type Relation,
 } from "@/app/components/games/data/whereScenes";
+import { isPictureId } from "@/app/components/games/pictures";
 import { BAND_PRESETS } from "@/lib/childSettings";
 
 function seeded(seed: number) {
@@ -63,8 +64,9 @@ describe("where game content", () => {
         for (const object of PLACE_OBJECTS) assert.doesNotMatch(object.pair, /dvije/u, object.id);
     });
 
-    it("gives every figure a distinct emoji and a capitalized name", () => {
-        assert.equal(new Set(FIGURES.map((figure) => figure.emoji)).size, FIGURES.length);
+    it("gives every figure a distinct drawn picture and a capitalized name", () => {
+        assert.equal(new Set(FIGURES.map((figure) => figure.pic)).size, FIGURES.length);
+        for (const figure of FIGURES) assert.ok(isPictureId(figure.pic), figure.id);
         for (const figure of FIGURES) assert.match(figure.name, /^[A-ZČĆŽŠĐ][a-zčćžšđ]+$/u, figure.id);
     });
 

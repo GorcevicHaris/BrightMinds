@@ -26,6 +26,20 @@ interface OptionPictureProps {
     children?: ReactNode;
 }
 
+/**
+ * Mala sličica izbora (uz objašnjenje, u spisku ideja, uz probani izbor): ista slika kao na
+ * kartici izbora, umesto emodžija koji je na svakom uređaju drugačiji. Bez slike nema ničega.
+ */
+export function OptionThumb({ text, female, className }: { text: string; female: boolean; className?: string }) {
+    const picture = optionPicture(text);
+    if (!picture) return null;
+    return (
+        <span aria-hidden="true" className={cn("block shrink-0 overflow-hidden rounded-xl bg-surface ring-1 ring-black/5", className)}>
+            <SceneArt spec={picture} hero={storyHero(female)} fill className="h-full w-full" />
+        </span>
+    );
+}
+
 /** Sadržaj kartice izbora: slika preko cele širine i natpis ispod */
 export function OptionPicture({ text, label, emoji, female, children }: OptionPictureProps) {
     const picture = optionPicture(text);

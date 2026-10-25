@@ -836,12 +836,9 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
         const lastColor = lastZone && (!copyLike || shown.fills[lastZone.id] === lastZone.c) ? COLOR_BY_ID[shown.fills[lastZone.id]] : undefined;
         const text = lastZone && lastColor ? colorSentence(lastZone, lastColor) : `${instruction}.`;
         caption = (
-            <>
-                <span aria-hidden="true">{picture.emoji}</span>
-                <span key={text} className="animate-fade-up">
-                    {text}
-                </span>
-            </>
+            <span key={text} className="animate-fade-up">
+                {text}
+            </span>
         );
     }
 

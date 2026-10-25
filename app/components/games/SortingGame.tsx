@@ -52,6 +52,7 @@ import {
     type SortSize,
     type SortSupport,
 } from "@/app/components/games/data/sortingItems";
+import { Picture } from "@/app/components/games/pictures";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
@@ -81,8 +82,6 @@ const WRONG_FEEDBACK_MS = 1400;
 const DRAG_START_PX = 8;
 /** Povratak predmeta na mesto kad je spušten pored korpe */
 const SNAP_BACK_MS = 220;
-/** Mali predmet je oko 45 % velikog */
-const BIG_ITEM = "clamp(3.5rem,11dvh,6.5rem)";
 
 function capitalized(text: string): string {
     return text.charAt(0).toLocaleUpperCase("sr") + text.slice(1);
@@ -149,22 +148,25 @@ function SizeGlyph({ size, className }: { size: SortSize; className?: string }) 
     );
 }
 
-/** Predmet: emodži ili nacrtan oblik */
-function ItemPicture({ item, className, style }: { item: SortItem; className: string; style?: CSSProperties }) {
+/** Predmet: crtež iz kompleta slika ili nacrtan oblik (nikad emodži — on je na svakom uređaju drugačiji) */
+function ItemPicture({ item, className }: { item: SortItem; className: string }) {
     if (item.shape && item.color) return <ShapeGlyph shape={item.shape} fill={colorHex(item.color)} className={className} />;
-    return (
-        <span className={className} style={style} aria-hidden="true">
-            {item.emoji}
-        </span>
-    );
+    if (!item.pic) return null;
+    return <Picture id={item.pic} className={className} />;
 }
 
-/** Veličina emodžija u korpi: veliki i mali predmet se i tu jasno razlikuju */
+/** Veličina predmeta u sredini: mali je oko 45 % velikog (isti crtež) */
+function centerClass(item: SortItem): string {
+    if (item.shape) return "h-[70%] w-[70%]";
+    return item.size === "small" ? "h-[36%] w-[36%]" : "h-[80%] w-[80%]";
+}
+
+/** Veličina predmeta u korpi: veliki i mali predmet se i tu jasno razlikuju */
 function placedClass(item: SortItem): string {
     if (item.shape) return "h-6 w-6 sm:h-7 sm:w-7";
-    if (item.size === "big") return "text-[1.875rem] sm:text-[2.25rem]";
-    if (item.size === "small") return "text-[0.85rem] sm:text-[1rem]";
-    return "";
+    if (item.size === "big") return "h-9 w-9 sm:h-11 sm:w-11";
+    if (item.size === "small") return "h-4 w-4 sm:h-5 sm:w-5";
+    return "h-7 w-7 sm:h-8 sm:w-8";
 }
 
 /** „Čarobna kutija” u nivoima boja: blaga podloga i ivica u boji korpe (dok nema odgovora) */
@@ -489,7 +491,7 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                         sa čim da poredi (sam predmet na ekranu nije ni veliki ni mali) */}
                     {shown.kind === "size" && item.size && (
                         <div aria-hidden="true" className="pointer-events-none grid shrink-0 place-items-center opacity-35 grayscale-[30%]" style={{ width: "clamp(5.5rem, 14dvh, 10rem)", height: "clamp(5.5rem, 14dvh, 10rem)" }}>
-                            <ItemPicture item={{ ...item, size: item.size === "big" ? "small" : "big" }} className="leading-none" style={{ fontSize: item.size === "big" ? `calc(${BIG_ITEM} * 0.45)` : BIG_ITEM }} />
+                            <ItemPicture item={{ ...item, size: item.size === "big" ? "small" : "big" }} className={centerClass({ ...item, size: item.size === "big" ? "small" : "big" })} />
                         </div>
                     )}
                     <div
@@ -507,12 +509,8 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                         style={{ width: "clamp(5.5rem, 14dvh, 10rem)", height: "clamp(5.5rem, 14dvh, 10rem)" }}
                     >
                         <div ref={picture} className={cn("pointer-events-none grid h-full w-full place-items-center", dragging && "drop-shadow-xl")}>
-                            <ItemPicture
-                                item={item}
-                                className={cn(item.shape ? "h-[70%] w-[70%]" : "leading-none", solved && "opacity-30")}
-                                // Isti predmet je veliki ili mali: mali je oko 45 % velikog
-                                style={item.shape ? undefined : { fontSize: item.size === "small" ? `calc(${BIG_ITEM} * 0.45)` : BIG_ITEM }}
-                            />
+                            {/* Isti predmet je veliki ili mali: mali je oko 45 % velikog */}
+                            <ItemPicture item={item} className={cn(centerClass(item), solved && "opacity-30")} />
                         </div>
                     </div>
                 </div>
@@ -553,12 +551,10 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                                         <ShapeGlyph shape={basket.shape} fill="#94a3b8" className="h-7 w-7 shrink-0 sm:h-8 sm:w-8" />
                                     ) : basket.size ? (
                                         <SizeGlyph size={basket.size} className="h-10 w-10 shrink-0 sm:h-12 sm:w-12" />
-                                    ) : (
+                                    ) : basket.pic ? (
                                         // Kod iste slike je slika na korpi ono što se traži, pa je veća
-                                        <span aria-hidden="true" className={shown.kind === "same" ? "text-4xl leading-none sm:text-5xl" : "text-2xl sm:text-3xl"}>
-                                            {basket.emoji}
-                                        </span>
-                                    )}
+                                        <Picture id={basket.pic} className={cn("shrink-0", shown.kind === "same" ? "h-11 w-11 sm:h-14 sm:w-14" : "h-9 w-9 sm:h-11 sm:w-11")} />
+                                    ) : null}
                                     {basket.label}
                                 </span>
                                 {/* Korpa: ono što je već razvrstano */}

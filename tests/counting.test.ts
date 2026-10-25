@@ -26,6 +26,7 @@ import {
     type CountingView,
     type CountRound,
 } from "@/app/components/games/data/countingItems";
+import { isPictureId } from "@/app/components/games/pictures";
 import { BAND_PRESETS } from "@/lib/childSettings";
 
 function seeded(seed: number) {
@@ -159,16 +160,12 @@ describe("counting game grammar", () => {
 });
 
 describe("counting game content", () => {
-    it("has unique nouns with distinct pictures (Unicode 11 or older) and lowercase forms", () => {
+    it("has unique nouns with distinct drawn pictures and lowercase forms", () => {
         assert.equal(new Set(COUNT_NOUNS.map((item) => item.id)).size, COUNT_NOUNS.length);
-        assert.equal(new Set(COUNT_NOUNS.map((item) => item.emoji)).size, COUNT_NOUNS.length);
+        assert.equal(new Set(COUNT_NOUNS.map((item) => item.pic)).size, COUNT_NOUNS.length);
         for (const item of COUNT_NOUNS) {
             for (const form of [item.one, item.few, item.many]) assert.match(form, /^[a-zčćžšđ]+$/u, item.id);
-            for (const char of item.emoji) {
-                const code = char.codePointAt(0)!;
-                // Symbols and Pictographs Extended-A i noviji delovi bloka 1F9xx su iz Unicode 12+
-                assert.ok(code < 0x1fa70 && !(code >= 0x1f9cd && code <= 0x1f9ff) && !(code >= 0x1f9a5 && code <= 0x1f9aa), `${item.id}: ${item.emoji}`);
-            }
+            assert.ok(isPictureId(item.pic), `${item.id}: ${item.pic}`);
         }
         assert.ok(COUNT_NOUNS.filter((item) => item.moves).length >= 5, "enough things that can come and go");
         assert.ok(new Set(COUNT_NOUNS.map((item) => item.gender)).size === 3, "all three genders are covered");

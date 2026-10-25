@@ -6,6 +6,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { DICE_PATTERNS, rowsOf, type CountNoun, type CountRound } from "@/app/components/games/data/countingItems";
+import { Picture } from "@/app/components/games/pictures";
 import { cn } from "@/lib/cn";
 
 /**
@@ -38,7 +39,7 @@ function pairSize(across: number): string {
 }
 
 function sized(size: string): CSSProperties {
-    return { width: size, height: size, fontSize: `calc(${size} * 0.74)` };
+    return { width: size, height: size };
 }
 
 /** Jedan predmet. `lit` = izbrojan pri brojanju uz pomoć; `faded` = odlazi (ne broji se) */
@@ -53,7 +54,7 @@ function Thing({ noun, size, lit = false, faded = false }: { noun: CountNoun; si
                 faded && "opacity-35 grayscale"
             )}
         >
-            {noun.emoji}
+            <Picture id={noun.pic} className="h-[88%] w-[88%]" />
         </span>
     );
 }

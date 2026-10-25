@@ -561,21 +561,21 @@ const ICON_LOOK = (hero: HeroId): WearProps => ({ look: LOOK[hero], hands: { l: 
 
 /** Slika jedne stvari (u korpi, na traci koraka, u pitanju „Kada nosimo…?”) */
 export function ClothingIcon({ id, hero, className }: { id: ClothingId; hero: HeroId; className?: string }) {
-    const custom = ICON_ART[id];
-    const box = ICON_BOX[id];
-    if (custom || !box) {
-        return (
-            <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" className={className}>
-                {custom?.()}
-            </svg>
-        );
-    }
-    const [x, y, size] = box;
+    const { view, draw } = clothingIconArt(id, hero);
     return (
-        <svg viewBox={`${x} ${y} ${size} ${size}`} aria-hidden="true" focusable="false" className={className}>
-            {WEAR[id](ICON_LOOK(hero))}
+        <svg viewBox={view} aria-hidden="true" focusable="false" className={className}>
+            {draw()}
         </svg>
     );
+}
+
+/** Okvir i crtež ikonice (i za zajednički komplet slika u pictures/) */
+export function clothingIconArt(id: ClothingId, hero: HeroId): { view: string; draw: () => ReactNode } {
+    const custom = ICON_ART[id];
+    const box = ICON_BOX[id];
+    if (custom || !box) return { view: "0 0 100 100", draw: () => custom?.() };
+    const [x, y, size] = box;
+    return { view: `${x} ${y} ${size} ${size}`, draw: () => WEAR[id](ICON_LOOK(hero)) };
 }
 
 // ── Prozor sa vremenom ────────────────────────────────────────────────────────

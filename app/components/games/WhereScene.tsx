@@ -1,15 +1,16 @@
 // Slika za igru „Gde je?”: predmet (kutija, korpa, sto, stolica) i igračka na nekom položaju.
-// Crta se u SVG-u, bez slika sa mreže; igračka je emodži (Unicode ≤ 11, radi i na starijim tabletima).
+// Crta se u SVG-u, bez slika sa mreže; igračka je crtež iz zajedničkog kompleta slika (ne emodži,
+// koji je na svakom uređaju drugačiji).
 // Ono što je „iza” ili „u” crta se pre prednje strane predmeta, pa je delom sakriveno — kao na
 // karticama za predloge koje koriste logopedi.
 
 import type { ReactNode } from "react";
 import type { FigureId, ObjectId, Relation } from "@/app/components/games/data/whereScenes";
 import { getFigure } from "@/app/components/games/data/whereScenes";
+import { Picture, type PictureId } from "@/app/components/games/pictures";
 
 const GROUND = 148;
 const SIZE = 40;
-const EMOJI_FONT = '"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
 
 interface Drawn {
     /** Deo koji je iza igračke (unutrašnjost kutije, drška korpe) */
@@ -118,12 +119,24 @@ function drawObject(object: ObjectId, cx: number, open = false): Drawn {
 /** Gornja površina predmeta (na kojoj igračka stoji ili iznad koje lebdi) */
 const TOP: Record<ObjectId, number> = { box: 86, basket: 98, table: 86, chair: 96, bed: 92 };
 
-function figureAt(emoji: string, x: number, y: number, size = SIZE) {
-    return (
-        <text x={x} y={y} fontSize={size} textAnchor="middle" dominantBaseline="central" fontFamily={EMOJI_FONT}>
-            {emoji}
-        </text>
-    );
+/** Gde je na crtežu sama igračka (x, y, širina, visina u okviru 100 × 100): slika se kroji tesno oko nje */
+const FIGURE_BOX: Record<FigureId, readonly [number, number, number, number]> = {
+    cat: [30, 31, 40, 69],
+    dog: [22, 37, 55, 63],
+    teddy: [15, 15, 70, 84],
+    ball: [17, 23, 66, 74],
+    chick: [26, 37, 49, 63],
+    duck: [10, 24, 78, 68],
+    bunny: [28, 6, 44, 94],
+    frog: [22, 32, 56, 68],
+};
+
+/** Igračka sa sredinom u (x, y), visoka (ili široka) oko `size`; stoji na donjoj ivici kvadrata */
+function figureAt(figure: FigureId, pic: PictureId, x: number, y: number, size = SIZE) {
+    const [bx, by, bw, bh] = FIGURE_BOX[figure];
+    const side = Math.max(bw, bh);
+    const view = `${bx + bw / 2 - side / 2} ${by + bh - side} ${side} ${side}`;
+    return <Picture id={pic} view={view} x={x - size / 2} y={y - size / 2} width={size} height={size} />;
 }
 
 interface Placement {
@@ -173,7 +186,7 @@ export function WhereScene({ figure, object, relation, className }: WhereScenePr
     const toy = getFigure(figure);
     const placement = placementFor(relation, object);
     const drawn = placement.objects.map((spot) => ({ spot, parts: drawObject(object, spot.cx, spot.open) }));
-    const toyNode = toy ? figureAt(toy.emoji, placement.figure.x, placement.figure.y, placement.figure.size) : null;
+    const toyNode = toy ? figureAt(toy.id, toy.pic, placement.figure.x, placement.figure.y, placement.figure.size) : null;
     return (
         <svg viewBox="0 0 200 160" className={className} aria-hidden="true">
             <rect x={0} y={GROUND} width={200} height={160 - GROUND} fill="#efe6da" />
