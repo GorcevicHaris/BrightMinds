@@ -226,7 +226,7 @@ export const PRODUCE_ART = {
     ),
     egg: () => (
         <g>
-            <path d="M50 12 Q74 12 80 54 Q82 88 50 90 Q18 88 20 54 Q26 12 50 12Z" fill="#f6dfb8" {...line("#b88a52", 1.8)} />
+            <path d="M50 12 Q74 12 80 54 Q82 88 50 90 Q18 88 20 54 Q26 12 50 12Z" fill="#efc48c" {...line("#9c6a34", 2.6)} />
             <Shine x={36} y={40} rx={5} ry={10} rotate={15} opacity={0.8} />
         </g>
     ),
