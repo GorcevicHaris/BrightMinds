@@ -31,6 +31,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     answerFor,
@@ -97,8 +98,10 @@ export default function LettersGame({ childId, level, gender, childName, onCompl
     const guard = useInputGuard();
 
     // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju samo jednom, ovde
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
     const [plan] = useState<LetterTask[]>(() =>
-        isMonitor ? [] : buildLettersLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, script: settings.script, childName })
+        isMonitor ? [] : buildLettersLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, script: settings.script, childName, random })
     );
     const [view, setView] = useState<LettersView>(() => ({ ...emptyLettersView(plan.length), task: plan[0] ?? null }));
     const viewRef = useRef(view);

@@ -90,13 +90,15 @@ export function storedSettings(row: Pick<ChildRow, "settings">): Record<string, 
 /**
  * Podešavanja za prikaz (roditeljski panel, GET podešavanja): bez poziva za igru sa drugom
  * (`invite` — kod i ključ kanala, lib/invite.ts) i bez spiska drugova (`playFriends` — ID-jevi
- * druge dece, lib/playFriends.ts), koji nisu podešavanja i ne izlaze odavde (spisak drugova
+ * druge dece, lib/playFriends.ts) i bez dvoboja na istom uređaju (`localDuel` — ID brata ili
+ * sestre i seme zadataka, app/api/_lib/duels.ts), koji nisu podešavanja i ne izlaze odavde (spisak drugova
  * roditelj vidi preko /api/children/[id]/play-friends).
  */
 export function publicSettings(row: Pick<ChildRow, "settings">): Record<string, unknown> {
-    const { invite: _invite, playFriends: _friends, ...rest } = storedSettings(row);
+    const { invite: _invite, playFriends: _friends, localDuel: _duel, ...rest } = storedSettings(row);
     void _invite;
     void _friends;
+    void _duel;
     return rest;
 }
 

@@ -27,6 +27,7 @@ import {
     useWaitHint,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     buildPuzzleLevel,
@@ -78,7 +79,9 @@ export default function PuzzleGame({ childId, level, gender, onComplete, isMonit
     const hintAfter = early ? 1 : settings.hintAfter;
 
     // Komponenta se za svaki nivo pravi iznova, pa se slike biraju samo jednom, ovde
-    const [plan] = useState<PuzzleRound[]>(() => (isMonitor ? [] : buildPuzzleLevel(level, { maxRounds: settings.preset.maxRounds })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<PuzzleRound[]>(() => (isMonitor ? [] : buildPuzzleLevel(level, { maxRounds: settings.preset.maxRounds, random })));
     const [view, setView] = useState<PuzzleView>(() => emptyPuzzleView(plan));
     const [demo, setDemo] = useState<string | null>(null);
     const viewRef = useRef(view);

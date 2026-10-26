@@ -28,6 +28,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     buildWhereLevel,
@@ -81,7 +82,9 @@ export default function WhereGame({ childId, level, gender, onComplete, isMonito
     const guard = useInputGuard();
 
     // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju samo jednom, ovde
-    const [plan] = useState<WhereRound[]>(() => (isMonitor ? [] : buildWhereLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<WhereRound[]>(() => (isMonitor ? [] : buildWhereLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, random })));
     const [view, setView] = useState<WhereView>(() => ({
         ...emptyWhereView(plan.length),
         ...(plan[0] ? { figure: plan[0].figure, object: plan[0].object, target: plan[0].target, choices: plan[0].choices } : {}),

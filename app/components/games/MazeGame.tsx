@@ -25,6 +25,7 @@ import {
     useTimers,
     useWaitHint,
     type GameProps,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { DragDemo } from "@/app/components/games/kit/DragDemo";
 import {
@@ -90,7 +91,9 @@ export default function MazeGame({ childId, level, gender, childName, onComplete
 
     const rule = mazeLevel(level);
     // Komponenta se za svaki nivo pravi iznova, pa se plan pravi samo jednom, ovde
-    const [plan] = useState<MazePlan | null>(() => (isMonitor ? null : buildMazeLevel(level, { maxRounds: settings.preset.maxRounds, childName })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<MazePlan | null>(() => (isMonitor ? null : buildMazeLevel(level, { maxRounds: settings.preset.maxRounds, childName, random })));
     // Na lakim nivoima pomoć stiže već posle prvog ćorsokaka i posle čekanja (osim kad je isključena)
     const early = (plan?.earlyHint ?? false) && settings.hintAfter > 0;
     const hintAfter = early ? 1 : settings.hintAfter;

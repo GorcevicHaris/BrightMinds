@@ -29,6 +29,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { DragDemo, DragGhost, useDragDrop } from "@/app/components/games/kit/useDragDrop";
 import {
@@ -89,7 +90,9 @@ export default function BackpackGame({ childId, level, gender, onComplete, isMon
     const early = rule.earlyHint && settings.hintAfter > 0;
     const hintAfter = early ? 1 : settings.hintAfter;
 
-    const [plan] = useState<BackpackRound[]>(() => (isMonitor ? [] : buildBackpackLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<BackpackRound[]>(() => (isMonitor ? [] : buildBackpackLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, random })));
     const [view, setView] = useState<BackpackView>(() => ({ ...emptyBackpackView(plan.length), ...(plan[0] ? roundView(plan[0]) : {}) }));
     const viewRef = useRef(view);
     const finishedRef = useRef(false);

@@ -28,6 +28,7 @@ import {
     useTimers,
     useWaitHint,
     usePraise,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import type { BaseView, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
 import { buildColoringPlan, colorNumber, mirrorPartner, type ColoringPlan, type ColoringTask } from "@/app/components/games/data/coloringLevels";
@@ -307,8 +308,10 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
     const settings = useChildSettings();
     // Monitor nema podešavanja deteta: crta sliku koju je igra izabrala, sa svim delovima
     const monitorPicture = isMonitor && typeof monitorState?.pictureId === "string" ? monitorState.pictureId : undefined;
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
     const [ownPlan] = useState<ColoringPlan>(() =>
-        buildColoringPlan(level, isMonitor ? null : { rounds: settings.preset.maxRounds, choices: settings.choiceLimit })
+        buildColoringPlan(level, isMonitor ? null : { rounds: settings.preset.maxRounds, choices: settings.choiceLimit }, undefined, random)
     );
     const monitorPlan = useMemo(() => (isMonitor ? buildColoringPlan(level, null, monitorPicture) : null), [isMonitor, level, monitorPicture]);
     const plan = monitorPlan ?? ownPlan;

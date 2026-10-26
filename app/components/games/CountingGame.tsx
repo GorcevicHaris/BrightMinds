@@ -32,6 +32,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     answerFor,
@@ -103,7 +104,9 @@ export default function CountingGame({ childId, level, gender, onComplete, isMon
     const guard = useInputGuard();
 
     // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju samo jednom, ovde
-    const [plan] = useState<CountRound[]>(() => (isMonitor ? [] : buildCountingLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<CountRound[]>(() => (isMonitor ? [] : buildCountingLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, random })));
     const [view, setView] = useState<CountingView>(() => ({ ...emptyCountingView(plan.length), task: plan[0] ?? null }));
     const viewRef = useRef(view);
     const finishedRef = useRef(false);

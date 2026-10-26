@@ -29,6 +29,7 @@ import {
     useWaitHint,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     ALL_FOUND,
@@ -85,7 +86,9 @@ export default function DifferencesGame({ childId, level, gender, onComplete, is
     const guard = useInputGuard();
 
     // Komponenta se za svaki nivo pravi iznova, pa se slike biraju samo jednom, ovde
-    const [plan] = useState<DiffPlan | null>(() => (isMonitor ? null : buildDiffLevel(level, { maxRounds: settings.preset.maxRounds })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<DiffPlan | null>(() => (isMonitor ? null : buildDiffLevel(level, { maxRounds: settings.preset.maxRounds, random })));
     // Na lakim nivoima pomoć stiže već posle prvog promašaja i posle čekanja (osim kad je isključena)
     const early = (plan?.earlyHint ?? false) && settings.hintAfter > 0;
     const hintAfter = early ? 1 : settings.hintAfter;

@@ -15,9 +15,13 @@
 // („Zajedno: 7 ⭐”, „Bravo, Lejla i Amar!”) — nikad poređenje ko je bolji.
 //
 // „Takmičenje” (domaćin bira pre poziva; „Zajedno” je podrazumevano — playVersus.tsx,
-// lib/versus.ts): način igre ide u poziv na serveru, pa ga drug dobija pri ulasku. Pre svakog
-// nivoa kratak ekran „VS”, u igri traka sa oba drugara i zvezdicama uživo, a na kraju nežno ime
-// pobednika i pohvala za trud — svako i dalje dobija svoje novčiće i nivo.
+// lib/versus.ts): način igre ide u poziv na serveru, pa ga drug dobija pri ulasku. Kako se
+// dvoboj igra bira igra (lib/versusFormat.ts) i to piše na kartici poziva i ekranu „VS”. U trci
+// („ko je brži”) oba deteta dobijaju ISTE zadatke istim redom: server pri prihvatanju napravi
+// seme, a igra iz njega bira zadatke (kit/random.ts). Pre svakog nivoa kratak ekran „VS”, u
+// igri traka sa oba drugara, zvezdicama i napretkom uživo, a na kraju ime pobednika: oba
+// uređaja javljaju rezultat serveru (/invite/result), koji — kad se slože — prenosi mali ulog
+// od poraženog pobedniku (lib/duelStakes.ts). Svako i dalje dobija svoje novčiće i nivo.
 //
 // Mirno i predvidljivo: koraci su slike, vreme koda se detetu ne prikazuje (posle roka samo
 // „Kod više ne važi, napravi novi”), „Manje animacija” gasi pokrete, a kad drug ode piše
@@ -36,7 +40,9 @@ import VisualPinPad from "@/app/components/VisualPinPad";
 import { Button, Spinner } from "@/app/components/ui/Button";
 import { Modal } from "@/app/components/ui/Modal";
 import { CoinIcon } from "@/app/components/ui/CoinIcon";
+import { GameRandomContext } from "@/app/components/games/kit/random";
 import { COINS_PER_STAR } from "@/lib/companion";
+import { type DuelScore } from "@/lib/duelStakes";
 import { cn } from "@/lib/cn";
 import { MAX_LEVEL, getGame, type GameDefinition, type GameId } from "@/lib/games";
 import {
@@ -63,13 +69,15 @@ import { speak } from "@/lib/speech";
 import { starsPhrase, togetherPraise, type TogetherPlayer } from "@/lib/playTogether";
 import { GameEventTapProvider, useTogetherAnnounce } from "@/lib/realtime";
 import type { GameUpdate } from "@/lib/types";
-import { isNewer, parseMirror, sharedBoardFor, type MirrorMessage } from "@/lib/sharedPlay";
+import { isNewer, parseMirror, sharedBoardFor, sharedTurnLog, type MirrorMessage } from "@/lib/sharedPlay";
 import { genderOf, playModeOr, versusLiveScore, versusScore, type Gender, type PlayMode } from "@/lib/versus";
+import { cleanSeed, duelSeed } from "@/lib/seededRandom";
+import { duelLabel, formatRule, remoteVersusFormat, type VersusFormat } from "@/lib/versusFormat";
 import { PIN_LENGTH, VISUAL_PIN_CATEGORIES } from "@/lib/visualPinData";
 import { chosenSkin, useCompanion } from "./companionState";
 import { CoinsBadge, LOOKS, PlayerPicture, PraiseBadge } from "./playTogether";
 // Takmičenje (playVersus.tsx): izbor načina igre, ekran „VS”, zvezdice i kraj sa pobednikom
-import { ModeChoice, ScorePill, VersusEnd, VsIntro, VsMark } from "./playVersus";
+import { FormatChip, ModeChoice, ScorePill, StakeChip, VersusEnd, VsIntro, VsMark, seatWinner, type DuelCoins, type VersusSeat } from "./playVersus";
 // Zajednička tabla (playShared.tsx): jedna igra na dva uređaja, na smenu
 import { SharedGuestBoard, SharedHostLayer } from "./playShared";
 
@@ -95,6 +103,10 @@ interface RemoteSession {
     answer: { kind: "declined" | "missed"; friend: TogetherPlayer; via: RequestVia } | null;
     /** Upravo prihvaćeno: igra se otvara sama čim može (vreme prihvatanja; 0 = ne) */
     autoStart: number;
+    /** Dvoboj: zajedničko seme zadataka od servera (null = stari poziv ili „zajedno”) */
+    seed: string | null;
+    /** Dvoboj: ulog u novčićima (manji od dva podešavanja; 0 = bez uloga) */
+    stake: number;
 }
 
 /** Kartica poziva: šta drug vidi pre nego što prihvati */
@@ -123,9 +135,18 @@ interface Progress {
     total: number;
     correct: number;
     stars: number;
+    /** Vreme završenog nivoa u sekundama (dvoboj: razrešava isti rezultat u trci) */
+    secs: number;
 }
 
-const LOBBY: Progress = { phase: "lobby", round: 0, total: 0, correct: 0, stars: 0 };
+const LOBBY: Progress = { phase: "lobby", round: 0, total: 0, correct: 0, stars: 0, secs: 0 };
+
+/** Odgovor servera o ulogu (app/api/children/[id]/invite/result) */
+export interface DuelSettlement {
+    status: "pending" | "disagree" | "settled" | "failed";
+    outcome?: "you" | "friend" | "tie";
+    amount: number;
+}
 
 interface RemoteValue {
     preview: boolean;
@@ -162,9 +183,16 @@ interface RemoteValue {
     dismissEnded: () => void;
     report: (update: GameUpdate, game: GameId) => void;
     left: () => void;
-    /** Kraj nivoa; `score` = zvezdice u takmičenju (tačni odgovori), drug ih vidi na kraju */
-    finish: (key: string, stars: number, advance: boolean, score?: number) => void;
+    /**
+     * Kraj nivoa; `score` = zvezdice u takmičenju (tačni odgovori), `tasks` broj ocenjenih zadataka
+     * (bez pokaznog) i `secs` vreme — drug ih vidi na kraju
+     */
+    finish: (key: string, stars: number, advance: boolean, score?: number, secs?: number, tasks?: number) => void;
     finishedKey: (key: string) => boolean;
+    /** Redni broj partije dvoboja u sesiji (isti na oba uređaja): seme zadataka i obračun uloga */
+    duelIndex: (key: string) => number;
+    /** Rezultat partije serveru (ulog); ponovljen poziv samo proverava da li je obračunato */
+    reportDuel: (report: { level: number; round: number; format: VersusFormat; mine: DuelScore; theirs: DuelScore }) => Promise<DuelSettlement>;
     setLevel: (level: number) => void;
     refresh: () => void;
     /** Ova igra se igra na zajedničkoj tabli (jedna igra na dva uređaja, lib/sharedPlay.ts) */
@@ -219,9 +247,23 @@ function readGuest(childId: number): RemoteSession | null {
         if (!raw || typeof raw.channel !== "string" || !/^bm-inv-[0-9a-f]{40}$/.test(raw.channel) || !isRemoteGame(raw.game)) return null;
         if (!isServerFriend(raw.friend) || typeof raw.level !== "number") return null;
         const level = Math.min(Math.max(Math.round(raw.level), 1), MAX_LEVEL);
-        // Gost je osvežio stranicu usred igre: igra se sama ponovo otvara (zajednička tabla nastavlja od snimka)
-        const autoStart = raw.playing === true ? Date.now() : 0;
-        return { role: "guest", channel: raw.channel, game: raw.game, level, mode: playModeOr(raw.mode), friend: toPlayer(raw.friend), code: null, expired: false, asking: null, answer: null, autoStart };
+        const stake = typeof raw.stake === "number" && Number.isFinite(raw.stake) ? Math.max(0, Math.round(raw.stake)) : 0;
+        return {
+            role: "guest",
+            channel: raw.channel,
+            game: raw.game,
+            level,
+            mode: playModeOr(raw.mode),
+            friend: toPlayer(raw.friend),
+            code: null,
+            expired: false,
+            asking: null,
+            answer: null,
+            // Gost je osvežio stranicu usred igre: igra se sama ponovo otvara (zajednička tabla nastavlja od snimka)
+            autoStart: raw.playing === true ? Date.now() : 0,
+            seed: cleanSeed(raw.seed),
+            stake,
+        };
     } catch {
         return null;
     }
@@ -234,7 +276,10 @@ function writeGuest(childId: number, session: RemoteSession | null, playing = fa
             return;
         }
         const friend: ServerFriend = { firstName: session.friend.name, companion: { kind: session.friend.kind, skin: session.friend.skin ?? null, wear: session.friend.wear ?? {} } };
-        window.sessionStorage.setItem(guestKey(childId), JSON.stringify({ channel: session.channel, game: session.game, level: session.level, mode: session.mode, friend, playing }));
+        window.sessionStorage.setItem(
+            guestKey(childId),
+            JSON.stringify({ channel: session.channel, game: session.game, level: session.level, mode: session.mode, friend, seed: session.seed, stake: session.stake, playing })
+        );
     } catch {
         /* skladište nije dostupno: posle osvežavanja dete igra samo */
     }
@@ -264,7 +309,13 @@ function hostSession(invite: unknown, previous: RemoteSession | null): RemoteSes
         asking,
         answer: null,
         autoStart: justJoined ? Date.now() : sameChannel && previous ? previous.autoStart : 0,
+        seed: cleanSeed(data.seed),
+        stake: stakeOf(data.stake),
     };
+}
+
+function stakeOf(raw: unknown): number {
+    return typeof raw === "number" && Number.isFinite(raw) ? Math.min(Math.max(Math.round(raw), 0), 5) : 0;
 }
 
 /** Kartica poziva od servera (ulazak kodom ili sanduče); neispravno → null */
@@ -317,6 +368,12 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
     const [bank, setBank] = useState(0);
     const [lastAdvance, setLastAdvance] = useState(false);
     const finished = useRef(new Set<string>());
+    // Dvoboj: redni broj partije po ključu partije (broj već završenih nivoa kad je partija počela)
+    const duelIndexes = useRef(new Map<string, number>());
+    const doneRef = useRef(0);
+    useEffect(() => {
+        doneRef.current = done;
+    }, [done]);
 
     const sessionRef = useRef(session);
     useEffect(() => {
@@ -329,6 +386,8 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
         setBank(0);
         setLastAdvance(false);
         finished.current = new Set();
+        duelIndexes.current = new Map();
+        doneRef.current = 0;
         setFriendState(null);
         setSeenAt(0);
         setFriendLeft(false);
@@ -364,6 +423,8 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
                             asking: null,
                             answer: { kind: isServerFriend(data.declined) ? "declined" : "missed", friend: toPlayer(answered), via: data.via === "direct" ? "direct" : "code" },
                             autoStart: 0,
+                            seed: null,
+                            stake: 0,
                         };
                     }
                     // Kod je istekao dok se čekalo: „Kod više ne važi, napravi novi”
@@ -498,6 +559,8 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
                     answer: null,
                     // Prihvatio je: igra se otvara sama (bez još jednog „Krenimo!”)
                     autoStart: Date.now(),
+                    seed: cleanSeed(data.seed),
+                    stake: stakeOf(data.stake),
                 });
                 return null;
             } catch {
@@ -636,6 +699,7 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
             sessionStars: bank + (progress.phase === "playing" ? progress.stars : 0),
             correct: progress.correct,
             advance: lastAdvance,
+            secs: progress.secs,
         }),
         [progress, done, bank, lastAdvance]
     );
@@ -665,7 +729,8 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
         lastMirror.current = null;
         finishedEpoch.current = 0;
     }, [sessionChannel]);
-    const sharedBoard = Boolean(session?.friend) && sharedBoardFor(session?.game, session?.mode ?? "together");
+    // Zajedno: uvek kad igra ima tablu; dvoboj: samo „jedan po jedan” (lib/versusFormat.ts)
+    const sharedBoard = Boolean(session?.friend) && sharedBoardFor(session?.game, session?.mode ?? "together", session ? remoteVersusFormat(session.game) : null);
     const myStateRef = useRef(myState);
     useEffect(() => {
         myStateRef.current = myState;
@@ -707,24 +772,65 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
         const round = Math.min(num(data.round), total || num(data.round));
         const correct = num(data.correctCount);
         const stars = liveStars(getGame(gameId).graded, correct, round, total);
-        setProgress((prev) => (prev.phase === "playing" && prev.round === round && prev.total === total && prev.correct === correct ? prev : { phase: "playing", round, total, correct, stars }));
+        setProgress((prev) => (prev.phase === "playing" && prev.round === round && prev.total === total && prev.correct === correct ? prev : { phase: "playing", round, total, correct, stars, secs: 0 }));
     }, []);
 
     const left = useCallback(() => {
         setProgress((prev) => (prev.phase === "playing" ? LOBBY : prev));
     }, []);
 
-    const finish = useCallback((key: string, stars: number, advance: boolean, score?: number) => {
+    const finish = useCallback((key: string, stars: number, advance: boolean, score?: number, secs?: number, tasks?: number) => {
         if (finished.current.has(key)) return;
         finished.current.add(key);
+        // Partija koja nije prošla kroz omotač igre (npr. probni prikaz) dobija redni broj sada
+        if (!duelIndexes.current.has(key)) duelIndexes.current.set(key, doneRef.current);
+        doneRef.current += 1;
         setDone((n) => n + 1);
         setBank((n) => n + stars);
         setLastAdvance(advance);
-        // Na kraju nivoa `correct` je konačan broj tačnih odgovora (zvezdice u takmičenju)
-        setProgress((prev) => ({ ...prev, phase: "done", stars, correct: score ?? prev.correct }));
+        // Na kraju nivoa `correct` je konačan broj tačnih odgovora (zvezdice u takmičenju), `total` broj
+        // ocenjenih zadataka (isti kao kod druga, bez pokaznog zadatka), a `secs` vreme nivoa
+        setProgress((prev) => ({
+            ...prev,
+            phase: "done",
+            stars,
+            correct: score ?? prev.correct,
+            total: tasks !== undefined && tasks > 0 ? Math.round(tasks) : prev.total,
+            secs: Math.max(0, Math.round(secs ?? 0)),
+        }));
     }, []);
 
     const finishedKey = useCallback((key: string) => finished.current.has(key), []);
+
+    const duelIndex = useCallback((key: string) => {
+        const known = duelIndexes.current.get(key);
+        if (known !== undefined) return known;
+        duelIndexes.current.set(key, doneRef.current);
+        return doneRef.current;
+    }, []);
+
+    const reportDuel = useCallback(
+        async (report: { level: number; round: number; format: VersusFormat; mine: DuelScore; theirs: DuelScore }): Promise<DuelSettlement> => {
+            const current = sessionRef.current;
+            if (preview || !current?.friend || current.mode !== "versus") return { status: "failed", amount: 0 };
+            try {
+                const res = await fetch(`/api/children/${childId}/invite/result`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ channel: current.channel, ...report }),
+                });
+                const data = await res.json().catch(() => null);
+                if (!res.ok || !data) return { status: "failed", amount: 0 };
+                const status = data.status === "settled" || data.status === "pending" || data.status === "disagree" ? data.status : "failed";
+                const outcome = data.outcome === "you" || data.outcome === "friend" || data.outcome === "tie" ? data.outcome : undefined;
+                const amount = typeof data.amount === "number" && Number.isFinite(data.amount) ? Math.max(0, Math.round(data.amount)) : 0;
+                return { status, outcome, amount };
+            } catch {
+                return { status: "failed", amount: 0 };
+            }
+        },
+        [childId, preview]
+    );
 
     const setLevel = useCallback((level: number) => {
         setSession((prev) => (prev ? { ...prev, level } : prev));
@@ -758,12 +864,14 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
             left,
             finish,
             finishedKey,
+            duelIndex,
+            reportDuel,
             setLevel,
             refresh,
             sharedBoard,
             sharedChannel,
         }),
-        [preview, session, endedBy, me, myGender, friendState, friendHere, friendGone, cheerAt, now, myState, busy, create, lookup, answer, requests, loadFriends, clearAutoStart, end, report, left, finish, finishedKey, setLevel, refresh, sharedBoard, sharedChannel]
+        [preview, session, endedBy, me, myGender, friendState, friendHere, friendGone, cheerAt, now, myState, busy, create, lookup, answer, requests, loadFriends, clearAutoStart, end, report, left, finish, finishedKey, duelIndex, reportDuel, setLevel, refresh, sharedBoard, sharedChannel]
     );
 
     return (
@@ -886,6 +994,8 @@ export function RemoteHostPicker({ games, unlockedFor, onDone, onBack }: { games
                             >
                                 <span className="relative block aspect-[16/10] w-full bg-brand-50">
                                     <Image src={game.image} alt="" fill sizes="200px" className="object-cover" />
+                                    {/* Dvoboj: igra bira kako se igra („ko je brži” / „jedan po jedan”) */}
+                                    {mode === "versus" && <FormatChip format={remoteVersusFormat(game.id)} className="absolute bottom-1.5 left-1.5" />}
                                 </span>
                                 <span className="block p-2 font-display text-sm font-extrabold leading-tight text-ink sm:text-base">{game.title}</span>
                             </button>
@@ -1153,7 +1263,7 @@ function CodePictures({ code }: { code: string[] }) {
     );
 }
 
-/** Igra sa drugom: slika, naziv, nivo i (u dvoboju) oznaka „VS Dvoboj” */
+/** Igra sa drugom: slika, naziv, nivo i (u dvoboju) oznaka „VS Dvoboj: ko je brži” */
 function GameBadge({ game, level, mode = "together", className }: { game: GameDefinition; level: number; mode?: PlayMode; className?: string }) {
     return (
         <div className={cn("flex items-center gap-3 rounded-2xl border-2 border-line bg-surface p-2 pr-4 text-left", className)}>
@@ -1167,7 +1277,7 @@ function GameBadge({ game, level, mode = "together", className }: { game: GameDe
                     {mode === "versus" ? (
                         <span className="inline-flex items-center gap-1 font-extrabold text-sun-700">
                             <VsMark className="h-5 w-5 text-[0.55rem]" />
-                            Dvoboj
+                            {duelLabel(remoteVersusFormat(game.id))}
                         </span>
                     ) : (
                         <span className="font-extrabold text-emerald-700">Zajedno</span>
@@ -1469,10 +1579,11 @@ export function RemoteLobby({ start, onOpenLevel, onRetry, games = [], unlockedF
                 {versus && (
                     <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-sun-100 px-3 py-1.5 text-base font-extrabold text-sun-700 ring-1 ring-sun-300">
                         <VsMark className="h-7 w-7 text-xs" />
-                        Takmičenje
+                        {duelLabel(remoteVersusFormat(session.game))}
                     </span>
                 )}
-                <p className="text-base font-semibold text-ink-soft">{versus ? "Svako igra na svom uređaju. Ko skupi više zvezdica?" : "Svako igra na svom uređaju, u isto vreme."}</p>
+                {versus && <StakeChip stake={session.stake} />}
+                <p className="text-base font-semibold text-ink-soft">{versus ? `Svako igra na svom uređaju. ${formatRule(remoteVersusFormat(session.game), "remote")}` : "Svako igra na svom uređaju, u isto vreme."}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
                 <RemoteStartButton start={start} onStart={() => onOpenLevel(session.game, session.level)} onRetry={onRetry} />
@@ -1483,7 +1594,8 @@ export function RemoteLobby({ start, onOpenLevel, onRetry, games = [], unlockedF
             </div>
             <p className="rounded-xl bg-white/70 px-4 py-3 text-sm font-semibold normal-case text-ink-soft">
                 <span className="font-extrabold text-ink">Za odrasle:</span> svako dete igra na svom uređaju i rezultati idu u njegov profil. Deca vide samo ime i
-                drugara jedno drugog{versus ? " i zvezdice u takmičenju (tačne odgovore), bez sata i žurbe" : ""}. Igra sa drugom traje dok je neko ne završi.
+                drugara jedno drugog{versus ? " i zvezdice u takmičenju (tačne odgovore), bez sata na ekranu" : ""}.
+                {versus && session.stake > 0 ? ` Ko izgubi, da pobedniku ${session.stake} novčića (nikad više nego što ima; ulog menjate u podešavanjima deteta).` : ""} Igra sa drugom traje dok je neko ne završi.
             </p>
         </section>
     );
@@ -1501,8 +1613,9 @@ function TogetherPill({ stars, className }: { stars: number; className?: string 
 
 interface LayerProps {
     gameId: GameId;
-    /** Partija u GameContainer-u (igra, nivo, pokušaj): oznaka partije na zajedničkoj tabli */
+    /** Partija (igra–nivo–pokušaj) i nivo: seme zadataka u dvoboju, oznaka partije na zajedničkoj tabli */
     playKey: string;
+    level: number;
     /** Gost na zajedničkoj tabli prati nivo koji je domaćin pokrenuo */
     onFollowLevel: (level: number) => void;
     children: ReactNode;
@@ -1514,7 +1627,7 @@ interface LayerProps {
  * traku sa drugom iznad igre, a stanje igre (zadatak, tačni odgovori) ide drugu. Van igre sa
  * drugom samo prikazuje igru.
  */
-export function RemoteFriendLayer({ gameId, playKey, onFollowLevel, children }: LayerProps) {
+export function RemoteFriendLayer({ gameId, playKey, level, onFollowLevel, children }: LayerProps) {
     const remote = useRemote();
     const active = Boolean(remote?.session?.friend) && remote?.session?.game === gameId;
     const report = remote?.report;
@@ -1525,6 +1638,11 @@ export function RemoteFriendLayer({ gameId, playKey, onFollowLevel, children }: 
     // Zajednička tabla se bira na početku partije i ostaje do njenog kraja: kad domaćin ode, gost
     // ne dobija iznenada novu igru, nego mirnu poruku na istoj tabli
     const [shared] = useState<InviteRole | null>(() => (active && remote?.sharedBoard ? (remote.session?.role ?? null) : null));
+    // Dvoboj: seme ove partije (isto kod druga: zajedničko seme, igra, nivo i redni broj partije),
+    // pa trka ima iste zadatke istim redom. Redni broj se uzima jednom, na početku partije.
+    const sessionSeed = active && remote?.session?.mode === "versus" ? remote.session.seed : null;
+    const duelIndex = remote?.duelIndex;
+    const [seed] = useState(() => (sessionSeed && duelIndex ? duelSeed(sessionSeed, gameId, level, duelIndex(playKey)) : null));
 
     // Izlazak iz nivoa pre kraja: drug vidi da se dete vratilo u predvorje
     useEffect(() => {
@@ -1536,7 +1654,13 @@ export function RemoteFriendLayer({ gameId, playKey, onFollowLevel, children }: 
     if (intro && active && remote?.session?.friend && remote.session.mode === "versus") {
         return (
             <div className="relative flex flex-1 flex-col">
-                <VsIntro players={[remote.me, remote.session.friend]} gameTitle={getGame(gameId).title} onDone={() => setIntro(false)} />
+                <VsIntro
+                    players={[remote.me, remote.session.friend]}
+                    gameTitle={getGame(gameId).title}
+                    format={remoteVersusFormat(gameId)}
+                    stake={remote.session.stake}
+                    onDone={() => setIntro(false)}
+                />
             </div>
         );
     }
@@ -1557,7 +1681,9 @@ export function RemoteFriendLayer({ gameId, playKey, onFollowLevel, children }: 
             {/* Tablet, računar i telefon na boku: drug stoji u stubu pored igre, pa igra ima celu visinu kao i inače */}
             <div className="relative flex flex-1 flex-col gap-2 sm:gap-3 md:flex-row landscape:flex-row">
                 <FriendStrip />
-                <div className="relative flex min-w-0 flex-1 flex-col">{children}</div>
+                <GameRandomContext value={seed}>
+                    <div className="relative flex min-w-0 flex-1 flex-col">{children}</div>
+                </GameRandomContext>
             </div>
         </GameEventTapProvider>
     );
@@ -1637,8 +1763,30 @@ function FriendStrip() {
 }
 
 /**
- * Traka u takmičenju: moj drugar i moje zvezdice — „VS” — drugar i zvezdice druga, uživo.
- * Iste visine kao traka sa drugom, pa na telefonu ne zaklanja zadatak.
+ * Napredak jednog igrača u dvoboju: tanka traka „koliko zadataka je gotovo” u boji igrača.
+ * Bez brojeva i sata — samo da se vidi da oboje napreduju.
+ */
+function DuelProgress({ name, state, look, className }: { name: string; state: Pick<RemoteState, "phase" | "round" | "total"> | null; look: (typeof LOOKS)[number]; className?: string }) {
+    const total = state?.total ?? 0;
+    const doneTasks = !state || total <= 0 ? 0 : state.phase === "done" ? total : state.phase === "playing" ? Math.max(0, Math.min(state.round - 1, total)) : 0;
+    const share = total > 0 ? doneTasks / total : 0;
+    return (
+        <span
+            role="progressbar"
+            aria-label={`${name}: urađeno ${doneTasks} od ${total || "…"}`}
+            aria-valuemin={0}
+            aria-valuemax={Math.max(total, 1)}
+            aria-valuenow={doneTasks}
+            className={cn("block h-2 overflow-hidden rounded-full bg-white/80 ring-1 ring-line", className)}
+        >
+            <span className={cn("block h-full rounded-full transition-[width] duration-500", look.solid)} style={{ width: `${Math.round(share * 100)}%` }} />
+        </span>
+    );
+}
+
+/**
+ * Traka u takmičenju: moj drugar i moje zvezdice — „VS” — drugar i zvezdice druga, uživo, uz
+ * tanku traku napretka za svakog. Iste visine kao traka sa drugom, pa na telefonu ne zaklanja zadatak.
  */
 function VersusStrip() {
     const remote = useRemote();
@@ -1684,6 +1832,7 @@ function VersusStrip() {
             <div className={cn("hidden w-28 shrink-0 flex-col items-center gap-1.5 self-start rounded-2xl border-2 px-2 py-2.5 text-center md:flex landscape:flex lg:w-32 [@media(max-height:30rem)]:gap-1 [@media(max-height:30rem)]:py-1.5", tone)} role="status" aria-live="polite">
                 <PlayerPicture player={me} look={LOOKS[0]} hype className="h-12 w-12 lg:h-14 lg:w-14 [@media(max-height:30rem)]:h-9 [@media(max-height:30rem)]:w-9" />
                 <ScorePill name={me.name} stars={mine} className="text-base" />
+                <DuelProgress name={me.name} state={remote.myState} look={LOOKS[0]} className="w-full" />
                 <VsMark className="h-8 w-8 text-xs" />
                 <span className="relative">
                     <PlayerPicture player={friend} look={LOOKS[1]} dim={remote.friendGone} className="h-12 w-12 -scale-x-100 lg:h-14 lg:w-14 [@media(max-height:30rem)]:h-9 [@media(max-height:30rem)]:w-9" />
@@ -1698,17 +1847,24 @@ function VersusStrip() {
                     )}
                 </span>
                 <ScorePill name={friend.name} stars={theirs} className="text-base" />
+                <DuelProgress name={friend.name} state={remote.friendGone ? null : state} look={LOOKS[1]} className="w-full" />
                 <span className="block w-full truncate font-display text-sm font-extrabold leading-tight text-ink lg:text-base">{friend.name}</span>
                 <span className={cn("text-xs font-bold leading-tight lg:text-sm", remote.friendGone ? "text-ink-soft" : "text-orange-700")}>{status}</span>
             </div>
             <div className={cn("flex items-center gap-1.5 rounded-2xl border-2 px-2 py-1.5 min-[400px]:gap-2 sm:gap-3 sm:px-3 md:hidden landscape:hidden", tone)} role="status" aria-live="polite">
                 <span className="flex shrink-0 items-center gap-1.5">
                     <PlayerPicture player={me} look={LOOKS[0]} hype className="h-11 w-11 sm:h-14 sm:w-14" />
-                    <ScorePill name={me.name} stars={mine} className="text-base sm:text-lg" />
+                    <span className="flex flex-col items-stretch gap-1">
+                        <ScorePill name={me.name} stars={mine} className="text-base sm:text-lg" />
+                        <DuelProgress name={me.name} state={remote.myState} look={LOOKS[0]} />
+                    </span>
                 </span>
                 <VsMark className="h-8 w-8 text-xs sm:h-10 sm:w-10 sm:text-sm" />
                 <span className="flex shrink-0 items-center gap-1.5">
-                    <ScorePill name={friend.name} stars={theirs} className="text-base sm:text-lg" />
+                    <span className="flex flex-col items-stretch gap-1">
+                        <ScorePill name={friend.name} stars={theirs} className="text-base sm:text-lg" />
+                        <DuelProgress name={friend.name} state={remote.friendGone ? null : state} look={LOOKS[1]} />
+                    </span>
                     <span className="relative shrink-0">
                         <PlayerPicture player={friend} look={LOOKS[1]} dim={remote.friendGone} className="h-11 w-11 -scale-x-100 sm:h-14 sm:w-14" />
                         {cheering && (
@@ -1745,6 +1901,8 @@ interface EndProps {
     /** Tačni odgovori i broj zadataka u nivou (zvezdice u takmičenju) */
     correct?: number;
     total?: number;
+    /** Vreme nivoa u sekundama (dvoboj „ko je brži”: razrešava isti rezultat) */
+    secs?: number;
     level: number;
     advance: boolean;
     limitReached: boolean;
@@ -1753,14 +1911,14 @@ interface EndProps {
     onLeave: () => void;
 }
 
-export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 0, level, advance, limitReached, saved, onPlay, onLeave }: EndProps) {
+export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 0, secs = 0, level, advance, limitReached, saved, onPlay, onLeave }: EndProps) {
     const remote = useRemote();
     const finish = remote?.finish;
     const sessionGame = remote?.session?.game;
     const score = versusScore(sessionGame ? getGame(sessionGame).graded : true, correct, tasks);
     useEffect(() => {
-        finish?.(playKey, stars, advance, score);
-    }, [finish, playKey, stars, advance, score]);
+        finish?.(playKey, stars, advance, score, secs, tasks);
+    }, [finish, playKey, stars, advance, score, secs, tasks]);
 
     const panelRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -1769,7 +1927,7 @@ export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 
 
     if (!remote?.session?.friend) return null;
     if (remote.session.mode === "versus") {
-        return <RemoteVersusEnd playKey={playKey} stars={stars} score={score} level={level} limitReached={limitReached} saved={saved} onPlay={onPlay} onLeave={onLeave} />;
+        return <RemoteVersusEnd playKey={playKey} stars={stars} score={score} total={tasks} secs={secs} level={level} limitReached={limitReached} saved={saved} onPlay={onPlay} onLeave={onLeave} />;
     }
     const { session, me } = remote;
     const friend = session.friend!;
@@ -1883,8 +2041,10 @@ export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 
 interface VersusEndProps {
     playKey: string;
     stars: number;
-    /** Moje zvezdice u takmičenju (tačni odgovori) */
+    /** Moje zvezdice u takmičenju (tačni odgovori), broj zadataka i vreme nivoa */
     score: number;
+    total: number;
+    secs: number;
     level: number;
     limitReached: boolean;
     saved: "saving" | "ok" | "failed";
@@ -1892,24 +2052,102 @@ interface VersusEndProps {
     onLeave: () => void;
 }
 
+/** Koliko puta i na koliko uređaj pita server da li je ulog obračunat (dok drug ne javi svoj rezultat) */
+const SETTLE_TRIES = 15;
+const SETTLE_EVERY_MS = 2000;
+
 /**
- * Kraj takmičenja na dva uređaja: kad i drug završi, oba drugara sa zvezdicama, nežno ime
- * pobednika i pohvala za trud; dotle „Čekamo da Amar završi…”. „Revanš” je isti nivo još
- * jednom, opet u takmičenju (svako ga pokreće na svom uređaju).
+ * Ulog posle partije na dva uređaja: kad oba deteta završe, uređaj javi serveru oba rezultata
+ * i čeka da i drug javi svoj; server prenese ulog kad se slože (lib/duelStakes.ts). Novčići
+ * deteta se zatim osvežavaju. Bez uloga (0) ništa se ne šalje.
  */
-function RemoteVersusEnd({ playKey, stars, score, level, limitReached, saved, onPlay, onLeave }: VersusEndProps) {
+function useRemoteSettlement(
+    report: { level: number; round: number; format: VersusFormat; mine: DuelScore; theirs: DuelScore } | null,
+    stake: number,
+    localWinner: "you" | "friend" | "tie" | null
+): DuelCoins | undefined {
+    const remote = useRemote();
+    const refreshCoins = useCompanion()?.refresh;
+    const reportDuel = remote?.reportDuel;
+    const [result, setResult] = useState<DuelSettlement | null>(null);
+    const key = report ? JSON.stringify(report) : null;
+    const reportRef = useRef(report);
+    useEffect(() => {
+        reportRef.current = report;
+    });
+    useEffect(() => {
+        if (!key || !reportDuel || stake <= 0) return;
+        let alive = true;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        let tries = 0;
+        const ask = async () => {
+            const current = reportRef.current;
+            if (!current) return;
+            const answer = await reportDuel(current);
+            if (!alive) return;
+            tries += 1;
+            if (answer.status === "pending" && tries < SETTLE_TRIES) {
+                timer = setTimeout(() => void ask(), SETTLE_EVERY_MS);
+                return;
+            }
+            setResult(answer.status === "pending" ? { status: "failed", amount: 0 } : answer);
+            if (answer.status === "settled" && answer.amount > 0) refreshCoins?.();
+        };
+        void ask();
+        return () => {
+            alive = false;
+            if (timer) clearTimeout(timer);
+        };
+    }, [key, reportDuel, stake, refreshCoins]);
+    if (stake <= 0) return { state: "off", amount: 0 };
+    if (!report) return undefined;
+    if (!result) return { state: "pending", amount: 0 };
+    // Server je obračunao isti ishod koji vidi i ovaj uređaj: prenos se prikazuje
+    if (result.status === "settled" && result.outcome === localWinner) return { state: "settled", amount: result.amount };
+    return { state: "failed", amount: 0 };
+}
+
+/**
+ * Kraj takmičenja na dva uređaja: kad i drug završi, oba drugara sa zvezdicama, ime pobednika
+ * i ulog (novčići prelete od poraženog do pobednika); dotle „Čekamo da Amar završi…”.
+ * „Revanš” je isti nivo još jednom, opet u takmičenju (svako ga pokreće na svom uređaju) — sa
+ * novim, ali opet istim zadacima za oboje.
+ */
+function RemoteVersusEnd({ playKey, stars, score, total, secs, level, limitReached, saved, onPlay, onLeave }: VersusEndProps) {
     const remote = useRemote();
     // Rezultat druga se pamti čim oboje završe: ako drug prvi krene u revanš, ovde ostaje rezultat ove partije
-    const [friendFinal, setFriendFinal] = useState<number | null>(null);
-    if (!remote?.session?.friend) return null;
-    const { session, me } = remote;
-    const friend = session.friend!;
-    const counted = remote.finishedKey(playKey);
-    const myDone = remote.myState.done + (counted ? 0 : 1);
-    const state = remote.friendState;
+    const [friendFinal, setFriendFinal] = useState<DuelScore | null>(null);
+    const session = remote?.session ?? null;
+    const state = remote?.friendState ?? null;
+    const counted = remote ? remote.finishedKey(playKey) : false;
+    const myDone = (remote?.myState.done ?? 0) + (counted ? 0 : 1);
     const friendDone = Boolean(state && state.done >= myDone && state.phase === "done");
-    if (friendFinal === null && friendDone && !remote.friendGone && state) setFriendFinal(state.correct);
+    // Zajednička tabla („jedan po jedan”): oba deteta se mere na istom broju poteza table (pobeđuje ko
+    // ima više tačnih poteza, kao u „Memoriji” za stolom) — isti broj na oba uređaja, od domaćina
+    const sharedTotal = remote?.sharedBoard ? Math.max(1, sharedTurnLog().length) : null;
+    if (friendFinal === null && friendDone && !remote?.friendGone && state) setFriendFinal({ correct: state.correct, total: sharedTotal ?? state.total, secs: state.secs });
     const bothDone = friendFinal !== null;
+    const format = session ? remoteVersusFormat(session.game) : "race";
+    const myTotal = sharedTotal ?? total;
+    const mine: DuelScore = { correct: score, total: myTotal, secs };
+    const seatsReady: readonly [VersusSeat, VersusSeat] | null =
+        session?.friend && friendFinal
+            ? [
+                  { player: remote!.me, score, total: myTotal, secs },
+                  { player: session.friend, score: friendFinal.correct, total: friendFinal.total, secs: friendFinal.secs },
+              ]
+            : null;
+    const winner = seatsReady ? seatWinner(seatsReady, format) : null;
+    const round = remote && bothDone ? remote.duelIndex(playKey) : 0;
+    const coins = useRemoteSettlement(
+        bothDone && friendFinal ? { level, round, format, mine, theirs: friendFinal } : null,
+        session?.stake ?? 0,
+        seatsReady ? (winner === null ? "tie" : winner === 0 ? "you" : "friend") : null
+    );
+
+    if (!remote?.session?.friend) return null;
+    const friend = remote.session.friend;
+    const me = remote.me;
     const waiting = !bothDone && remote.friendHere && state?.phase === "playing";
 
     const waitingLine = bothDone ? null : remote.friendGone ? "Drug je otišao. Možeš da igraš dalje." : `Čekamo da ${friend.name} završi…`;
@@ -1928,16 +2166,23 @@ function RemoteVersusEnd({ playKey, stars, score, level, limitReached, saved, on
     return (
         <VersusEnd
             seats={[
-                { player: me, gender: remote.gender, score, badge: <CoinsBadge coins={stars * COINS_PER_STAR} /> },
-                { player: friend, score: bothDone ? friendFinal : null, badge: friendBadge, dim: remote.friendGone },
+                { player: me, gender: remote.gender, score, total: myTotal, secs, badge: <CoinsBadge coins={stars * COINS_PER_STAR} /> },
+                { player: friend, score: bothDone ? friendFinal.correct : null, total: friendFinal?.total ?? null, secs: friendFinal?.secs ?? 0, badge: friendBadge, dim: remote.friendGone },
             ]}
+            format={format}
+            coins={coins}
             waitingLine={waitingLine}
             limitReached={limitReached}
             saved={saved}
             onRematch={waiting ? undefined : play}
             rematchLabel={bothDone ? "Revanš" : "Igraj još jednom"}
             onLeave={onLeave}
-            adultNote={<>takmičenje je samo za zabavu. Svako dete dobija novčiće i nivo u svom profilu, kao i inače.</>}
+            adultNote={
+                <>
+                    {format === "race" ? "isti zadaci za oba deteta; više tačnih pobeđuje (kad je isto — kraće vreme)." : "više tačnih pobeđuje."}
+                    {remote.session.stake > 0 ? ` Poraženi daje do ${remote.session.stake} novčića, nikad više nego što ima (ulog: podešavanja deteta).` : " Svako dete dobija novčiće i nivo kao i inače."}
+                </>
+            }
         />
     );
 }
@@ -1953,7 +2198,7 @@ export type RemoteScene = "pick" | "who" | "code" | "card" | "card-together" | "
 export function RemoteScenePreview({ scene, games }: { scene: RemoteScene; games: GameDefinition[] }) {
     const me: TogetherPlayer = { name: "Lejla", kind: "girl" };
     const amar: TogetherPlayer = { name: "Amar", kind: "dog" };
-    const base: RemoteSession = { role: "host", channel: "bm-inv-proba", game: "clock", level: 2, mode: "versus", friend: null, code: null, expired: false, asking: null, answer: null, autoStart: 0 };
+    const base: RemoteSession = { role: "host", channel: "bm-inv-proba", game: "clock", level: 2, mode: "versus", friend: null, code: null, expired: false, asking: null, answer: null, autoStart: 0, seed: null, stake: 3 };
     const session: RemoteSession | null =
         scene === "code"
             ? { ...base, mode: "together", code: VISUAL_PIN_CATEGORIES.map((c) => c.items[1].id) }
@@ -1998,6 +2243,8 @@ export function RemoteScenePreview({ scene, games }: { scene: RemoteScene; games
         left: () => undefined,
         finish: () => undefined,
         finishedKey: () => false,
+        duelIndex: () => 0,
+        reportDuel: async () => ({ status: "failed", amount: 0 }),
         setLevel: () => undefined,
         refresh: () => undefined,
     };
@@ -2034,7 +2281,7 @@ function ScenePicker({ games, who }: { games: GameDefinition[]; who: boolean }) 
     );
 }
 
-const EMPTY_STATE: RemoteState = { phase: "lobby", done: 0, round: 0, total: 0, stars: 0, sessionStars: 0, correct: 0, advance: false };
+const EMPTY_STATE: RemoteState = { phase: "lobby", done: 0, round: 0, total: 0, stars: 0, sessionStars: 0, correct: 0, advance: false, secs: 0 };
 
 // ── Probna zajednička tabla (samo /dev/shared, u razvoju) ───────────────────────
 
@@ -2109,7 +2356,7 @@ export function SharedBoardLab({ gameId, level, mode, lag, renderHost, renderGue
         const playing: RemoteState = { ...EMPTY_STATE, phase: "playing", round: 1, total: 5 };
         return {
             preview: true,
-            session: { role, channel: "bm-inv-proba", game: gameId, level, mode, friend: role === "host" ? amar : lejla, code: null, expired: false, asking: null, answer: null, autoStart: 0 },
+            session: { role, channel: "bm-inv-proba", game: gameId, level, mode, friend: role === "host" ? amar : lejla, code: null, expired: false, asking: null, answer: null, autoStart: 0, seed: null, stake: 0 },
             endedBy: null,
             me: role === "host" ? lejla : amar,
             gender: role === "host" ? "female" : "male",
@@ -2135,6 +2382,8 @@ export function SharedBoardLab({ gameId, level, mode, lag, renderHost, renderGue
             finishedKey: () => false,
             setLevel: () => undefined,
             refresh: () => undefined,
+            duelIndex: () => 0,
+            reportDuel: async () => ({ status: "failed", amount: 0 }),
             sharedBoard: true,
             sharedChannel: channels[role],
         };

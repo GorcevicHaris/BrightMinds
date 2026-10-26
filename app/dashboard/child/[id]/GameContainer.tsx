@@ -229,6 +229,8 @@ interface LevelOutcome {
     advance: boolean;
     /** Aktivnost bez ocenjivanih zadataka (npr. priča u režimu samo čitanja) */
     practice: boolean;
+    /** Vreme nivoa u sekundama, bez pauza (dvoboj „ko je brži”: razrešava isti rezultat) */
+    secs: number;
     saved: "saving" | "ok" | "failed";
 }
 
@@ -583,6 +585,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 total: result.total,
                 score: result.score,
                 advance,
+                secs: Math.max(0, Math.round(result.durationSec ?? 0)),
                 saved: preview ? "ok" : "saving",
             });
             playSfx("win");
@@ -809,7 +812,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         <GamePauseContext.Provider value={onBreak}>
                             {/* Igra sa drugom: traka „Sada igra …” (playTogether.tsx); inače samo igra */}
                             <TurnTakingLayer key={playKey} gameId={game.id}>
-                            <RemoteFriendLayer gameId={game.id} playKey={playKey} onFollowLevel={(next) => startLevel(tierAt(next).id, next)}>
+                            <RemoteFriendLayer gameId={game.id} playKey={playKey} level={level} onFollowLevel={(next) => startLevel(tierAt(next).id, next)}>
                             <GameSlot
                                 key={`${game.id}-${level}-${attempt}`}
                                 gameId={game.id}
@@ -847,6 +850,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     playKey={playKey}
                     stars={outcome.stars}
                     correct={outcome.correct}
+                    total={outcome.total}
                     level={level}
                     advance={outcome.advance}
                     limitReached={clock.limitReached}
@@ -863,6 +867,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                     stars={outcome.stars}
                     correct={outcome.correct}
                     total={outcome.total}
+                    secs={outcome.secs}
                     level={level}
                     advance={outcome.advance}
                     limitReached={clock.limitReached}

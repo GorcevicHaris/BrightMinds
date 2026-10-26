@@ -32,6 +32,7 @@ import {
     type BaseView,
     type FeedbackKind,
     type GameProps,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { buildShelves, cardArt, memoryLevel, type MemoryCardArt, type SceneLevel, type ShapeKind, type ShelfScene } from "@/app/components/games/data/memoryLevels";
 import { cn } from "@/lib/cn";
@@ -239,7 +240,9 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
     const female = isFemale(gender);
 
     // Monitor nema podešavanja deteta: police stižu u stanju igre
-    const [shelves] = useState<ShelfScene[]>(() => (isMonitor ? [] : buildShelves(cfg, settings.preset.memoryMaxPairs)));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [shelves] = useState<ShelfScene[]>(() => (isMonitor ? [] : buildShelves(cfg, settings.preset.memoryMaxPairs, random)));
     const [view, setView] = useState<SceneView>(() => initialView(shelves, cfg));
     const viewRef = useRef(view);
     const finishedRef = useRef(false);
@@ -270,7 +273,7 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
         if (!interactive || current.phase !== "look" || lockedRef.current) return;
         guard.hold();
         playSfx("flip");
-        const tray = shuffle(current.slots.filter((id): id is string => id !== null));
+        const tray = shuffle(current.slots.filter((id): id is string => id !== null), random);
         commit({ ...current, phase: "place", tray, selected: null }, "Dete je zapamtilo policu — predmeti su u korpi");
         say(TEXT_PLACE);
     };

@@ -23,6 +23,7 @@ import {
     gameOpenFor,
     joinedAnswer,
     loadInviteRow,
+    newDuel,
     rememberPair,
     updateInvite,
     type InviteRow,
@@ -82,9 +83,11 @@ export async function POST(request: Request, { params }: RouteContext) {
 
         const pendingGame = parseStoredInvite((hosts[0].settings as Record<string, unknown> | null)?.invite)!.game;
         if (!(await gameOpenFor(guestRow, pendingGame))) throw new HttpError(409, INVITE_GAME_LOCKED);
-        const result = await updateInvite(hostId, (_row, current) => {
+        const result = await updateInvite(hostId, (row, current) => {
             if (!stillAsking(current)) throw new HttpError(404, REQUEST_GONE);
-            return { ...withoutRequest(current), code: null, guest, joinedAt: at };
+            // Dvoboj: server pravi zajedničko seme zadataka i ulog; ID druga ostaje samo na serveru
+            const duel = current.mode === "versus" ? { duel: newDuel(row, guestRow) } : {};
+            return { ...withoutRequest(current), code: null, guest, joinedAt: at, guestId, ...duel };
         });
         const joined = result.invite;
         if (!joined) throw new HttpError(404, REQUEST_GONE);

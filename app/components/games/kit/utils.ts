@@ -1,10 +1,13 @@
 // Sitne pomoćne funkcije koje dele sve igre.
 
-/** Nepristrasno mešanje (Fisher–Yates). Vraća novi niz; original ostaje netaknut. */
-export function shuffle<T>(items: readonly T[]): T[] {
+/**
+ * Nepristrasno mešanje (Fisher–Yates). Vraća novi niz; original ostaje netaknut. `random` je
+ * izvor brojeva u [0, 1) — u igri `useGameRandom()` (isti zadaci u dvoboju), inače Math.random.
+ */
+export function shuffle<T>(items: readonly T[], random: () => number = Math.random): T[] {
     const result = [...items];
     for (let i = result.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1));
+        const j = Math.floor(random() * (i + 1));
         [result[i], result[j]] = [result[j], result[i]];
     }
     return result;

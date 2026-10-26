@@ -35,6 +35,7 @@ import {
     type FeedbackKind,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     basketFor,
@@ -251,8 +252,10 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
     const calm = useCalmMotion();
 
     // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju samo jednom, ovde
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
     const [plan] = useState<SortLevel>(() =>
-        isMonitor ? { kind: "color", support: "label", baskets: [], rounds: [], models: {} } : buildSortLevel(level, { maxBaskets: settings.choiceLimit, maxRounds: settings.preset.maxRounds })
+        isMonitor ? { kind: "color", support: "label", baskets: [], rounds: [], models: {} } : buildSortLevel(level, { maxBaskets: settings.choiceLimit, maxRounds: settings.preset.maxRounds, random })
     );
     const [view, setView] = useState<SortingView>(() => {
         // Primeri su od početka u svojim korpama

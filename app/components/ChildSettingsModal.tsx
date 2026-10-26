@@ -419,6 +419,23 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                             </div>
                         </Section>
                         <Section
+                            title="Dvoboj sa drugom"
+                            hint="Ko izgubi dvoboj, da pobedniku malo novčića — nikad više nego što ima. Sa drugom iz druge porodice važi manji od dva uloga."
+                        >
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <Select
+                                    label="Ulog u dvoboju"
+                                    hint="0 = bez novčića, samo ime pobednika. Poraz uvek prati pohvala za trud."
+                                    value={settings.duelStake}
+                                    onChange={(e) => set("duelStake", Number(e.target.value) as ChildSettings["duelStake"])}
+                                >
+                                    <option value={0}>0 novčića</option>
+                                    <option value={3}>3 novčića</option>
+                                    <option value={5}>5 novčića</option>
+                                </Select>
+                            </div>
+                        </Section>
+                        <Section
                             title="Podsetnik"
                             hint="Blag podsetnik u aplikaciji: posle izabranog vremena, ako dete tog dana još nije igralo, početni ekran kaže „Vreme je za igru sa drugarom!”, a vaš panel da dete danas još nije vežbalo. Bez obaveštenja na telefonu i bez mejlova."
                         >

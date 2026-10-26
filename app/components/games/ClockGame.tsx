@@ -29,6 +29,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { DragDemo } from "@/app/components/games/kit/DragDemo";
 import { HOLE_HIT, isWideBoard, trayGrid, trayPieceSize } from "@/app/components/games/kit/InsetArt";
@@ -113,7 +114,9 @@ export default function ClockGame({ childId, level, gender, onComplete, isMonito
     const guard = useInputGuard();
 
     // Komponenta se za svaki nivo pravi iznova, pa se plan pravi samo jednom, ovde
-    const [plan] = useState<ClockPlan | null>(() => (isMonitor ? null : buildClockLevel(level, { maxRounds: settings.preset.maxRounds, maxChoices: settings.choiceLimit })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<ClockPlan | null>(() => (isMonitor ? null : buildClockLevel(level, { maxRounds: settings.preset.maxRounds, maxChoices: settings.choiceLimit, random })));
     // Podrška se povlači: na lakim nivoima pomoć stiže već posle prve greške i posle čekanja
     // (osim kad je roditelj isključio pomoć); kasnije važi ono što je podešeno.
     const early = (plan?.earlyHint ?? false) && settings.hintAfter > 0;
