@@ -73,7 +73,7 @@ import { speak } from "@/lib/speech";
 import { starsPhrase, togetherPraise, type TogetherPlayer } from "@/lib/playTogether";
 import { GameEventTapProvider, useTogetherAnnounce } from "@/lib/realtime";
 import type { GameUpdate } from "@/lib/types";
-import { isNewer, parseMirror, sharedBoardFor, sharedTurnLog, type MirrorMessage } from "@/lib/sharedPlay";
+import { SHARED_END_WAIT_MS, isNewer, parseMirror, sharedBoardFor, sharedTurnLog, type MirrorMessage, type ScreenSize } from "@/lib/sharedPlay";
 import { genderOf, playModeOr, versusLiveScore, versusScore, type Gender, type PlayMode } from "@/lib/versus";
 import { cleanSeed, duelSeed } from "@/lib/seededRandom";
 import { duelLabel, formatRule, remoteVersusFormat, type VersusFormat } from "@/lib/versusFormat";
@@ -273,6 +273,7 @@ function readGuest(childId: number): RemoteSession | null {
     }
 }
 
+/** `playing`: dete je u igri (i na kraju nivoa) — posle osvežavanja igra se sama ponovo otvara */
 function writeGuest(childId: number, session: RemoteSession | null, playing = false) {
     try {
         if (!session || session.role !== "guest" || !session.friend) {
@@ -368,6 +369,24 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
 
     // Moj napredak: tekući nivo + završeni zajednički nivoi
     const [progress, setProgress] = useState<Progress>(LOBBY);
+    // Dete je u igri sa drugom (nivo je otvoren, i na ekranu kraja nivoa): posle osvežavanja stranice
+    // gost se sam vraća u igru, pa i na kraju nivoa dobije završni snimak zajedničke table
+    const [inGame, setInGame] = useState(false);
+    // Ekran ovog uređaja ide drugu: zajednička tabla bira veličinu table da stane na oba ekrana
+    const [screen, setScreen] = useState<ScreenSize | null>(null);
+    useEffect(() => {
+        let frame = 0;
+        const measure = () => {
+            cancelAnimationFrame(frame);
+            frame = requestAnimationFrame(() => setScreen((prev) => (prev && prev.w === window.innerWidth && prev.h === window.innerHeight ? prev : { w: window.innerWidth, h: window.innerHeight })));
+        };
+        measure();
+        window.addEventListener("resize", measure);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener("resize", measure);
+        };
+    }, []);
     const [done, setDone] = useState(0);
     const [bank, setBank] = useState(0);
     const [lastAdvance, setLastAdvance] = useState(false);
@@ -386,6 +405,7 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
 
     const resetPlay = useCallback(() => {
         setProgress(LOBBY);
+        setInGame(false);
         setDone(0);
         setBank(0);
         setLastAdvance(false);
@@ -453,10 +473,9 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
         refresh();
     }, [childId, preview, refresh]);
 
-    const playingNow = progress.phase === "playing";
     useEffect(() => {
-        writeGuest(childId, session, playingNow);
-    }, [childId, session, playingNow]);
+        writeGuest(childId, session, inGame);
+    }, [childId, session, inGame]);
 
     const create = useCallback(
         async (game: GameId, level: number, mode: PlayMode = "together", friend?: string): Promise<string | null> => {
@@ -704,8 +723,9 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
             correct: progress.correct,
             advance: lastAdvance,
             secs: progress.secs,
+            ...(screen ? { screen } : {}),
         }),
-        [progress, done, bank, lastAdvance]
+        [progress, done, bank, lastAdvance, screen]
     );
 
     // Svoje stanje drug dobija na svaku promenu i na svakih nekoliko sekundi („otkucaj srca”)
@@ -776,10 +796,12 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
         const round = Math.min(num(data.round), total || num(data.round));
         const correct = num(data.correctCount);
         const stars = liveStars(getGame(gameId).graded, correct, round, total);
+        setInGame(true);
         setProgress((prev) => (prev.phase === "playing" && prev.round === round && prev.total === total && prev.correct === correct ? prev : { phase: "playing", round, total, correct, stars, secs: 0 }));
     }, []);
 
     const left = useCallback(() => {
+        setInGame(false);
         setProgress((prev) => (prev.phase === "playing" ? LOBBY : prev));
     }, []);
 
@@ -1622,6 +1644,8 @@ interface LayerProps {
     level: number;
     /** Gost na zajedničkoj tabli prati nivo koji je domaćin pokrenuo */
     onFollowLevel: (level: number) => void;
+    /** Gost: zajednički kraj nivoa čiji je rezultat već sačuvan (osvežena stranica) — bez novog upisa */
+    onCompleteSaved: (result: GameResult) => void;
     children: ReactNode;
 }
 
@@ -1631,7 +1655,7 @@ interface LayerProps {
  * traku sa drugom iznad igre, a stanje igre (zadatak, tačni odgovori) ide drugu. Van igre sa
  * drugom samo prikazuje igru.
  */
-export function RemoteFriendLayer({ gameId, playKey, level, onFollowLevel, children }: LayerProps) {
+export function RemoteFriendLayer({ gameId, playKey, level, onFollowLevel, onCompleteSaved, children }: LayerProps) {
     const remote = useRemote();
     const active = Boolean(remote?.session?.friend) && remote?.session?.game === gameId;
     const report = remote?.report;
@@ -1670,7 +1694,7 @@ export function RemoteFriendLayer({ gameId, playKey, level, onFollowLevel, child
     }
     const slot = isValidElement<GameProps>(children) ? children : null;
     if (shared === "guest" && slot) {
-        return <SharedGuestBoard gameId={gameId} level={slot.props.level} gender={slot.props.gender} onComplete={slot.props.onComplete} onFollowLevel={onFollowLevel} />;
+        return <SharedGuestBoard gameId={gameId} level={slot.props.level} gender={slot.props.gender} onComplete={slot.props.onComplete} onCompleteSaved={onCompleteSaved} onFollowLevel={onFollowLevel} />;
     }
     if (!active || !friend) return <>{children}</>;
     if (shared === "host" && slot) {
@@ -1915,8 +1939,30 @@ interface EndProps {
     onLeave: () => void;
 }
 
+/**
+ * Zajednička tabla: domaćin na kraju nivoa čeka gosta (gost dobija završni snimak i čuva svoj
+ * rezultat, i posle osvežavanja stranice). Ako se gost ne javi za `SHARED_END_WAIT_MS`, domaćin
+ * mirno završava sam — nikad ne čeka zauvek. Kad gost ipak stigne, kraj je opet zajednički.
+ */
+function useSharedEndWait(playKey: string): boolean {
+    const remote = useRemote();
+    const counted = remote ? remote.finishedKey(playKey) : false;
+    const myDone = (remote?.myState.done ?? 0) + (counted ? 0 : 1);
+    const friendDone = Boolean(remote?.friendState && remote.friendState.done >= myDone);
+    const waiting = Boolean(remote?.sharedBoard && remote.session?.role === "host" && remote.session.friend) && !friendDone;
+    const [gaveUp, setGaveUp] = useState(false);
+    useEffect(() => {
+        if (!waiting) return;
+        const timer = setTimeout(() => setGaveUp(true), SHARED_END_WAIT_MS);
+        return () => clearTimeout(timer);
+    }, [waiting]);
+    return waiting && gaveUp;
+}
+
 export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 0, secs = 0, level, advance, limitReached, saved, onPlay, onLeave }: EndProps) {
     const remote = useRemote();
+    // Zajednička tabla: gost se dugo ne javlja na kraju nivoa — domaćin mirno završava sam
+    const gaveUp = useSharedEndWait(playKey);
     const finish = remote?.finish;
     const sessionGame = remote?.session?.game;
     const score = versusScore(sessionGame ? getGame(sessionGame).graded : true, correct, tasks);
@@ -1931,7 +1977,7 @@ export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 
 
     if (!remote?.session?.friend) return null;
     if (remote.session.mode === "versus") {
-        return <RemoteVersusEnd playKey={playKey} stars={stars} score={score} total={tasks} secs={secs} level={level} limitReached={limitReached} saved={saved} onPlay={onPlay} onLeave={onLeave} />;
+        return <RemoteVersusEnd gaveUp={gaveUp} playKey={playKey} stars={stars} score={score} total={tasks} secs={secs} level={level} limitReached={limitReached} saved={saved} onPlay={onPlay} onLeave={onLeave} />;
     }
     const { session, me } = remote;
     const friend = session.friend!;
@@ -1941,7 +1987,7 @@ export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 
     const state = remote.friendState;
     const friendDone = Boolean(state && state.done >= myDone);
     const bothDone = friendDone && !remote.friendGone;
-    const waiting = remote.friendHere && !friendDone && state?.phase === "playing";
+    const waiting = remote.friendHere && !friendDone && state?.phase === "playing" && !gaveUp;
     // Zajednička tabla: jedna igra, iste zvezdice kod oba deteta (ne sabiraju se)
     const total = mySession + (remote.sharedBoard ? 0 : (state?.sessionStars ?? 0));
     const names: [string, string] = session.role === "host" ? [me.name, friend.name] : [friend.name, me.name];
@@ -1972,7 +2018,7 @@ export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 
                                 </span>
                             ) : (
                                 <span className="inline-flex min-h-8 items-center rounded-full bg-canvas px-3 py-1 text-sm font-extrabold text-ink-soft">
-                                    {remote.friendGone ? "Nije tu" : waiting ? `Zadatak ${Math.max(1, state?.round ?? 1)} od ${state?.total ?? 0}` : "…"}
+                                    {remote.friendGone || gaveUp ? "Nije tu" : waiting ? `Zadatak ${Math.max(1, state?.round ?? 1)} od ${state?.total ?? 0}` : "…"}
                                 </span>
                             )}
                         </div>
@@ -1996,9 +2042,9 @@ export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 
                     <>
                         <h2 className="mt-3 text-2xl font-extrabold text-ink sm:text-3xl">Nivo je gotov!</h2>
                         <p className="mt-1 text-lg font-bold text-ink-soft" role="status" aria-live="polite">
-                            {remote.friendGone ? "Drug je otišao. Možeš da igraš dalje." : `Čekamo da ${friend.name} završi…`}
+                            {remote.friendGone ? "Drug je otišao. Možeš da igraš dalje." : gaveUp ? `${friend.name} sada nije tu. Možeš da igraš dalje.` : `Čekamo da ${friend.name} završi…`}
                         </p>
-                        {!remote.friendGone && (
+                        {!remote.friendGone && !gaveUp && (
                             <p className="mt-2 flex justify-center">
                                 <TogetherPill stars={total} />
                             </p>
@@ -2019,7 +2065,7 @@ export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 
                             ) : (
                                 <>
                                     <RotateCcw className="h-6 w-6" aria-hidden="true" />
-                                    {remote.friendGone ? "Igraj još jednom" : "Igrajte još jednom"}
+                                    {remote.friendGone || gaveUp ? "Igraj još jednom" : "Igrajte još jednom"}
                                 </>
                             )}
                         </Button>
@@ -2043,6 +2089,8 @@ export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 
 // ── Kraj nivoa u takmičenju ─────────────────────────────────────────────────────
 
 interface VersusEndProps {
+    /** Zajednička tabla: drug se dugo ne javlja na kraju nivoa (domaćin završava sam) */
+    gaveUp: boolean;
     playKey: string;
     stars: number;
     /** Moje zvezdice u takmičenju (tačni odgovori), broj zadataka i vreme nivoa */
@@ -2117,7 +2165,7 @@ function useRemoteSettlement(
  * „Revanš” je isti nivo još jednom, opet u takmičenju (svako ga pokreće na svom uređaju) — sa
  * novim, ali opet istim zadacima za oboje.
  */
-function RemoteVersusEnd({ playKey, stars, score, total, secs, level, limitReached, saved, onPlay, onLeave }: VersusEndProps) {
+function RemoteVersusEnd({ gaveUp, playKey, stars, score, total, secs, level, limitReached, saved, onPlay, onLeave }: VersusEndProps) {
     const remote = useRemote();
     // Rezultat druga se pamti čim oboje završe: ako drug prvi krene u revanš, ovde ostaje rezultat ove partije
     const [friendFinal, setFriendFinal] = useState<DuelScore | null>(null);
@@ -2152,14 +2200,14 @@ function RemoteVersusEnd({ playKey, stars, score, total, secs, level, limitReach
     if (!remote?.session?.friend) return null;
     const friend = remote.session.friend;
     const me = remote.me;
-    const waiting = !bothDone && remote.friendHere && state?.phase === "playing";
+    const waiting = !bothDone && remote.friendHere && state?.phase === "playing" && !gaveUp;
 
-    const waitingLine = bothDone ? null : remote.friendGone ? "Drug je otišao. Možeš da igraš dalje." : `Čekamo da ${friend.name} završi…`;
+    const waitingLine = bothDone ? null : remote.friendGone ? "Drug je otišao. Možeš da igraš dalje." : gaveUp ? `${friend.name} sada nije tu. Možeš da igraš dalje.` : `Čekamo da ${friend.name} završi…`;
     const friendBadge = bothDone ? (
         <PraiseBadge />
     ) : (
         <span className="inline-flex min-h-8 items-center rounded-full bg-canvas px-3 py-1 text-sm font-extrabold text-ink-soft">
-            {remote.friendGone ? "Nije tu" : waiting ? `Zadatak ${Math.max(1, state?.round ?? 1)} od ${state?.total ?? 0}` : "…"}
+            {remote.friendGone || gaveUp ? "Nije tu" : waiting ? `Zadatak ${Math.max(1, state?.round ?? 1)} od ${state?.total ?? 0}` : "…"}
         </span>
     );
     const play = () => {

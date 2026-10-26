@@ -5,7 +5,7 @@
 // koliko je zadato u podešavanjima deteta par otvorene kartice blago svetli (na lakim nivoima već
 // posle prve). Nivoi 11–15 su „Zapamti gde je šta bilo” (MemoryScene.tsx). Nivoi: data/memoryLevels.ts.
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import { useContext, useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
     Feedback,
@@ -14,6 +14,7 @@ import {
     PlayArea,
     playSfx,
     PULSE_ONCE,
+    SharedScreensContext,
     shuffle,
     useDemo,
     useGameSync,
@@ -166,9 +167,15 @@ function fitsScreen(pairs: number, width: number, height: number): boolean {
  * Najviše parova (do `wanted`) uz koje cela tabla staje na ekran, a kartica ostaje bar 64 px.
  * Meri se jednom, kad se karte dele; čita veličinu prozora, pa se zove samo iz početnog stanja.
  */
-function pairsForScreen(wanted: number): number {
+function pairsForScreen(wanted: number, screens?: readonly { w: number; h: number }[] | null): number {
     if (typeof window === "undefined") return wanted;
-    const { innerWidth: width, innerHeight: height } = window;
+    // Zajednička tabla: tabla mora da stane i na ekran druga (najmanji od svih ekrana odlučuje)
+    if (screens && screens.length > 0) return Math.min(...screens.map((screen) => pairsForSize(wanted, screen.w, screen.h)));
+    return pairsForSize(wanted, window.innerWidth, window.innerHeight);
+}
+
+/** Najviše parova (do `wanted`) koji staju na ekran date veličine */
+export function pairsForSize(wanted: number, width: number, height: number): number {
     const most = Math.min(width, height) < PHONE_SHORT_SIDE_PX ? Math.min(wanted, PHONE_MAX_PAIRS) : wanted;
     for (let pairs = most; pairs > TINY_SCREEN_PAIRS; pairs -= 1) {
         if (fitsScreen(pairs, width, height)) return pairs;
@@ -372,11 +379,12 @@ function PairsGame({ childId, level, gender, onComplete, isMonitor = false, moni
     const hintAfter = cfg.earlyHint && settings.hintAfter > 0 ? 1 : settings.hintAfter;
     // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
     const random = useGameRandom();
+    const screens = useContext(SharedScreensContext);
     const [deal] = useState<Deal>(() => dealFor(level, settings.preset.memoryMaxPairs, settings.activeBand === "young"));
     // Monitor nema podešavanja deteta ni njegov ekran: tabla stiže u `monitorState`
     const [view, setView] = useState<MemoryView>(() => {
         if (isMonitor) return emptyView(cfg.pairs);
-        return dealCards(pairsForScreen(deal.pairs), deal.peek, cfg.deck, random);
+        return dealCards(pairsForScreen(deal.pairs, screens), deal.peek, cfg.deck, random);
     });
 
     // Poslednje stanje za rukovaoce i tajmere (dva brza dodira ne vide zastarelo stanje)

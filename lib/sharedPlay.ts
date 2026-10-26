@@ -576,3 +576,51 @@ function isPlace(key: string): boolean {
 export function sessionKey(game: GameId, level: number, attempt: number): string {
     return `${game}-${level}-${attempt}`;
 }
+
+// ── Veličina table za oba ekrana ───────────────────────────────────────────────
+
+/** Ekran uređaja (CSS pikseli) */
+export interface ScreenSize {
+    w: number;
+    h: number;
+}
+
+/** Ekran druga iz poruke; neispravno → null */
+export function parseScreen(raw: unknown): ScreenSize | null {
+    if (!isRecord(raw)) return null;
+    const ok = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v >= 200 && v <= 10_000;
+    return ok(raw.w) && ok(raw.h) ? { w: Math.round(raw.w as number), h: Math.round(raw.h as number) } : null;
+}
+
+/** Traka „Na redu je” na uspravnom telefonu (iznad igre) i stub pored igre (tablet, položeno) */
+const STRIP_BAR_PX = 76;
+const STRIP_COLUMN_PX = 152;
+/** Isto kao `md:` i `landscape:` u traci (playShared.tsx): od ove širine ili položeno — stub */
+const STRIP_COLUMN_FROM_PX = 768;
+
+/**
+ * Prostor koji igra ima na zajedničkoj tabli: ekran bez trake „Na redu je” (na uspravnom
+ * telefonu traka je iznad igre, inače stub pored nje).
+ */
+export function boardScreen(screen: ScreenSize): ScreenSize {
+    const column = screen.w >= STRIP_COLUMN_FROM_PX || screen.w > screen.h;
+    return column ? { w: Math.max(200, screen.w - STRIP_COLUMN_PX), h: screen.h } : { w: screen.w, h: Math.max(200, screen.h - STRIP_BAR_PX) };
+}
+
+// ── Kraj nivoa posle osvežavanja ────────────────────────────────────────────────
+
+/**
+ * Nivoi zajedničke table čiji je rezultat gost već sačuvao (ključ: kanal i epoha nivoa). Gost koji
+ * osveži stranicu baš na kraju nivoa ponovo dobije završni snimak od domaćina: tada vidi zajednički
+ * kraj, ali se rezultat ne čuva još jednom.
+ */
+export function rememberFinished(list: readonly string[], key: string, max = 12): string[] {
+    return [...list.filter((k) => k !== key), key].slice(-max);
+}
+
+export function finishedKey(channel: string, epoch: number): string {
+    return `${channel}:${epoch}`;
+}
+
+/** Domaćin čeka gosta na kraju nivoa najviše ovoliko, pa mirno završava sam */
+export const SHARED_END_WAIT_MS = 20_000;

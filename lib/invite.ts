@@ -24,6 +24,7 @@ import { GAMES, MAX_LEVEL, starsForGame, type GameId } from "./games";
 import { PIN_LENGTH, VISUAL_PIN_CATEGORIES } from "./visualPinData";
 import { parseDuelReport, type DuelOutcome, type DuelReport } from "./duelStakes";
 import { cleanSeed } from "./seededRandom";
+import { parseScreen, type ScreenSize } from "./sharedPlay";
 import { playModeOr, type PlayMode } from "./versus";
 
 /** Kod važi 10 minuta (detetu se vreme ne prikazuje; posle toga „Kod više ne važi”). */
@@ -371,6 +372,8 @@ export interface RemoteState {
     advance: boolean;
     /** Dvoboj: vreme poslednjeg završenog nivoa u sekundama (bez pauza; razrešava nerešeno u trci) */
     secs: number;
+    /** Ekran uređaja: na zajedničkoj tabli tabla se bira tako da stane na oba ekrana (stari klijenti ga ne šalju) */
+    screen?: ScreenSize;
 }
 
 export const EMPTY_REMOTE_STATE: RemoteState = { phase: "lobby", done: 0, round: 0, total: 0, stars: 0, sessionStars: 0, correct: 0, advance: false, secs: 0 };
@@ -396,6 +399,7 @@ export function parseRemoteState(raw: unknown): RemoteState | null {
         advance: raw.advance === true,
         // Stari klijenti ne šalju vreme: 0 = ne zna se (nerešen broj tačnih ostaje nerešen)
         secs: int(raw.secs, 36_000),
+        ...(parseScreen(raw.screen) ? { screen: parseScreen(raw.screen)! } : {}),
     };
 }
 
