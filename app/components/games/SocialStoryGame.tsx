@@ -27,6 +27,7 @@ import {
     type GameProps,
     useWaitHint,
     usePraise,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
@@ -98,11 +99,11 @@ const CELEBRATION_MS = 1100;
 const POINTS_FIRST_PICK = 100;
 const POINTS_LATER_PICK = 50;
 
-/** Zapisi za sve korake. `randomize` meša redosled ponuđenih izbora. */
-function createRecords(story: Story, choiceLimit: number, randomize: boolean): StepRecord[] {
+/** Zapisi za sve korake. `random` (seme dvoboja ili nasumično, kit/random.ts) meša redosled ponuđenih izbora; null = bez mešanja. */
+function createRecords(story: Story, choiceLimit: number, random: (() => number) | null): StepRecord[] {
     return story.steps.map((step) => {
         const offered = step.decision ? offeredOptions(step.decision, choiceLimit) : [];
-        return { order: randomize ? shuffle(offered) : offered, tried: [], picked: null, hint: false };
+        return { order: random ? shuffle(offered, random) : offered, tried: [], picked: null, hint: false };
     });
 }
 
@@ -229,7 +230,9 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
     const { sayAll, cancel: cancelSpeechQueue } = useSayAll(say);
 
     // Komponenta se za svaki nivo pravi iznova, pa se izbori biraju i mešaju samo jednom, ovde.
-    const [view, setView] = useState<StoryView>(() => createView(story, createRecords(story, settings.choiceLimit, !isMonitor)));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [view, setView] = useState<StoryView>(() => createView(story, createRecords(story, settings.choiceLimit, isMonitor ? null : random)));
     const viewRef = useRef(view);
     const praise = usePraise();
     const started = useRef(false);
@@ -241,7 +244,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
     const bottomRef = useRef<HTMLDivElement>(null);
 
     // Monitor se ne pravi iznova kad se nivo promeni, pa podrazumevano stanje prati priču.
-    const fallbackView = useMemo(() => createView(story, createRecords(story, Infinity, false)), [story]);
+    const fallbackView = useMemo(() => createView(story, createRecords(story, Infinity, null)), [story]);
     const shown = isMonitor ? resolveView(monitorState, story, fallbackView) : view;
     const step = story.steps[shown.stepIndex];
     const decision = step.decision;

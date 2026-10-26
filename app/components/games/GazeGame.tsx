@@ -29,6 +29,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     buildGazeLevel,
@@ -95,7 +96,9 @@ export default function GazeGame({ childId, level, gender, childName, onComplete
     const guard = useInputGuard();
 
     // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju samo jednom, ovde
-    const [plan] = useState<GazeRound[]>(() => (isMonitor ? [] : buildGazeLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, childName })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<GazeRound[]>(() => (isMonitor ? [] : buildGazeLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, childName, random })));
     const [view, setView] = useState<GazeView>(() => ({ ...emptyGazeView(plan.length), ...(plan[0] ? roundFields(plan[0]) : {}) }));
     const viewRef = useRef(view);
     const finishedRef = useRef(false);

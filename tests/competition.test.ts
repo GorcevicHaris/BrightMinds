@@ -109,7 +109,7 @@ describe("reči: pobednik, nerešeno, pohvala za trud", () => {
         assert.equal(winnerTitle({ name: "Lejla", gender: "female" }), "Lejla je pobedila!");
         assert.equal(winnerTitle({ name: "Amar", gender: "male" }), "Amar je pobedio!");
         // Pol se ne zna (drug sa drugog uređaja): rečenica važi za oboje
-        assert.equal(winnerTitle({ name: "Haris" }), "Haris ima više zvezdica!");
+        assert.equal(winnerTitle({ name: "Haris" }), "Haris pobeđuje!");
         assert.equal(scoreLine([3, 4]), "⭐ 4 : 3");
     });
 
@@ -168,7 +168,7 @@ describe("kraj takmičenja", () => {
 
     it("loss (seen from my device): the friend wins, I am praised for effort", () => {
         const html = renderEnd([2, 5]);
-        assert.match(html, /Amar ima više zvezdica!/);
+        assert.match(html, /Amar pobeđuje!/);
         assert.match(html, /⭐ 5 : 2/);
         assert.match(html, /Lejla, bravo za trud — skupila si 2 zvezdice!/);
         assert.match(html, /Revanš/);
@@ -212,8 +212,8 @@ describe("ekran „VS”", () => {
     });
 
     it("lives in the game wrappers, so every game gets it", () => {
-        assert.match(read("app/dashboard/child/[id]/playRemote.tsx"), /<VsIntro players=\{\[remote\.me, remote\.session\.friend\]\}/);
-        assert.match(read("app/dashboard/child/[id]/playTogether.tsx"), /<VsIntro players=\{\[together\.host, together\.friend\]\}/);
+        assert.match(read("app/dashboard/child/[id]/playRemote.tsx"), /<VsIntro\s+players=\{\[remote\.me, remote\.session\.friend\]\}/);
+        assert.match(read("app/dashboard/child/[id]/playTogether.tsx"), /<VsIntro\s+players=\{\[together\.host, together\.friend\]\}/);
     });
 });
 

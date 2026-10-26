@@ -22,6 +22,8 @@
 
 import { GAMES, MAX_LEVEL, starsForGame, type GameId } from "./games";
 import { PIN_LENGTH, VISUAL_PIN_CATEGORIES } from "./visualPinData";
+import { parseDuelReport, type DuelOutcome, type DuelReport } from "./duelStakes";
+import { cleanSeed } from "./seededRandom";
 import { playModeOr, type PlayMode } from "./versus";
 
 /** Kod važi 10 minuta (detetu se vreme ne prikazuje; posle toga „Kod više ne važi”). */
@@ -82,6 +84,35 @@ export interface InviteAnswer extends InviteGuest {
     at: string;
 }
 
+/** Izveštaji oba uređaja o jednoj partiji dvoboja */
+export interface DuelReports {
+    host?: DuelReport;
+    guest?: DuelReport;
+}
+
+/** Odluka o partiji: ishod i koliko je poražen dao (null dok prenos nije upisan kod oba deteta) */
+export interface DuelSettled {
+    o: DuelOutcome;
+    amount: number | null;
+}
+
+/**
+ * Dvoboj u pozivu (posle „Prihvati”): zajedničko seme zadataka, ulog i izveštaji partija.
+ * `v` je brojač izmena: dva izveštaja u isto vreme ne mogu jedan drugom da obrišu upis.
+ */
+export interface InviteDuel {
+    seed: string;
+    /** Ulog u trenutku prihvatanja (manji od dva podešavanja; pri obračunu se proverava ponovo) */
+    stake: number;
+    v: number;
+    /** Ključ: „nivo-partija” (lib/duelStakes.ts → duelKey) */
+    reports: Record<string, DuelReports>;
+    settled: Record<string, DuelSettled>;
+}
+
+/** Koliko poslednjih partija se čuva u pozivu (starije su već obračunate) */
+export const DUEL_KEYS_KEPT = 8;
+
 /** Poziv u `children.settings.invite` domaćina. */
 export interface StoredInvite {
     /** Četiri sličice (kao tajni kod: po jedna iz svake grupe, spojene zarezom); null = iskorišćen */
@@ -102,6 +133,10 @@ export interface StoredInvite {
     request?: InviteRequest;
     /** Drug je rekao „Ne sada” */
     declined?: InviteAnswer;
+    /** ID druga koji je prihvatio (samo na serveru: po njemu drug javlja rezultat dvoboja) */
+    guestId?: number;
+    /** Seme zadataka i obračun dvoboja (posle „Prihvati”) */
+    duel?: InviteDuel;
 }
 
 const KEY_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
@@ -171,6 +206,40 @@ function cleanRequest(raw: unknown): InviteRequest | null {
     return { key: raw.key, guestId, ...person, via, at, ...(seenAt ? { seenAt } : {}) };
 }
 
+const DUEL_KEY_PATTERN = /^\d{1,2}-\d{1,4}$/;
+
+function lastKeys<T>(record: Record<string, T>): Record<string, T> {
+    return Object.fromEntries(Object.entries(record).slice(-DUEL_KEYS_KEPT));
+}
+
+/** Dvoboj iz sačuvanog poziva; neispravno → undefined (poziv bez dvoboja) */
+export function parseInviteDuel(raw: unknown): InviteDuel | undefined {
+    if (!isRecord(raw)) return undefined;
+    const seed = cleanSeed(raw.seed);
+    if (!seed) return undefined;
+    const stake = typeof raw.stake === "number" && Number.isInteger(raw.stake) && raw.stake >= 0 && raw.stake <= 5 ? raw.stake : 0;
+    const v = typeof raw.v === "number" && Number.isInteger(raw.v) && raw.v >= 0 ? raw.v : 0;
+    const reports: Record<string, DuelReports> = {};
+    if (isRecord(raw.reports)) {
+        for (const [key, value] of Object.entries(raw.reports)) {
+            if (!DUEL_KEY_PATTERN.test(key) || !isRecord(value)) continue;
+            const host = parseDuelReport(value.host, MAX_LEVEL) ?? undefined;
+            const guest = parseDuelReport(value.guest, MAX_LEVEL) ?? undefined;
+            if (host || guest) reports[key] = { ...(host ? { host } : {}), ...(guest ? { guest } : {}) };
+        }
+    }
+    const settled: Record<string, DuelSettled> = {};
+    if (isRecord(raw.settled)) {
+        for (const [key, value] of Object.entries(raw.settled)) {
+            if (!DUEL_KEY_PATTERN.test(key) || !isRecord(value)) continue;
+            const o = value.o === "host" || value.o === "guest" || value.o === "tie" ? value.o : null;
+            const amount = value.amount === null ? null : typeof value.amount === "number" && Number.isInteger(value.amount) && value.amount >= 0 && value.amount <= 50 ? value.amount : undefined;
+            if (o && amount !== undefined) settled[key] = { o, amount };
+        }
+    }
+    return { seed, stake, v, reports: lastKeys(reports), settled: lastKeys(settled) };
+}
+
 /** Sačuvan poziv iz podešavanja; sve neispravno → null (kao da poziva nema). */
 export function parseStoredInvite(raw: unknown): StoredInvite | null {
     if (!isRecord(raw)) return null;
@@ -190,6 +259,8 @@ export function parseStoredInvite(raw: unknown): StoredInvite | null {
     const declinedPerson = !guest ? cleanPerson(raw.declined) : null;
     const declinedAt = isRecord(raw.declined) ? isoOrNull(raw.declined.at) : null;
     const declined = declinedPerson && declinedAt ? { ...declinedPerson, at: declinedAt } : undefined;
+    const guestId = guest && typeof raw.guestId === "number" && Number.isSafeInteger(raw.guestId) && raw.guestId > 0 ? raw.guestId : undefined;
+    const duel = guest ? parseInviteDuel(raw.duel) : undefined;
     return {
         code,
         channelKey,
@@ -203,6 +274,8 @@ export function parseStoredInvite(raw: unknown): StoredInvite | null {
         ...(guest && joinedAt ? { joinedAt } : {}),
         ...(request ? { request } : {}),
         ...(declined ? { declined } : {}),
+        ...(guestId ? { guestId } : {}),
+        ...(duel ? { duel } : {}),
     };
 }
 
@@ -296,9 +369,11 @@ export interface RemoteState {
     correct: number;
     /** Da li je poslednji završeni nivo vodio dalje (sledeći nivo zajedno) */
     advance: boolean;
+    /** Dvoboj: vreme poslednjeg završenog nivoa u sekundama (bez pauza; razrešava nerešeno u trci) */
+    secs: number;
 }
 
-export const EMPTY_REMOTE_STATE: RemoteState = { phase: "lobby", done: 0, round: 0, total: 0, stars: 0, sessionStars: 0, correct: 0, advance: false };
+export const EMPTY_REMOTE_STATE: RemoteState = { phase: "lobby", done: 0, round: 0, total: 0, stars: 0, sessionStars: 0, correct: 0, advance: false, secs: 0 };
 
 function int(value: unknown, max: number): number {
     return typeof value === "number" && Number.isFinite(value) ? Math.min(Math.max(Math.round(value), 0), max) : 0;
@@ -319,6 +394,8 @@ export function parseRemoteState(raw: unknown): RemoteState | null {
         sessionStars: int(raw.sessionStars, 3000),
         correct: int(raw.correct, 100),
         advance: raw.advance === true,
+        // Stari klijenti ne šalju vreme: 0 = ne zna se (nerešen broj tačnih ostaje nerešen)
+        secs: int(raw.secs, 36_000),
     };
 }
 

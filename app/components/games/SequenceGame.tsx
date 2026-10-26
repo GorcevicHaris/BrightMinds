@@ -37,6 +37,7 @@ import {
     type FeedbackKind,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { buildSequenceLevel, getSequence, sequenceRule, type Sequence } from "@/app/components/games/data/sequences";
 import { StepArt } from "@/app/components/games/sequence/StepArt";
@@ -133,21 +134,21 @@ function emptyView(totalRounds: number): SequenceView {
 }
 
 /** Kartice za slaganje: koraci posle primera, izmešani */
-function scrambled(count: number, model: number): number[] {
+function scrambled(count: number, model: number, random: () => number): number[] {
     const ordered = Array.from({ length: count - model }, (_, i) => i + model);
     // Dve kartice smeju i redom (pola–pola); duži niz nikad nije već složen
-    if (ordered.length <= 2) return shuffle(ordered);
+    if (ordered.length <= 2) return shuffle(ordered, random);
     for (let attempt = 0; attempt < 10; attempt += 1) {
-        const mixed = shuffle(ordered);
+        const mixed = shuffle(ordered, random);
         if (mixed.some((value, i) => value !== ordered[i])) return mixed;
     }
     return [...ordered].reverse();
 }
 
 /** Polja novog niza */
-function roundStart(sequence: Sequence, model: number) {
+function roundStart(sequence: Sequence, model: number, random: () => number) {
     const given = Math.min(model, sequence.steps.length - 2);
-    return { sequenceId: sequence.id, order: scrambled(sequence.steps.length, given), placed: given, model: given };
+    return { sequenceId: sequence.id, order: scrambled(sequence.steps.length, given, random), placed: given, model: given };
 }
 
 function mergeMonitor(state: Partial<SequenceView> | null | undefined): SequenceView {
@@ -198,10 +199,12 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
     const female = isFemale(gender);
 
     // Najmlađi slažu najviše tri koraka (choiceLimit: 3), stariji četiri ili pet
-    const [plan] = useState<Sequence[]>(() => (isMonitor ? [] : buildSequenceLevel(level, { maxSteps: Math.max(2, settings.choiceLimit) })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<Sequence[]>(() => (isMonitor ? [] : buildSequenceLevel(level, { maxSteps: Math.max(2, settings.choiceLimit), random })));
     const [view, setView] = useState<SequenceView>(() => ({
         ...emptyView(plan.length),
-        ...(plan[0] ? roundStart(plan[0], rule.model ? 1 : 0) : {}),
+        ...(plan[0] ? roundStart(plan[0], rule.model ? 1 : 0, random) : {}),
     }));
     const viewRef = useRef(view);
     const finishedRef = useRef(false);
@@ -247,7 +250,7 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
         const sequence = plan[index];
         if (!sequence) return;
         guard.hold();
-        const fields = roundStart(sequence, rule.model ? 1 : 0);
+        const fields = roundStart(sequence, rule.model ? 1 : 0, random);
         commit(
             { ...viewRef.current, ...fields, round: index + 1, wrong: [], picked: null, feedback: null, hint: false, missed: false, helped: false, told: -1 },
             `Niz ${index + 1}: ${sequence.title}`

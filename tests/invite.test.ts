@@ -90,6 +90,7 @@ describe("poruke kanala", () => {
             sessionStars: 3000,
             correct: 0,
             advance: false,
+            secs: 0,
         });
         assert.equal(parseRemoteState({ phase: "hack" }), null);
         assert.equal(parseRemoteState("x"), null);

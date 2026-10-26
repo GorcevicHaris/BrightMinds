@@ -29,6 +29,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { DragDemo, DragGhost, useDragDrop } from "@/app/components/games/kit/useDragDrop";
 import {
@@ -118,7 +119,9 @@ export default function FamilyGame({ childId, level, gender, onComplete, isMonit
     const hintAfter = early ? 1 : settings.hintAfter;
 
     // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju samo jednom, ovde
-    const [plan] = useState<FamilyRound[]>(() => (isMonitor ? [] : buildFamilyLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<FamilyRound[]>(() => (isMonitor ? [] : buildFamilyLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, random })));
     const [view, setView] = useState<FamilyView>(() => ({ ...emptyFamilyView(plan.length), ...(plan[0] ? roundView(plan[0]) : {}) }));
     const viewRef = useRef(view);
     const finishedRef = useRef(false);

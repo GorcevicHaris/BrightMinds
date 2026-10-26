@@ -82,18 +82,25 @@ export interface VersusPlayer {
 
 export const TIE_TITLE = "Nerešeno — oboje ste super!";
 
-/** „Lejla je pobedila!” / „Amar je pobedio!”; bez pola: „Haris ima više zvezdica!” */
+/**
+ * „Lejla je pobedila!” / „Amar je pobedio!”; bez pola: „Haris pobeđuje!” (glagol bez roda; ne
+ * „ima više zvezdica”, jer isti broj zvezdica može razrešiti vreme ili udeo tačnih — lib/duelStakes.ts)
+ */
 export function winnerTitle(player: VersusPlayer): string {
     if (player.gender === "female") return `${player.name} je pobedila!`;
     if (player.gender === "male") return `${player.name} je pobedio!`;
-    return `${player.name} ima više zvezdica!`;
+    return `${player.name} pobeđuje!`;
 }
 
-/** Rezultat sa zvezdicom, prvo veći broj: „⭐ 4 : 3”. */
-export function scoreLine(scores: readonly [number, number]): string {
-    const high = Math.max(scores[0], scores[1]);
-    const low = Math.min(scores[0], scores[1]);
-    return `⭐ ${high} : ${low}`;
+/**
+ * Rezultat sa zvezdicom, prvo pobednik (bez pobednika: prvo veći broj): „⭐ 4 : 3”. Kad deca
+ * imaju različit broj zadataka, uz svaki broj ide i broj zadataka: „⭐ 3/4 : 4/6”.
+ */
+export function scoreLine(scores: readonly [number, number], winner?: 0 | 1 | null, totals?: readonly [number, number] | null): string {
+    const first = winner === 0 || winner === 1 ? winner : scores[0] >= scores[1] ? 0 : 1;
+    const second = first === 0 ? 1 : 0;
+    const part = (i: 0 | 1) => (totals && totals[0] !== totals[1] ? `${scores[i]}/${totals[i]}` : `${scores[i]}`);
+    return `⭐ ${part(first)} : ${part(second)}`;
 }
 
 /** Topla pohvala detetu koje ovaj put nije pobedilo: uvek trud, nikad „izgubio si”. */
@@ -118,12 +125,20 @@ export interface VersusTexts {
     praise: string;
 }
 
-/** Sve reči kraja takmičenja za dva igrača i njihove zvezdice. */
-export function versusTexts(players: readonly [VersusPlayer, VersusPlayer], scores: readonly [number, number]): VersusTexts {
-    const winner = versusWinner(scores);
+/**
+ * Sve reči kraja takmičenja za dva igrača i njihove zvezdice. `winner` dolazi spolja kad
+ * pobednika ne određuje samo broj zvezdica (udeo tačnih, vreme u trci — lib/duelStakes.ts).
+ */
+export function versusTexts(
+    players: readonly [VersusPlayer, VersusPlayer],
+    scores: readonly [number, number],
+    options: { winner?: 0 | 1 | null; totals?: readonly [number, number] | null } = {}
+): VersusTexts {
+    const winner = options.winner !== undefined ? options.winner : versusWinner(scores);
+    const score = scoreLine(scores, winner, options.totals);
     if (winner === null) {
-        return { winner, title: TIE_TITLE, score: scoreLine(scores), praise: `Bravo, ${players[0].name} i ${players[1].name}!` };
+        return { winner, title: TIE_TITLE, score, praise: `Bravo, ${players[0].name} i ${players[1].name}!` };
     }
     const other = winner === 0 ? 1 : 0;
-    return { winner, title: winnerTitle(players[winner]), score: scoreLine(scores), praise: effortPraise(players[other], scores[other]) };
+    return { winner, title: winnerTitle(players[winner]), score, praise: effortPraise(players[other], scores[other]) };
 }

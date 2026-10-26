@@ -36,6 +36,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     answerSentence,
@@ -156,12 +157,15 @@ export default function WordsGame({ childId, level, gender, onComplete, isMonito
     const early = rule.earlyHint && settings.hintAfter > 0;
     const hintAfter = early ? 1 : settings.hintAfter;
 
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
     const [plan] = useState<WordsRound[]>(() =>
         isMonitor
             ? []
             : buildWordsLevel(level, {
                   maxChoices: settings.choiceLimit,
                   maxRounds: settings.preset.maxRounds,
+                  random,
               })
     );
     const [view, setView] = useState<WordsView>(() => ({

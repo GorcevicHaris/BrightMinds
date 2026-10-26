@@ -33,6 +33,7 @@ import {
     type GameProps,
     useWaitHint,
     usePraise,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     getSituation,
@@ -89,14 +90,14 @@ const CELEBRATE_MS = 1000;
 const POINTS = [100, 60, 30];
 
 /** Situacije nivoa kao zadaci. `randomize` meša redosled ponuđenih izbora. */
-function buildRounds(level: number, choiceLimit: number, maxRounds: number, randomize: boolean): Round[] {
+function buildRounds(level: number, choiceLimit: number, maxRounds: number, random: (() => number) | null): Round[] {
     // Zastupanje sebe je drugo u nizu, pa ostaje u nivou i kad je on skraćen; tek onda se
     // redosled meša, da isti nivo ne počinje uvek istom situacijom
     const picked = getSituationsForLevel(level).slice(0, Math.max(maxRounds, 1));
-    return (randomize ? shuffle(picked) : picked)
+    return (random ? shuffle(picked, random) : picked)
         .map((situation) => {
             const offered = offeredOptions(situation, choiceLimit);
-            return { situationId: situation.id, order: randomize ? shuffle(offered) : offered };
+            return { situationId: situation.id, order: random ? shuffle(offered, random) : offered };
         });
 }
 
@@ -201,7 +202,9 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
     const { sayAll, cancel: cancelSpeechQueue } = useSayAll(say);
 
     // Komponenta se za svaki nivo pravi iznova, pa se izbori biraju i mešaju samo jednom, ovde.
-    const [rounds] = useState(() => buildRounds(level, settings.choiceLimit, settings.preset.maxRounds, !isMonitor));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [rounds] = useState(() => buildRounds(level, settings.choiceLimit, settings.preset.maxRounds, isMonitor ? null : random));
     const [view, setView] = useState(() => initialView(rounds));
     const viewRef = useRef(view);
     const praise = usePraise();
@@ -224,7 +227,7 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
 
     // Monitor se ne pravi iznova kad se nivo promeni, pa podrazumevano stanje prati `level`.
     // Dok stanje ne stigne, monitor vidi celu prvu situaciju (primer, pitanje i izbore).
-    const fallbackView = useMemo(() => ({ ...initialView(buildRounds(level, Infinity, Infinity, false)), optionsShown: true }), [level]);
+    const fallbackView = useMemo(() => ({ ...initialView(buildRounds(level, Infinity, Infinity, null)), optionsShown: true }), [level]);
     const shown = isMonitor ? mergeMonitorView(fallbackView, monitorState) : view;
     const situation = getSituation(shown.situationId) ?? getSituationsForLevel(level)[0];
     // Slika primera: dete iz primera u toj situaciji (emodži ostaje samo kao rezerva)

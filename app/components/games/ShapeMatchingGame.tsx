@@ -33,6 +33,7 @@ import {
     type GameProps,
     type TimerId,
     usePraise,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import type { ResolvedSettings } from "@/lib/childSettings";
 import { cn } from "@/lib/cn";
@@ -606,7 +607,9 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
     const demo = useDemo(!isMonitor);
 
     // Monitor nema podešavanja deteta: sve što crta stiže u `monitorState`
-    const [plan] = useState<RoundPlan[]>(() => (isMonitor ? [] : buildShapePlan(cfg, limitsFor(level, settings))));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<RoundPlan[]>(() => (isMonitor ? [] : buildShapePlan(cfg, limitsFor(level, settings), random)));
     const [view, setView] = useState<ShapesView>(() => ({ ...emptyView(cfg, plan.length || cfg.rounds), ...plan[0], preview: !isMonitor && cfg.preview }));
     /** Na ranim nivoima tačan oblik zasvetli već posle prve greške (osim kad je roditelj isključio pomoć) */
     const hintAfter = cfg.earlyHint && settings.hintAfter > 0 ? 1 : settings.hintAfter;

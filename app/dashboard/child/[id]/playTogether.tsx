@@ -14,8 +14,14 @@
 //
 // „Takmičenje” (izbor pre igre; „Zajedno” je podrazumevano — playVersus.tsx, lib/versus.ts):
 // smena je ista (jedan zadatak jedno, sledeći drugo, „Na redu je: Lejla”), ali svako skuplja
-// svoje zvezdice — tačan odgovor u svom redu je jedna zvezdica. Pre igre kratak ekran „VS”,
-// a na kraju oba drugara, nežno ime pobednika i pohvala za trud.
+// svoje zvezdice — tačan odgovor u svom redu je jedna zvezdica. Kako se dvoboj igra bira igra
+// (lib/versusFormat.ts) i to piše na kartici igre i ekranu „VS”: „ko je brži” — zadatak po
+// zadatak iz istog nivoa (isti zadatak redom za oba bi dao prednost detetu koje je gledalo
+// odgovor), a isti broj tačnih razrešava vreme koje je svako proveo u svom redu; „jedan po
+// jedan” — potez po potez na istoj tabli. Pre igre kratak ekran „VS”, a na kraju oba drugara,
+// ime pobednika i pohvala za trud. Kad je drug brat ili sestra sa istog roditeljskog naloga,
+// poražen daje pobedniku mali ulog (lib/duelStakes.ts; sesiju odobrava nalog roditelja,
+// app/api/children/[id]/duel); sa drugom bez naloga nema uloga — samo ime pobednika.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
@@ -42,9 +48,10 @@ import {
 import { GameEventTapProvider } from "@/lib/realtime";
 import type { GameUpdate } from "@/lib/types";
 import { genderOf, type Gender, type PlayMode } from "@/lib/versus";
+import { versusFormat, type VersusFormat } from "@/lib/versusFormat";
 import { chosenSkin, useCompanion } from "./companionState";
 // Takmičenje (playVersus.tsx): izbor načina igre, ekran „VS”, zvezdice i kraj sa pobednikom
-import { ModeChoice, ScorePill, VersusEnd, VsIntro } from "./playVersus";
+import { FormatChip, ModeChoice, ScorePill, StakeChip, VersusEnd, VsIntro, type DuelCoins } from "./playVersus";
 // Drug na drugom uređaju (playRemote.tsx): pozivanje i ulazak kod druga kreću iz istog prozora
 import { RemoteChoices, RemoteGuestEntry, RemoteHostPicker, useRemoteActive } from "./playRemote";
 
@@ -83,6 +90,12 @@ interface TogetherValue {
     versusReset: (turn: number) => void;
     versusPoint: (player: number, points: number) => void;
     versusTurn: (player: number) => void;
+    /** Vreme u redu (ms) igraču koji je upravo završio svoj red (razrešava isti rezultat u trci) */
+    versusTime: (player: number, ms: number) => void;
+    /** Dvoboj sa bratom ili sestrom: sesija sa servera (ulog); null = drug bez naloga ili još nema */
+    duel: LocalDuelSession | null;
+    /** Redni broj partije dvoboja u sesiji (po ključu partije; isti pri ponovnom crtanju) */
+    duelRound: (key: string) => number;
 }
 
 interface VersusTally {
@@ -90,9 +103,17 @@ interface VersusTally {
     scores: [number, number];
     /** Ko je sada na redu (0 = prijavljeno dete) */
     turn: number;
+    /** Vreme koje je svako proveo u svom redu (ms) */
+    ms: [number, number];
 }
 
-const EMPTY_TALLY: VersusTally = { scores: [0, 0], turn: 0 };
+/** Sesija dvoboja na istom uređaju (app/api/children/[id]/duel) */
+interface LocalDuelSession {
+    session: string;
+    stake: number;
+}
+
+const EMPTY_TALLY: VersusTally = { scores: [0, 0], turn: 0, ms: [0, 0] };
 
 const TogetherContext = createContext<TogetherValue | null>(null);
 
@@ -127,21 +148,66 @@ export function TogetherProvider({ childId, childName, gender, preview = false, 
         [childName, companion, gender, childId]
     );
 
+    const [duel, setDuel] = useState<LocalDuelSession | null>(null);
+    const duelRounds = useRef(new Map<string, number>());
     const choose = useCallback((next: TogetherPlayer) => {
         setFriend(next);
         setScores({});
+        setDuel(null);
+        duelRounds.current = new Map();
         // Svaka nova igra sa drugom počinje zajedno; takmičenje se bira posebno
         setMode("together");
     }, []);
     const stop = useCallback(() => {
         setFriend(null);
         setScores({});
+        setDuel(null);
+        duelRounds.current = new Map();
         setMode("together");
+    }, []);
+
+    // Takmičenje sa bratom ili sestrom (dete sa istog naloga): server otvara sesiju dvoboja i
+    // kaže ulog. Sa drugom upisanim na uređaju nema sesije — dvoboj je samo za ime pobednika.
+    const siblingId = friend?.childId !== undefined && friend.childId > 0 ? friend.childId : null;
+    useEffect(() => {
+        if (preview || mode !== "versus" || siblingId === null) return;
+        const controller = new AbortController();
+        fetch(`/api/children/${childId}/duel`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ friend: siblingId }),
+            signal: controller.signal,
+        })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (data && typeof data.session === "string") {
+                    setDuel({ session: data.session, stake: typeof data.stake === "number" ? Math.max(0, Math.round(data.stake)) : 0 });
+                }
+            })
+            .catch(() => {
+                /* mreža: dvoboj bez uloga */
+            });
+        return () => controller.abort();
+    }, [preview, mode, siblingId, childId]);
+    const duelRound = useCallback((key: string) => {
+        const known = duelRounds.current.get(key);
+        if (known !== undefined) return known;
+        const next = duelRounds.current.size;
+        duelRounds.current.set(key, next);
+        return next;
     }, []);
     const addLevel = useCallback((key: string, stars: number) => {
         setScores((prev) => (key in prev ? prev : { ...prev, [key]: stars }));
     }, []);
-    const versusReset = useCallback((turn: number) => setVersus({ scores: [0, 0], turn }), []);
+    const versusReset = useCallback((turn: number) => setVersus({ scores: [0, 0], turn, ms: [0, 0] }), []);
+    const versusTime = useCallback((player: number, ms: number) => {
+        if (ms <= 0 || (player !== 0 && player !== 1)) return;
+        setVersus((prev) => {
+            const next: [number, number] = [...prev.ms];
+            next[player] += ms;
+            return { ...prev, ms: next };
+        });
+    }, []);
     const versusPoint = useCallback((player: number, points: number) => {
         if (points <= 0 || (player !== 0 && player !== 1)) return;
         setVersus((prev) => {
@@ -173,8 +239,11 @@ export function TogetherProvider({ childId, childName, gender, preview = false, 
             versusReset,
             versusPoint,
             versusTurn,
+            versusTime,
+            duel: mode === "versus" ? duel : null,
+            duelRound,
         };
-    }, [childId, preview, host, friend, choose, stop, scores, addLevel, childGender, mode, versus, versusReset, versusPoint, versusTurn]);
+    }, [childId, preview, host, friend, choose, stop, scores, addLevel, childGender, mode, versus, versusReset, versusPoint, versusTurn, versusTime, duel, duelRound]);
 
     return <TogetherContext value={value}>{children}</TogetherContext>;
 }
@@ -450,6 +519,7 @@ export function TogetherGamePicker({ games, unlockedFor, pending = false, unavai
                         {host.name} {versus ? "VS" : "i"} {friend.name}
                     </p>
                     <p className="text-base font-semibold text-ink-soft">{versus ? "Igrate na smenu. Svako skuplja svoje zvezdice." : "Igrate na smenu. Izaberite igru."}</p>
+                    {versus && together.duel && <StakeChip stake={together.duel.stake} className="mt-1" />}
                 </div>
                 <Button variant="secondary" onClick={together.stop}>
                     <X className="h-5 w-5" aria-hidden="true" />
@@ -476,6 +546,8 @@ export function TogetherGamePicker({ games, unlockedFor, pending = false, unavai
                             >
                                 <span className="relative block aspect-[16/9] w-full overflow-hidden bg-brand-50">
                                     <Image src={game.image} alt="" fill sizes="(min-width: 1024px) 25vw, 50vw" className="object-cover" />
+                                    {/* Dvoboj: igra bira kako se igra („ko je brži” / „jedan po jedan”) */}
+                                    {versus && <FormatChip format={versusFormat(game.id)} className="absolute bottom-2 left-2 text-sm" />}
                                 </span>
                                 <span className="flex items-center gap-3 p-3 sm:p-4">
                                     <span className={cn("hidden h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-2xl sm:grid", game.accent.gradient)} aria-hidden="true">
@@ -551,13 +623,31 @@ export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
     const versusReset = together?.versusReset;
     const versusPoint = together?.versusPoint;
     const versusTurn = together?.versusTurn;
+    const versusTime = together?.versusTime;
     useEffect(() => {
         if (versus) versusReset?.(offset);
     }, [versus, versusReset, offset]);
+    // Vreme u redu: meri se od trenutka kad je igra na ekranu (posle ekrana „VS”) do smene
+    const turnStarted = useRef<number | null>(null);
+    useEffect(() => {
+        if (versus && !intro) turnStarted.current = Date.now();
+    }, [versus, intro]);
+    const closeTurn = useCallback(
+        (player: number) => {
+            const now = Date.now();
+            if (versusRef.current && turnStarted.current !== null) versusTime?.(player, now - turnStarted.current);
+            turnStarted.current = now;
+        },
+        [versusTime]
+    );
 
     const onUpdate = useCallback(
         (update: GameUpdate) => {
-            if (update.event === "completed") return;
+            // Kraj nivoa: poslednji red se završava ovde
+            if (update.event === "completed") {
+                closeTurn((turnRef.current + offset) % 2);
+                return;
+            }
             // Takmičenje: novi tačni odgovori pripadaju onome ko je bio na redu pre ovog poteza
             const correct = update.data?.correctCount;
             if (versusRef.current && typeof correct === "number" && Number.isFinite(correct) && correct > correctRef.current) {
@@ -566,12 +656,13 @@ export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
             }
             const index = turnIndexFor(gameId, update.data);
             if (index === null || index === turnRef.current) return;
+            closeTurn((turnRef.current + offset) % 2);
             turnRef.current = index;
             setTurn(index);
             setGuard(Date.now());
             if (versusRef.current) versusTurn?.((index + offset) % 2);
         },
-        [gameId, offset, versusPoint, versusTurn]
+        [gameId, offset, versusPoint, versusTurn, closeTurn]
     );
 
     useEffect(() => {
@@ -588,7 +679,13 @@ export function TurnTakingLayer({ gameId, children }: TurnLayerProps) {
     if (versus && intro) {
         return (
             <div className="relative flex flex-1 flex-col">
-                <VsIntro players={[together.host, together.friend]} gameTitle={getGame(gameId).title} onDone={() => setIntro(false)} />
+                <VsIntro
+                    players={[together.host, together.friend]}
+                    gameTitle={getGame(gameId).title}
+                    format={versusFormat(gameId)}
+                    stake={together.duel?.stake ?? 0}
+                    onDone={() => setIntro(false)}
+                />
             </div>
         );
     }
@@ -724,6 +821,8 @@ interface TogetherEndProps {
     stars: number;
     /** Tačni odgovori u nivou (takmičenje: ono što traka nije stigla da upiše ide onome ko je na redu) */
     correct?: number;
+    /** Broj ocenjenih zadataka u nivou (izveštaj o dvoboju) */
+    total?: number;
     level: number;
     advance: boolean;
     limitReached: boolean;
@@ -733,18 +832,83 @@ interface TogetherEndProps {
     onLeave: () => void;
 }
 
+/**
+ * Ulog posle partije na istom uređaju: kad je drug brat ili sestra (sesija sa servera), rezultat
+ * ide serveru jednom po partiji; server prenese ulog od poraženog pobedniku (lib/duelStakes.ts),
+ * pa se novčići deteta osveže. Bez sesije (drug bez naloga) — bez uloga.
+ */
+function useLocalSettlement(input: { key: string; level: number; format: VersusFormat; scores: [number, number]; secs: [number, number]; total: number } | null): DuelCoins | undefined {
+    const together = useTogether();
+    const refreshCoins = useCompanion()?.refresh;
+    const duel = together?.duel ?? null;
+    const childId = together?.childId ?? 0;
+    const duelRound = together?.duelRound;
+    const [result, setResult] = useState<{ key: string; coins: DuelCoins } | null>(null);
+    const inputRef = useRef(input);
+    useEffect(() => {
+        inputRef.current = input;
+    });
+    const key = input?.key ?? null;
+    const session = duel?.session ?? null;
+    const stake = duel?.stake ?? 0;
+    useEffect(() => {
+        const current = inputRef.current;
+        if (!key || !session || !current || !duelRound || stake <= 0) return;
+        let alive = true;
+        const { level, format, scores, secs, total } = current;
+        const tasks = Math.max(total, scores[0] + scores[1]);
+        fetch(`/api/children/${childId}/duel/result`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                session,
+                level,
+                round: duelRound(key),
+                format,
+                mine: { correct: scores[0], total: tasks, secs: secs[0] },
+                theirs: { correct: scores[1], total: tasks, secs: secs[1] },
+            }),
+        })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (!alive) return;
+                const amount = typeof data?.amount === "number" ? Math.max(0, Math.round(data.amount)) : 0;
+                setResult({ key, coins: data?.status === "settled" ? { state: "settled", amount } : { state: "failed", amount: 0 } });
+                if (data?.status === "settled" && amount > 0) refreshCoins?.();
+            })
+            .catch(() => {
+                if (alive) setResult({ key, coins: { state: "failed", amount: 0 } });
+            });
+        return () => {
+            alive = false;
+        };
+    }, [key, session, stake, childId, duelRound, refreshCoins]);
+    if (!input) return undefined;
+    if (!duel) return { state: "off", amount: 0 };
+    if (stake <= 0) return { state: "off", amount: 0 };
+    return result?.key === input.key ? result.coins : { state: "pending", amount: 0 };
+}
+
 /** Da li se kraj nivoa u ovoj igri prikazuje kao zajednička pohvala */
 export function useTogetherEnd(gameId: GameId | null | undefined): boolean {
     const together = useTogether();
     return Boolean(together?.friend) && isTogetherGame(gameId);
 }
 
-export function TogetherEnd({ playKey, stars, correct = 0, level, advance, limitReached, saved, onNext, onRetry, onLeave }: TogetherEndProps) {
+export function TogetherEnd({ gameId, playKey, stars, correct = 0, total = 0, level, advance, limitReached, saved, onNext, onRetry, onLeave }: TogetherEndProps) {
     const together = useTogether();
     const addLevel = together?.addLevel;
     useEffect(() => {
         addLevel?.(playKey, stars);
     }, [addLevel, playKey, stars]);
+    // Takmičenje: zvezdice svakog igrača (ono što traka nije stigla da upiše ide onome ko je na redu)
+    const versusScores: [number, number] = together ? [...together.versus.scores] : [0, 0];
+    if (together) versusScores[together.versus.turn === 1 ? 1 : 0] += Math.max(0, correct - versusScores[0] - versusScores[1]);
+    const format = versusFormat(gameId);
+    const secs: [number, number] = together ? [Math.round(together.versus.ms[0] / 1000), Math.round(together.versus.ms[1] / 1000)] : [0, 0];
+    const coins = useLocalSettlement(
+        together?.mode === "versus" && together.friend ? { key: playKey, level, format, scores: versusScores, secs, total } : null
+    );
 
     const panelRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -754,22 +918,31 @@ export function TogetherEnd({ playKey, stars, correct = 0, level, advance, limit
     if (!together?.friend) return null;
     const { host, friend } = together;
 
-    // Takmičenje: oba drugara sa svojim zvezdicama, pobednik i pohvala za trud (playVersus.tsx)
+    // Takmičenje: oba drugara sa svojim zvezdicama, pobednik, ulog i pohvala za trud (playVersus.tsx)
     if (together.mode === "versus") {
-        const scores: [number, number] = [...together.versus.scores];
-        const missing = Math.max(0, correct - scores[0] - scores[1]);
-        scores[together.versus.turn === 1 ? 1 : 0] += missing;
+        const stake = together.duel?.stake ?? 0;
         return (
             <VersusEnd
                 seats={[
-                    { player: host, gender: together.gender, score: scores[0], badge: <CoinsBadge coins={stars * COINS_PER_STAR} /> },
-                    { player: friend, score: scores[1], badge: <PraiseBadge /> },
+                    { player: host, gender: together.gender, score: versusScores[0], secs: format === "race" ? secs[0] : 0, badge: <CoinsBadge coins={stars * COINS_PER_STAR} /> },
+                    { player: friend, score: versusScores[1], secs: format === "race" ? secs[1] : 0, badge: <PraiseBadge /> },
                 ]}
+                format={format}
+                coins={coins}
                 limitReached={limitReached}
                 saved={saved}
                 onRematch={onRetry}
                 onLeave={onLeave}
-                adultNote={<>takmičenje je samo za zabavu. Novčići i nivo idu detetu koje je prijavljeno ({host.name}); drug dobija pohvalu.</>}
+                adultNote={
+                    together.duel ? (
+                        <>
+                            novčići i nivo za igru idu detetu koje je prijavljeno ({host.name}).
+                            {stake > 0 ? ` Poraženi daje do ${stake} novčića, nikad više nego što ima (ulog: podešavanja deteta).` : " Ulog je 0: samo ime pobednika."}
+                        </>
+                    ) : (
+                        <>takmičenje je samo za zabavu. Novčići i nivo idu detetu koje je prijavljeno ({host.name}); drug dobija pohvalu.</>
+                    )
+                }
             />
         );
     }

@@ -67,6 +67,12 @@ export interface ChildSettings {
     openAllMaps: boolean;
     /** Blag dnevni podsetnik na početnom ekranu (bez obaveštenja i mejlova) */
     reminder: ReminderSettings;
+    /**
+     * „Ulog u dvoboju”: koliko novčića dete daje pobedniku kad izgubi dvoboj sa drugom
+     * (lib/duelStakes.ts). 0 = bez prenosa, samo ime pobednika. Ujedno je i gornja granica
+     * onoga što dete može da izgubi (sa drugom iz druge porodice važi manji od dva uloga).
+     */
+    duelStake: 0 | 3 | 5;
 }
 
 /** Dani u nedelji kao u ISO kalendaru: 1 = ponedeljak … 7 = nedelja */
@@ -168,6 +174,8 @@ export function defaultSettings(band: AgeBand): ChildSettings {
         unlockInOrder: false,
         openAllMaps: false,
         reminder: { ...DEFAULT_REMINDER, days: [...DEFAULT_REMINDER.days] },
+        // Mali ulog (lib/duelStakes.ts: DUEL_STAKE); roditelj bira 0, 3 ili 5
+        duelStake: 3,
     };
 }
 
@@ -249,6 +257,7 @@ export function sanitizeSettings(raw: unknown, ageBand: AgeBand): ChildSettings 
         unlockInOrder: bool(source.unlockInOrder, base.unlockInOrder),
         openAllMaps: bool(source.openAllMaps, base.openAllMaps),
         reminder: sanitizeReminder(source.reminder),
+        duelStake: pick<ChildSettings["duelStake"]>(source.duelStake, [0, 3, 5], base.duelStake),
     };
 }
 

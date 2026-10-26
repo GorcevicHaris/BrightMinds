@@ -34,6 +34,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { DragDemo } from "@/app/components/games/kit/DragDemo";
 import { useDragSnap, type DragSnap } from "@/app/components/games/kit/useDragSnap";
@@ -134,7 +135,9 @@ export default function MarketGame({ childId, level, gender, onComplete, isMonit
     const early = rule.earlyHint && settings.hintAfter > 0;
     const hintAfter = early ? 1 : settings.hintAfter;
 
-    const [plan] = useState<MarketRound[]>(() => (isMonitor ? [] : buildMarketLevel(level, { maxRounds: settings.preset.maxRounds, maxChoices: settings.choiceLimit })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<MarketRound[]>(() => (isMonitor ? [] : buildMarketLevel(level, { maxRounds: settings.preset.maxRounds, maxChoices: settings.choiceLimit, random })));
     const [view, setView] = useState<MarketView>(() => ({ ...emptyMarketView(plan.length), ...(plan[0] ? marketRoundView(plan[0]) : {}) }));
     const viewRef = useRef(view);
     const finishedRef = useRef(false);

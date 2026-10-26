@@ -29,6 +29,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     answerFor,
@@ -111,7 +112,9 @@ export default function NumbersGame({ childId, level, gender, onComplete, isMoni
     const praise = usePraise();
     const guard = useInputGuard();
 
-    const [plan] = useState<NumberTask[]>(() => (isMonitor ? [] : buildNumbersLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<NumberTask[]>(() => (isMonitor ? [] : buildNumbersLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, random })));
     const [view, setView] = useState<NumbersView>(() => ({ ...emptyNumbersView(plan.length), task: plan[0] ?? null }));
     const viewRef = useRef(view);
     const finishedRef = useRef(false);

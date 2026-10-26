@@ -33,6 +33,7 @@ import {
     type ChoiceState,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { DragDemo } from "@/app/components/games/kit/DragDemo";
 import { useDragSnap, type DragSnap } from "@/app/components/games/kit/useDragSnap";
@@ -120,8 +121,10 @@ export default function WeatherGame({ childId, level, gender, onComplete, isMoni
     const hintAfter = early ? 1 : settings.hintAfter;
 
     // Komponenta se za svaki nivo pravi iznova, pa se plan pravi samo jednom, ovde
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
     const [plan] = useState<WeatherRound[]>(() =>
-        isMonitor ? [] : buildWeatherLevel(level, { maxRounds: settings.preset.maxRounds, maxChoices: settings.choiceLimit })
+        isMonitor ? [] : buildWeatherLevel(level, { maxRounds: settings.preset.maxRounds, maxChoices: settings.choiceLimit, random })
     );
     const [view, setView] = useState<WeatherView>(() => ({ ...emptyWeatherView(plan.length), ...(plan[0] ? weatherRoundView(plan[0]) : {}) }));
     const viewRef = useRef(view);

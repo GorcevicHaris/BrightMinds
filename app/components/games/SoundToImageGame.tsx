@@ -24,6 +24,7 @@ import {
     WaitingNote,
     useWaitHint,
     usePraise,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import type { BaseView, ChoiceState, FeedbackKind, GameProps, TimerId } from "@/app/components/games/kit";
 import { OwlPicture, WindPicture, type SoundPicture } from "./SoundPictures";
@@ -224,6 +225,8 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
     const { after, cancel } = useTimers();
 
     // Monitor ne poznaje podešavanja deteta: crta isključivo ono što stigne u `monitorState`.
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
     const [rounds] = useState<Round[]>(() =>
         isMonitor
             ? []
@@ -231,7 +234,7 @@ export default function SoundToImageGame({ childId, level, gender, onComplete, i
                   loudSounds: settings.loudSounds,
                   maxRounds: settings.preset.maxRounds,
                   maxOptions: isNarrowScreen() ? Math.min(settings.choiceLimit, NARROW_MAX_OPTIONS) : settings.choiceLimit,
-              })
+              }, random)
     );
     const [view, setView] = useState<SoundToImageView>(() => ({
         ...EMPTY_VIEW,

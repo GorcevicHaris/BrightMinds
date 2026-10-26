@@ -32,3 +32,4 @@ export { useCompanionHype, HypeBubble, HypePlus, type CompanionHype } from "./Co
 export { GamePauseContext, useGamePaused } from "./pause";
 export { boxOf, flyIn, FLY_IN_MS, type Box } from "./flyIn";
 export { useLandscape, useShortScreen } from "./useLandscape";
+export { GameRandomContext, useGameRandom } from "./random";
