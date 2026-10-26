@@ -19,7 +19,8 @@ import type { GameId } from "./games";
  * Bez smene ostaju „Bojanka” (slobodno stvaranje, nema jasnog kraja poteza), „Socijalne priče”
  * (priča se sluša u komadu; koraci bez izbora bi samo prebacivali red) i „Slova” i „Brojevi”
  * (tabla za pisanje prstom je stalne visine, pa uz traku na uspravnom telefonu ne staje).
- * Sa drugog uređaja (playRemote.tsx) igraju se sve igre: tamo svako igra na svom ekranu.
+ * Sa drugog uređaja (playRemote.tsx) igraju se sve igre: na zajedničkoj tabli, na smenu
+ * (playShared.tsx, lib/sharedPlay.ts), a pisanje prstom svako na svom ekranu.
  */
 export const TOGETHER_GAMES: readonly GameId[] = [
     "shapes",

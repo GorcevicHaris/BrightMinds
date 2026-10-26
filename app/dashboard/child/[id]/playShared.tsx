@@ -703,7 +703,7 @@ function HostLeft({ onAlone }: { onAlone: () => void }) {
         <div className="absolute inset-0 z-30 grid place-items-center rounded-[1.75rem] bg-canvas/80 p-4 backdrop-blur-sm" role="status">
             <div className="w-full max-w-sm animate-fade-up rounded-[1.75rem] bg-surface p-6 text-center shadow-pop">
                 <p className="font-display text-2xl font-extrabold text-ink">Igra sa drugom je gotova</p>
-                <p className="mt-1 text-lg font-bold text-ink-soft">Bravo za igru zajedno! Možeš da nastaviš ovaj nivo.</p>
+                <p className="mt-1 text-lg font-bold text-ink-soft">Bravo za igru zajedno! Možeš da igraš dalje.</p>
                 <Button chunky size="xl" variant="success" block className="mt-5" onClick={onAlone}>
                     Igraj dalje
                 </Button>

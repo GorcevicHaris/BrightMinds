@@ -9,8 +9,10 @@
 // domaćin mirno bira dalje. Deca koja su jednom igrala zajedno pamte se kao „Drugovi”
 // (lib/playFriends.ts): sledeći put domaćin bira druga sa spiska, bez koda, a kartica poziva
 // iskoči na otvorenoj stranici druga (sanduče, lib/inviteInbox.ts).
-// Zatim oboje igraju istu igru i isti nivo u isto vreme, svako na svom uređaju — rezultati
-// idu svakom u njegov profil. Iznad igre je traka sa drugom: njegov drugar, ime, zadatak i
+// Zatim oboje igraju JEDNU igru na zajedničkoj tabli (playShared.tsx, lib/sharedPlay.ts): domaćin
+// pokreće pravu igru, gost vidi istu tablu, i smenjuju se — „Na redu je: Lejla”, a „prst” pokazuje
+// gde je drugo dete dodirnulo. Rezultati idu svakom u njegov profil. Igre bez zajedničke table
+// (pisanje prstom) svako igra na svom uređaju, uz traku sa drugom: njegov drugar, ime, zadatak i
 // zvezdice; kad drug tačno odgovori, njegov drugar kratko zatapše. Sve je zajedničko
 // („Zajedno: 7 ⭐”, „Bravo, Lejla i Amar!”) — nikad poređenje ko je bolji.
 //
@@ -21,7 +23,9 @@
 // seme, a igra iz njega bira zadatke (kit/random.ts). Pre svakog nivoa kratak ekran „VS”, u
 // igri traka sa oba drugara, zvezdicama i napretkom uživo, a na kraju ime pobednika: oba
 // uređaja javljaju rezultat serveru (/invite/result), koji — kad se slože — prenosi mali ulog
-// od poraženog pobedniku (lib/duelStakes.ts). Svako i dalje dobija svoje novčiće i nivo.
+// od poraženog pobedniku (lib/duelStakes.ts). U „jedan po jedan” deca igraju na zajedničkoj
+// tabli, a rezultat su tačni potezi svakog deteta (broji ih domaćin, pa oba uređaja javljaju
+// isto). Svako i dalje dobija svoje novčiće i nivo.
 //
 // Mirno i predvidljivo: koraci su slike, vreme koda se detetu ne prikazuje (posle roka samo
 // „Kod više ne važi, napravi novi”), „Manje animacija” gasi pokrete, a kad drug ode piše
@@ -29,7 +33,7 @@
 //
 // Igre se ne menjaju: stanje se čita iz poruka koje igra ionako šalje (GameEventTapProvider).
 // Server (app/api/children/[id]/invite) daje kanal i ime i drugara druga; preko kanala
-// (lib/inviteChannel.ts) idu samo brojevi.
+// (lib/inviteChannel.ts) idu brojevi, snimci zajedničke table i ključevi dodira.
 
 import { createContext, isValidElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
