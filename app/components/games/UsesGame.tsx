@@ -30,6 +30,7 @@ import {
     type FeedbackKind,
     type GameProps,
     type TimerId,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { buildUsesLevel, emptyUsesView, getUseItem, itIs, mergeUsesMonitor, type UseItem, type UsesRound, type UsesView } from "@/app/components/games/data/usesItems";
 import { usesScene } from "@/app/components/games/data/usesScenes";
@@ -66,7 +67,9 @@ export default function UsesGame({ childId, level, gender, onComplete, isMonitor
     const guard = useInputGuard();
 
     // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju samo jednom, ovde
-    const [plan] = useState<UsesRound[]>(() => (isMonitor ? [] : buildUsesLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds })));
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
+    const [plan] = useState<UsesRound[]>(() => (isMonitor ? [] : buildUsesLevel(level, { maxChoices: settings.choiceLimit, maxRounds: settings.preset.maxRounds, random })));
     const [view, setView] = useState<UsesView>(() => ({
         ...emptyUsesView(plan.length),
         itemId: plan[0]?.itemId ?? "",

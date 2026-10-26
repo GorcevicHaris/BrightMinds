@@ -2,10 +2,12 @@
 // Pratilac deteta (lik koji mu čita i raduje se sa njim) i novčići za odeću pratioca.
 //
 //  • Dete bira pratioca: učiteljicu, učitelja ili životinju (mačka, pas, zeka, meda).
-//  • Novčići su zarađene zvezdice: svaka zvezdica u igri donosi dva novčića. Dete novčiće ne
-//    može da izgubi — samo da ih potroši na odeću (šešir, naočare, odelo…). Nema nasumičnih
-//    nagrada ni „kutija iznenađenja”: svaki predmet ima stalnu cenu i dete zna šta dobija.
-//    (Sistem žetona — token economy — u ABA terapiji je pozitivno potkrepljenje bez kazni.)
+//  • Novčići su zarađene zvezdice: svaka zvezdica u igri donosi dva novčića. Dete novčiće troši
+//    na odeću (šešir, naočare, odelo…). Nema nasumičnih nagrada ni „kutija iznenađenja”: svaki
+//    predmet ima stalnu cenu i dete zna šta dobija. (Sistem žetona — token economy — u ABA
+//    terapiji je pozitivno potkrepljenje.) Jedini izuzetak je dvoboj sa drugom (lib/duelStakes.ts):
+//    ko izgubi, da pobedniku mali ulog (podrazumevano 3 novčića, roditelj bira 0, 3 ili 5) —
+//    nikad više nego što ima. Dobijeni novčići su `bonus`, a dati se dodaju na `spent`.
 //  • Kompleti su gotovi izgledi (npr. gusar: šešir, odelo, papagaj). Komplet se kupuje odjednom
 //    po zbiru cena predmeta koji detetu još nedostaju — bez popusta, cena je uvek predvidiva.
 //  • Izgled drugara (skins.ts): svaki drugar pamti svoju boju. Izgled čoveka (koža, kosa,
@@ -78,10 +80,40 @@ export interface CompanionState {
     skin?: Partial<Record<CompanionKindId, string>>;
     /** Kupljeni posebni izgledi, kao `<drugar>:<izgled>`; dok ništa nije kupljeno — nema ključa */
     skins?: string[];
-    /** Ukupno potrošeni novčići */
+    /** Ukupno potrošeni novčići (i novčići dati pobedniku u dvoboju) */
     spent: number;
+    /** Novčići dobijeni u dvobojima (lib/duelStakes.ts); dok ih nema — nema ključa */
+    bonus?: number;
+    /** Poslednji obračunati dvoboji (`id` partije, `c` = dobijeno + / dato −): isti dvoboj se ne obračunava dvaput */
+    duels?: DuelLedgerEntry[];
     /** Brojač izmena: upis uspeva samo ako se stanje u međuvremenu nije promenilo */
     v: number;
+}
+
+/** Jedan obračunat dvoboj u stanju deteta */
+export interface DuelLedgerEntry {
+    id: string;
+    c: number;
+}
+
+/** Koliko poslednjih dvoboja se pamti (za proveru „već obračunato”) */
+export const DUEL_LEDGER_MAX = 30;
+const DUEL_ID_PATTERN = /^[A-Za-z0-9:_-]{1,120}$/;
+/** Najviše novčića u jednom dvoboju (ulog je 0, 3 ili 5) */
+const DUEL_ENTRY_MAX = 50;
+
+/** Spisak obračunatih dvoboja iz sačuvanih podataka: samo ispravni, bez ponavljanja, najviše DUEL_LEDGER_MAX poslednjih */
+export function sanitizeDuelLedger(raw: unknown): DuelLedgerEntry[] {
+    if (!Array.isArray(raw)) return [];
+    const seen = new Set<string>();
+    const list: DuelLedgerEntry[] = [];
+    for (const item of raw) {
+        if (!isRecord(item) || typeof item.id !== "string" || !DUEL_ID_PATTERN.test(item.id) || seen.has(item.id)) continue;
+        if (typeof item.c !== "number" || !Number.isInteger(item.c) || Math.abs(item.c) > DUEL_ENTRY_MAX) continue;
+        seen.add(item.id);
+        list.push({ id: item.id, c: item.c });
+    }
+    return list.slice(-DUEL_LEDGER_MAX);
 }
 
 /** Ono što modul treba da zna o katalogu (dolazi iz app/components/avatar) */
@@ -199,6 +231,11 @@ export function sanitizeCompanion(raw: unknown, gender: string | null | undefine
     const spent = typeof raw.spent === "number" && Number.isFinite(raw.spent) && raw.spent > 0 ? Math.floor(raw.spent) : 0;
     const v = typeof raw.v === "number" && Number.isInteger(raw.v) && raw.v >= 0 ? raw.v : 0;
     const state: CompanionState = { kind: catalog.isKind(raw.kind) ? (raw.kind as string) : base.kind, owned, wear, spent, v };
+    // Dvoboj: dobijeni novčići i obračunati dvoboji (stari podaci ih nemaju — ostaju bez ključa)
+    const bonus = typeof raw.bonus === "number" && Number.isFinite(raw.bonus) && raw.bonus > 0 ? Math.floor(raw.bonus) : 0;
+    if (bonus > 0) state.bonus = bonus;
+    const duels = sanitizeDuelLedger(raw.duels);
+    if (duels.length > 0) state.duels = duels;
     // Kupljeni izgledi: samo poznati izgledi koji imaju cenu (besplatni se ne „kupuju”)
     const skins = Array.isArray(raw.skins)
         ? Array.from(
@@ -228,10 +265,18 @@ export function sanitizeCompanion(raw: unknown, gender: string | null | undefine
     return state;
 }
 
-/** Novčići na raspolaganju: zarađene zvezdice minus potrošeno (nikad ispod nule) */
-export function coinsAvailable(experiencePoints: number | null | undefined, spent: number): number {
+/**
+ * Novčići na raspolaganju: zarađene zvezdice plus dobijeno u dvobojima, minus potrošeno i dato
+ * (nikad ispod nule)
+ */
+export function coinsAvailable(experiencePoints: number | null | undefined, spent: number, bonus: number = 0): number {
     const earned = Math.floor(Math.max(0, experiencePoints ?? 0) / POINTS_PER_STAR) * COINS_PER_STAR;
-    return Math.max(0, earned - Math.max(0, spent));
+    return Math.max(0, earned + Math.max(0, bonus) - Math.max(0, spent));
+}
+
+/** Novčići na raspolaganju za sačuvano stanje deteta */
+export function coinsOf(state: Pick<CompanionState, "spent" | "bonus">, experiencePoints: number | null | undefined): number {
+    return coinsAvailable(experiencePoints, state.spent, state.bonus ?? 0);
 }
 
 export type CompanionAction =
@@ -271,7 +316,7 @@ export function applyCompanionAction(
             const item = catalog.item(action.item);
             if (!item) return { ok: false, reason: "unknown" };
             if (state.owned.includes(action.item)) return { ok: false, reason: "owned" };
-            if (coinsAvailable(experiencePoints, state.spent) < item.price) return { ok: false, reason: "coins" };
+            if (coinsOf(state, experiencePoints) < item.price) return { ok: false, reason: "coins" };
             // Kupljen predmet pratilac odmah obuče — dete odmah vidi šta je dobilo
             const bought: CompanionState = { ...next, owned: [...next.owned, action.item], spent: state.spent + item.price, wear: { ...next.wear, [item.slot]: action.item } };
             // Cilj je ostvaren (i komplet kome je ovo bio poslednji predmet)
@@ -285,7 +330,7 @@ export function applyCompanionAction(
             if (!missing || !set) return { ok: false, reason: "unknown" };
             if (missing.items.length === 0) return { ok: false, reason: "owned" };
             // Sve ili ništa: bez dovoljno novčića za ceo ostatak ne kupuje se ni deo
-            if (coinsAvailable(experiencePoints, state.spent) < missing.price) return { ok: false, reason: "coins" };
+            if (coinsOf(state, experiencePoints) < missing.price) return { ok: false, reason: "coins" };
             // Pratilac odmah obuče ceo komplet — tačno kao na sličici kompleta
             const bought: CompanionState = { ...next, owned: [...next.owned, ...missing.items], spent: state.spent + missing.price, wear: { ...set.items } };
             if (bought.goal && !isOpenGoal(bought.goal, bought.owned, catalog, skins)) delete bought.goal;
@@ -353,7 +398,7 @@ export function applyCompanionAction(
             // Besplatan izgled se ne kupuje (već je detetov); kupljen se ne plaća dvaput
             const key = skinKey(action.kind, action.skin);
             if (price === 0 || skins.includes(key)) return { ok: false, reason: "owned" };
-            if (coinsAvailable(experiencePoints, state.spent) < price) return { ok: false, reason: "coins" };
+            if (coinsOf(state, experiencePoints) < price) return { ok: false, reason: "coins" };
             const bought: CompanionState = { ...next, skins: [...skins, key], spent: state.spent + price, skin: { ...state.skin, [action.kind as CompanionKindId]: action.skin } };
             if (bought.goal && !isOpenGoal(bought.goal, bought.owned, catalog, bought.skins)) delete bought.goal;
             return { ok: true, state: bought };

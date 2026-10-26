@@ -2,7 +2,7 @@
 // GET /api/children/[id]/companion i stranica deteta (odmah uz stranicu, da se na ekranu
 // nikad ne pojavi podrazumevani drugar pre kupljenog).
 import { COMPANION_CATALOG } from "@/app/components/avatar3d/manifest";
-import { coinsAvailable, sanitizeCompanion, type CompanionState } from "./companion";
+import { coinsOf, sanitizeCompanion, type CompanionState } from "./companion";
 import { isRecord } from "./validation";
 
 export interface CompanionPayload {
@@ -10,11 +10,11 @@ export interface CompanionPayload {
     coins: number;
 }
 
-/** Sačuvano stanje drugara → odgovor za ekran deteta (novčići = zarađeni minus potrošeni) */
+/** Sačuvano stanje drugara → odgovor za ekran deteta (novčići = zarađeni i dobijeni u dvoboju, minus potrošeni i dati) */
 export function companionBody(state: CompanionState, experiencePoints: number | null): CompanionPayload {
     return {
         companion: { kind: state.kind, owned: state.owned, wear: state.wear, goal: state.goal ?? null, skin: state.skin ?? {}, skins: state.skins ?? [] },
-        coins: coinsAvailable(experiencePoints, state.spent),
+        coins: coinsOf(state, experiencePoints),
     };
 }
 

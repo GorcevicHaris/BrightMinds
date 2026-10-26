@@ -30,6 +30,7 @@ import {
     joinedAnswer,
     loadInviteRow,
     newChannelKey,
+    newDuel,
     rememberPair,
     requestCard,
     updateInvite,
@@ -103,11 +104,12 @@ export async function POST(request: Request, { params }: RouteContext) {
 
         // Stari put: jednokratno, kod se briše istim upisom kojim se beleži drug (samo ako je i dalje isti)
         const joinedAt = new Date(now).toISOString();
-        const result = await updateInvite(host.row.id, (_row, current) => {
+        const result = await updateInvite(host.row.id, (row, current) => {
             if (!current || current.channelKey !== host.invite.channelKey || current.code !== code || inviteStatus(current, now) !== "waiting") {
                 throw new HttpError(404, INVITE_GONE);
             }
-            return { ...current, code: null, guest, joinedAt };
+            const duel = current.mode === "versus" ? { duel: newDuel(row, guestRow) } : {};
+            return { ...current, code: null, guest, joinedAt, guestId, ...duel };
         });
         const joined = result.invite;
         if (!joined) throw new HttpError(404, INVITE_GONE);

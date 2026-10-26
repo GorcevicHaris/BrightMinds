@@ -10,9 +10,10 @@ import { randomBytes, randomInt } from "node:crypto";
 import { COMPANION_CATALOG } from "@/app/components/avatar3d/manifest";
 import { resolveSettings } from "@/lib/childSettings";
 import { sanitizeCompanion } from "@/lib/companion";
+import { duelStakeFor } from "@/lib/duelStakes";
 import { isGameAvailable } from "@/lib/gameAccess";
 import type { GameId } from "@/lib/games";
-import { firstNameOnly, inviteStatus, parseStoredInvite, randomInviteCode, type InviteCompanion, type InviteRequest, type StoredInvite } from "@/lib/invite";
+import { firstNameOnly, inviteStatus, parseStoredInvite, randomInviteCode, type InviteCompanion, type InviteDuel, type InviteRequest, type StoredInvite } from "@/lib/invite";
 import { parsePlayFriends, rememberPlayFriend, type PlayFriend, type PlayFriends } from "@/lib/playFriends";
 import type { RateLimitRule } from "@/lib/rateLimit";
 import { friendKeyFor, inviteChannelFor } from "@/lib/realtimeTopic";
@@ -92,10 +93,11 @@ export function newChannelKey(): string {
 
 /**
  * Upisuje nova podešavanja deteta samo ako se u bazi od čitanja reda `row` nisu promenili
- * poziv (ključ kanala, kod i zahtev), brojač izmena drugara i brojač izmena spiska drugova —
- * dva istovremena upisa ne mogu jedan drugom da obrišu poziv, kupljenu odeću ili druga.
+ * poziv (ključ kanala, kod, zahtev i brojač izmena dvoboja), brojač izmena drugara i brojač
+ * izmena spiska drugova — dva istovremena upisa ne mogu jedan drugom da obrišu poziv, kupljenu
+ * odeću, druga ili izveštaj dvoboja.
  */
-async function guardedWrite(childId: number, row: InviteRow, nextSettings: Record<string, unknown>): Promise<boolean> {
+export async function guardedWrite(childId: number, row: InviteRow, nextSettings: Record<string, unknown>): Promise<boolean> {
     const settings = settingsOf(row);
     let update = supabaseAdmin.from("children").update({ settings: nextSettings }).eq("id", childId);
     const rawInvite = settings.invite;
@@ -104,6 +106,7 @@ async function guardedWrite(childId: number, row: InviteRow, nextSettings: Recor
         update = update.eq("settings->invite->>channelKey", prev.channelKey);
         update = prev.code === null ? update.is("settings->invite->>code", null) : update.eq("settings->invite->>code", prev.code);
         update = prev.request ? update.eq("settings->invite->request->>key", prev.request.key) : update.is("settings->invite->request", null);
+        update = prev.duel ? update.eq("settings->invite->duel->>v", String(prev.duel.v)) : update.is("settings->invite->duel", null);
     } else if (rawInvite === undefined || rawInvite === null) {
         update = update.is("settings->invite", null);
     } else if (isRecord(rawInvite) && typeof rawInvite.channelKey === "string") {
@@ -116,6 +119,10 @@ async function guardedWrite(childId: number, row: InviteRow, nextSettings: Recor
     const friends = settings.playFriends;
     if (isRecord(friends) && typeof friends.v === "number") update = update.eq("settings->playFriends->>v", String(friends.v));
     else if (friends === undefined) update = update.is("settings->playFriends", null);
+    // Dvoboj na istom uređaju (app/api/_lib/duels.ts): nova sesija se ne briše starim upisom
+    const local = settings.localDuel;
+    if (isRecord(local) && typeof local.id === "string") update = update.eq("settings->localDuel->>id", local.id);
+    else if (local === undefined) update = update.is("settings->localDuel", null);
 
     const { data, error } = await update.select("id");
     if (error) throw error;
@@ -217,7 +224,7 @@ export function hostView(childId: number, invite: StoredInvite, now = Date.now()
         ...(status === "asking" && invite.request
             ? { asking: { firstName: invite.request.firstName, companion: invite.request.companion }, via: invite.request.via }
             : {}),
-        ...(status === "joined" && invite.guest ? { friend: invite.guest } : {}),
+        ...(status === "joined" && invite.guest ? { friend: invite.guest, ...duelView(invite) } : {}),
     };
 }
 
@@ -244,7 +251,23 @@ export function joinedAnswer(hostId: number, hostRow: InviteRow, joined: StoredI
         level: joined.level,
         // Bez polja je „zajedno” (stari klijenti i pozivi); takmičenje se šalje izričito
         ...(joined.mode === "versus" ? { mode: joined.mode } : {}),
+        // Dvoboj: zajedničko seme zadataka i ulog
+        ...duelView(joined),
     };
+}
+
+/**
+ * Dvoboj posle „Prihvati”: novo zajedničko seme zadataka (oba deteta dobijaju iste zadatke) i
+ * ulog — manji od dva podešavanja „Ulog u dvoboju” (lib/duelStakes.ts). Samo za dvoboj.
+ */
+export function newDuel(hostRow: InviteRow, guestRow: InviteRow): InviteDuel {
+    const stakeOf = (row: InviteRow) => resolveSettings(row.settings, row.date_of_birth ?? null).duelStake;
+    return { seed: newChannelKey(), stake: duelStakeFor(stakeOf(hostRow), stakeOf(guestRow)), v: 0, reports: {}, settled: {} };
+}
+
+/** Seme i ulog dvoboja za odgovor klijentu (bez izveštaja) */
+function duelView(invite: StoredInvite) {
+    return invite.mode === "versus" && invite.duel ? { seed: invite.duel.seed, stake: invite.duel.stake } : {};
 }
 
 // ── Drugovi (lib/playFriends.ts) ────────────────────────────────────────────────

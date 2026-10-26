@@ -18,6 +18,7 @@ interface RouteContext {
 /** Podešavanja su desetak kratkih polja; sve preko ovoga nije ispravan zahtev. */
 const MAX_BODY_BYTES = 4096;
 const INVALID_REQUEST = "Neispravan zahtev";
+const MAX_RETRIES = 3;
 const MIGRATION_REQUIRED =
     "Podešavanja traže novu verziju baze. Pokrenite migraciju 0002 iz fascikle supabase/migrations.";
 
@@ -93,32 +94,36 @@ export async function PUT(request: Request, { params }: RouteContext) {
         await requireChildOwner(childId);
         const raw = await readSettingsBody(request);
 
-        const child = await loadChild(childId);
-        const ageBand = bandForAge(ageInYears(child.date_of_birth));
-        const settings: ChildSettings = sanitizeSettings(raw, ageBand);
+        // Upis uspeva samo ako se drugar deteta (novčići, odeća, obračunati dvoboji) u međuvremenu
+        // nije promenio — inače bi čuvanje podešavanja vratilo staro stanje novčića
+        for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            const child = await loadChild(childId);
+            const ageBand = bandForAge(ageInYears(child.date_of_birth));
+            const settings: ChildSettings = sanitizeSettings(raw, ageBand);
 
-        // U bazu ide samo ono što odstupa od preporuke za uzrast; ostalo nastavlja da prati uzrast.
-        // Pratilac deteta i kupljena odeća (ključ `companion`, lib/companion.ts) nisu podešavanja
-        // roditelja — ostaju netaknuti.
-        const stored = storedSettings(child);
-        const next: Record<string, unknown> = { ...settingsOverrides(settings, ageBand) };
-        if (stored.companion !== undefined) next.companion = stored.companion;
-        // Ni poziv za igru sa drugom (`invite`, lib/invite.ts) nije podešavanje roditelja
-        if (stored.invite !== undefined) next.invite = stored.invite;
-        // Ni spisak drugova za igru (`playFriends`, lib/playFriends.ts) — briše se posebnim dugmetom
-        if (stored.playFriends !== undefined) next.playFriends = stored.playFriends;
-        const { data, error } = await supabaseAdmin
-            .from("children")
-            .update({ settings: next })
-            .eq("id", childId)
-            .select("id");
-        if (error) {
-            if (isMissingColumnError(error)) throw new HttpError(409, MIGRATION_REQUIRED);
-            throw error;
+            // U bazu ide samo ono što odstupa od preporuke za uzrast; ostalo nastavlja da prati uzrast.
+            // Pratilac deteta i kupljena odeća (ključ `companion`, lib/companion.ts) nisu podešavanja
+            // roditelja — ostaju netaknuti.
+            const stored = storedSettings(child);
+            const next: Record<string, unknown> = { ...settingsOverrides(settings, ageBand) };
+            if (stored.companion !== undefined) next.companion = stored.companion;
+            // Ni poziv za igru sa drugom (`invite`, lib/invite.ts) nije podešavanje roditelja
+            if (stored.invite !== undefined) next.invite = stored.invite;
+            // Ni spisak drugova za igru (`playFriends`, lib/playFriends.ts) — briše se posebnim dugmetom
+            if (stored.playFriends !== undefined) next.playFriends = stored.playFriends;
+            // Ni dvoboj na istom uređaju koji upravo traje (`localDuel`, app/api/_lib/duels.ts)
+            if (stored.localDuel !== undefined) next.localDuel = stored.localDuel;
+            let update = supabaseAdmin.from("children").update({ settings: next }).eq("id", childId);
+            const companion = stored.companion;
+            if (isRecord(companion) && typeof companion.v === "number") update = update.eq("settings->companion->>v", String(companion.v));
+            const { data, error } = await update.select("id");
+            if (error) {
+                if (isMissingColumnError(error)) throw new HttpError(409, MIGRATION_REQUIRED);
+                throw error;
+            }
+            if (data && data.length > 0) return NextResponse.json({ settings });
         }
-        if (!data || data.length === 0) throw new HttpError(404, CHILD_NOT_FOUND);
-
-        return NextResponse.json({ settings });
+        throw new HttpError(409, "Pokušajte ponovo");
     } catch (error) {
         return errorResponse(error, "PUT /api/children/[id]/settings");
     }

@@ -260,13 +260,19 @@ describe("poziv kodom: kartica, „Prihvati”, „Ne sada”", () => {
         const response = await answer({ key: card.key, accept: true });
         assert.equal(response.status, 200);
         const body = await readJson(response);
-        assert.deepEqual(Object.keys(body).sort(), ["channel", "friend", "game", "level", "mode"]);
+        // Dvoboj: uz kanal stižu i zajedničko seme zadataka i ulog (lib/duelStakes.ts)
+        assert.deepEqual(Object.keys(body).sort(), ["channel", "friend", "game", "level", "mode", "seed", "stake"]);
         assert.equal(body.channel, channel);
         assert.equal(body.mode, "versus");
+        assert.match(body.seed as string, /^[A-Za-z0-9_-]{16,64}$/);
+        assert.equal(body.stake, 3);
         signInAsChild(HOST);
         const host = (await readJson(await status())).invite as Record<string, unknown>;
         assert.equal(host.status, "joined");
         assert.equal((host.friend as { firstName: string }).firstName, "Luka");
+        // Domaćin i drug dobijaju isto seme: iste zadatke istim redom
+        assert.equal(host.seed, body.seed);
+        assert.equal(host.stake, 3);
         // Odgovor važi jednom
         signInAsChild(GUEST, STRANGER);
         assert.equal((await answer({ key: card.key, accept: true })).status, 404);

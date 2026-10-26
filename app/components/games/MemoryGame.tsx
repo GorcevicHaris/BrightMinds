@@ -27,6 +27,7 @@ import {
     type TimerId,
     useWaitHint,
     usePraise,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
@@ -229,10 +230,10 @@ function emptyView(pairs: number): MemoryView {
     };
 }
 
-function dealCards(pairs: number, peek: boolean, deckId: DeckId): MemoryView {
+function dealCards(pairs: number, peek: boolean, deckId: DeckId, random: () => number): MemoryView {
     const deck = DECKS[deckId];
-    const chosen = shuffle(deck.slice(0, poolSize(deck, pairs)).map((card) => card.id)).slice(0, pairs);
-    const cards = shuffle([...chosen, ...chosen]);
+    const chosen = shuffle(deck.slice(0, poolSize(deck, pairs)).map((card) => card.id), random).slice(0, pairs);
+    const cards = shuffle([...chosen, ...chosen], random);
     // Posle zavirivanja dete je videlo sve kartice
     return { ...emptyView(pairs), cards, peek, seen: peek ? cards.map((_, index) => index) : [] };
 }
@@ -366,11 +367,13 @@ function PairsGame({ childId, level, gender, onComplete, isMonitor = false, moni
 
     /** Na lakim nivoima par zasvetli već posle prve greške pamćenja (osim kad je roditelj isključio pomoć) */
     const hintAfter = cfg.earlyHint && settings.hintAfter > 0 ? 1 : settings.hintAfter;
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
     const [deal] = useState<Deal>(() => dealFor(level, settings.preset.memoryMaxPairs, settings.activeBand === "young"));
     // Monitor nema podešavanja deteta ni njegov ekran: tabla stiže u `monitorState`
     const [view, setView] = useState<MemoryView>(() => {
         if (isMonitor) return emptyView(cfg.pairs);
-        return dealCards(pairsForScreen(deal.pairs), deal.peek, cfg.deck);
+        return dealCards(pairsForScreen(deal.pairs), deal.peek, cfg.deck, random);
     });
 
     // Poslednje stanje za rukovaoce i tajmere (dva brza dodira ne vide zastarelo stanje)

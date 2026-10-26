@@ -26,6 +26,7 @@ import {
     type BaseView,
     type ChoiceState,
     type GameProps,
+    useGameRandom,
 } from "@/app/components/games/kit";
 import {
     EMOTIONS,
@@ -128,6 +129,8 @@ interface RoundLimits {
     choiceLimit: number;
     /** Ime deteta: scenario o liku koji se isto zove priča se o zamenskom liku */
     childName: string | undefined;
+    /** Izvor slučajnih brojeva: seme dvoboja ili nasumično (kit/random.ts) */
+    random: () => number;
 }
 
 /**
@@ -135,14 +138,14 @@ interface RoundLimits {
  * koliko dozvoljavaju nivo i podešavanja. Najčešća osećanja su uvek među ponuđenim;
  * drugo najčešće se izostavlja samo kad bi inače sve ponuđeno bilo „najčešće”.
  */
-function buildRounds(level: number, { emotionCount, maxRounds, choiceLimit, childName }: RoundLimits): Round[] {
+function buildRounds(level: number, { emotionCount, maxRounds, choiceLimit, childName, random }: RoundLimits): Round[] {
     // Nasumičan pomeraj: ponovljen nivo ne donosi iste priče
-    const shift = Math.floor(Math.random() * 1000);
+    const shift = Math.floor(random() * 1000);
     const { scenarios, choices, palette } = getEmotionLevel(level, { emotionCount, maxRounds, shift });
     const size = Math.min(choices, choiceLimit, palette.length);
-    return shuffle(scenarios).map((scenario) => {
+    return shuffle(scenarios, random).map((scenario) => {
         const common = scenario.common.length < size ? scenario.common : scenario.common.slice(0, 1);
-        const others = shuffle(palette.filter((id) => !scenario.common.includes(id))).slice(0, size - common.length);
+        const others = shuffle(palette.filter((id) => !scenario.common.includes(id)), random).slice(0, size - common.length);
         return { scenarioId: scenario.id, options: inEmotionOrder([...common, ...others]), standIn: isNamesake(scenario, childName) };
     });
 }
@@ -225,6 +228,8 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
 
     // Komponenta se za svaki nivo pravi iznova, pa se zadaci biraju i mešaju samo jednom, ovde.
     // Monitor ne poznaje podešavanja deteta: crta isključivo ono što stigne u `monitorState`.
+    // Zadaci iz semena dvoboja (isti za oba deteta) ili nasumični, kao i uvek (kit/random.ts)
+    const random = useGameRandom();
     const [rounds] = useState<Round[]>(() =>
         isMonitor
             ? []
@@ -233,6 +238,7 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                   maxRounds: settings.preset.maxRounds,
                   choiceLimit: settings.choiceLimit,
                   childName,
+                  random,
               })
     );
     const [view, setView] = useState(() => initialView(rounds));

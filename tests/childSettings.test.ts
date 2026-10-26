@@ -176,6 +176,7 @@ describe("sanitizeSettings", () => {
             unlockInOrder: true,
             openAllMaps: true,
             reminder: { enabled: true, time: "18:30", days: [1, 3, 5] },
+            duelStake: 5,
         };
         assert.deepEqual(sanitizeSettings(valid, "young"), valid);
     });
