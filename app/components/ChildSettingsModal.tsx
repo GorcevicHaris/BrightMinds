@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { BookOpenText, Database, Gamepad2, Leaf } from "lucide-react";
+import PlayFriendsSection from "./PlayFriendsSection";
 import { Alert } from "./ui/Card";
 import { Button } from "./ui/Button";
 import { Select, Switch } from "./ui/Field";
@@ -475,6 +476,12 @@ export default function ChildSettingsModal({ childId, childName, dateOfBirth, st
                             </div>
                         </Section>
                     </>
+                )}
+
+                {tab === "data" && (
+                    <Section title="Drugovi za igru" hint="Deca sa kojom je dete igralo na dva uređaja. Njih može da pozove bez koda.">
+                        <PlayFriendsSection childId={childId} childName={childName} />
+                    </Section>
                 )}
 
                 {tab === "data" && (

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ageInYears, resolveSettings, type ResolvedSettings } from "@/lib/childSettings";
-import { realtimeTopicFor } from "@/lib/realtimeTopic";
+import { inboxTopicFor, realtimeTopicFor } from "@/lib/realtimeTopic";
 import { companionPayload, type CompanionPayload } from "@/lib/companionPayload";
 import { reminderDue } from "@/lib/reminder";
 import { supabaseAdmin } from "@/lib/supabase";
@@ -99,5 +99,5 @@ export default async function ChildPage({ params }: { params: Promise<{ id: stri
         }
     }
 
-    return <ChildPageClient child={child} viewer={viewer} settings={settings} realtimeTopic={realtimeTopicFor(child.id)} reminder={reminder} companion={companion} />;
+    return <ChildPageClient child={child} viewer={viewer} settings={settings} realtimeTopic={realtimeTopicFor(child.id)} inboxTopic={inboxTopicFor(child.id)} reminder={reminder} companion={companion} />;
 }

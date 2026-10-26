@@ -37,6 +37,8 @@ interface Props {
     settings: ResolvedSettings;
     /** Tajna tema kanala za praćenje uživo (pravi je server); bez nje nema praćenja */
     realtimeTopic?: string | null;
+    /** Tajna tema sandučeta deteta: pozivi drugova sa spiska i odgovori (playRemote.tsx) */
+    inboxTopic?: string | null;
     /** Probni režim (razvoj): bez mreže */
     preview?: boolean;
     previewUnlocked?: number;
@@ -54,7 +56,7 @@ const TABS: { id: View; label: string; Icon: typeof Gamepad2 }[] = [
     { id: "progress", label: "Napredak", Icon: Trophy },
 ];
 
-export default function ChildPageClient({ realtimeTopic = null, companion, ...props }: Props) {
+export default function ChildPageClient({ realtimeTopic = null, inboxTopic = null, companion, ...props }: Props) {
     return (
         <RealtimeTopicProvider value={realtimeTopic}>
             <CompanionProvider
@@ -65,7 +67,13 @@ export default function ChildPageClient({ realtimeTopic = null, companion, ...pr
                 initial={companion}
             >
                 {/* Drug na drugom uređaju (playRemote.tsx): traje i dok dete gleda „Moj drugar” ili „Napredak” */}
-                <RemoteProvider childId={props.child.id} childName={props.child.first_name || "Druže"} gender={props.child.gender ?? undefined} preview={props.preview}>
+                <RemoteProvider
+                    childId={props.child.id}
+                    childName={props.child.first_name || "Druže"}
+                    gender={props.child.gender ?? undefined}
+                    preview={props.preview}
+                    inboxTopic={inboxTopic}
+                >
                     <ChildPage {...props} />
                 </RemoteProvider>
             </CompanionProvider>
@@ -157,7 +165,7 @@ function FloatingCompanion({ onOpen }: { onOpen: () => void }) {
     );
 }
 
-function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, previewProgress, reminder }: Omit<Props, "realtimeTopic">) {
+function ChildPage({ child, viewer, settings, preview = false, previewUnlocked, previewProgress, reminder }: Omit<Props, "realtimeTopic" | "inboxTopic">) {
     const router = useRouter();
     const [view, setView] = useState<View>("games");
     const [points, setPoints] = useState(child.experience_points ?? 0);

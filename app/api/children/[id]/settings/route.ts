@@ -105,6 +105,8 @@ export async function PUT(request: Request, { params }: RouteContext) {
         if (stored.companion !== undefined) next.companion = stored.companion;
         // Ni poziv za igru sa drugom (`invite`, lib/invite.ts) nije podešavanje roditelja
         if (stored.invite !== undefined) next.invite = stored.invite;
+        // Ni spisak drugova za igru (`playFriends`, lib/playFriends.ts) — briše se posebnim dugmetom
+        if (stored.playFriends !== undefined) next.playFriends = stored.playFriends;
         const { data, error } = await supabaseAdmin
             .from("children")
             .update({ settings: next })
