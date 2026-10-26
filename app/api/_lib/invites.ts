@@ -19,6 +19,7 @@ import { friendKeyFor, inviteChannelFor } from "@/lib/realtimeTopic";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isRecord } from "@/lib/validation";
 import { CHILD_NOT_FOUND } from "./children";
+import type { Session } from "@/lib/auth";
 import { HttpError } from "./http";
 import { readUnlockedLevels } from "./levels";
 
@@ -281,6 +282,30 @@ export async function rememberPair(hostRow: InviteRow, guestRow: InviteRow, now 
             console.error("[api] play friends:", error);
         }
     }
+}
+
+// ── Braća i sestre (isti roditeljski nalog) ─────────────────────────────────────
+
+/** Najviše dece na spisku (nalog terapeuta može imati mnogo dece) — isto kao /friends */
+export const MAX_SIBLINGS = 12;
+
+/**
+ * Ostala deca istog roditeljskog naloga — isti skup koji vraća /api/children/[id]/friends.
+ * Roditelj ih je sam upisao na svoj nalog, pa se mogu pozvati i bez koda od prvog puta. Samo
+ * nalog roditelja: nalog učitelja ili terapeuta povezuje decu iz različitih porodica, pa je tamo
+ * spisak uvek prazan (i za dečju sesiju takvog naloga — ona nosi ulogu vlasnika naloga).
+ */
+export async function siblingIdsOf(session: Pick<Session, "userId" | "role">, childId: number): Promise<number[]> {
+    if (session.role !== "parent") return [];
+    const { data, error } = await supabaseAdmin.from("user_children").select("child_id").eq("user_id", session.userId);
+    if (error) throw error;
+    return [...new Set(((data ?? []) as { child_id: number }[]).map((row) => row.child_id))].filter((id) => id !== childId).slice(0, MAX_SIBLINGS);
+}
+
+/** Brat ili sestra po ključu iz pregledača (lib/realtimeTopic.ts → friendKeyFor); inače null. */
+export function siblingByKey(childId: number, siblingIds: readonly number[], key: unknown): number | null {
+    if (typeof key !== "string" || key.length > 64) return null;
+    return siblingIds.find((id) => friendKeyFor(childId, id) === key) ?? null;
 }
 
 /** Drug sa spiska deteta po ključu iz pregledača (lib/realtimeTopic.ts → friendKeyFor); inače null. */

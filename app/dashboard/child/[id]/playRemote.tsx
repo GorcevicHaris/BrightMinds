@@ -490,9 +490,12 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
         try {
             const res = await fetch(`/api/children/${childId}/play-friends`, { cache: "no-store" });
             const data = res.ok ? await res.json() : null;
-            const list = Array.isArray(data?.friends) ? (data.friends as unknown[]) : [];
+            // Prvo braća i sestre sa istog roditeljskog naloga (zovu se bez koda od prvog puta), pa zapamćeni drugovi
+            const list = [...(Array.isArray(data?.siblings) ? (data.siblings as unknown[]) : []), ...(Array.isArray(data?.friends) ? (data.friends as unknown[]) : [])];
+            const seen = new Set<string>();
             return list
                 .filter((f): f is ServerFriend & { key: string } => isServerFriend(f) && typeof (f as { key?: unknown }).key === "string")
+                .filter((f) => !seen.has(f.key) && Boolean(seen.add(f.key)))
                 .map((f) => ({ key: f.key, player: toPlayer(f) }));
         } catch {
             return [];
@@ -724,7 +727,7 @@ export function RemoteChoices({ onHost, onGuest }: { onHost: () => void; onGuest
                     </span>
                     <span className="min-w-0">
                         <span className="block font-display text-lg font-extrabold leading-tight text-ink">Pozovi druga</span>
-                        <span className="block text-sm font-bold leading-tight text-ink-soft">Ti biraš igru</span>
+                        <span className="block text-sm font-bold leading-tight text-ink-soft">Na drugi telefon ili tablet</span>
                     </span>
                 </button>
                 <button
@@ -842,7 +845,11 @@ export function RemoteHostPicker({ games, unlockedFor, onDone, onBack }: { games
         <div className="space-y-4">
             <GameBadge game={game} level={level} mode={mode} className="w-full" />
             {max > 1 && <LevelStepper level={level} max={max} onChange={setLevel} />}
-            <p className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">Koga zoveš?</p>
+            {/* Poziv na DRUGI telefon (drug prihvati na svom uređaju) — igra na smenu na ovom uređaju je posebno, u „Ko igra sa tobom?” */}
+            <p className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-ink-soft">
+                <Smartphone className="h-4 w-4" aria-hidden="true" />
+                Pozovi na drugi telefon
+            </p>
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Drugovi">
                 {(friends ?? []).map((friend) => (
                     <li key={friend.key}>
