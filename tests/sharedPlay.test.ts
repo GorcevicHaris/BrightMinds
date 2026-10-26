@@ -1,9 +1,16 @@
 // lib/sharedPlay.ts — zajednička tabla na dva uređaja: smena, rezultati poteza, ključevi radnji i redosled poruka.
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { pairsForSize } from "@/app/components/games/MemoryGame";
 import { GAMES } from "@/lib/games";
+import { parseRemoteState } from "@/lib/invite";
 import {
+    SHARED_END_WAIT_MS,
     SHARED_FALLBACK,
+    boardScreen,
+    finishedKey,
+    parseScreen,
+    rememberFinished,
     actionKeyOf,
     finishTurns,
     hasSharedBoard,
@@ -342,5 +349,53 @@ describe("message order and validation", () => {
         assert.equal(parseAction({ ...raw, keys: ["a b"] }), null);
         assert.equal(parseAction({ ...raw, turnNo: 0 }), null);
         assert.equal(parseAction({ ...raw, epoch: -1 }), null);
+    });
+});
+
+describe("board size for both screens", () => {
+    it("reads a screen from the friend's state and rejects nonsense", () => {
+        assert.deepEqual(parseScreen({ w: 390.4, h: 844 }), { w: 390, h: 844 });
+        assert.equal(parseScreen({ w: 10, h: 844 }), null);
+        assert.equal(parseScreen({ w: "390", h: 844 }), null);
+        assert.equal(parseScreen(null), null);
+        const state = parseRemoteState({ phase: "playing", screen: { w: 1024, h: 768 } });
+        assert.deepEqual(state?.screen, { w: 1024, h: 768 });
+        // Stari klijent bez ekrana: polja nema (tabla se bira samo po ovom ekranu)
+        assert.equal(parseRemoteState({ phase: "playing" })?.screen, undefined);
+    });
+
+    it("leaves room for the turn strip (bar above on a phone, column beside on a tablet)", () => {
+        assert.deepEqual(boardScreen({ w: 390, h: 844 }), { w: 390, h: 768 });
+        assert.deepEqual(boardScreen({ w: 1024, h: 768 }), { w: 872, h: 768 });
+        assert.deepEqual(boardScreen({ w: 844, h: 390 }), { w: 692, h: 390 });
+    });
+
+    it("a phone guest gets a board that fits the phone, not the host's tablet", () => {
+        const tablet = boardScreen({ w: 1024, h: 768 });
+        const phone = boardScreen({ w: 390, h: 844 });
+        const forTablet = pairsForSize(10, tablet.w, tablet.h);
+        const forPhone = pairsForSize(10, phone.w, phone.h);
+        assert.ok(forPhone <= 8, `phone ${forPhone}`);
+        assert.ok(forPhone < forTablet, `phone ${forPhone} < tablet ${forTablet}`);
+        // Tabla na zajedničkoj tabli: najmanji od dva ekrana
+        assert.equal(Math.min(forTablet, forPhone), forPhone);
+    });
+});
+
+describe("level end after a guest reload", () => {
+    it("remembers saved levels once, newest last, with a limit", () => {
+        const key = finishedKey("bm-inv-abc", 1700000000000);
+        assert.equal(key, "bm-inv-abc:1700000000000");
+        let list = rememberFinished([], key);
+        list = rememberFinished(list, key);
+        assert.deepEqual(list, [key], "the same level is never stored twice");
+        for (let i = 0; i < 20; i++) list = rememberFinished(list, `k${i}`, 12);
+        assert.equal(list.length, 12);
+        assert.equal(list.at(-1), "k19");
+        assert.ok(!list.includes(key), "oldest entries drop out");
+    });
+
+    it("the host never waits forever for the guest at the end of a level", () => {
+        assert.ok(SHARED_END_WAIT_MS >= 15_000 && SHARED_END_WAIT_MS <= 30_000);
     });
 });

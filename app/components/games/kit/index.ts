@@ -10,6 +10,7 @@ export {
     GameTeacherContext,
     CompanionPanelContext,
     SharedMirrorContext,
+    SharedScreensContext,
     DemoHand,
     useBubbleTail,
     GameStage,

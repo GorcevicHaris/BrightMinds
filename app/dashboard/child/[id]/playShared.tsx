@@ -16,11 +16,11 @@
 // sata ni žurbe; „Manje animacija” gasi pokrete (prst se samo pojavi i nestane). Glas nikad ne
 // kaže gde da se dodirne; gost čuje isto uputstvo kao domaćin (rečenice bez imena).
 
-import { cloneElement, useCallback, useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactElement, type RefObject, type SyntheticEvent } from "react";
+import { cloneElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactElement, type RefObject, type SyntheticEvent } from "react";
 import { Hand } from "lucide-react";
 import { useCalmMotion } from "@/app/components/avatar/motion";
 import { GAME_COMPONENTS } from "@/app/components/LiveMonitor";
-import { SharedMirrorContext } from "@/app/components/games/kit/ui";
+import { SharedMirrorContext, SharedScreensContext } from "@/app/components/games/kit/ui";
 import type { GameProps, GameResult } from "@/app/components/games/kit/types";
 import { Button, Spinner } from "@/app/components/ui/Button";
 import { cn } from "@/lib/cn";
@@ -29,6 +29,7 @@ import type { TogetherPlayer } from "@/lib/playTogether";
 import { GameEventTapProvider, useGameBroadcast } from "@/lib/realtime";
 import {
     actionKeyOf,
+    boardScreen,
     finishTurns,
     initialTurnState,
     isNewer,
@@ -40,6 +41,8 @@ import {
     playerResult,
     pointKey,
     publishSharedTurns,
+    rememberFinished,
+    finishedKey,
     resetSharedTurns,
     selectorFor,
     sharedScores,
@@ -51,6 +54,7 @@ import {
     type SharedSay,
     type SharedTap,
     type SharedTurnState,
+    type ScreenSize,
     type Stamp,
 } from "@/lib/sharedPlay";
 import { onSpoken, speak } from "@/lib/speech";
@@ -452,6 +456,13 @@ export function SharedHostLayer({ gameId, sessionId, children }: HostProps) {
         [original, gameId, duel, flush, setTurnState]
     );
     const slot = <WithComplete element={children} onComplete={complete} />;
+    const own = remote?.myState.screen;
+    const theirs = remote?.friendState?.screen;
+    const screens = useMemo(
+        () => [own, theirs].filter((screen): screen is ScreenSize => Boolean(screen)).map(boardScreen),
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- dovoljne su mere, ne novi objekat iz poruke
+        [own?.w, own?.h, theirs?.w, theirs?.h]
+    );
 
     if (!remote || !session || !friend) return children;
     const waiting = Boolean(turns && !turns.finished && !allowed);
@@ -472,7 +483,8 @@ export function SharedHostLayer({ gameId, sessionId, children }: HostProps) {
                     onClickCapture={onClickCapture}
                     onKeyDownCapture={(event) => void block(event)}
                 >
-                    {slot}
+                    {/* Tabla („Spoji parove”) se bira tako da stane na oba ekrana: tablet domaćina ne daje telefonu druga preveliku tablu */}
+                    <SharedScreensContext value={screens}>{slot}</SharedScreensContext>
                     <GhostTap rootRef={rootRef} tap={tap?.by === "guest" ? tap : null} look={LOOKS[1]} />
                     <TurnNote at={note} name={friend.name} />
                 </div>
@@ -486,6 +498,28 @@ function WithComplete({ element, onComplete }: { element: ReactElement<GameProps
     return cloneElement(element, { onComplete });
 }
 
+/** Završeni nivoi zajedničke table čiji je rezultat gost već sačuvao (samo u ovoj kartici) */
+function savedFinalsKey(childId: number) {
+    return `bm-shared-saved:${childId}`;
+}
+
+function readSavedFinals(childId: number): string[] {
+    try {
+        const raw = JSON.parse(window.sessionStorage.getItem(savedFinalsKey(childId)) ?? "[]") as unknown;
+        return Array.isArray(raw) ? raw.filter((k): k is string => typeof k === "string").slice(-12) : [];
+    } catch {
+        return [];
+    }
+}
+
+function writeSavedFinals(childId: number, list: string[]) {
+    try {
+        window.sessionStorage.setItem(savedFinalsKey(childId), JSON.stringify(list));
+    } catch {
+        /* skladište nije dostupno: posle osvežavanja rezultat bi se mogao sačuvati još jednom (retko) */
+    }
+}
+
 // ── Gost ───────────────────────────────────────────────────────────────────────
 
 interface GuestProps {
@@ -494,12 +528,14 @@ interface GuestProps {
     level: number;
     gender?: string;
     onComplete: (result: GameResult) => void;
+    /** Isti kraj nivoa, ali je rezultat već sačuvan (stranica osvežena posle kraja) — bez novog upisa */
+    onCompleteSaved: (result: GameResult) => void;
     onFollowLevel: (level: number) => void;
 }
 
 const noop = () => {};
 
-export function SharedGuestBoard({ gameId, level, gender, onComplete, onFollowLevel }: GuestProps) {
+export function SharedGuestBoard({ gameId, level, gender, onComplete, onCompleteSaved, onFollowLevel }: GuestProps) {
     const remote = useRemote();
     const channel = remote?.sharedChannel;
     const session = remote?.session ?? null;
@@ -520,6 +556,8 @@ export function SharedGuestBoard({ gameId, level, gender, onComplete, onFollowLe
     const [localTap, setLocalTap] = useState<SharedTap | null>(null);
     const [note, setNote] = useState<{ at: number; kind: "wait" | "listen" } | null>(null);
     const report = remote?.report;
+    const channelName = session?.channel ?? null;
+    const childId = remote?.me.childId ?? 0;
     // Roditelj gosta koji prati uživo vidi istu zajedničku tablu (kao da dete igra samo)
     const publish = useGameBroadcast(remote?.me.childId ?? 0, Boolean(remote && !remote.preview));
     const published = useRef<string | null>(null);
@@ -601,9 +639,17 @@ export function SharedGuestBoard({ gameId, level, gender, onComplete, onFollowLe
         if (mirror.final && !completed.current) {
             completed.current = true;
             channel.markFinished(mirror.epoch);
-            onComplete(mirror.final.guest);
+            // Rezultat se čuva tačno jednom po nivou, i kad gost osveži stranicu baš na kraju nivoa
+            const key = finishedKey(channelName ?? "", mirror.epoch);
+            const saved = readSavedFinals(childId);
+            if (saved.includes(key)) {
+                onCompleteSaved(mirror.final.guest);
+            } else {
+                writeSavedFinals(childId, rememberFinished(saved, key));
+                onComplete(mirror.final.guest);
+            }
         }
-    }, [mirror, channel, report, publish, gameId, duel, gender, onComplete, remote?.me.childId]);
+    }, [mirror, channel, channelName, childId, report, publish, gameId, duel, gender, onComplete, onCompleteSaved, remote?.me.childId]);
 
     // ── Dodiri ──
     const down = useRef<{ x: number; y: number; key: string | null } | null>(null);

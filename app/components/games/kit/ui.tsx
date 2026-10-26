@@ -29,6 +29,13 @@ export const CompanionPanelContext = React.createContext(false);
  */
 export const SharedMirrorContext = React.createContext(false);
 
+/**
+ * Zajednička tabla: ekrani OBA uređaja (bez trake „Na redu je”). Igra koja veličinu table bira po
+ * ekranu („Spoji parove”) bira je tako da stane na oba — telefon druga ne dobija tablu za tablet.
+ * null = samo ovaj ekran.
+ */
+export const SharedScreensContext = React.createContext<readonly { w: number; h: number }[] | null>(null);
+
 // ── GameStage ─────────────────────────────────────────────────────────────────
 // Okvir igre: centrira sadržaj, drži istu širinu i razmake u svim igrama.
 

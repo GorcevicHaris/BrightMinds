@@ -25,7 +25,7 @@ export default function SharedLab({ gameId, level, mode, lag }: { gameId: GameId
                         <Game childId={0} level={level} gender="female" childName="Lejla" onComplete={onComplete} />
                     </SharedHostLayer>
                 )}
-                renderGuest={({ onComplete, onFollowLevel }) => <SharedGuestBoard gameId={gameId} level={level} gender="male" onComplete={onComplete} onFollowLevel={onFollowLevel} />}
+                renderGuest={({ onComplete, onFollowLevel }) => <SharedGuestBoard gameId={gameId} level={level} gender="male" onComplete={onComplete} onCompleteSaved={onComplete} onFollowLevel={onFollowLevel} />}
             />
         </main>
     );

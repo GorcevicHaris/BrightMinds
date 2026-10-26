@@ -566,7 +566,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
 
     const companionRefresh = useCompanion()?.refresh;
     const handleComplete = useCallback(
-        async (result: GameResult) => {
+        // `alreadySaved`: zajednička tabla posle osvežavanja stranice — gost je ovaj rezultat već sačuvao,
+        // pa se prikazuje zajednički kraj nivoa bez novog upisa (novčići se ne dupliraju)
+        async (result: GameResult, alreadySaved = false) => {
             if (completingRef.current || !game) return;
             completingRef.current = true;
             // Plan se beleži odmah: rezultat je sačuvan i ako se stranica zatvori na ekranu sa zvezdicama
@@ -586,7 +588,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                 score: result.score,
                 advance,
                 secs: Math.max(0, Math.round(result.durationSec ?? 0)),
-                saved: preview ? "ok" : "saving",
+                saved: preview || alreadySaved ? "ok" : "saving",
             });
             playSfx("win");
             // Kraj nivoa je uvek uspeh: zvezdice preko celog ekrana (sloj ih ne crta kad je „Manje animacija”),
@@ -607,6 +609,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
             );
 
             if (preview) return;
+            if (alreadySaved) return;
             pendingSaves.current += 1;
             try {
                 const data = await saveResult({
@@ -812,7 +815,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         <GamePauseContext.Provider value={onBreak}>
                             {/* Igra sa drugom: traka „Sada igra …” (playTogether.tsx); inače samo igra */}
                             <TurnTakingLayer key={playKey} gameId={game.id}>
-                            <RemoteFriendLayer gameId={game.id} playKey={playKey} level={level} onFollowLevel={(next) => startLevel(tierAt(next).id, next)}>
+                            <RemoteFriendLayer gameId={game.id} playKey={playKey} level={level} onFollowLevel={(next) => startLevel(tierAt(next).id, next)} onCompleteSaved={(result) => void handleComplete(result, true)}>
                             <GameSlot
                                 key={`${game.id}-${level}-${attempt}`}
                                 gameId={game.id}
