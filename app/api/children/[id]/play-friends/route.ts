@@ -2,15 +2,18 @@
 // „Drugovi za igru” (lib/playFriends.ts): deca sa kojom je dete već igralo na dva uređaja,
 // povezana kodom od sličica. Samo njih dete može da pozove bez koda.
 //
-// GET    — roditelj ili dečja sesija tog deteta → { friends: [{ key, firstName, companion }] }.
-//          Ključ je izveden iz serverske tajne (bez ID-ja drugog deteta).
+// GET    — roditelj ili dečja sesija tog deteta → { friends: [{ key, firstName, companion }],
+//          siblings: [isto] }. `siblings` su braća i sestre sa istog roditeljskog naloga (isti
+//          skup kao /friends; nalog učitelja ili terapeuta ih nema): njih dete može da pozove na
+//          drugi telefon i bez koda, od prvog puta. Ključ je izveden iz serverske tajne (bez ID-ja).
 // DELETE — samo roditelj/terapeut deteta, { key }: drug se briše sa spiska, a dete i sa spiska
 //          tog druga — posle toga se mogu povezati samo novim kodom.
 import { NextResponse } from "next/server";
 import { requireChildAccess, requireChildOwner } from "@/lib/auth";
 import { forgetPlayFriend, hasPlayFriend } from "@/lib/playFriends";
 import { friendKeyFor } from "@/lib/realtimeTopic";
-import { friendByKey, loadInviteRow, playFriendsOf, updatePlayFriends } from "../../../_lib/invites";
+import { supabaseAdmin } from "@/lib/supabase";
+import { companionOf, firstNameOf, friendByKey, loadInviteRow, playFriendsOf, siblingIdsOf, updatePlayFriends, type InviteRow } from "../../../_lib/invites";
 import { errorResponse, HttpError, parseIdParam, readJsonObject } from "../../../_lib/http";
 
 interface RouteContext {
@@ -22,13 +25,23 @@ const NO_STORE = { "Cache-Control": "no-store" };
 export async function GET(_request: Request, { params }: RouteContext) {
     try {
         const childId = parseIdParam((await params).id);
-        await requireChildAccess(childId);
+        const session = await requireChildAccess(childId);
         const friends = playFriendsOf(await loadInviteRow(childId)).list.map((friend) => ({
             key: friendKeyFor(childId, friend.id),
             firstName: friend.firstName,
             companion: friend.companion,
         }));
-        return NextResponse.json({ friends }, { headers: NO_STORE });
+        const ids = await siblingIdsOf(session, childId);
+        let siblings: typeof friends = [];
+        if (ids.length > 0) {
+            const { data, error } = await supabaseAdmin.from("children").select("id, first_name, gender, settings").in("id", ids);
+            if (error) throw error;
+            siblings = ((data ?? []) as InviteRow[])
+                .filter((row) => typeof row.first_name === "string" && row.first_name.trim().length > 0)
+                .map((row) => ({ key: friendKeyFor(childId, row.id), firstName: firstNameOf(row), companion: companionOf(row) }))
+                .sort((a, b) => a.firstName.localeCompare(b.firstName, "sr"));
+        }
+        return NextResponse.json({ friends, siblings }, { headers: NO_STORE });
     } catch (error) {
         return errorResponse(error, "GET /api/children/[id]/play-friends");
     }

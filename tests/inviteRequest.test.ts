@@ -28,7 +28,7 @@ import {
 } from "@/lib/invite";
 import { MAX_PLAY_FRIENDS, forgetPlayFriend, hasPlayFriend, parsePlayFriends, rememberPlayFriend } from "@/lib/playFriends";
 import { resetRateLimit } from "@/lib/rateLimit";
-import { inboxTopicFor } from "@/lib/realtimeTopic";
+import { friendKeyFor, inboxTopicFor } from "@/lib/realtimeTopic";
 import { VISUAL_PIN_CATEGORIES } from "@/lib/visualPinData";
 import {
     CHILD_ID,
@@ -438,5 +438,89 @@ describe("drugovi i poziv bez koda", () => {
         const [luka] = await friendsOf(HOST);
         for (let i = 0; i < 5; i++) assert.equal((await create({ game: "clock", level: 1, friend: luka.key })).status, 200);
         assert.equal((await create({ game: "clock", level: 1, friend: luka.key })).status, 429);
+    });
+});
+
+describe("braća i sestre: isti roditeljski nalog, poziv na drugi telefon bez koda", () => {
+    const siblingsOf = async (childId: number) => ((await readJson(await FRIENDS(jsonRequest("GET"), idParams(childId)))).siblings ?? []) as { key: string; firstName: string }[];
+
+    it("a sibling is requestable from the start: no code, no earlier game together", async () => {
+        signInAsChild(HOST);
+        assert.deepEqual(await friendsOf(HOST), [], "nisu igrali zajedno");
+        const siblings = await siblingsOf(HOST);
+        assert.deepEqual(
+            siblings.map((s) => s.firstName),
+            ["Amar"]
+        );
+        assert.equal(siblings[0].key, friendKeyFor(HOST, SIBLING));
+        assert.ok(!JSON.stringify(siblings).includes('"id"'), "bez ID-ja");
+        const response = await create({ game: "clock", level: 1, mode: "versus", friend: siblings[0].key });
+        assert.equal(response.status, 200);
+        const host = (await readJson(response)).invite as Record<string, unknown>;
+        assert.equal(host.status, "asking");
+        assert.equal(host.via, "direct");
+        assert.deepEqual(
+            inboxPushes.map((p) => p.topic),
+            [inboxTopicFor(SIBLING)]
+        );
+        // Amar na drugom telefonu (svoja dečja sesija istog naloga): kartica, pa „Prihvati”
+        signInAsChild(SIBLING);
+        const { requests } = (await readJson(await inbox(SIBLING))) as { requests: Card[] };
+        assert.equal(requests.length, 1);
+        assert.equal(requests[0].friend.firstName, "Mila");
+        assert.equal(requests[0].mode, "versus");
+        const accepted = await answer({ key: requests[0].key, accept: true }, SIBLING);
+        assert.equal(accepted.status, 200);
+        assert.equal((await readJson(accepted)).mode, "versus");
+        signInAsChild(HOST);
+        assert.equal(((await readJson(await status())).invite as Record<string, unknown>).status, "joined");
+    });
+
+    it("the parent's own session sees the same siblings; the child of another family is not one", async () => {
+        signInAsParent(PARENT);
+        assert.deepEqual(
+            (await siblingsOf(HOST)).map((s) => s.firstName),
+            ["Amar"]
+        );
+        signInAsChild(HOST);
+        assert.equal((await create({ game: "clock", level: 1, friend: friendKeyFor(HOST, GUEST) })).status, 404);
+        signInAsChild(GUEST, STRANGER);
+        assert.deepEqual(await siblingsOf(GUEST), []);
+    });
+
+    it("a teacher or therapist account never makes children directly requestable (same rule as /friends)", async () => {
+        const TEACHER = { id: 30, email: "uciteljica@example.com", role: "teacher" };
+        db.seed("users", [{ ...TEACHER, full_name: "Učiteljica" }]);
+        db.seed("children", [
+            { id: 4, first_name: "Emina", last_name: "A", date_of_birth: "2019-01-01", gender: "female", pin_code: "puma,fish,drums,pepsi", experience_points: 0, settings: {} },
+            { id: 5, first_name: "Tarik", last_name: "B", date_of_birth: "2019-01-01", gender: "male", pin_code: "zebra,fries,laptop,sprite", experience_points: 0, settings: {} },
+        ]);
+        db.seed("user_children", [
+            { user_id: TEACHER.id, child_id: 4, relationship: "teacher", is_primary: true },
+            { user_id: TEACHER.id, child_id: 5, relationship: "teacher", is_primary: true },
+        ]);
+        resetRateLimit("invite-create:child:4");
+        signInAsChild(4, TEACHER);
+        assert.deepEqual(await siblingsOf(4), []);
+        assert.equal((await create({ game: "clock", level: 1, friend: friendKeyFor(4, 5) }, 4)).status, 404);
+        assert.equal(stored(4), undefined);
+        signInAsParent(TEACHER);
+        assert.equal((await create({ game: "clock", level: 1, friend: friendKeyFor(4, 5) }, 4)).status, 404);
+    });
+
+    it("siblings are not stored as friends and do not show up in the parent's removable list", async () => {
+        signInAsChild(HOST);
+        const [amar] = await siblingsOf(HOST);
+        await create({ game: "clock", level: 1, friend: amar.key });
+        assert.equal((row(HOST).settings as Record<string, unknown>).playFriends, undefined);
+        signInAsParent(PARENT);
+        assert.deepEqual(await friendsOf(HOST), []);
+    });
+
+    it("the picker lists siblings first, under „Pozovi na drugi telefon”, apart from turn-taking on this device", () => {
+        const remote = read("app/dashboard/child/[id]/playRemote.tsx");
+        assert.match(remote, /data\.siblings/);
+        assert.match(remote, /Pozovi na drugi telefon/);
+        assert.match(read("app/dashboard/child/[id]/playTogether.tsx"), /Na ovom uređaju, na smenu/);
     });
 });

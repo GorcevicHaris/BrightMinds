@@ -8,7 +8,8 @@
 // POST   — novi poziv za igru, nivo i način igre (`mode`: "together" ili "versus"; bez njega
 //          „zajedno”, kao stari klijenti): kod od četiri sličice (važi 10 minuta) i tajni kanal.
 //          Sa `friend` (ključ druga sa spiska „Drugovi”, lib/playFriends.ts) poziv bez koda ide
-//          pravo tom drugu — samo ako se deca pamte jedno drugom (igrala su zajedno preko koda).
+//          pravo tom drugu — samo ako se deca pamte jedno drugom (igrala su zajedno preko koda)
+//          ili su braća i sestre na istom roditeljskom nalogu (isti skup kao /friends).
 //          Stari poziv (ako postoji) prestaje da važi.
 // DELETE — „Odustani” / „Završi igru sa drugom”: poziv se briše
 import { NextResponse } from "next/server";
@@ -39,6 +40,8 @@ import {
     newChannelKey,
     playFriendsOf,
     settingsOf,
+    siblingByKey,
+    siblingIdsOf,
     updateInvite,
     writeInvite,
     type InviteRow,
@@ -89,7 +92,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 export async function POST(request: Request, { params }: RouteContext) {
     try {
         const childId = parseIdParam((await params).id);
-        await requireChildAccess(childId);
+        const session = await requireChildAccess(childId);
         const body = await readJsonObject(request);
         const level = body.level;
         const mode = parsePlayMode(body.mode);
@@ -108,15 +111,16 @@ export async function POST(request: Request, { params }: RouteContext) {
         const hostRow = await loadInviteRow(childId);
         if (!(await gameOpenFor(hostRow, game))) throw new HttpError(403, INVITE_GAME_LOCKED);
 
-        // Poziv sa spiska „Drugovi”: samo drug koji se pamti na OBA spiska (roditelj koji je
-        // obrisao druga sa spiska svog deteta time gasi i pozive u oba smera)
+        // Poziv bez koda: brat ili sestra sa istog roditeljskog naloga, ili drug koji se pamti na
+        // OBA spiska (roditelj koji je obrisao druga sa spiska svog deteta time gasi i pozive u oba smera)
         let friendRow: InviteRow | null = null;
         if (direct) {
-            const friend = friendByKey(childId, playFriendsOf(hostRow), body.friend);
-            if (!friend) throw new HttpError(404, FRIEND_GONE);
-            friendRow = await loadInviteRow(friend.id).catch(() => null);
-            if (!friendRow || !hasPlayFriend(playFriendsOf(friendRow), childId)) throw new HttpError(404, FRIEND_GONE);
-            const pair = takeAttempts([{ key: `invite-direct:${childId}:${friend.id}`, rule: DIRECT_PAIR_RULE }]);
+            const sibling = siblingByKey(childId, await siblingIdsOf(session, childId), body.friend);
+            const friendId = sibling ?? friendByKey(childId, playFriendsOf(hostRow), body.friend)?.id ?? null;
+            if (friendId === null) throw new HttpError(404, FRIEND_GONE);
+            friendRow = await loadInviteRow(friendId).catch(() => null);
+            if (!friendRow || (sibling === null && !hasPlayFriend(playFriendsOf(friendRow), childId))) throw new HttpError(404, FRIEND_GONE);
+            const pair = takeAttempts([{ key: `invite-direct:${childId}:${friendId}`, rule: DIRECT_PAIR_RULE }]);
             enforceRateLimit(pair, INVITE_LIMITED);
             if (!(await gameOpenFor(friendRow, game))) throw new HttpError(409, FRIEND_GAME_LOCKED);
         }

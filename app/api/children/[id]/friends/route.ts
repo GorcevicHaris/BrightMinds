@@ -14,6 +14,7 @@ import { sanitizeCompanion } from "@/lib/companion";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isRecord } from "@/lib/validation";
 import { errorResponse, parseIdParam } from "../../../_lib/http";
+import { siblingIdsOf } from "../../../_lib/invites";
 
 interface RouteContext {
     params: Promise<{ id: string }>;
@@ -26,20 +27,13 @@ interface FriendRow {
     settings: unknown;
 }
 
-/** Najviše dece na spisku (nalog terapeuta može imati mnogo dece) */
-const MAX_FRIENDS = 12;
-
 export async function GET(_request: Request, { params }: RouteContext) {
     try {
         const childId = parseIdParam((await params).id);
         // Dečja sesija nosi i nalog roditelja (vlasnika), pa su „ostala deca” ista za oba
         const session = await requireChildAccess(childId);
-        // Dečja sesija nosi ulogu vlasnika naloga, pa ista provera važi i za nju
-        if (session.role !== "parent") return NextResponse.json({ friends: [] }, { headers: { "Cache-Control": "no-store" } });
-
-        const { data: links, error: linkError } = await supabaseAdmin.from("user_children").select("child_id").eq("user_id", session.userId);
-        if (linkError) throw linkError;
-        const ids = [...new Set(((links ?? []) as { child_id: number }[]).map((row) => row.child_id))].filter((id) => id !== childId).slice(0, MAX_FRIENDS);
+        // Dečja sesija nosi ulogu vlasnika naloga, pa ista provera važi i za nju (samo nalog roditelja)
+        const ids = await siblingIdsOf(session, childId);
 
         let friends: { id: number; firstName: string; companion: { kind: string; skin: string | null; wear: Record<string, string> } }[] = [];
         if (ids.length > 0) {
