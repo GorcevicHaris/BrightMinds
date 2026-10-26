@@ -9,6 +9,7 @@ export { demoRounds, finiteOr, genderText, hintDue, isFemale, offeredOptions, sh
 export {
     GameTeacherContext,
     CompanionPanelContext,
+    SharedMirrorContext,
     DemoHand,
     useBubbleTail,
     GameStage,

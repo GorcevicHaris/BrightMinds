@@ -27,10 +27,11 @@
 // Server (app/api/children/[id]/invite) daje kanal i ime i drugara druga; preko kanala
 // (lib/inviteChannel.ts) idu samo brojevi.
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, isValidElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
 import { ArrowLeft, ArrowRight, Check, Hand, KeyRound, Minus, Play, Plus, RotateCcw, Smartphone, X } from "lucide-react";
 import { useCalmMotion } from "@/app/components/avatar/motion";
+import type { GameProps, GameResult } from "@/app/components/games/kit/types";
 import VisualPinPad from "@/app/components/VisualPinPad";
 import { Button, Spinner } from "@/app/components/ui/Button";
 import { Modal } from "@/app/components/ui/Modal";
@@ -56,18 +57,21 @@ import {
     type RemoteState,
     type RequestVia,
 } from "@/lib/invite";
-import { useInviteChannel, type InviteRole } from "@/lib/inviteChannel";
+import { useInviteChannel, type InviteRole, type SharedEvent } from "@/lib/inviteChannel";
 import { useInviteInbox } from "@/lib/inviteInbox";
 import { speak } from "@/lib/speech";
 import { starsPhrase, togetherPraise, type TogetherPlayer } from "@/lib/playTogether";
 import { GameEventTapProvider, useTogetherAnnounce } from "@/lib/realtime";
 import type { GameUpdate } from "@/lib/types";
+import { isNewer, parseMirror, sharedBoardFor, type MirrorMessage } from "@/lib/sharedPlay";
 import { genderOf, playModeOr, versusLiveScore, versusScore, type Gender, type PlayMode } from "@/lib/versus";
 import { PIN_LENGTH, VISUAL_PIN_CATEGORIES } from "@/lib/visualPinData";
 import { chosenSkin, useCompanion } from "./companionState";
 import { CoinsBadge, LOOKS, PlayerPicture, PraiseBadge } from "./playTogether";
 // Takmičenje (playVersus.tsx): izbor načina igre, ekran „VS”, zvezdice i kraj sa pobednikom
 import { ModeChoice, ScorePill, VersusEnd, VsIntro, VsMark } from "./playVersus";
+// Zajednička tabla (playShared.tsx): jedna igra na dva uređaja, na smenu
+import { SharedGuestBoard, SharedHostLayer } from "./playShared";
 
 // ── Stanje ────────────────────────────────────────────────────────────────────
 
@@ -163,6 +167,23 @@ interface RemoteValue {
     finishedKey: (key: string) => boolean;
     setLevel: (level: number) => void;
     refresh: () => void;
+    /** Ova igra se igra na zajedničkoj tabli (jedna igra na dva uređaja, lib/sharedPlay.ts) */
+    sharedBoard: boolean;
+    /** Kanal zajedničke table (playShared.tsx) */
+    sharedChannel: SharedChannel;
+}
+
+/** Poruke zajedničke table preko kanala igre sa drugom */
+export interface SharedChannel {
+    /** false kad kanal još nije povezan */
+    send: (kind: SharedEvent, payload: unknown) => boolean;
+    /** Snimak table stiže već proveren (`MirrorMessage`), radnja i „pošalji snimak” kao sirove poruke */
+    listen: (fn: (kind: SharedEvent, payload: unknown) => void) => () => void;
+    /** Gost: poslednji primljen snimak (tabla ga prikaže odmah, i posle novog nivoa) */
+    lastMirror: () => MirrorMessage | null;
+    /** Gost: da li je nivo sa ovom epohom već završen (njegovi zakasneli snimci ne otvaraju novu tablu) */
+    finished: (epoch: number) => boolean;
+    markFinished: (epoch: number) => void;
 }
 
 const RemoteContext = createContext<RemoteValue | null>(null);
@@ -198,20 +219,22 @@ function readGuest(childId: number): RemoteSession | null {
         if (!raw || typeof raw.channel !== "string" || !/^bm-inv-[0-9a-f]{40}$/.test(raw.channel) || !isRemoteGame(raw.game)) return null;
         if (!isServerFriend(raw.friend) || typeof raw.level !== "number") return null;
         const level = Math.min(Math.max(Math.round(raw.level), 1), MAX_LEVEL);
-        return { role: "guest", channel: raw.channel, game: raw.game, level, mode: playModeOr(raw.mode), friend: toPlayer(raw.friend), code: null, expired: false, asking: null, answer: null, autoStart: 0 };
+        // Gost je osvežio stranicu usred igre: igra se sama ponovo otvara (zajednička tabla nastavlja od snimka)
+        const autoStart = raw.playing === true ? Date.now() : 0;
+        return { role: "guest", channel: raw.channel, game: raw.game, level, mode: playModeOr(raw.mode), friend: toPlayer(raw.friend), code: null, expired: false, asking: null, answer: null, autoStart };
     } catch {
         return null;
     }
 }
 
-function writeGuest(childId: number, session: RemoteSession | null) {
+function writeGuest(childId: number, session: RemoteSession | null, playing = false) {
     try {
         if (!session || session.role !== "guest" || !session.friend) {
             window.sessionStorage.removeItem(guestKey(childId));
             return;
         }
         const friend: ServerFriend = { firstName: session.friend.name, companion: { kind: session.friend.kind, skin: session.friend.skin ?? null, wear: session.friend.wear ?? {} } };
-        window.sessionStorage.setItem(guestKey(childId), JSON.stringify({ channel: session.channel, game: session.game, level: session.level, mode: session.mode, friend }));
+        window.sessionStorage.setItem(guestKey(childId), JSON.stringify({ channel: session.channel, game: session.game, level: session.level, mode: session.mode, friend, playing }));
     } catch {
         /* skladište nije dostupno: posle osvežavanja dete igra samo */
     }
@@ -365,9 +388,10 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
         refresh();
     }, [childId, preview, refresh]);
 
+    const playingNow = progress.phase === "playing";
     useEffect(() => {
-        writeGuest(childId, session);
-    }, [childId, session]);
+        writeGuest(childId, session, playingNow);
+    }, [childId, session, playingNow]);
 
     const create = useCallback(
         async (game: GameId, level: number, mode: PlayMode = "together", friend?: string): Promise<string | null> => {
@@ -508,6 +532,10 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
 
     // ── Kanal ──────────────────────────────────────────────────────────────────
 
+    const sharedListeners = useRef(new Set<(kind: SharedEvent, payload: unknown) => void>());
+    const lastMirror = useRef<MirrorMessage | null>(null);
+    const finishedEpoch = useRef(0);
+
     const handlers = useMemo(
         () => ({
             onState: (payload: unknown) => {
@@ -521,6 +549,21 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
                 });
                 setSeenAt(at);
                 setFriendLeft(false);
+            },
+            onShared: (kind: SharedEvent, payload: unknown) => {
+                if (kind === "mirror") {
+                    // Samo gost prima snimke; stariji od poslednjeg se odbacuju (redosled poruka nije zagarantovan)
+                    if (sessionRef.current?.role !== "guest") return;
+                    const mirror = parseMirror(payload);
+                    if (!mirror) return;
+                    const last = lastMirror.current;
+                    if (last && !isNewer(mirror, last)) return;
+                    lastMirror.current = mirror;
+                    sharedListeners.current.forEach((fn) => fn("mirror", mirror));
+                    return;
+                }
+                if (sessionRef.current?.role !== "host") return;
+                sharedListeners.current.forEach((fn) => fn(kind, payload));
             },
             onEnd: () => {
                 const current = sessionRef.current;
@@ -598,7 +641,31 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
     );
 
     // Svoje stanje drug dobija na svaku promenu i na svakih nekoliko sekundi („otkucaj srca”)
-    const { sendState, sendEnd, ready } = channel;
+    const { sendState, sendEnd, sendShared, ready } = channel;
+    const sharedChannel = useMemo<SharedChannel>(
+        () => ({
+            send: sendShared,
+            listen: (fn) => {
+                sharedListeners.current.add(fn);
+                return () => {
+                    sharedListeners.current.delete(fn);
+                };
+            },
+            lastMirror: () => lastMirror.current,
+            finished: (epoch) => finishedEpoch.current === epoch,
+            markFinished: (epoch) => {
+                finishedEpoch.current = epoch;
+            },
+        }),
+        [sendShared]
+    );
+    // Nova igra sa drugom: snimci prethodne ne važe
+    const sessionChannel = session?.channel ?? null;
+    useEffect(() => {
+        lastMirror.current = null;
+        finishedEpoch.current = 0;
+    }, [sessionChannel]);
+    const sharedBoard = Boolean(session?.friend) && sharedBoardFor(session?.game, session?.mode ?? "together");
     const myStateRef = useRef(myState);
     useEffect(() => {
         myStateRef.current = myState;
@@ -676,7 +743,8 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
             cheerAt,
             now,
             myState,
-            togetherStars: myState.sessionStars + (friendState?.sessionStars ?? 0),
+            // Zajednička tabla: oba deteta igraju istu igru, pa su zvezdice iste (ne sabiraju se)
+            togetherStars: myState.sessionStars + (sharedBoard ? 0 : (friendState?.sessionStars ?? 0)),
             busy,
             create,
             lookup,
@@ -692,8 +760,10 @@ export function RemoteProvider({ childId, childName, gender, preview = false, in
             finishedKey,
             setLevel,
             refresh,
+            sharedBoard,
+            sharedChannel,
         }),
-        [preview, session, endedBy, me, myGender, friendState, friendHere, friendGone, cheerAt, now, myState, busy, create, lookup, answer, requests, loadFriends, clearAutoStart, end, report, left, finish, finishedKey, setLevel, refresh]
+        [preview, session, endedBy, me, myGender, friendState, friendHere, friendGone, cheerAt, now, myState, busy, create, lookup, answer, requests, loadFriends, clearAutoStart, end, report, left, finish, finishedKey, setLevel, refresh, sharedBoard, sharedChannel]
     );
 
     return (
@@ -1431,14 +1501,20 @@ function TogetherPill({ stars, className }: { stars: number; className?: string 
 
 interface LayerProps {
     gameId: GameId;
+    /** Partija u GameContainer-u (igra, nivo, pokušaj): oznaka partije na zajedničkoj tabli */
+    playKey: string;
+    /** Gost na zajedničkoj tabli prati nivo koji je domaćin pokrenuo */
+    onFollowLevel: (level: number) => void;
     children: ReactNode;
 }
 
 /**
- * Omotač igre u igri sa drugom na drugom uređaju: traka sa drugom iznad igre, a stanje igre
- * (zadatak, tačni odgovori) ide drugu. Van takve igre samo prikazuje igru.
+ * Omotač igre u igri sa drugom na drugom uređaju. Na zajedničkoj tabli (playShared.tsx) domaćin
+ * igra pravu igru, a gost vidi istu tablu i igra na smenu; inače svako igra svoju kopiju nivoa, uz
+ * traku sa drugom iznad igre, a stanje igre (zadatak, tačni odgovori) ide drugu. Van igre sa
+ * drugom samo prikazuje igru.
  */
-export function RemoteFriendLayer({ gameId, children }: LayerProps) {
+export function RemoteFriendLayer({ gameId, playKey, onFollowLevel, children }: LayerProps) {
     const remote = useRemote();
     const active = Boolean(remote?.session?.friend) && remote?.session?.game === gameId;
     const report = remote?.report;
@@ -1446,6 +1522,9 @@ export function RemoteFriendLayer({ gameId, children }: LayerProps) {
     const onUpdate = useCallback((update: GameUpdate) => report?.(update, gameId), [report, gameId]);
     // Takmičenje: pre igre kratak ekran „VS” (omotač se pravi iznova za svaku partiju)
     const [intro, setIntro] = useState(() => active && remote?.session?.mode === "versus");
+    // Zajednička tabla se bira na početku partije i ostaje do njenog kraja: kad domaćin ode, gost
+    // ne dobija iznenada novu igru, nego mirnu poruku na istoj tabli
+    const [shared] = useState<InviteRole | null>(() => (active && remote?.sharedBoard ? (remote.session?.role ?? null) : null));
 
     // Izlazak iz nivoa pre kraja: drug vidi da se dete vratilo u predvorje
     useEffect(() => {
@@ -1453,12 +1532,24 @@ export function RemoteFriendLayer({ gameId, children }: LayerProps) {
         return () => left?.();
     }, [active, left]);
 
-    if (!active || !remote?.session?.friend) return <>{children}</>;
-    if (intro && remote.session.mode === "versus") {
+    const friend = remote?.session?.friend;
+    if (intro && active && remote?.session?.friend && remote.session.mode === "versus") {
         return (
             <div className="relative flex flex-1 flex-col">
                 <VsIntro players={[remote.me, remote.session.friend]} gameTitle={getGame(gameId).title} onDone={() => setIntro(false)} />
             </div>
+        );
+    }
+    const slot = isValidElement<GameProps>(children) ? children : null;
+    if (shared === "guest" && slot) {
+        return <SharedGuestBoard gameId={gameId} level={slot.props.level} gender={slot.props.gender} onComplete={slot.props.onComplete} onFollowLevel={onFollowLevel} />;
+    }
+    if (!active || !friend) return <>{children}</>;
+    if (shared === "host" && slot) {
+        return (
+            <SharedHostLayer gameId={gameId} sessionId={playKey}>
+                {slot}
+            </SharedHostLayer>
         );
     }
     return (
@@ -1689,7 +1780,8 @@ export function RemoteTogetherEnd({ playKey, stars, correct = 0, total: tasks = 
     const friendDone = Boolean(state && state.done >= myDone);
     const bothDone = friendDone && !remote.friendGone;
     const waiting = remote.friendHere && !friendDone && state?.phase === "playing";
-    const total = mySession + (state?.sessionStars ?? 0);
+    // Zajednička tabla: jedna igra, iste zvezdice kod oba deteta (ne sabiraju se)
+    const total = mySession + (remote.sharedBoard ? 0 : (state?.sessionStars ?? 0));
     const names: [string, string] = session.role === "host" ? [me.name, friend.name] : [friend.name, me.name];
     const praise = togetherPraise(names, total);
     const nextLevel = nextTogetherLevel(level, advance, bothDone ? (state?.advance ?? false) : null);
@@ -1876,6 +1968,8 @@ export function RemoteScenePreview({ scene, games }: { scene: RemoteScene; games
                     : null;
     const idle = async () => null;
     const value: RemoteValue = {
+        sharedBoard: false,
+        sharedChannel: { send: () => false, listen: () => () => {}, lastMirror: () => null, finished: () => false, markFinished: () => {} },
         preview: true,
         session,
         endedBy: null,
@@ -1941,3 +2035,132 @@ function ScenePicker({ games, who }: { games: GameDefinition[]; who: boolean }) 
 }
 
 const EMPTY_STATE: RemoteState = { phase: "lobby", done: 0, round: 0, total: 0, stars: 0, sessionStars: 0, correct: 0, advance: false };
+
+// ── Probna zajednička tabla (samo /dev/shared, u razvoju) ───────────────────────
+
+interface LabProps {
+    gameId: GameId;
+    level: number;
+    mode: PlayMode;
+    /** Kašnjenje poruka (ms, nasumično do te vrednosti — poruke stižu i obrnutim redom) */
+    lag: number;
+    renderHost: (props: { sessionId: string; onComplete: (result: GameResult) => void }) => ReactNode;
+    renderGuest: (props: { onComplete: (result: GameResult) => void; onFollowLevel: (level: number) => void }) => ReactNode;
+}
+
+/** Kanal u memoriji za probnu tablu: poruka stiže posle nasumičnog kašnjenja (do `lag` ms) */
+function labChannels(lag: number): Record<InviteRole, SharedChannel> {
+    const listeners = { host: new Set<(kind: SharedEvent, payload: unknown) => void>(), guest: new Set<(kind: SharedEvent, payload: unknown) => void>() };
+    let guestLast: MirrorMessage | null = null;
+    let guestFinished = 0;
+    const deliver = (to: InviteRole, kind: SharedEvent, payload: unknown) => {
+        const copy = JSON.parse(JSON.stringify(payload)) as unknown;
+        setTimeout(() => {
+            if (to === "guest") {
+                const mirror = parseMirror(copy);
+                if (!mirror || (guestLast && !isNewer(mirror, guestLast))) return;
+                guestLast = mirror;
+                // Za proveru iz alata (samo probna tabla)
+                (window as unknown as { __sharedMirror?: MirrorMessage }).__sharedMirror = mirror;
+                listeners.guest.forEach((fn) => fn(kind, mirror));
+                return;
+            }
+            listeners.host.forEach((fn) => fn(kind, copy));
+        }, Math.random() * lag);
+    };
+    const make = (side: InviteRole): SharedChannel => ({
+        send: (kind, payload) => {
+            deliver(side === "host" ? "guest" : "host", kind, payload);
+            return true;
+        },
+        listen: (fn) => {
+            listeners[side].add(fn);
+            return () => {
+                listeners[side].delete(fn);
+            };
+        },
+        lastMirror: () => (side === "guest" ? guestLast : null),
+        finished: (epoch) => side === "guest" && guestFinished === epoch,
+        markFinished: (epoch) => {
+            guestFinished = epoch;
+        },
+    });
+    return { host: make("host"), guest: make("guest") };
+}
+
+/**
+ * Domaćin (Lejla) i gost (Amar) u istoj kartici, povezani kanalom u memoriji umesto Realtime-a
+ * (sa kašnjenjem i izmešanim redosledom po želji): za proveru zajedničke table u svakoj igri.
+ */
+export function SharedBoardLab({ gameId, level, mode, lag, renderHost, renderGuest }: LabProps) {
+    const [now, setNow] = useState(0);
+    useEffect(() => {
+        const tick = () => setNow(Date.now());
+        tick();
+        const timer = setInterval(tick, 1000);
+        return () => clearInterval(timer);
+    }, []);
+    const [results, setResults] = useState<{ host: string; guest: string }>({ host: "", guest: "" });
+    const [attempt, setAttempt] = useState(1);
+    const lejla = useMemo<TogetherPlayer>(() => ({ name: "Lejla", kind: "girl" }), []);
+    const amar = useMemo<TogetherPlayer>(() => ({ name: "Amar", kind: "dog" }), []);
+    const [channels] = useState(() => labChannels(lag));
+    const valueFor = (role: InviteRole): RemoteValue => {
+        const playing: RemoteState = { ...EMPTY_STATE, phase: "playing", round: 1, total: 5 };
+        return {
+            preview: true,
+            session: { role, channel: "bm-inv-proba", game: gameId, level, mode, friend: role === "host" ? amar : lejla, code: null, expired: false, asking: null, answer: null, autoStart: 0 },
+            endedBy: null,
+            me: role === "host" ? lejla : amar,
+            gender: role === "host" ? "female" : "male",
+            friendState: playing,
+            friendHere: true,
+            friendGone: false,
+            cheerAt: 0,
+            now,
+            myState: playing,
+            togetherStars: 0,
+            busy: false,
+            create: async () => null,
+            lookup: async () => ({ error: null, status: 200, card: null }),
+            answer: async () => null,
+            requests: [],
+            loadFriends: async () => [],
+            clearAutoStart: () => undefined,
+            end: () => undefined,
+            dismissEnded: () => undefined,
+            report: () => undefined,
+            left: () => undefined,
+            finish: () => undefined,
+            finishedKey: () => false,
+            setLevel: () => undefined,
+            refresh: () => undefined,
+            sharedBoard: true,
+            sharedChannel: channels[role],
+        };
+    };
+    const describe = (r: GameResult) => `tačno ${r.correct} od ${r.total}, uz pomoć ${r.prompted ?? 0}, poeni ${r.score}`;
+    return (
+        <>
+            <section aria-label="Domaćin" data-side="host" className="relative flex min-h-0 flex-col overflow-hidden rounded-card border-2 border-line bg-canvas p-2">
+                <RemoteContext value={valueFor("host")}>{renderHost({ sessionId: `${gameId}-${level}-${attempt}`, onComplete: (r) => setResults((prev) => ({ ...prev, host: describe(r) })) })}</RemoteContext>
+                {results.host && (
+                    <p data-result="host" className="absolute inset-x-2 bottom-2 z-40 rounded-xl bg-emerald-600 p-2 text-center font-bold text-white">
+                        Lejla: {results.host}{" "}
+                        <button type="button" className="underline" onClick={() => (setResults({ host: "", guest: "" }), setAttempt((n) => n + 1))}>
+                            ponovo
+                        </button>
+                    </p>
+                )}
+            </section>
+            <section aria-label="Gost" data-side="guest" className="relative flex min-h-0 flex-col overflow-hidden rounded-card border-2 border-line bg-canvas p-2">
+                <RemoteContext key={attempt} value={valueFor("guest")}>{renderGuest({ onComplete: (r) => setResults((prev) => ({ ...prev, guest: describe(r) })), onFollowLevel: () => undefined })}</RemoteContext>
+                {results.guest && (
+                    <p data-result="guest" className="absolute inset-x-2 bottom-2 z-40 rounded-xl bg-emerald-600 p-2 text-center font-bold text-white">
+                        Amar: {results.guest}
+                    </p>
+                )}
+            </section>
+        </>
+    );
+}

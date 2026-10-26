@@ -557,6 +557,7 @@ function ShopBoard({ view, drag, ghost, calm, wiggle, demo, disabled, onBasket, 
                                 return budget ? (
                                     <span
                                         key={key}
+                                        data-action={`takeout:${key}`}
                                         role="button"
                                         tabIndex={disabled ? -1 : 0}
                                         aria-label={`${goodLabel(w.good, w.size)}, vrati na policu`}
@@ -655,6 +656,7 @@ function PayBoard({ view, drag, ghost, calm, wiggle, disabled, onTray, onTakeBac
                             {view.paid.map((index) => (
                                 <span
                                     key={index}
+                                    data-action={`takeback:${index}`}
                                     role="button"
                                     tabIndex={disabled ? -1 : 0}
                                     aria-label={`${dinars(view.wallet[index])}, vrati u novčanik`}
@@ -780,6 +782,7 @@ function ChoiceBoard({ view, demo, disabled, onPick }: { view: MarketView; demo:
                     return (
                         <ChoiceCard
                             key={choice}
+                            data-action={`choice:${choice}`}
                             state={state}
                             disabled={disabled || (state !== "idle" && state !== "hint")}
                             onClick={() => onPick(choice)}

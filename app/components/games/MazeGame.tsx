@@ -442,6 +442,8 @@ function MazePlay({ view, calm, bump, disabled, demo, onBox, onWalk }: PlayProps
                         role="application"
                         tabIndex={disabled ? -1 : 0}
                         aria-label={`Lavirint ${maze.cols} × ${maze.rows}. Strelice pomeraju lik.`}
+                        // Zajednička tabla (lib/sharedPlay.ts): dodir drugog deteta stiže kao tačka na tabli
+                        data-action-point="lavirint"
                         onPointerDown={onPointerDown}
                         onPointerMove={onPointerMove}
                         onPointerUp={(event) => release(event, false)}

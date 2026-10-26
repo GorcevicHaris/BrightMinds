@@ -317,6 +317,7 @@ export function PuzzleBoard({ round, view, calm, disabled, demo, onSelect, onDro
                                 <button
                                     key={shape.cell}
                                     type="button"
+                                    data-action={`cell:${shape.cell}`}
                                     tabIndex={view.selected ? 0 : -1}
                                     aria-label={`Mesto ${shape.cell + 1}`}
                                     disabled={disabled || !view.selected}

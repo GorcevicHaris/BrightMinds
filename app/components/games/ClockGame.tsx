@@ -585,6 +585,7 @@ function TimeBoard({ view, calm, disabled, onPick, onSet }: TimeBoardProps) {
                         return (
                             <ChoiceCard
                                 key={key}
+                                data-action={`choice:${key}`}
                                 state={state}
                                 disabled={disabled || (state !== "idle" && state !== "hint")}
                                 onClick={() => onPick(key)}
@@ -616,6 +617,7 @@ function TimeBoard({ view, calm, disabled, onPick, onSet }: TimeBoardProps) {
                         return (
                             <ChoiceCard
                                 key={key}
+                                data-action={`choice:${key}`}
                                 state={state}
                                 disabled={disabled || (state !== "idle" && state !== "hint")}
                                 onClick={() => onPick(key)}
@@ -704,6 +706,7 @@ function SetClock({ view, calm, disabled, onSet }: { view: ClockView; calm: bool
                         <button
                             key={hour}
                             type="button"
+                            data-action={`hour:${hour}`}
                             disabled={disabled}
                             // Mišem i prstom radi ceo sat (pokret iznad); ovde samo tastatura (detail = 0)
                             onClick={(event) => event.detail === 0 && onSet(hour)}

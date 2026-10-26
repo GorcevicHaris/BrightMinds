@@ -326,6 +326,7 @@ export default function FamilyGame({ childId, level, gender, onComplete, isMonit
                         return (
                             <ChoiceCard
                                 key={`${shown.round}-${id}`}
+                                data-action={`choice:${id}`}
                                 state={state}
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(id)}

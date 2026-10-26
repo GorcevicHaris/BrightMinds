@@ -411,6 +411,7 @@ function InsetPlay({ view, drag, calm, wiggle, disabled, demo, onHole, onRotate 
                 {view.rotate && (
                     <button
                         type="button"
+                        data-action="rotate"
                         onClick={() => selected && onRotate(selected)}
                         disabled={disabled || selected === null}
                         className="inline-flex min-h-12 min-w-12 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] border-purple-700 bg-purple-500 px-5 font-display [@media(max-height:30rem)]:px-2.5 text-lg font-extrabold text-white transition-[transform,border-width,opacity] active:translate-y-[3px] active:border-b-2 disabled:opacity-40"

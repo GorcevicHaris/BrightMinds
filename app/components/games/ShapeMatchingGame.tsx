@@ -828,6 +828,8 @@ export default function ShapeMatchingGame({ childId, level, gender, onComplete, 
                                 state={state}
                                 disabled={isMonitor || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(index)}
+                                // Ključ poteza za zajedničku tablu: indeks u `options` je isti na oba uređaja
+                                data-action={`choice:${index}`}
                                 aria-label={SHAPE_INFO[option.shape].name}
                                 className="aspect-square"
                             >

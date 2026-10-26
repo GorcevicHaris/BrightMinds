@@ -12,6 +12,11 @@ import { realtimeClient, realtimeConfigured } from "./realtime";
 
 const EVENT_STATE = "together:state";
 const EVENT_END = "together:end";
+// Zajednička tabla: snimak table (domaćin → gost), dodir gosta (gost → domaćin) i „pošalji mi
+// poslednji snimak” (gost posle ulaska ili osvežavanja)
+const EVENT_MIRROR = "together:mirror";
+const EVENT_ACTION = "together:action";
+const EVENT_HELLO = "together:hello";
 // Kanal se gasi tek malo posle poslednjeg korisnika (brz ponovni ulazak u razvoju, StrictMode)
 const REMOVE_DELAY_MS = 3_000;
 
@@ -28,6 +33,7 @@ interface Entry {
     retries: number;
     onState: Set<(payload: unknown) => void>;
     onEnd: Set<() => void>;
+    onShared: Set<(kind: SharedEvent, payload: unknown) => void>;
     onPresence: Set<(present: boolean) => void>;
     onReady: Set<(ready: boolean) => void>;
     /** Poslednje stanje koje čeka da se kanal poveže */
@@ -52,6 +58,9 @@ function connect(entry: Entry) {
     channel
         .on("broadcast", { event: EVENT_STATE }, ({ payload }) => entry.onState.forEach((fn) => fn(payload)))
         .on("broadcast", { event: EVENT_END }, () => entry.onEnd.forEach((fn) => fn()))
+        .on("broadcast", { event: EVENT_MIRROR }, ({ payload }) => entry.onShared.forEach((fn) => fn("mirror", payload)))
+        .on("broadcast", { event: EVENT_ACTION }, ({ payload }) => entry.onShared.forEach((fn) => fn("action", payload)))
+        .on("broadcast", { event: EVENT_HELLO }, ({ payload }) => entry.onShared.forEach((fn) => fn("hello", payload)))
         .on("presence", { event: "sync" }, () => {
             const present = Object.keys(channel.presenceState()).some((key) => key !== entry.role);
             entry.onPresence.forEach((fn) => fn(present));
@@ -101,6 +110,7 @@ function acquire(name: string, role: InviteRole): Entry {
         retries: 0,
         onState: new Set(),
         onEnd: new Set(),
+        onShared: new Set(),
         onPresence: new Set(),
         onReady: new Set(),
         pending: null,
@@ -128,9 +138,15 @@ function release(name: string) {
     }, REMOVE_DELAY_MS);
 }
 
+export type SharedEvent = "mirror" | "action" | "hello";
+
+const SHARED_EVENTS: Record<SharedEvent, string> = { mirror: EVENT_MIRROR, action: EVENT_ACTION, hello: EVENT_HELLO };
+
 interface Handlers {
     onState: (payload: unknown) => void;
     onEnd: () => void;
+    /** Poruke zajedničke table (lib/sharedPlay.ts proverava sadržaj) */
+    onShared?: (kind: SharedEvent, payload: unknown) => void;
 }
 
 /**
@@ -156,6 +172,7 @@ export function useInviteChannel(name: string | null, role: InviteRole, handlers
         entryRef.current = entry;
         const onState = (payload: unknown) => handlersRef.current.onState(payload);
         const onEnd = () => handlersRef.current.onEnd();
+        const onShared = (kind: SharedEvent, payload: unknown) => handlersRef.current.onShared?.(kind, payload);
         const onReady = (value: boolean) => setReady(value);
         const onPresence = (value: boolean) => {
             setPresent(value);
@@ -168,12 +185,14 @@ export function useInviteChannel(name: string | null, role: InviteRole, handlers
         };
         entry.onState.add(onState);
         entry.onEnd.add(onEnd);
+        entry.onShared.add(onShared);
         entry.onReady.add(onReady);
         entry.onPresence.add(onPresence);
         if (entry.ready) queueMicrotask(() => setReady(true));
         return () => {
             entry.onState.delete(onState);
             entry.onEnd.delete(onEnd);
+            entry.onShared.delete(onShared);
             entry.onReady.delete(onReady);
             entry.onPresence.delete(onPresence);
             entryRef.current = null;
@@ -197,5 +216,13 @@ export function useInviteChannel(name: string | null, role: InviteRole, handlers
         if (entry?.ready && entry.channel) void entry.channel.send({ type: "broadcast", event: EVENT_END, payload: {} });
     }, []);
 
-    return { ready, present, leftAt, sendState, sendEnd, configured: realtimeConfigured };
+    /** Poruka zajedničke table; vraća false kad kanal još nije povezan (pošiljalac pokušava ponovo) */
+    const sendShared = useCallback((kind: SharedEvent, payload: unknown): boolean => {
+        const entry = entryRef.current;
+        if (!entry?.ready || !entry.channel) return false;
+        void entry.channel.send({ type: "broadcast", event: SHARED_EVENTS[kind], payload });
+        return true;
+    }, []);
+
+    return { ready, present, leftAt, sendState, sendEnd, sendShared, configured: realtimeConfigured };
 }

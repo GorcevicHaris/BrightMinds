@@ -584,6 +584,7 @@ function WhenBoard({ view, calm, demo, disabled, onPick }: { view: WeatherView; 
                     return (
                         <ChoiceCard
                             key={id}
+                            data-action={`choice:${id}`}
                             state={state}
                             disabled={disabled || (state !== "idle" && state !== "hint")}
                             onClick={() => onPick(id)}

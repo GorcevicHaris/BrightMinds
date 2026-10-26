@@ -8,10 +8,11 @@
 // Nema žurbe ni tajmera; posle greške glas mirno kaže činjenicu („Lopta je i dalje na polici.”),
 // a pomoć (tačan izbor zasvetli) se na težim nivoima povlači.
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { useContext, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { useCalmMotion } from "@/app/components/avatar/motion";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
+    SharedMirrorContext,
     boxOf,
     ChoiceCard,
     DemoHand,
@@ -595,6 +596,8 @@ function ClosureBoard({ view, landscape, columnTitle, calm, early, showHand, dis
                                 key={`${view.round}-${id}`}
                                 state={state}
                                 disabled={disabled || (state !== "idle" && state !== "hint")}
+                                // Ključ za zajedničku tablu: id dela, isti na oba uređaja
+                                data-action={`part:${id}`}
                                 onClick={(event) => onPick(id, event)}
                                 aria-label={`${choice.name}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                 className="animate-pop min-h-0 flex-col gap-1 px-1.5 py-2 sm:gap-1.5 sm:py-3"
@@ -647,6 +650,7 @@ function shelfRows(count: number, landscape: boolean, tight = false): number[][]
 }
 
 function ShelfBoard({ view, landscape, short, columnTitle, calm, female, showHand, lookHand, disabled, monitor, onRemembered, onPick, onShelf }: ShelfProps) {
+    const mirror = useContext(SharedMirrorContext);
     const placedNow = arrangement(view);
     const rows = shelfRows(view.shelf.length, landscape, view.phase === "ask" && view.kind !== "swap");
     const cols = Math.max(...rows.map((row) => row.length));
@@ -709,6 +713,8 @@ function ShelfBoard({ view, landscape, short, columnTitle, calm, female, showHan
                                         key={slot}
                                         type="button"
                                         disabled={!asking || done || view.wrong.includes(id)}
+                                        // Ključ za zajedničku tablu: id stvari na polici (svaka stvar je na polici jednom)
+                                        data-action={`shelf:${id}`}
                                         onClick={() => onShelf(id)}
                                         aria-label={`${item.name}${done ? ", promenilo mesto" : ""}`}
                                         className={cn(
@@ -732,9 +738,11 @@ function ShelfBoard({ view, landscape, short, columnTitle, calm, female, showHan
                     <Curtain closed={curtain} calm={calm} />
                 </div>
 
-                {look && !monitor && (
+                {look && (!monitor || mirror) && (
                     <button
                         type="button"
+                        // Ključ za zajedničku tablu: nosi zadatak, da zakasneli dodir ne navuče zavesu sledećem
+                        data-action={`remembered:${view.round}`}
                         onClick={onRemembered}
                         disabled={disabled}
                         className={cn(
@@ -773,6 +781,8 @@ function ShelfBoard({ view, landscape, short, columnTitle, calm, female, showHan
                                     key={`${view.round}-${id}`}
                                     state={state}
                                     disabled={disabled || (state !== "idle" && state !== "hint")}
+                                    // Ključ za zajedničku tablu: id stvari među izborima
+                                    data-action={`item:${id}`}
                                     onClick={(event) => onPick(id, event)}
                                     aria-label={`${item.name}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                     className={cn("animate-pop min-h-0 flex-col gap-1 px-1", short ? "py-1" : "py-2 sm:gap-1.5 sm:py-3")}

@@ -22,6 +22,13 @@ export const GameTeacherContext = React.createContext<{ gender?: string; kind?: 
  */
 export const CompanionPanelContext = React.createContext(false);
 
+/**
+ * Igra se crta kao zajednička tabla kod drugog deteta (app/dashboard/child/[id]/playShared.tsx):
+ * monitor koji ipak prikazuje dugmad koja inače vidi samo dete koje igra („Dalje”, „Zapamtio sam”),
+ * jer ih drugo dete pritiska kad je na redu (dodir ide domaćinu preko ključa `data-action`).
+ */
+export const SharedMirrorContext = React.createContext(false);
+
 // ── GameStage ─────────────────────────────────────────────────────────────────
 // Okvir igre: centrira sadržaj, drži istu širinu i razmake u svim igrama.
 
@@ -456,6 +463,7 @@ interface ExplainPanelProps {
 
 export function ExplainPanel({ text, icon, accent, onNext, nextLabel = "Dalje", nextRef, done = false, doneText = "Nivo je završen.", className }: ExplainPanelProps) {
     const textId = React.useId();
+    const mirror = React.useContext(SharedMirrorContext);
     return (
         <section
             aria-label="Objašnjenje"
@@ -482,11 +490,13 @@ export function ExplainPanel({ text, icon, accent, onNext, nextLabel = "Dalje", 
                     {doneText}
                 </p>
             ) : (
-                onNext && (
+                (onNext || mirror) && (
                     <button
                         ref={nextRef}
                         type="button"
                         onClick={onNext}
+                        // Zajednička tabla: isto dugme i kod drugog deteta (lib/sharedPlay.ts)
+                        data-action="next"
                         aria-describedby={textId}
                         className={cn(
                             "inline-flex min-h-16 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] px-8 font-display text-xl font-extrabold text-white transition-[transform,border-width] active:translate-y-[3px] active:border-b-2 sm:text-2xl flat:min-h-12 flat:px-5 flat:sm:text-xl",

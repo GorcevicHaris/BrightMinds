@@ -442,6 +442,8 @@ export default function SequenceGame({ childId, level, gender, onComplete, isMon
                                 state={state}
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(stepIndex)}
+                                // Ključ poteza za zajedničku tablu: indeks koraka u nizu
+                                data-action={`step:${stepIndex}`}
                                 aria-label={`${step.text}${state === "wrong" ? ", netačno" : ""}`}
                                 className={cn("min-h-0 flex-col justify-start gap-1 p-1.5 sm:gap-1.5 sm:p-2", CARD_BASIS[cards] ?? CARD_BASIS[5])}
                             >

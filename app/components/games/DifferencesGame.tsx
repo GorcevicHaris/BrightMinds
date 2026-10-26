@@ -6,11 +6,12 @@
 // kaže da su tu iste — bez zvuka greške. Dugme „Pomoć” blago istakne jednu razliku. Nema žurbe
 // ni tajmera. Slike i nivoi: data/differencesLevels.ts.
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useContext, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Lightbulb } from "lucide-react";
 import { useCalmMotion } from "@/app/components/avatar/motion";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
+    SharedMirrorContext,
     demoRounds,
     DemoHand,
     Feedback,
@@ -73,6 +74,7 @@ function initialView(plan: DiffPlan | null): DiffView {
 }
 
 export default function DifferencesGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<DiffView>) {
+    const mirror = useContext(SharedMirrorContext);
     const settings = useChildSettings();
     const calm = useCalmMotion();
     const sync = useGameSync<DiffView>({ childId, gameId: "differences", level, isMonitor });
@@ -241,9 +243,11 @@ export default function DifferencesGame({ childId, level, gender, onComplete, is
 
     const solved = shown.feedback === "correct";
     const demo = !isMonitor && modeledRound(shown) && shown.found.length === 0 && shown.misses === 0 && !solved;
-    const hintButton = isMonitor ? undefined : (
+    const hintButton = isMonitor && !mirror ? undefined : (
         <button
             type="button"
+            // Ključ za zajedničku tablu (na monitoru dugmeta nema)
+            data-action="tool:hint"
             onClick={() => giveHint("Dugme „Pomoć”", true)}
             disabled={solved || shown.hint !== null}
             aria-label="Pomoć"
@@ -323,6 +327,7 @@ function DiffPair({ view, scene, calm, demo, disabled, onTap }: PairProps) {
                     {(["a", "b"] as const).map((side) => (
                         <DiffPicture
                             key={side}
+                            side={side}
                             label={side === "a" ? (row ? "Leva slika" : "Gornja slika") : row ? "Desna slika" : "Donja slika"}
                             spec={pictures[side]}
                             view={view}
@@ -343,6 +348,8 @@ function DiffPair({ view, scene, calm, demo, disabled, onTap }: PairProps) {
 }
 
 interface PictureProps {
+    /** Koja je slika („a” ili „b”) — za ključ dodira na zajedničkoj tabli */
+    side: string;
     label: string;
     spec: SceneSpec;
     view: DiffView;
@@ -368,7 +375,7 @@ const STYLE = `
 @media (prefers-reduced-motion: reduce) { .diff-ring, .diff-hint, .diff-miss { animation: none; } }
 `;
 
-function DiffPicture({ label, spec, view, scene, width, unitPx, calm, disabled, demoAt, glow, onTap }: PictureProps) {
+function DiffPicture({ side, label, spec, view, scene, width, unitPx, calm, disabled, demoAt, glow, onTap }: PictureProps) {
     const height = (width * VIEW_H) / VIEW_W;
     // Krug je bar onoliki koliko i mesto za dodir (48 px), da se vidi šta je pronađeno
     const ringR = (r: number) => Math.max(r, (MIN_HIT_PX - 2) / Math.max(unitPx, 0.01)) + 1;
@@ -389,6 +396,8 @@ function DiffPicture({ label, spec, view, scene, width, unitPx, calm, disabled, 
             role="img"
             aria-label={`${label}: ${scene.name.toLowerCase()}`}
             onPointerUp={onPointerUp}
+            // Zajednička tabla (lib/sharedPlay.ts): dodir drugog deteta stiže kao tačka na ovoj slici
+            data-action-point={`slika-${side}`}
             className={cn("relative shrink-0 touch-manipulation select-none overflow-hidden rounded-2xl bg-surface shadow-soft ring-4 ring-white", !disabled && "cursor-pointer")}
             style={{ width, height }}
         >

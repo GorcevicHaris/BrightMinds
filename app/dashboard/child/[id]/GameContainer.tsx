@@ -809,7 +809,7 @@ export default function GameContainer({ childId, childName, gender, watched = fa
                         <GamePauseContext.Provider value={onBreak}>
                             {/* Igra sa drugom: traka „Sada igra …” (playTogether.tsx); inače samo igra */}
                             <TurnTakingLayer key={playKey} gameId={game.id}>
-                            <RemoteFriendLayer gameId={game.id}>
+                            <RemoteFriendLayer gameId={game.id} playKey={playKey} onFollowLevel={(next) => startLevel(tierAt(next).id, next)}>
                             <GameSlot
                                 key={`${game.id}-${level}-${attempt}`}
                                 gameId={game.id}

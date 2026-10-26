@@ -534,6 +534,8 @@ export default function SortingGame({ childId, level, gender, onComplete, isMoni
                             <ChoiceCard
                                 key={id}
                                 data-sort-basket={id}
+                                // Ključ poteza za zajedničku tablu: id korpe
+                                data-action={`basket:${id}`}
                                 state={over === id && state === "idle" ? "selected" : state}
                                 disabled={isMonitor || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(id)}

@@ -265,6 +265,8 @@ const GAME = getGame("memory");
 interface MemoryCardProps {
     /** Redni broj na tabli, od 1 */
     position: number;
+    /** Ključ poteza za zajedničku tablu (`card:<mesto u view.cards>`) */
+    action: string;
     animal: MemoryCardArt | undefined;
     open: boolean;
     matched: boolean;
@@ -275,7 +277,7 @@ interface MemoryCardProps {
     onImageSettled: () => void;
 }
 
-function MemoryCard({ position, animal, open, matched, hinted, disabled, className, onFlip, onImageSettled }: MemoryCardProps) {
+function MemoryCard({ position, action, animal, open, matched, hinted, disabled, className, onFlip, onImageSettled }: MemoryCardProps) {
     const name = animal?.name ?? "Kartica";
     const label = matched ? `${name}, pronađen par` : open ? name : `Zatvorena kartica ${position}`;
 
@@ -284,6 +286,7 @@ function MemoryCard({ position, animal, open, matched, hinted, disabled, classNa
             type="button"
             disabled={disabled}
             onClick={onFlip}
+            data-action={action}
             aria-label={label}
             className={cn(
                 "relative aspect-square w-full rounded-tile perspective-midrange transition-transform duration-150 enabled:active:scale-95 disabled:cursor-default",
@@ -667,6 +670,7 @@ function PairsGame({ childId, level, gender, onComplete, isMonitor = false, moni
                             <MemoryCard
                                 key={index}
                                 position={index + 1}
+                                action={`card:${index}`}
                                 animal={animalOf(id)}
                                 open={open}
                                 matched={matched}

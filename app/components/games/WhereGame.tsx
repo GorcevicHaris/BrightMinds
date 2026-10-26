@@ -253,6 +253,8 @@ export default function WhereGame({ childId, level, gender, onComplete, isMonito
                                 state={state}
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(relation)}
+                                // Ključ poteza za zajedničku tablu: položaj (predlog) na slici
+                                data-action={`choice:${relation}`}
                                 aria-label={`${shownSentence(figure, relation, object)}${state === "correct" ? " Tačno." : state === "wrong" ? " Netačno." : ""}`}
                                 className={cn(
                                     "animate-pop p-1.5 sm:p-2 flat:min-h-0",

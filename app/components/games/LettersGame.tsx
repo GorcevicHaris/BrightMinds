@@ -331,6 +331,8 @@ export default function LettersGame({ childId, level, gender, childName, onCompl
                                     key={`${shown.round}-${id}`}
                                     state={state}
                                     disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
+                                    // Ključ za zajedničku tablu: id ponuđenog slova
+                                    data-action={`choice:${id}`}
                                     onClick={() => handlePick(id)}
                                     aria-label={`${choiceLabel(task, id)}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                     className="aspect-square min-h-0 animate-pop p-2 sm:p-3 short:sm:max-h-[30dvh]"
