@@ -233,6 +233,8 @@ export default function UsesGame({ childId, level, gender, onComplete, isMonitor
                                 state={state}
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(id)}
+                                // Ključ poteza za zajedničku tablu: id predmeta
+                                data-action={`choice:${id}`}
                                 aria-label={`${choice.name}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                 className={cn("animate-pop flex-col gap-1.5 px-1.5 sm:gap-2", count <= 3 ? "min-h-36 sm:min-h-52" : "min-h-28 sm:min-h-48", "flat:min-h-0 flat:sm:min-h-0 flat:py-2")}
                             >

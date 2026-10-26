@@ -29,10 +29,11 @@
 // svako dobija svoj zadatak iz istog nivoa (jedan zadatak — jedno dete), jer bi isti zadatak
 // redom za oba dao prednost detetu koje drugo — gledalo je odgovor. Na dva uređaja (playRemote)
 // trka je prava trka, a „jedan po jedan” se igra na zajedničkoj tabli (lib/sharedPlay.ts);
-// dok zajednička tabla za igru ne postoji, i te igre se na dva uređaja igraju kao trka sa
-// istim zadacima (remoteVersusFormat).
+// igra bez zajedničke table (pisanje prstom) se na dva uređaja igra kao trka sa istim zadacima
+// (remoteVersusFormat).
 
 import type { GameId } from "./games";
+import { hasSharedBoard } from "./sharedPlay";
 
 export type VersusFormat = "turns" | "race";
 
@@ -74,14 +75,12 @@ export function versusFormat(id: GameId): VersusFormat {
 }
 
 /**
- * Da li dva uređaja već imaju zajedničku tablu za „jedan po jedan” (lib/sharedPlay.ts). Dok je
- * nema, igre „jedan po jedan” se na dva uređaja igraju kao trka sa istim zadacima — i to piše
- * na kartici poziva, pa dete uvek zna kako igra.
+ * Način dvoboja na dva uređaja (kartica poziva, ekran „VS”, rezultat): „jedan po jedan” samo kad
+ * igra ima zajedničku tablu (lib/sharedPlay.ts → hasSharedBoard); inače — pisanje prstom, koje se
+ * ne može igrati na tuđem ekranu — trka sa istim zadacima, i to piše na kartici poziva, pa dete
+ * uvek zna kako igra.
  */
-export const SHARED_BOARD_READY = false;
-
-/** Način dvoboja na dva uređaja (kartica poziva, ekran „VS”, rezultat). */
-export function remoteVersusFormat(id: GameId, sharedBoard: boolean = SHARED_BOARD_READY): VersusFormat {
+export function remoteVersusFormat(id: GameId, sharedBoard: boolean = hasSharedBoard(id)): VersusFormat {
     return sharedBoard ? versusFormat(id) : "race";
 }
 

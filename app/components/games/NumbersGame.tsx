@@ -325,6 +325,8 @@ export default function NumbersGame({ childId, level, gender, onComplete, isMoni
                                         key={`${shown.round}-${value}`}
                                         state={state}
                                         disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
+                                        // Ključ za zajedničku tablu: ponuđeni broj
+                                        data-action={`choice:${value}`}
                                         onClick={() => handlePick(value)}
                                         aria-label={`${choiceLabel(task, value)}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                         className={cn("min-h-0 animate-pop p-2 sm:p-3", task.kind === "match" ? "" : "aspect-square short:sm:max-h-[30dvh]")}

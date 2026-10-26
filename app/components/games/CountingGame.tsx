@@ -344,6 +344,8 @@ export default function CountingGame({ childId, level, gender, onComplete, isMon
                                 state={state}
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(value)}
+                                // Ključ poteza za zajedničku tablu: vrednost izbora (broj ili veličina grupe)
+                                data-action={`choice:${value}`}
                                 aria-label={`${choiceLabel(task, value)}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                 className={cn("animate-pop", groups ? "min-h-0 px-2 py-2.5 sm:min-h-36 sm:py-4 short:sm:min-h-0 short:sm:py-3 flat:min-h-12 flat:sm:min-h-12 flat:sm:py-2" : "min-h-28 px-1 sm:min-h-40 short:sm:min-h-28 flat:min-h-24 flat:sm:min-h-24")}
                             >

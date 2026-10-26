@@ -9,7 +9,8 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FormatChip, ModeChoice, VsIntro } from "@/app/dashboard/child/[id]/playVersus";
 import { GAMES } from "@/lib/games";
-import { FORMAT_NAMES, SHARED_BOARD_READY, VERSUS_FORMATS, duelLabel, formatRule, remoteVersusFormat, versusFormat } from "@/lib/versusFormat";
+import { hasSharedBoard } from "@/lib/sharedPlay";
+import { FORMAT_NAMES, VERSUS_FORMATS, duelLabel, formatRule, remoteVersusFormat, versusFormat } from "@/lib/versusFormat";
 
 const read = (file: string) => readFileSync(path.join(process.cwd(), file), "utf8");
 const WHERE_TO_TAP = /dodirni|pritisni|klikni|prevuci/i;
@@ -32,12 +33,15 @@ describe("način dvoboja po igri", () => {
         for (const id of ["letters", "numbers", "coloring", "social", "social-story"] as const) assert.equal(versusFormat(id), "turns", id);
     });
 
-    it("on two devices, turn games race with the same tasks until the shared board exists", () => {
+    it("on two devices, turn games use the shared board; without one they race with the same tasks", () => {
         for (const game of GAMES) {
             assert.equal(remoteVersusFormat(game.id, false), "race", game.id);
             assert.equal(remoteVersusFormat(game.id, true), versusFormat(game.id), game.id);
         }
-        assert.equal(remoteVersusFormat("memory"), SHARED_BOARD_READY ? "turns" : "race");
+        for (const game of GAMES) assert.equal(remoteVersusFormat(game.id), hasSharedBoard(game.id) ? versusFormat(game.id) : "race", game.id);
+        assert.equal(remoteVersusFormat("memory"), "turns");
+        // Pisanje prstom nema zajedničku tablu: na dva uređaja svako piše na svom ekranu
+        assert.equal(remoteVersusFormat("letters"), "race");
     });
 
     it("each choice is explained in the data file header", () => {

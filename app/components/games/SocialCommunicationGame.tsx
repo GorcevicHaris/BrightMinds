@@ -510,6 +510,8 @@ export default function SocialCommunicationGame({ childId, level, gender, onComp
                                         disabled={isMonitor}
                                         aria-disabled={inactive || undefined}
                                         aria-label={`${label}${status}`}
+                                        // Ključ za zajedničku tablu: indeks izbora u situaciji, isti na oba uređaja
+                                        data-action={`choice:${index}`}
                                         onClick={() => handlePick(index)}
                                         className={cn("h-full w-full min-w-0 flex-1 p-1.5! sm:p-2.5!", inactive && "cursor-default")}
                                     >

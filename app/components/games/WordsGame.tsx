@@ -501,6 +501,8 @@ function ChoiceBoard({ view, style, calm, landscape, showHand, disabled, onSpeak
                             key={`${view.round}-${id}`}
                             state={state}
                             disabled={disabled || (state !== "idle" && state !== "hint")}
+                            // Ključ za zajedničku tablu: ponuđena reč ili slovo (izbori se ne ponavljaju)
+                            data-action={`choice:${id}`}
                             onClick={(event) => onPick(id, event)}
                             aria-label={`${text}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                             className="animate-pop min-h-[clamp(3.5rem,14cqh,6.5rem)] px-1.5 py-2"
@@ -624,6 +626,8 @@ function BuildBoard({ view, style, columnTitle, calm, landscape, showHand, disab
                                 key={`${view.round}-${i}`}
                                 type="button"
                                 disabled={disabled}
+                                // Ključ za zajedničku tablu: mesto pločice u pomešanom nizu (deo stanja, isto na oba uređaja)
+                                data-action={`tile:${i}`}
                                 onClick={(event) => onTile(i, event)}
                                 aria-label={shownText(piece, style)}
                                 className={cn(
@@ -680,6 +684,8 @@ function SentenceBoard({ view, style, landscape, narrow, showHand, disabled, onS
                             key={`${view.round}-${id}`}
                             state={state}
                             disabled={disabled || (state !== "idle" && state !== "hint")}
+                            // Ključ za zajedničku tablu: id slike uz rečenicu
+                            data-action={`choice:${id}`}
                             onClick={(event) => onPick(id, event)}
                             aria-label={`Slika ${view.choices.indexOf(id) + 1}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                             className="animate-pop min-h-0 p-1.5 sm:p-2.5"

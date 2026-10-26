@@ -140,6 +140,8 @@
   --animate-cheer: cheer 1.8s ease-out both;
   --animate-vs-left: vs-left 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
   --animate-vs-right: vs-right 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  --animate-ghost-tap: ghost-tap 1.9s ease-out both;
+  --animate-ghost-fade: ghost-fade 1.9s ease-out both;
 
   @keyframes pop {
     from { opacity: 0; transform: scale(0.92); }
@@ -194,6 +196,21 @@
   @keyframes vs-right {
     from { opacity: 0; transform: translateX(28px); }
     to { opacity: 1; transform: translateX(0); }
+  }
+  /* Zajednička tabla: „prst” drugog deteta mirno pokaže gde je dodirnulo, pa nestane */
+  @keyframes ghost-tap {
+    0% { opacity: 0; transform: scale(0.6); }
+    15% { opacity: 1; transform: scale(1.06); }
+    30% { transform: scale(1); }
+    75% { opacity: 1; }
+    100% { opacity: 0; transform: scale(1); }
+  }
+  /* Isto, uz „Manje animacija”: samo se pojavi i nestane */
+  @keyframes ghost-fade {
+    0% { opacity: 0; }
+    10% { opacity: 1; }
+    75% { opacity: 1; }
+    100% { opacity: 0; }
   }
   /* Disanje na ekranu za pauzu: 4 s udah (krug raste), 4 s izdah (krug se smanjuje) */
   @keyframes breathe {

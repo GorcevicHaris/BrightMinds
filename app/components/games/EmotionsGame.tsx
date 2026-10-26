@@ -429,6 +429,8 @@ export default function EmotionsGame({ childId, level, gender, childName, onComp
                                     aria-disabled={inactive || undefined}
                                     aria-label={state === "correct" ? `${emotion.label}, tačno` : state === "wrong" ? `${emotion.label}, netačno` : state === "dimmed" ? `${emotion.label}, već probano` : emotion.label}
                                     onClick={() => handlePick(id)}
+                                    // Ključ poteza za zajedničku tablu: id osećanja
+                                    data-action={`choice:${id}`}
                                     className={cn(
                                         "grow-0 flex-col gap-1.5 px-1.5",
                                         OPTION_BASIS[shown.options.length] ?? OPTION_BASIS[4],

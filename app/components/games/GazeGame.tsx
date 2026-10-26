@@ -269,6 +269,8 @@ export default function GazeGame({ childId, level, gender, childName, onComplete
                                     state={state}
                                     disabled={isMonitor || solved || state !== "idle"}
                                     onClick={() => handlePick(id)}
+                                    // Ključ poteza za zajedničku tablu: id predmeta ili lika
+                                    data-action={`choice:${id}`}
                                     aria-label={`${label}${state === "correct" ? ", tačno" : state === "wrong" ? ", netačno" : ""}`}
                                     className="animate-pop min-h-0 flex-col gap-1 px-1 py-2 sm:gap-1.5 sm:p-3 flat:sm:gap-1 flat:sm:p-1.5"
                                 >

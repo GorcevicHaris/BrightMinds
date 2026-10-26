@@ -7,9 +7,10 @@
 // pogrešnih mesta koliko je zadato u podešavanjima deteta pravo mesto blago zasvetli.
 
 import Image from "next/image";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useContext, useEffect, useRef, useState, type CSSProperties } from "react";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
 import {
+    SharedMirrorContext,
     Feedback,
     finiteOr,
     GameHud,
@@ -249,6 +250,7 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
 
     const shown = isMonitor ? mergeMonitor(initialView([], cfg), monitorState as Partial<SceneView> | null | undefined) : view;
     const interactive = !isMonitor && !shown.done;
+    const mirror = useContext(SharedMirrorContext);
 
     const commit = (next: SceneView, log?: string) => {
         viewRef.current = next;
@@ -443,6 +445,8 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                                         type="button"
                                         disabled={!interactive || look || !empty}
                                         onClick={() => place(slot)}
+                                        // Ključ poteza za zajedničku tablu: mesto na polici (red × kolone + kolona)
+                                        data-action={`slot:${slot}`}
                                         aria-label={art ? `${art.name}, mesto ${slot + 1}` : `Prazno mesto ${slot + 1}`}
                                         className={cn(
                                             "relative mb-1 aspect-square w-[var(--cell)] shrink-0 overflow-hidden rounded-xl transition-[transform,background-color,outline-color] disabled:cursor-default",
@@ -473,10 +477,11 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                 <div className="flex w-full flex-col items-center gap-3 landscape:w-auto flat:w-64 flat:gap-2">
                 {instructionBox("hidden w-full px-2 flat:grid flat:min-h-12")}
                 {look ? (
-                    !isMonitor && (
+                    (!isMonitor || mirror) && (
                         <button
                             type="button"
                             onClick={remembered}
+                            data-action="next:remembered"
                             disabled={!interactive}
                             className={cn(
                                 "inline-flex min-h-16 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] px-8 font-display text-xl font-extrabold text-white transition-[transform,border-width] active:translate-y-[3px] active:border-b-2 sm:text-2xl",
@@ -507,6 +512,7 @@ export default function MemoryScene({ childId, level, gender, onComplete, isMoni
                                     type="button"
                                     disabled={!interactive}
                                     onClick={() => select(id)}
+                                    data-action={`item:${id}`}
                                     aria-pressed={selected}
                                     aria-label={art.name}
                                     className={cn(

@@ -340,6 +340,7 @@ export default function FoodGame({ childId, level, gender, onComplete, isMonitor
                         return (
                             <ChoiceCard
                                 key={`${shown.round}-${id}`}
+                                data-action={`choice:${id}`}
                                 state={state}
                                 disabled={isMonitor || solved || (state !== "idle" && state !== "hint")}
                                 onClick={() => handlePick(id)}
@@ -488,6 +489,7 @@ function FeedBoard({ view, hinted, calm, disabled, onSelect, onGive }: FeedBoard
                         <ChoiceCard
                             key={pair.animal}
                             data-feed-animal={pair.animal}
+                            data-action={`animal:${pair.animal}`}
                             state={state}
                             disabled={disabled || fed}
                             onClick={() => view.selected && onGive(view.selected, pair.animal)}
@@ -520,6 +522,7 @@ function FeedBoard({ view, hinted, calm, disabled, onSelect, onGive }: FeedBoard
                     return (
                         <ChoiceCard
                             key={id}
+                            data-action={`food:${id}`}
                             state={state}
                             disabled={disabled}
                             aria-pressed={selected}

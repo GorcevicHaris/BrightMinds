@@ -524,6 +524,8 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                         role="radio"
                                         aria-checked={selected}
                                         disabled={isMonitor}
+                                        // Ključ za zajedničku tablu: način čitanja, isti na oba uređaja
+                                        data-action={`mode:${item.id}`}
                                         onClick={() => selectMode(item.id)}
                                         className={cn(
                                             "flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-2 py-2 text-base font-extrabold leading-tight transition-colors disabled:cursor-default sm:text-lg short:sm:min-h-16 flat:min-h-12 flat:flex-row flat:gap-2 flat:py-1 flat:sm:min-h-12 flat:sm:text-base",
@@ -539,7 +541,7 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                             })}
                         </div>
 
-                        <PrimaryButton onClick={begin} disabled={isMonitor} className="mt-2 w-full sm:w-auto sm:min-w-56 short:sm:mt-0 flat:mt-0 flat:sm:min-h-12 flat:sm:text-xl">
+                        <PrimaryButton onClick={begin} disabled={isMonitor} action="begin:story" className="mt-2 w-full sm:w-auto sm:min-w-56 short:sm:mt-0 flat:mt-0 flat:sm:min-h-12 flat:sm:text-xl">
                             Počni priču
                         </PrimaryButton>
                     </div>
@@ -690,6 +692,8 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                                                     <ChoiceCard
                                                         state={state}
                                                         disabled={locked}
+                                                        // Ključ za zajedničku tablu: indeks izbora u koraku priče
+                                                        data-action={`choice:${optionIndex}`}
                                                         onClick={() => choose(optionIndex)}
                                                         aria-label={`${label}${status}`}
                                                         className="h-full w-full min-w-0 flex-1 p-1.5! sm:p-2.5! flat:sm:p-1.5!"
@@ -719,9 +723,10 @@ export default function SocialStoryGame({ childId, level, gender, onComplete, is
                         ref={bottomRef}
                         className={cn("flex scroll-mb-4 items-stretch gap-3", !choosing && "mx-auto w-full max-w-2xl flat:max-w-4xl", choosing && "flat:absolute flat:bottom-0 flat:left-0 flat:w-[calc(41.667%-0.5rem)]")}
                     >
-                        {shown.stepIndex > 0 && <BackButton onClick={back} disabled={isMonitor} />}
+                        {/* Ključevi nose korak: zakasneli dodir ne može da preskoči još jednu stranicu */}
+                        {shown.stepIndex > 0 && <BackButton onClick={back} disabled={isMonitor} action={`back:${shown.stepIndex}`} />}
                         {canAdvance && (
-                            <PrimaryButton onClick={advance} disabled={isMonitor} className="ml-auto min-w-0 flex-1 sm:min-w-56 sm:flex-none">
+                            <PrimaryButton onClick={advance} disabled={isMonitor} action={`next:${shown.stepIndex}`} className="ml-auto min-w-0 flex-1 sm:min-w-56 sm:flex-none">
                                 {isLastStep ? "Završi priču" : "Dalje"}
                             </PrimaryButton>
                         )}
@@ -832,6 +837,8 @@ function Scene({ emojis, tone, size = "page", label, picture, female }: ScenePro
 interface NavButtonProps {
     onClick: () => void;
     disabled?: boolean;
+    /** Ključ za zajedničku tablu (`data-action`) */
+    action?: string;
 }
 
 interface PrimaryButtonProps extends NavButtonProps {
@@ -840,10 +847,11 @@ interface PrimaryButtonProps extends NavButtonProps {
 }
 
 /** Veliko dugme za sledeći korak („Počni priču”, „Dalje”). */
-function PrimaryButton({ children, onClick, disabled, className }: PrimaryButtonProps) {
+function PrimaryButton({ children, onClick, disabled, action, className }: PrimaryButtonProps) {
     return (
         <button
             type="button"
+            data-action={action}
             onClick={onClick}
             disabled={disabled}
             className={cn(
@@ -860,10 +868,11 @@ function PrimaryButton({ children, onClick, disabled, className }: PrimaryButton
 }
 
 /** Povratak na prethodnu stranicu priče. */
-function BackButton({ onClick, disabled }: NavButtonProps) {
+function BackButton({ onClick, disabled, action }: NavButtonProps) {
     return (
         <button
             type="button"
+            data-action={action}
             onClick={onClick}
             disabled={disabled}
             className="inline-flex min-h-14 sm:min-h-16 shrink-0 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] border-line bg-surface px-5 font-display text-lg font-extrabold text-ink-soft shadow-soft transition-[transform,background-color,border-width] enabled:hover:bg-brand-50 enabled:active:translate-y-[3px] enabled:active:border-b-2 disabled:cursor-default sm:px-6 sm:text-xl"

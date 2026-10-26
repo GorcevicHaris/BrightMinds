@@ -38,6 +38,8 @@ import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
 
 const ERASER = "eraser";
+/** Ključ za zajedničku tablu: dugme „Pogledaj primer” (ima ga do tri, samo jedno je vidljivo) */
+const PEEK_ACTION = "tool:peek";
 const OUTLINE = "#2B2647";
 const HIGHLIGHT = "#6C61F0";
 
@@ -887,6 +889,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                             strokeLinejoin="round"
                             aria-label={paint ? colorSentence(zone, paint) : `${zone.name}: bez boje`}
                             className={cn("transition-[fill] duration-200", interactive && "cursor-pointer")}
+                            // Ključ za zajedničku tablu: id dela slike (stoji i na monitoru, gde deo nema `onClick`)
+                            data-action={`zone:${zone.id}`}
                             {...zoneProps(zone)}
                         />
                         {/* Oznake i nevidljiva šira ivica (mali deo se lakše pogađa prstom) crtaju se
@@ -990,6 +994,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                             picture={picture}
                             open={showModel}
                             onRequest={modelOnRequest && interactive ? togglePeek : undefined}
+                            action={modelOnRequest ? PEEK_ACTION : undefined}
                             mark={modelMark}
                             large
                         />
@@ -1014,6 +1019,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                     picture={picture}
                                     open={showModel}
                                     onRequest={modelOnRequest && interactive ? togglePeek : undefined}
+                                    action={modelOnRequest ? PEEK_ACTION : undefined}
                                     mark={modelMark}
                                 />
                             </div>
@@ -1039,6 +1045,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                     picture={picture}
                                     open={showModel}
                                     onRequest={modelOnRequest && interactive ? togglePeek : undefined}
+                                    action={modelOnRequest ? PEEK_ACTION : undefined}
                                     mark={modelMark}
                                 />
                             </div>
@@ -1071,6 +1078,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                 hand={handOn === "color" && suggestZone?.c === color.id}
                                 number={mode === "number" ? colorNumber(plan, color.id) : 0}
                                 disabled={!interactive}
+                                action={`color:${color.id}`}
                                 onPick={() => pickColor(color.id)}
                             />
                         ))}
@@ -1083,6 +1091,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                     label="Gumica"
                                     selected={shown.color === ERASER}
                                     disabled={!interactive}
+                                    action={`color:${ERASER}`}
                                     onClick={() => pickColor(ERASER)}
                                     icon={<path d="M4 15.5 13.5 6a2 2 0 0 1 2.8 0l2.7 2.7a2 2 0 0 1 0 2.8L12.5 18H7.5L4 15.5zM9 10.5l5 5M12.5 18H20" />}
                                 />
@@ -1090,6 +1099,7 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                             <ToolButton
                                 label="Vrati"
                                 disabled={!interactive || history.length === 0}
+                                action="tool:undo"
                                 onClick={undo}
                                 icon={<path d="M8 5 4 9l4 4M4 9h10a5 5 0 0 1 0 10h-3" />}
                             />
@@ -1097,6 +1107,8 @@ export default function ColoringGame({ childId, level, gender, onComplete, isMon
                                 <button
                                     type="button"
                                     disabled={!interactive || colored < neededForDone}
+                                    // Ključ za zajedničku tablu
+                                    data-action="tool:done"
                                     onClick={() => finish(viewRef.current)}
                                     className={cn(
                                         "min-h-14 w-full rounded-2xl border-2 border-b-[5px] border-emerald-900 bg-emerald-700 px-4 text-lg font-extrabold text-white transition-[transform,background-color,border-width,opacity] hover:bg-emerald-600 active:translate-y-[3px] active:border-b-2 disabled:cursor-default disabled:opacity-45 disabled:hover:bg-emerald-500 sm:col-span-2 sm:min-h-16 sm:text-xl flat:sm:col-span-1 flat:sm:min-h-12 flat:sm:px-2 flat:sm:text-base",
@@ -1160,10 +1172,12 @@ interface ModelCardProps {
     /** Deo koji je označen i na primeru (isti kao na slici) */
     mark: string | null;
     large?: boolean;
+    /** Ključ za zajedničku tablu; stoji i na monitoru, gde je primer samo slika (bez dugmeta) */
+    action?: string;
 }
 
 /** Obojen primer iste slike. Na nivoima „primer na zahtev” na njegovom mestu stoji dugme. */
-function ModelCard({ picture, open, onRequest, mark, large = false }: ModelCardProps) {
+function ModelCard({ picture, open, onRequest, mark, large = false, action }: ModelCardProps) {
     const marked = mark ? picture.zones.find((zone) => zone.id === mark) : undefined;
     const body = open ? (
         <>
@@ -1192,6 +1206,7 @@ function ModelCard({ picture, open, onRequest, mark, large = false }: ModelCardP
         return (
             <button
                 type="button"
+                data-action={action}
                 onClick={onRequest}
                 aria-pressed={open}
                 aria-label={open ? "Skloni primer" : "Pogledaj primer"}
@@ -1202,7 +1217,7 @@ function ModelCard({ picture, open, onRequest, mark, large = false }: ModelCardP
         );
     }
     return (
-        <div role="img" aria-label={`Obojen primer: ${picture.name.toLowerCase()}`} className={frame}>
+        <div role="img" aria-label={`Obojen primer: ${picture.name.toLowerCase()}`} data-action={action} className={frame}>
             {body}
         </div>
     );
@@ -1222,13 +1237,16 @@ interface SwatchProps {
     /** Po brojevima: broj ove boje (0 = bez broja) */
     number: number;
     disabled: boolean;
+    /** Ključ za zajedničku tablu (`data-action`) */
+    action: string;
     onPick: () => void;
 }
 
-function Swatch({ color, count, named, selected, tried, hinted, hand, number, disabled, onPick }: SwatchProps) {
+function Swatch({ color, count, named, selected, tried, hinted, hand, number, disabled, action, onPick }: SwatchProps) {
     return (
         <button
             type="button"
+            data-action={action}
             disabled={disabled || tried}
             onClick={onPick}
             aria-label={number ? `Broj ${number}: ${color.nom} boja` : `${color.nom} boja`}
@@ -1448,12 +1466,15 @@ interface ToolButtonProps {
     onClick: () => void;
     selected?: boolean;
     disabled?: boolean;
+    /** Ključ za zajedničku tablu (`data-action`) */
+    action?: string;
 }
 
-function ToolButton({ label, icon, onClick, selected = false, disabled = false }: ToolButtonProps) {
+function ToolButton({ label, icon, onClick, selected = false, disabled = false, action }: ToolButtonProps) {
     return (
         <button
             type="button"
+            data-action={action}
             disabled={disabled}
             onClick={onClick}
             aria-pressed={selected}

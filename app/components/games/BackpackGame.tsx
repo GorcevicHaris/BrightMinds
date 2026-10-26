@@ -397,6 +397,7 @@ function ListPanel({ view, onReopen }: { view: BackpackView; onReopen: () => voi
                 <ListIcon className="h-12 w-12 text-ink-faint sm:h-16 sm:w-16" />
                 <button
                     type="button"
+                    data-action="list"
                     onClick={onReopen}
                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-b-[5px] border-brand-700 bg-brand-500 px-5 font-display text-lg font-extrabold text-white transition-[transform,border-width] active:translate-y-[3px] active:border-b-2 sm:text-xl"
                 >

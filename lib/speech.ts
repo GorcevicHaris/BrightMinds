@@ -19,6 +19,8 @@ export interface SpeakOptions {
     onEnd?: () => void;
     /** Tekst sa ličnim podacima (ime deteta): server ga izgovara, ali ne čuva u kešu */
     personal?: boolean;
+    /** Rečenica koja je stigla sa drugog uređaja (zajednička tabla): ne javlja se dalje */
+    relayed?: boolean;
 }
 
 const MAX_CACHED = 60;
@@ -156,6 +158,20 @@ function fetchAudio(text: string, emotion: VoiceEmotion, gender?: string, person
     return pending;
 }
 
+/**
+ * Slušalac izgovorenih rečenica (zajednička tabla, playShared.tsx: drug na drugom uređaju čuje
+ * isto uputstvo). Rečenice sa ličnim podacima (`personal`) se ne javljaju.
+ */
+type SpokenListener = (text: string, emotion: VoiceEmotion) => void;
+const spokenListeners = new Set<SpokenListener>();
+
+export function onSpoken(listener: SpokenListener): () => void {
+    spokenListeners.add(listener);
+    return () => {
+        spokenListeners.delete(listener);
+    };
+}
+
 /** Izgovara tekst. Prekida prethodni govor. `onEnd` se zove tačno jednom (i kad govor nije moguć). */
 export async function speak(text: string, options: SpeakOptions = {}): Promise<void> {
     if (typeof window === "undefined") return;
@@ -167,6 +183,7 @@ export async function speak(text: string, options: SpeakOptions = {}): Promise<v
     }
 
     const emotion = options.emotion ?? emotionForText(spoken);
+    if (!options.personal && !options.relayed) spokenListeners.forEach((fn) => fn(spoken, emotion));
 
     stopSpeaking();
     // Zvuk je isključen: ništa ne puštamo (i ne trošimo TTS), ali tok igre ide dalje,
