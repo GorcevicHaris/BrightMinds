@@ -1,19 +1,21 @@
 // app/api/_lib/invites.ts
 // Zajednički deo ruta za igru sa drugom na drugom uređaju (videti lib/invite.ts).
 //
-// Poziv živi u `children.settings.invite` domaćina (bez nove tabele). Svaki upis je
-// „uporedi pa zameni”: uspeva samo ako se poziv (ključ kanala i kod) i brojač izmena
-// drugara nisu promenili od čitanja — dva istovremena ulaska ne mogu oba da iskoriste
-// isti kod, a upis poziva ne briše upravo kupljenu odeću.
+// Poziv živi u `children.settings.invite` domaćina, a spisak drugova u
+// `children.settings.playFriends` (bez nove tabele). Svaki upis je „uporedi pa zameni”: uspeva
+// samo ako se poziv (ključ kanala, kod i zahtev) i brojači izmena drugara i drugova nisu
+// promenili od čitanja — dva istovremena ulaska ne mogu oba da iskoriste isti kod, dva odgovora
+// isti poziv, a upis poziva ne briše upravo kupljenu odeću ni zapamćenog druga.
 import { randomBytes, randomInt } from "node:crypto";
 import { COMPANION_CATALOG } from "@/app/components/avatar3d/manifest";
 import { resolveSettings } from "@/lib/childSettings";
 import { sanitizeCompanion } from "@/lib/companion";
 import { isGameAvailable } from "@/lib/gameAccess";
 import type { GameId } from "@/lib/games";
-import { firstNameOnly, inviteStatus, parseStoredInvite, randomInviteCode, type InviteCompanion, type StoredInvite } from "@/lib/invite";
+import { firstNameOnly, inviteStatus, parseStoredInvite, randomInviteCode, type InviteCompanion, type InviteRequest, type StoredInvite } from "@/lib/invite";
+import { parsePlayFriends, rememberPlayFriend, type PlayFriend, type PlayFriends } from "@/lib/playFriends";
 import type { RateLimitRule } from "@/lib/rateLimit";
-import { inviteChannelFor } from "@/lib/realtimeTopic";
+import { friendKeyFor, inviteChannelFor } from "@/lib/realtimeTopic";
 import { supabaseAdmin } from "@/lib/supabase";
 import { isRecord } from "@/lib/validation";
 import { CHILD_NOT_FOUND } from "./children";
@@ -27,11 +29,18 @@ export const JOIN_GLOBAL_RULE: RateLimitRule = { limit: 300, windowMs: 10 * 60 *
 /** Pravljenje poziva: najviše 10 kodova za 10 minuta po detetu (i 30 po adresi). */
 export const CREATE_RULE: RateLimitRule = { limit: 10, windowMs: 10 * 60 * 1000 };
 export const CREATE_IP_RULE: RateLimitRule = { limit: 30, windowMs: 10 * 60 * 1000 };
+/** Poziv istom drugu sa spiska: najviše 5 za 10 minuta (drug ne dobija poziv za pozivom). */
+export const DIRECT_PAIR_RULE: RateLimitRule = { limit: 5, windowMs: 10 * 60 * 1000 };
+/** Odgovori i provera sandučeta: najviše 60 za 10 minuta po detetu (stranica proverava retko). */
+export const ANSWER_RULE: RateLimitRule = { limit: 60, windowMs: 10 * 60 * 1000 };
 
 export const INVITE_GONE = "Kod više ne važi. Zamoli druga da napravi novi.";
 export const INVITE_OWN = "To je tvoj kod. Drug ga unosi na svom uređaju.";
 export const INVITE_LIMITED = "Previše pokušaja. Sačekaj malo pa probaj ponovo.";
 export const INVITE_GAME_LOCKED = "Ova igra ti još nije otvorena. Zamoli druga da izabere drugu igru.";
+export const FRIEND_GONE = "Ovog druga više nema na spisku. Pokaži mu kod.";
+export const FRIEND_GAME_LOCKED = "Ova igra drugu još nije otvorena. Izaberi drugu igru.";
+export const REQUEST_GONE = "Ovaj poziv više ne važi.";
 
 const MAX_RETRIES = 3;
 const CODE_TRIES = 12;
@@ -81,20 +90,19 @@ export function newChannelKey(): string {
 }
 
 /**
- * Upisuje novi poziv (`next`, ili null = briše ga) samo ako je u bazi i dalje poziv `prev`
- * (isti ključ kanala i isti kod) i isti brojač izmena drugara. Vraća da li je upis uspeo.
+ * Upisuje nova podešavanja deteta samo ako se u bazi od čitanja reda `row` nisu promenili
+ * poziv (ključ kanala, kod i zahtev), brojač izmena drugara i brojač izmena spiska drugova —
+ * dva istovremena upisa ne mogu jedan drugom da obrišu poziv, kupljenu odeću ili druga.
  */
-export async function writeInvite(childId: number, row: InviteRow, prev: StoredInvite | null, next: StoredInvite | null): Promise<boolean> {
+async function guardedWrite(childId: number, row: InviteRow, nextSettings: Record<string, unknown>): Promise<boolean> {
     const settings = settingsOf(row);
-    const nextSettings: Record<string, unknown> = { ...settings };
-    if (next) nextSettings.invite = next;
-    else delete nextSettings.invite;
-
     let update = supabaseAdmin.from("children").update({ settings: nextSettings }).eq("id", childId);
     const rawInvite = settings.invite;
+    const prev = parseStoredInvite(rawInvite);
     if (prev) {
         update = update.eq("settings->invite->>channelKey", prev.channelKey);
         update = prev.code === null ? update.is("settings->invite->>code", null) : update.eq("settings->invite->>code", prev.code);
+        update = prev.request ? update.eq("settings->invite->request->>key", prev.request.key) : update.is("settings->invite->request", null);
     } else if (rawInvite === undefined || rawInvite === null) {
         update = update.is("settings->invite", null);
     } else if (isRecord(rawInvite) && typeof rawInvite.channelKey === "string") {
@@ -104,10 +112,26 @@ export async function writeInvite(childId: number, row: InviteRow, prev: StoredI
     const companion = settings.companion;
     if (isRecord(companion) && typeof companion.v === "number") update = update.eq("settings->companion->>v", String(companion.v));
     else if (companion === undefined) update = update.is("settings->companion", null);
+    const friends = settings.playFriends;
+    if (isRecord(friends) && typeof friends.v === "number") update = update.eq("settings->playFriends->>v", String(friends.v));
+    else if (friends === undefined) update = update.is("settings->playFriends", null);
 
     const { data, error } = await update.select("id");
     if (error) throw error;
     return Boolean(data && data.length > 0);
+}
+
+/**
+ * Upisuje novi poziv (`next`, ili null = briše ga) samo ako je u bazi i dalje poziv `prev`
+ * (isti ključ kanala, kod i zahtev) i isti brojači izmena drugara i drugova. Vraća da li je
+ * upis uspeo. `prev` je poziv pročitan iz istog reda (`inviteOf(row)`).
+ */
+export async function writeInvite(childId: number, row: InviteRow, prev: StoredInvite | null, next: StoredInvite | null): Promise<boolean> {
+    void prev;
+    const nextSettings: Record<string, unknown> = { ...settingsOf(row) };
+    if (next) nextSettings.invite = next;
+    else delete nextSettings.invite;
+    return guardedWrite(childId, row, nextSettings);
 }
 
 /**
@@ -188,6 +212,79 @@ export function hostView(childId: number, invite: StoredInvite, now = Date.now()
         // Takmičenje se šalje samo kad je izabrano: bez polja je „zajedno” (kao stari pozivi)
         ...(invite.mode === "versus" ? { mode: invite.mode } : {}),
         ...(status === "waiting" && invite.code ? { code: invite.code.split(",") } : {}),
+        // Drug gleda karticu poziva: domaćin vidi samo njegovo ime i drugara („Čekamo da Amar prihvati…”)
+        ...(status === "asking" && invite.request
+            ? { asking: { firstName: invite.request.firstName, companion: invite.request.companion }, via: invite.request.via }
+            : {}),
         ...(status === "joined" && invite.guest ? { friend: invite.guest } : {}),
     };
+}
+
+/**
+ * Kartica poziva kakvu vidi drug pre nego što prihvati: ključ za odgovor, ime i drugar domaćina,
+ * igra, nivo i način igre. Ništa drugo (bez kanala — njega drug dobija tek kad prihvati).
+ */
+export function requestCard(hostRow: InviteRow, invite: StoredInvite, request: InviteRequest) {
+    return {
+        key: request.key,
+        friend: { firstName: firstNameOf(hostRow), companion: companionOf(hostRow) },
+        game: invite.game,
+        level: invite.level,
+        ...(invite.mode === "versus" ? { mode: invite.mode } : {}),
+    };
+}
+
+/** Odgovor drugu koji je ušao (stari put „uđi kodom”) ili prihvatio poziv — isti oblik kao ranije. */
+export function joinedAnswer(hostId: number, hostRow: InviteRow, joined: StoredInvite) {
+    return {
+        channel: channelOf(hostId, joined),
+        friend: { firstName: firstNameOf(hostRow), companion: companionOf(hostRow) },
+        game: joined.game,
+        level: joined.level,
+        // Bez polja je „zajedno” (stari klijenti i pozivi); takmičenje se šalje izričito
+        ...(joined.mode === "versus" ? { mode: joined.mode } : {}),
+    };
+}
+
+// ── Drugovi (lib/playFriends.ts) ────────────────────────────────────────────────
+
+export function playFriendsOf(row: Pick<InviteRow, "settings">): PlayFriends {
+    return parsePlayFriends(settingsOf(row).playFriends);
+}
+
+/** Menja spisak drugova deteta (`change` vraća novi spisak ili null = ništa); ponavlja se kad neko upiše u međuvremenu. */
+export async function updatePlayFriends(childId: number, change: (row: InviteRow, current: PlayFriends) => PlayFriends | null): Promise<PlayFriends> {
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        const row = await loadInviteRow(childId);
+        const current = playFriendsOf(row);
+        const next = change(row, current);
+        if (!next) return current;
+        if (await guardedWrite(childId, row, { ...settingsOf(row), playFriends: next })) return next;
+    }
+    throw new HttpError(409, "Pokušaj ponovo");
+}
+
+/**
+ * Posle prihvaćenog poziva deca se pamte jedno drugom (samo ime i drugar). Greška se samo
+ * beleži: igra sa drugom je važnija od spiska, a sledeći put se pamte ponovo.
+ */
+export async function rememberPair(hostRow: InviteRow, guestRow: InviteRow, now = Date.now()): Promise<void> {
+    const at = new Date(now).toISOString();
+    const pairs: [InviteRow, InviteRow][] = [
+        [hostRow, guestRow],
+        [guestRow, hostRow],
+    ];
+    for (const [self, other] of pairs) {
+        try {
+            await updatePlayFriends(self.id, (_row, current) => rememberPlayFriend(current, { id: other.id, firstName: firstNameOf(other), companion: companionOf(other), at }));
+        } catch (error) {
+            console.error("[api] play friends:", error);
+        }
+    }
+}
+
+/** Drug sa spiska deteta po ključu iz pregledača (lib/realtimeTopic.ts → friendKeyFor); inače null. */
+export function friendByKey(childId: number, friends: PlayFriends, key: unknown): PlayFriend | null {
+    if (typeof key !== "string" || key.length > 64) return null;
+    return friends.list.find((friend) => friendKeyFor(childId, friend.id) === key) ?? null;
 }

@@ -3,6 +3,7 @@
 // Rute se pozivaju direktno kao funkcije (`POST(request)`), bez servera.
 import jwt from "jsonwebtoken";
 import { mock } from "node:test";
+import { inboxPush } from "@/app/api/_lib/inbox";
 import { pinFingerprint } from "@/lib/auth";
 import { dateOnlyInTimeZone, shiftDateOnly } from "@/lib/validation";
 import { db, type Row } from "./fakeSupabase";
@@ -56,10 +57,17 @@ export function belgradeDay(offsetDays = 0): string {
     return shiftDateOnly(dateOnlyInTimeZone(new Date()), { days: offsetDays });
 }
 
+/** Znakovi na sanduče (app/api/_lib/inbox.ts) koje su rute poslale u ovom testu — ništa ne ide na mrežu. */
+export const inboxPushes: { topic: string; event: string; payload: Record<string, unknown> }[] = [];
+inboxPush.send = async (topic, event, payload) => {
+    inboxPushes.push({ topic, event, payload });
+};
+
 /** Pre svakog testa: prazna baza, bez kolačića, sat pomeren unapred. */
 export function resetWorld(): void {
     db.reset();
     cookieJar.clear();
+    inboxPushes.length = 0;
     clock += CLOCK_STEP_MS;
     mock.timers.reset();
     mock.timers.enable({ apis: ["Date"], now: clock });

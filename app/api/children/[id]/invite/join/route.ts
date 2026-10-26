@@ -3,13 +3,16 @@
 // pristup traži sesiju baš tog deteta ili njegovog roditelja (requireChildAccess), pa se
 // ulazi samo u svoj profil, i to dok dečja sesija važi (promenjen tajni kod je gasi).
 //
-// POST { code } → { channel, friend: { firstName, companion }, game, level[, mode: "versus"] } — ništa više:
-// bez ID-ja, prezimena, uzrasta i napretka domaćina. Kod je jednokratan (briše se pri ulasku),
-// važi 10 minuta, sopstveni poziv se ne prihvata, a pogađanje je ograničeno po adresi,
-// po detetu i ukupno. Svaki neuspeh (nepoznat, istekao, iskorišćen kod) ima isti odgovor.
+// POST { code, ask: true } → kartica poziva { request: { key, friend: { firstName, companion },
+// game, level[, mode: "versus"] } }: drug PRE ulaska vidi ko ga zove, igru, nivo i način igre,
+// a domaćin „Čekamo da Amar prihvati…”. Odgovor („Prihvati” / „Ne sada”) ide na /invite/answer.
+// POST { code } (stari klijenti) → odmah ulazi: { channel, friend, game, level[, mode] }.
+// Ništa više: bez ID-ja, prezimena, uzrasta i napretka domaćina. Kod je jednokratan (briše se
+// pri unosu), važi 10 minuta, sopstveni poziv se ne prihvata, a pogađanje je ograničeno po
+// adresi, po detetu i ukupno. Svaki neuspeh (nepoznat, istekao, iskorišćen kod) ima isti odgovor.
 import { NextResponse } from "next/server";
 import { requireChildAccess } from "@/lib/auth";
-import { inviteStatus, normalizeInviteCode, parseStoredInvite, type StoredInvite } from "@/lib/invite";
+import { inviteStatus, normalizeInviteCode, parseStoredInvite, type InviteRequest, type StoredInvite } from "@/lib/invite";
 import { getClientIp, takeAttempts } from "@/lib/rateLimit";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
@@ -19,17 +22,21 @@ import {
     INVITE_OWN,
     JOIN_GLOBAL_RULE,
     JOIN_RULE,
-    channelOf,
     clearIfExpired,
     companionOf,
     firstNameOf,
     gameOpenFor,
     isLoginPin,
+    joinedAnswer,
     loadInviteRow,
+    newChannelKey,
+    rememberPair,
+    requestCard,
     updateInvite,
     writeInvite,
     type InviteRow,
 } from "../../../../_lib/invites";
+import { notifyInbox } from "../../../../_lib/inbox";
 import { enforceRateLimit, errorResponse, HttpError, parseIdParam, readJsonObject } from "../../../../_lib/http";
 
 interface RouteContext {
@@ -49,7 +56,9 @@ export async function POST(request: Request, { params }: RouteContext) {
         ]);
         enforceRateLimit(attempt, INVITE_LIMITED);
 
-        const code = normalizeInviteCode((await readJsonObject(request)).code);
+        const body = await readJsonObject(request);
+        const ask = body.ask === true;
+        const code = normalizeInviteCode(body.code);
         if (!code) throw new HttpError(404, INVITE_GONE);
 
         const { data, error } = await supabaseAdmin.from("children").select("id, first_name, gender, date_of_birth, settings").eq("settings->invite->>code", code).limit(5);
@@ -77,7 +86,22 @@ export async function POST(request: Request, { params }: RouteContext) {
         if (!(await gameOpenFor(guestRow, host.invite.game))) throw new HttpError(409, INVITE_GAME_LOCKED);
         const guest = { firstName: firstNameOf(guestRow), companion: companionOf(guestRow) };
 
-        // Jednokratno: kod se briše istim upisom kojim se beleži drug (samo ako je i dalje isti)
+        if (ask) {
+            // Kartica poziva: kod se troši istim upisom kojim se beleži ko gleda poziv (samo ako je i dalje isti)
+            const pending: InviteRequest = { key: newChannelKey(), guestId, ...guest, via: "code", at: new Date(now).toISOString() };
+            const result = await updateInvite(host.row.id, (_row, current) => {
+                if (!current || current.channelKey !== host.invite.channelKey || current.code !== code || inviteStatus(current, now) !== "waiting") {
+                    throw new HttpError(404, INVITE_GONE);
+                }
+                return { ...current, code: null, request: pending };
+            });
+            if (!result.invite?.request) throw new HttpError(404, INVITE_GONE);
+            attempt.refund();
+            await notifyInbox(host.row.id, "answer");
+            return NextResponse.json({ request: requestCard(result.row, result.invite, result.invite.request) }, { headers: { "Cache-Control": "no-store" } });
+        }
+
+        // Stari put: jednokratno, kod se briše istim upisom kojim se beleži drug (samo ako je i dalje isti)
         const joinedAt = new Date(now).toISOString();
         const result = await updateInvite(host.row.id, (_row, current) => {
             if (!current || current.channelKey !== host.invite.channelKey || current.code !== code || inviteStatus(current, now) !== "waiting") {
@@ -88,18 +112,9 @@ export async function POST(request: Request, { params }: RouteContext) {
         const joined = result.invite;
         if (!joined) throw new HttpError(404, INVITE_GONE);
         attempt.refund();
+        await rememberPair(result.row, guestRow, now);
 
-        return NextResponse.json(
-            {
-                channel: channelOf(host.row.id, joined),
-                friend: { firstName: firstNameOf(result.row), companion: companionOf(result.row) },
-                game: joined.game,
-                level: joined.level,
-                // Bez polja je „zajedno” (stari klijenti i pozivi); takmičenje se šalje izričito
-                ...(joined.mode === "versus" ? { mode: joined.mode } : {}),
-            },
-            { headers: { "Cache-Control": "no-store" } }
-        );
+        return NextResponse.json(joinedAnswer(host.row.id, result.row, joined), { headers: { "Cache-Control": "no-store" } });
     } catch (error) {
         return errorResponse(error, "POST /api/children/[id]/invite/join");
     }

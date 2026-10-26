@@ -60,7 +60,7 @@ import { usePlanProgress } from "./planProgress";
 import { GamePicker } from "./GameMap";
 import { TogetherEnd, TurnTakingLayer, useTogetherEnd } from "./playTogether";
 // Drug na drugom uređaju (playRemote.tsx): traka sa drugom i zajednički kraj nivoa
-import { RemoteFriendLayer, RemoteTogetherEnd, useRemoteEnd } from "./playRemote";
+import { RemoteFriendLayer, RemoteTogetherEnd, useRemoteAutoStart, useRemoteEnd } from "./playRemote";
 import { useSessionClock } from "./sessionClock";
 
 // Svaka igra se učitava tek kada je dete izabere
@@ -455,6 +455,9 @@ export default function GameContainer({ childId, childName, gender, watched = fa
         setOutcome(null);
         setScreen("playing");
     };
+
+    // Drug je prihvatio poziv (ili je ovo dete prihvatilo): igra sa drugom se otvara sama
+    useRemoteAutoStart(startState, openAtLevel);
 
     const gameTitle = game?.title ?? null;
     // Ekrani između igara se i izgovaraju, jer većina dece mlađe od 5 godina ne čita. Glas kaže

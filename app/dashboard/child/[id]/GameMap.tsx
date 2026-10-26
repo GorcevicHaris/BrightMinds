@@ -128,7 +128,7 @@ export function GamePicker({ childId, gender, access, playable, progress, unlock
             {!plan && <TogetherStartButton games={playable} unlockedFor={unlockedFor} />}
             <RemoteEndedNotice />
             {remoteOn ? (
-                <RemoteLobby start={remoteStart} onOpenLevel={onOpenLevel} onRetry={onRetry} />
+                <RemoteLobby start={remoteStart} onOpenLevel={onOpenLevel} onRetry={onRetry} games={playable} unlockedFor={unlockedFor} />
             ) : togetherOn ? (
                 <TogetherGamePicker games={playable} unlockedFor={unlockedFor} pending={pending} unavailable={unavailable} onOpen={onOpen} />
             ) : plan ? (

@@ -1,15 +1,24 @@
 // lib/invite.ts
 // „Igraj sa drugom na drugom uređaju” — čist deo (radi na serveru, u pregledaču i u testovima).
 //
-// Dete (domaćin) napravi poziv: server mu da kod od četiri sličice (iste sličice kao tajni kod
-// za prijavu) i tajni naziv kanala. Drug na SVOM uređaju, prijavljen u SVOJ profil, izabere te
-// četiri sličice i dobije isti kanal. Oboje zatim igraju istu igru i isti nivo istovremeno,
-// svako na svom uređaju (rezultati idu svakom u njegov profil), a preko kanala vide traku sa
-// drugom: drugar, ime, zadatak i zvezdice. Podrazumevano je sve zajedničko — nikad poređenje;
+// Dete (domaćin) prvo izabere igru, nivo i način igre, pa napravi poziv: server mu da kod od
+// četiri sličice (iste sličice kao tajni kod za prijavu). Drug na SVOM uređaju, prijavljen u SVOJ
+// profil, izabere te četiri sličice i pre ulaska vidi karticu poziva: ko ga zove, koja igra i
+// nivo i da li je „zajedno” ili dvoboj, pa izabere „Prihvati” ili „Ne sada”. Domaćin za to vreme
+// vidi „Čekamo da Amar prihvati…”. Posle prvog zajedničkog igranja deca se pamte kao „drugovi”
+// (lib/playFriends.ts), pa sledeći put domaćin može da pozove druga bez koda: kartica poziva
+// iskoči na stranici druga (ako je otvorena). Posle „Prihvati” oboje igraju istu igru i isti
+// nivo istovremeno, svako na svom uređaju (rezultati idu svakom u njegov profil), a preko kanala
+// vide traku sa drugom: drugar, ime, zadatak i zvezdice. Podrazumevano je sve zajedničko — nikad poređenje;
 // samo kad dete ili odrasli izabere „Takmičenje” (lib/versus.ts), traka postaje „VS” rezultat.
 //
 // Poziv se čuva u podešavanjima domaćina (`children.settings.invite`), bez nove tabele.
-// Ovde su: oblik poziva i njegovo čišćenje, rokovi, poruke kanala i zajedničke zvezdice.
+// Ovde su: oblik poziva i njegovo čišćenje, rokovi, reči kartice poziva, poruke kanala i
+// zajedničke zvezdice.
+//
+// Zašto kartica poziva pre ulaska (deca od 3 do 10 godina i deca sa autizmom): predvidljivost —
+// dete unapred zna sa kim, šta i kako igra; izbor je njegov (dva velika dugmeta, bez trećeg),
+// a „Ne sada” je jednako mirno kao „Prihvati”: domaćin ne vidi tužno lice, samo sledeći korak.
 
 import { GAMES, MAX_LEVEL, starsForGame, type GameId } from "./games";
 import { PIN_LENGTH, VISUAL_PIN_CATEGORIES } from "./visualPinData";
@@ -19,6 +28,15 @@ import { playModeOr, type PlayMode } from "./versus";
 export const INVITE_CODE_TTL_MS = 10 * 60 * 1000;
 /** Igra sa drugom posle ulaska druga traje najduže tri sata (posle toga se poziv briše). */
 export const INVITE_SESSION_TTL_MS = 3 * 60 * 60 * 1000;
+/**
+ * Drug koji vidi karticu poziva ima tri minuta da odgovori — bez sata i žurbe: vreme se detetu ne
+ * prikazuje, a posle roka domaćin mirno vidi „Amar sada nije tu”.
+ */
+export const REQUEST_ANSWER_TTL_MS = 3 * 60 * 1000;
+/** Poziv drugu sa spiska (bez koda): ako ga stranica druga ne prikaže za minut, drug „nije tu”. */
+export const REQUEST_SEEN_TTL_MS = 60 * 1000;
+/** Koliko dugo domaćin još vidi odgovor „Ne sada” / „nije tu” (posle toga se poziv samo briše). */
+export const ANSWER_SHOWN_TTL_MS = 10 * 60 * 1000;
 
 /** Igre koje se nude za igru na dva uređaja: sve osim igre zvukova (zvuk je u njoj sve). */
 export const REMOTE_GAMES: readonly GameId[] = GAMES.map((g) => g.id).filter((id) => id !== "sound-to-image");
@@ -40,6 +58,30 @@ export interface InviteGuest {
     companion: InviteCompanion;
 }
 
+/** Kako je drug dobio poziv: unosom koda ili sa spiska drugova (bez koda). */
+export type RequestVia = "code" | "direct";
+
+/**
+ * Poziv koji čeka odgovor druga („Prihvati” / „Ne sada”). Ključ ima samo drug (njime odgovara);
+ * ID druga je samo na serveru — domaćin vidi samo ime i drugara.
+ */
+export interface InviteRequest {
+    key: string;
+    guestId: number;
+    firstName: string;
+    companion: InviteCompanion;
+    via: RequestVia;
+    /** Kada je poziv krenuo ka drugu (ISO) */
+    at: string;
+    /** Kada ga je stranica druga prikazala (poziv sa spiska; poziv kodom je viđen odmah) */
+    seenAt?: string;
+}
+
+/** Drug je rekao „Ne sada” (ili nije odgovorio): domaćin to mirno vidi, pa bira dalje. */
+export interface InviteAnswer extends InviteGuest {
+    at: string;
+}
+
 /** Poziv u `children.settings.invite` domaćina. */
 export interface StoredInvite {
     /** Četiri sličice (kao tajni kod: po jedna iz svake grupe, spojene zarezom); null = iskorišćen */
@@ -56,6 +98,10 @@ export interface StoredInvite {
     createdAt: string;
     guest?: InviteGuest;
     joinedAt?: string;
+    /** Drug je uneo kod (ili je pozvan sa spiska) i još nije odgovorio */
+    request?: InviteRequest;
+    /** Drug je rekao „Ne sada” */
+    declined?: InviteAnswer;
 }
 
 const KEY_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
@@ -91,7 +137,8 @@ export function randomInviteCode(randomIndex: (n: number) => number): string {
     return VISUAL_PIN_CATEGORIES.map((category) => category.items[randomIndex(category.items.length)].id).join(",");
 }
 
-function cleanCompanion(raw: unknown): InviteCompanion | null {
+/** Drugar iz sačuvanih ili primljenih podataka, ograničen i prečišćen; neispravno → null. */
+export function cleanCompanion(raw: unknown): InviteCompanion | null {
     if (!isRecord(raw) || typeof raw.kind !== "string" || raw.kind.length > 40) return null;
     const wear: Record<string, string> = {};
     if (isRecord(raw.wear)) {
@@ -100,6 +147,28 @@ function cleanCompanion(raw: unknown): InviteCompanion | null {
         }
     }
     return { kind: raw.kind, skin: typeof raw.skin === "string" && raw.skin.length <= 60 ? raw.skin : null, wear };
+}
+
+export function isRequestKey(value: unknown): value is string {
+    return typeof value === "string" && KEY_PATTERN.test(value);
+}
+
+function cleanPerson(raw: unknown): InviteGuest | null {
+    if (!isRecord(raw)) return null;
+    const firstName = firstNameOnly(raw.firstName);
+    const companion = cleanCompanion(raw.companion);
+    return firstName && companion ? { firstName, companion } : null;
+}
+
+function cleanRequest(raw: unknown): InviteRequest | null {
+    if (!isRecord(raw)) return null;
+    const person = cleanPerson(raw);
+    const at = isoOrNull(raw.at);
+    const guestId = typeof raw.guestId === "number" && Number.isSafeInteger(raw.guestId) && raw.guestId > 0 ? raw.guestId : null;
+    const via = raw.via === "code" || raw.via === "direct" ? raw.via : null;
+    if (!person || !at || !guestId || !via || !isRequestKey(raw.key)) return null;
+    const seenAt = isoOrNull(raw.seenAt);
+    return { key: raw.key, guestId, ...person, via, at, ...(seenAt ? { seenAt } : {}) };
 }
 
 /** Sačuvan poziv iz podešavanja; sve neispravno → null (kao da poziva nema). */
@@ -114,30 +183,94 @@ export function parseStoredInvite(raw: unknown): StoredInvite | null {
     const code = raw.code === null ? null : normalizeInviteCode(raw.code);
     if (raw.code !== null && code === null) return null;
 
-    let guest: InviteGuest | undefined;
-    if (isRecord(raw.guest)) {
-        const firstName = firstNameOnly(raw.guest.firstName);
-        const companion = cleanCompanion(raw.guest.companion);
-        if (firstName && companion) guest = { firstName, companion };
-    }
+    const guest = cleanPerson(raw.guest) ?? undefined;
     const joinedAt = isoOrNull(raw.joinedAt) ?? undefined;
-    return { code, channelKey, expiresAt, hostFirstName, game: raw.game, level, mode: playModeOr(raw.mode), createdAt, ...(guest ? { guest } : {}), ...(guest && joinedAt ? { joinedAt } : {}) };
+    // Stari pozivi nemaju ni zahtev ni odgovor: ostaju kakvi su bili (čeka se kod ili se igra)
+    const request = !guest ? (cleanRequest(raw.request) ?? undefined) : undefined;
+    const declinedPerson = !guest ? cleanPerson(raw.declined) : null;
+    const declinedAt = isRecord(raw.declined) ? isoOrNull(raw.declined.at) : null;
+    const declined = declinedPerson && declinedAt ? { ...declinedPerson, at: declinedAt } : undefined;
+    return {
+        code,
+        channelKey,
+        expiresAt,
+        hostFirstName,
+        game: raw.game,
+        level,
+        mode: playModeOr(raw.mode),
+        createdAt,
+        ...(guest ? { guest } : {}),
+        ...(guest && joinedAt ? { joinedAt } : {}),
+        ...(request ? { request } : {}),
+        ...(declined ? { declined } : {}),
+    };
 }
-
-export type InviteStatus = "waiting" | "joined" | "expired";
 
 /**
  * Stanje poziva u trenutku `now`:
- *  • waiting — kod još važi i niko nije ušao
- *  • joined  — drug je ušao (kod je iskorišćen); igra traje do `INVITE_SESSION_TTL_MS`
- *  • expired — kod je istekao pre ulaska, ili je igra sa drugom predugo trajala
+ *  • waiting  — kod još važi i niko ga nije uneo
+ *  • asking   — drug je uneo kod (ili je pozvan sa spiska) i gleda karticu poziva
+ *  • joined   — drug je prihvatio (ili ušao starim putem); igra traje do `INVITE_SESSION_TTL_MS`
+ *  • declined — drug je rekao „Ne sada”
+ *  • missed   — drug nije odgovorio (poziv sa spiska nije ni stigao do otvorene stranice)
+ *  • expired  — kod je istekao pre ulaska, igra sa drugom je predugo trajala, ili je odgovor star
  */
+export type InviteStatus = "waiting" | "asking" | "joined" | "declined" | "missed" | "expired";
+
+/** Do kada drug može da odgovori na poziv (ms od 1970); posle toga je „nije tu”. */
+export function requestDeadline(request: InviteRequest): number {
+    if (request.via === "direct" && !request.seenAt) return Date.parse(request.at) + REQUEST_SEEN_TTL_MS;
+    return Date.parse(request.seenAt ?? request.at) + REQUEST_ANSWER_TTL_MS;
+}
+
 export function inviteStatus(invite: StoredInvite, now: number = Date.now()): InviteStatus {
     if (invite.guest && invite.joinedAt) {
         return now - Date.parse(invite.joinedAt) < INVITE_SESSION_TTL_MS ? "joined" : "expired";
     }
+    if (invite.declined) return now - Date.parse(invite.declined.at) < ANSWER_SHOWN_TTL_MS ? "declined" : "expired";
+    if (invite.request) {
+        const deadline = requestDeadline(invite.request);
+        if (now < deadline) return "asking";
+        return now - deadline < ANSWER_SHOWN_TTL_MS ? "missed" : "expired";
+    }
     if (invite.code === null) return "expired";
     return now < Date.parse(invite.expiresAt) ? "waiting" : "expired";
+}
+
+// ── Reči kartice poziva ─────────────────────────────────────────────────────────
+
+/**
+ * Šta drug vidi na kartici poziva, pre nego što prihvati: ko ga zove, igra, nivo i način igre.
+ * Samo ime, bez roda (pol drugog deteta se ne šalje): „te zove”, „te izaziva”.
+ */
+export function requestLine(hostName: string, gameTitle: string, level: number, mode: PlayMode): string {
+    if (mode === "versus") return `${hostName} te izaziva na dvoboj u igri ${gameTitle} — Nivo ${level}`;
+    return `${hostName} te zove da igrate zajedno: ${gameTitle}`;
+}
+
+/** Isto, za glas: bez imena drugog deteta (imena ne idu servisu za govor), bez „dodirni”. */
+export function requestSpeech(gameTitle: string, mode: PlayMode): string {
+    return mode === "versus" ? `Drug te izaziva na dvoboj. Igra: ${gameTitle}.` : `Drug te zove da igrate zajedno. Igra: ${gameTitle}.`;
+}
+
+/** Domaćin čeka odgovor */
+export function askingLine(friendName: string): string {
+    return `Čekamo da ${friendName} prihvati…`;
+}
+
+/** Drug je prihvatio (bez roda: „Amar kaže: može!”) */
+export function acceptedLine(friendName: string): string {
+    return `${friendName} kaže: može!`;
+}
+
+/** Drug je rekao „Ne sada” — mirno, bez tužnog lica, sa sledećim korakom */
+export function declinedLine(friendName: string): string {
+    return `${friendName} sada ne može. Probaj kasnije ili izaberi drugu igru.`;
+}
+
+/** Poziv sa spiska nije stigao do druga (stranica zatvorena) ili drug nije odgovorio */
+export function missedLine(friendName: string): string {
+    return `${friendName} sada nije tu.`;
 }
 
 // ── Poruke kanala ─────────────────────────────────────────────────────────────

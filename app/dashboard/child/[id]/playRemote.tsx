@@ -1,8 +1,14 @@
 // app/dashboard/child/[id]/playRemote.tsx
 "use client";
 
-// „Igraj sa drugom na drugom uređaju”. Domaćin napravi poziv i pokaže drugu kod od četiri
-// sličice; drug na SVOM uređaju, u SVOM profilu, izabere iste sličice („Uđi kod druga”).
+// „Igraj sa drugom na drugom uređaju”. Domaćin prvo izabere igru, nivo i način igre, pa pokaže
+// drugu kod od četiri sličice; drug na SVOM uređaju, u SVOM profilu, izabere iste sličice („Uđi
+// kod druga”) i pre ulaska vidi karticu poziva: ko ga zove, igra, nivo i način igre, uz dva
+// velika dugmeta „Prihvati” i „Ne sada”. Domaćin dotle vidi „Čekamo da Amar prihvati…”; posle
+// „Prihvati” oboje odmah kreću u igru (u dvoboju prvo kratak ekran „VS”), a posle „Ne sada”
+// domaćin mirno bira dalje. Deca koja su jednom igrala zajedno pamte se kao „Drugovi”
+// (lib/playFriends.ts): sledeći put domaćin bira druga sa spiska, bez koda, a kartica poziva
+// iskoči na otvorenoj stranici druga (sanduče, lib/inviteInbox.ts).
 // Zatim oboje igraju istu igru i isti nivo u isto vreme, svako na svom uređaju — rezultati
 // idu svakom u njegov profil. Iznad igre je traka sa drugom: njegov drugar, ime, zadatak i
 // zvezdice; kad drug tačno odgovori, njegov drugar kratko zatapše. Sve je zajedničko
@@ -23,10 +29,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
-import { ArrowRight, Check, KeyRound, Play, RotateCcw, Smartphone, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Hand, KeyRound, Minus, Play, Plus, RotateCcw, Smartphone, X } from "lucide-react";
 import { useCalmMotion } from "@/app/components/avatar/motion";
 import VisualPinPad from "@/app/components/VisualPinPad";
 import { Button, Spinner } from "@/app/components/ui/Button";
+import { Modal } from "@/app/components/ui/Modal";
 import { CoinIcon } from "@/app/components/ui/CoinIcon";
 import { COINS_PER_STAR } from "@/lib/companion";
 import { cn } from "@/lib/cn";
@@ -34,15 +41,24 @@ import { MAX_LEVEL, getGame, type GameDefinition, type GameId } from "@/lib/game
 import {
     FRIEND_TIMEOUT_MS,
     HEARTBEAT_MS,
+    acceptedLine,
+    askingLine,
+    declinedLine,
     isRemoteGame,
     liveStars,
+    missedLine,
     nextTogetherLevel,
     parseRemoteState,
+    requestLine,
+    requestSpeech,
     type RemotePhase,
     type RemoteStart,
     type RemoteState,
+    type RequestVia,
 } from "@/lib/invite";
 import { useInviteChannel, type InviteRole } from "@/lib/inviteChannel";
+import { useInviteInbox } from "@/lib/inviteInbox";
+import { speak } from "@/lib/speech";
 import { starsPhrase, togetherPraise, type TogetherPlayer } from "@/lib/playTogether";
 import { GameEventTapProvider, useTogetherAnnounce } from "@/lib/realtime";
 import type { GameUpdate } from "@/lib/types";
@@ -69,6 +85,27 @@ interface RemoteSession {
     code: string[] | null;
     /** Domaćin: kod je istekao pre nego što je drug ušao */
     expired: boolean;
+    /** Domaćin: drug gleda karticu poziva („Čekamo da Amar prihvati…”) */
+    asking: TogetherPlayer | null;
+    /** Domaćin: drug je rekao „Ne sada” ili nije tu (poziv je na serveru obrisan) */
+    answer: { kind: "declined" | "missed"; friend: TogetherPlayer; via: RequestVia } | null;
+    /** Upravo prihvaćeno: igra se otvara sama čim može (vreme prihvatanja; 0 = ne) */
+    autoStart: number;
+}
+
+/** Kartica poziva: šta drug vidi pre nego što prihvati */
+export interface RequestCardData {
+    key: string;
+    friend: TogetherPlayer;
+    game: GameId;
+    level: number;
+    mode: PlayMode;
+}
+
+/** Drug sa spiska „Drugovi” (ključ umesto ID-ja, od servera) */
+export interface PlayFriendItem {
+    key: string;
+    player: TogetherPlayer;
 }
 
 interface ServerFriend {
@@ -106,8 +143,17 @@ interface RemoteValue {
     /** „Zajedno: N ⭐” — zbir oba igrača */
     togetherStars: number;
     busy: boolean;
-    create: (game: GameId, level: number, mode?: PlayMode) => Promise<string | null>;
-    join: (code: string[]) => Promise<{ error: string | null; status: number }>;
+    /** Novi poziv; sa `friend` (ključ sa spiska „Drugovi”) ide pravo drugu, bez koda */
+    create: (game: GameId, level: number, mode?: PlayMode, friend?: string) => Promise<string | null>;
+    /** Gost unese kod: kartica poziva (još ne ulazi) */
+    lookup: (code: string[]) => Promise<{ error: string | null; status: number; card: RequestCardData | null }>;
+    /** Gost odgovara na karticu poziva; posle „Prihvati” igra kreće sama */
+    answer: (card: RequestCardData, accept: boolean) => Promise<string | null>;
+    /** Pozivi drugova sa spiska koji čekaju odgovor (sanduče) */
+    requests: RequestCardData[];
+    /** Spisak „Drugovi” (pita server) */
+    loadFriends: () => Promise<PlayFriendItem[]>;
+    clearAutoStart: () => void;
     end: () => void;
     dismissEnded: () => void;
     report: (update: GameUpdate, game: GameId) => void;
@@ -152,7 +198,7 @@ function readGuest(childId: number): RemoteSession | null {
         if (!raw || typeof raw.channel !== "string" || !/^bm-inv-[0-9a-f]{40}$/.test(raw.channel) || !isRemoteGame(raw.game)) return null;
         if (!isServerFriend(raw.friend) || typeof raw.level !== "number") return null;
         const level = Math.min(Math.max(Math.round(raw.level), 1), MAX_LEVEL);
-        return { role: "guest", channel: raw.channel, game: raw.game, level, mode: playModeOr(raw.mode), friend: toPlayer(raw.friend), code: null, expired: false };
+        return { role: "guest", channel: raw.channel, game: raw.game, level, mode: playModeOr(raw.mode), friend: toPlayer(raw.friend), code: null, expired: false, asking: null, answer: null, autoStart: 0 };
     } catch {
         return null;
     }
@@ -177,8 +223,11 @@ function hostSession(invite: unknown, previous: RemoteSession | null): RemoteSes
     const data = invite as Record<string, unknown>;
     if (typeof data.channel !== "string" || !isRemoteGame(data.game) || typeof data.level !== "number") return null;
     const friend = isServerFriend(data.friend) ? toPlayer(data.friend) : null;
+    const asking = !friend && isServerFriend(data.asking) ? toPlayer(data.asking) : null;
     const code = Array.isArray(data.code) && data.code.length === PIN_LENGTH ? (data.code as string[]) : null;
     const sameChannel = previous?.channel === data.channel;
+    // Drug je upravo prihvatio (domaćin je čekao kod ili odgovor): igra se otvara sama
+    const justJoined = Boolean(friend) && sameChannel && previous !== null && !previous.friend;
     return {
         role: "host",
         channel: data.channel,
@@ -187,9 +236,21 @@ function hostSession(invite: unknown, previous: RemoteSession | null): RemoteSes
         level: sameChannel && previous ? previous.level : data.level,
         mode: playModeOr(data.mode),
         friend,
-        code: friend ? null : code,
+        code: friend || asking ? null : code,
         expired: false,
+        asking,
+        answer: null,
+        autoStart: justJoined ? Date.now() : sameChannel && previous ? previous.autoStart : 0,
     };
+}
+
+/** Kartica poziva od servera (ulazak kodom ili sanduče); neispravno → null */
+function toCard(raw: unknown): RequestCardData | null {
+    if (!raw || typeof raw !== "object") return null;
+    const data = raw as Record<string, unknown>;
+    if (typeof data.key !== "string" || !isServerFriend(data.friend) || !isRemoteGame(data.game) || typeof data.level !== "number") return null;
+    const level = Math.min(Math.max(Math.round(data.level), 1), MAX_LEVEL);
+    return { key: data.key, friend: toPlayer(data.friend), game: data.game, level, mode: playModeOr(data.mode) };
 }
 
 interface ProviderProps {
@@ -197,10 +258,15 @@ interface ProviderProps {
     childName: string;
     gender?: string;
     preview?: boolean;
+    /** Tajna tema sandučeta deteta (pravi je server); bez nje pozivi sa spiska stižu tek pri proveri */
+    inboxTopic?: string | null;
     children: ReactNode;
 }
 
-export function RemoteProvider({ childId, childName, gender, preview = false, children }: ProviderProps) {
+/** Bez sandučeta (Realtime ne radi): poziv drugova stranica proverava na pola minuta */
+const INBOX_POLL_MS = 30_000;
+
+export function RemoteProvider({ childId, childName, gender, preview = false, inboxTopic = null, children }: ProviderProps) {
     const companion = useCompanion();
     const me = useMemo<TogetherPlayer>(
         () => ({
@@ -260,9 +326,26 @@ export function RemoteProvider({ childId, childName, gender, preview = false, ch
                     if (prev && prev.role !== "host") return prev;
                     const next = hostSession(data.invite, prev);
                     if (next) return next;
+                    // Drug je rekao „Ne sada” ili nije tu: mirna poruka i sledeći korak (poziv je obrisan)
+                    const answered = isServerFriend(data.declined) ? data.declined : isServerFriend(data.missed) ? data.missed : null;
+                    if (answered && isRemoteGame(data.game) && typeof data.level === "number") {
+                        return {
+                            role: "host",
+                            channel: prev?.channel ?? "",
+                            game: data.game,
+                            level: data.level,
+                            mode: playModeOr(data.mode),
+                            friend: null,
+                            code: null,
+                            expired: false,
+                            asking: null,
+                            answer: { kind: isServerFriend(data.declined) ? "declined" : "missed", friend: toPlayer(answered), via: data.via === "direct" ? "direct" : "code" },
+                            autoStart: 0,
+                        };
+                    }
                     // Kod je istekao dok se čekalo: „Kod više ne važi, napravi novi”
-                    if (prev && !prev.friend && data.expired) return { ...prev, code: null, expired: true };
-                    if (prev?.expired) return prev;
+                    if (prev && !prev.friend && data.expired) return { ...prev, code: null, asking: null, expired: true };
+                    if (prev?.expired || prev?.answer) return prev;
                     return null;
                 });
             })
@@ -287,13 +370,13 @@ export function RemoteProvider({ childId, childName, gender, preview = false, ch
     }, [childId, session]);
 
     const create = useCallback(
-        async (game: GameId, level: number, mode: PlayMode = "together"): Promise<string | null> => {
+        async (game: GameId, level: number, mode: PlayMode = "together", friend?: string): Promise<string | null> => {
             setBusy(true);
             try {
                 const res = await fetch(`/api/children/${childId}/invite`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ game, level, mode }),
+                    body: JSON.stringify(friend ? { game, level, mode, friend } : { game, level, mode }),
                 });
                 const data = await res.json().catch(() => null);
                 if (!res.ok) return typeof data?.error === "string" ? data.error : "Nešto nije u redu. Probaj ponovo.";
@@ -312,20 +395,70 @@ export function RemoteProvider({ childId, childName, gender, preview = false, ch
         [childId, resetPlay]
     );
 
-    const join = useCallback(
+    /** Gost je uneo kod: server vraća karticu poziva, a domaćin vidi „Čekamo da Amar prihvati…” */
+    const lookup = useCallback(
         async (code: string[]) => {
             setBusy(true);
             try {
                 const res = await fetch(`/api/children/${childId}/invite/join`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ code }),
+                    body: JSON.stringify({ code, ask: true }),
                 });
                 const data = await res.json().catch(() => null);
-                if (!res.ok) return { error: typeof data?.error === "string" ? data.error : "Nešto nije u redu. Probaj ponovo.", status: res.status };
+                if (!res.ok) return { error: typeof data?.error === "string" ? data.error : "Nešto nije u redu. Probaj ponovo.", status: res.status, card: null };
+                const card = toCard(data?.request);
+                if (!card) return { error: "Nešto nije u redu. Probaj ponovo.", status: 500, card: null };
+                return { error: null, status: 200, card };
+            } catch {
+                return { error: "Nema interneta. Probaj ponovo.", status: 0, card: null };
+            } finally {
+                setBusy(false);
+            }
+        },
+        [childId]
+    );
+
+    // ── Sanduče: pozivi drugova sa spiska ─────────────────────────────────────────
+
+    const [requests, setRequests] = useState<RequestCardData[]>([]);
+    const inboxBusy = useRef(false);
+    const fetchRequests = useCallback(() => {
+        // Dok traje igra sa drugom, novi pozivi čekaju (drug posle vidi „nije tu”)
+        if (preview || inboxBusy.current || sessionRef.current?.friend) return;
+        inboxBusy.current = true;
+        fetch(`/api/children/${childId}/invite/requests`, { cache: "no-store" })
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (!data || !Array.isArray(data.requests)) return;
+                setRequests((data.requests as unknown[]).map(toCard).filter((card): card is RequestCardData => card !== null));
+            })
+            .catch(() => {
+                /* mreža: pokušava se ponovo sledeći put */
+            })
+            .finally(() => {
+                inboxBusy.current = false;
+            });
+    }, [childId, preview]);
+
+    const answer = useCallback(
+        async (card: RequestCardData, accept: boolean): Promise<string | null> => {
+            setBusy(true);
+            try {
+                const res = await fetch(`/api/children/${childId}/invite/answer`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ key: card.key, accept }),
+                });
+                const data = await res.json().catch(() => null);
+                setRequests((prev) => prev.filter((r) => r.key !== card.key));
+                if (!res.ok) return res.status === 404 ? "Ovaj poziv više ne važi." : typeof data?.error === "string" ? data.error : "Nešto nije u redu. Probaj ponovo.";
+                if (!accept) return null;
                 if (!data || typeof data.channel !== "string" || !isRemoteGame(data.game) || !isServerFriend(data.friend) || typeof data.level !== "number") {
-                    return { error: "Nešto nije u redu. Probaj ponovo.", status: 500 };
+                    return "Nešto nije u redu. Probaj ponovo.";
                 }
+                // Dete je i samo čekalo druga (svoj kod): taj poziv više ne važi
+                if (sessionRef.current?.role === "host") void fetch(`/api/children/${childId}/invite`, { method: "DELETE" }).catch(() => {});
                 resetPlay();
                 setEndedBy(null);
                 setSession({
@@ -337,16 +470,38 @@ export function RemoteProvider({ childId, childName, gender, preview = false, ch
                     friend: toPlayer(data.friend),
                     code: null,
                     expired: false,
+                    asking: null,
+                    answer: null,
+                    // Prihvatio je: igra se otvara sama (bez još jednog „Krenimo!”)
+                    autoStart: Date.now(),
                 });
-                return { error: null, status: 200 };
+                return null;
             } catch {
-                return { error: "Nema interneta. Probaj ponovo.", status: 0 };
+                return "Nema interneta. Probaj ponovo.";
             } finally {
                 setBusy(false);
             }
         },
         [childId, resetPlay]
     );
+
+    const loadFriends = useCallback(async (): Promise<PlayFriendItem[]> => {
+        if (preview) return [{ key: "probni-drug", player: { name: "Amar", kind: "dog" } }];
+        try {
+            const res = await fetch(`/api/children/${childId}/play-friends`, { cache: "no-store" });
+            const data = res.ok ? await res.json() : null;
+            const list = Array.isArray(data?.friends) ? (data.friends as unknown[]) : [];
+            return list
+                .filter((f): f is ServerFriend & { key: string } => isServerFriend(f) && typeof (f as { key?: unknown }).key === "string")
+                .map((f) => ({ key: f.key, player: toPlayer(f) }));
+        } catch {
+            return [];
+        }
+    }, [childId, preview]);
+
+    const clearAutoStart = useCallback(() => {
+        setSession((prev) => (prev && prev.autoStart ? { ...prev, autoStart: 0 } : prev));
+    }, []);
 
     // ── Kanal ──────────────────────────────────────────────────────────────────
 
@@ -381,13 +536,36 @@ export function RemoteProvider({ childId, childName, gender, preview = false, ch
     );
     const channel = useInviteChannel(preview ? null : (session?.channel ?? null), session?.role ?? "host", handlers);
 
-    // Domaćin koji čeka: proverava na serveru da li je drug ušao (i odmah kad se drug javi na kanalu)
-    const waiting = session?.role === "host" && !session.friend && !session.expired;
+    // Domaćin koji čeka: proverava na serveru da li je drug ušao ili odgovorio (i odmah kad stigne
+    // znak na sanduče ili se drug javi na kanalu)
+    const waiting = session?.role === "host" && !session.friend && !session.expired && !session.answer;
     useEffect(() => {
         if (!waiting) return;
         const timer = setInterval(refresh, 4000);
         return () => clearInterval(timer);
     }, [waiting, refresh]);
+
+    // Sanduče: poziv druga sa spiska ili odgovor na poziv ovog deteta
+    const onInbox = useCallback(() => {
+        const current = sessionRef.current;
+        if (current?.role === "host" && !current.friend) refresh();
+        fetchRequests();
+    }, [refresh, fetchRequests]);
+    const inboxReady = useInviteInbox(preview ? null : inboxTopic, onInbox);
+    useEffect(() => {
+        if (preview) return;
+        // Pri otvaranju stranice i kad se dete vrati na nju; bez sandučeta i na pola minuta
+        const onVisible = () => {
+            if (document.visibilityState === "visible") fetchRequests();
+        };
+        queueMicrotask(fetchRequests);
+        document.addEventListener("visibilitychange", onVisible);
+        const timer = inboxReady ? null : setInterval(onVisible, INBOX_POLL_MS);
+        return () => {
+            document.removeEventListener("visibilitychange", onVisible);
+            if (timer) clearInterval(timer);
+        };
+    }, [preview, inboxReady, fetchRequests]);
     useEffect(() => {
         if (waiting && (channel.present || seenAt > 0)) refresh();
     }, [waiting, channel.present, seenAt, refresh]);
@@ -498,7 +676,11 @@ export function RemoteProvider({ childId, childName, gender, preview = false, ch
             togetherStars: myState.sessionStars + (friendState?.sessionStars ?? 0),
             busy,
             create,
-            join,
+            lookup,
+            answer,
+            requests,
+            loadFriends,
+            clearAutoStart,
             end,
             dismissEnded: () => setEndedBy(null),
             report,
@@ -508,10 +690,15 @@ export function RemoteProvider({ childId, childName, gender, preview = false, ch
             setLevel,
             refresh,
         }),
-        [preview, session, endedBy, me, myGender, friendState, friendHere, friendGone, cheerAt, now, myState, busy, create, join, end, report, left, finish, finishedKey, setLevel, refresh]
+        [preview, session, endedBy, me, myGender, friendState, friendHere, friendGone, cheerAt, now, myState, busy, create, lookup, answer, requests, loadFriends, clearAutoStart, end, report, left, finish, finishedKey, setLevel, refresh]
     );
 
-    return <RemoteContext value={value}>{children}</RemoteContext>;
+    return (
+        <RemoteContext value={value}>
+            {children}
+            <RemoteInbox />
+        </RemoteContext>
+    );
 }
 
 // ── Poziv: izbor igre (domaćin) i unos koda (gost) ──────────────────────────────
@@ -522,7 +709,10 @@ export function RemoteChoices({ onHost, onGuest }: { onHost: () => void; onGuest
     if (!remote || remote.preview) return null;
     return (
         <section aria-label="Drug na drugom uređaju" className="space-y-2">
-            <p className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">Drug ima svoj uređaj</p>
+            <p className="flex items-center gap-1.5 text-sm font-extrabold uppercase tracking-wide text-ink-soft">
+                <Smartphone className="h-4 w-4" aria-hidden="true" />
+                Drug ima svoj telefon ili tablet
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
                 <button
                     type="button"
@@ -532,7 +722,10 @@ export function RemoteChoices({ onHost, onGuest }: { onHost: () => void; onGuest
                     <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-600 text-white" aria-hidden="true">
                         <Smartphone className="h-7 w-7" />
                     </span>
-                    <span className="font-display text-lg font-extrabold leading-tight text-ink">Pozovi druga sa drugog uređaja</span>
+                    <span className="min-w-0">
+                        <span className="block font-display text-lg font-extrabold leading-tight text-ink">Pozovi druga</span>
+                        <span className="block text-sm font-bold leading-tight text-ink-soft">Ti biraš igru</span>
+                    </span>
                 </button>
                 <button
                     type="button"
@@ -542,81 +735,208 @@ export function RemoteChoices({ onHost, onGuest }: { onHost: () => void; onGuest
                     <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white" aria-hidden="true">
                         <KeyRound className="h-7 w-7" />
                     </span>
-                    <span className="font-display text-lg font-extrabold leading-tight text-ink">Uđi kod druga</span>
+                    <span className="min-w-0">
+                        <span className="block font-display text-lg font-extrabold leading-tight text-ink">Uđi kod druga</span>
+                        <span className="block text-sm font-bold leading-tight text-ink-soft">Drug ti pokaže sličice</span>
+                    </span>
                 </button>
             </div>
         </section>
     );
 }
 
-/** Domaćin bira način igre („Zajedno” je podrazumevano) i igru; nivo je onaj do kog je domaćin stigao. */
+/** Nivo za igru sa drugom: od prvog do onog do kog je domaćin stigao (manje dugme, broj, veće dugme). */
+function LevelStepper({ level, max, onChange }: { level: number; max: number; onChange: (level: number) => void }) {
+    const step = "grid h-12 w-12 place-items-center rounded-xl border-2 border-b-4 border-line bg-surface text-ink transition-[transform,border-width] active:translate-y-[2px] active:border-b-2 disabled:opacity-35";
+    return (
+        <div className="flex items-center justify-between gap-3 rounded-2xl bg-canvas p-2 pl-4">
+            <span className="font-display text-lg font-extrabold text-ink">Nivo</span>
+            <div className="flex items-center gap-2" role="group" aria-label="Nivo">
+                <button type="button" className={step} aria-label="Lakši nivo" disabled={level <= 1} onClick={() => onChange(Math.max(1, level - 1))}>
+                    <Minus className="h-6 w-6" aria-hidden="true" />
+                </button>
+                <span className="min-w-12 text-center font-display text-2xl font-extrabold tabular-nums text-ink" aria-live="polite">
+                    {level}
+                </span>
+                <button type="button" className={step} aria-label="Teži nivo" disabled={level >= max} onClick={() => onChange(Math.min(max, level + 1))}>
+                    <Plus className="h-6 w-6" aria-hidden="true" />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Domaćin prvo bira način igre („Zajedno” je podrazumevano) i igru, pa nivo (do onog do kog je
+ * stigao) i koga zove: druga sa spiska „Drugovi” (poziv stiže bez koda) ili kod od sličica.
+ * Drug tako uvek unapred zna koju igru igraju.
+ */
 export function RemoteHostPicker({ games, unlockedFor, onDone, onBack }: { games: GameDefinition[]; unlockedFor: (id: GameId) => number; onDone: () => void; onBack: () => void }) {
     const remote = useRemote();
     const [error, setError] = useState<string | null>(null);
-    const [picked, setPicked] = useState<GameId | null>(null);
     const [mode, setMode] = useState<PlayMode>("together");
+    const [picked, setPicked] = useState<GameId | null>(null);
+    const [level, setLevel] = useState(1);
+    const [sending, setSending] = useState<string | null>(null);
+    const [friends, setFriends] = useState<PlayFriendItem[] | null>(null);
+    const loadFriends = remote?.loadFriends;
+    useEffect(() => {
+        if (!loadFriends) return;
+        let alive = true;
+        void loadFriends().then((list) => {
+            if (alive) setFriends(list);
+        });
+        return () => {
+            alive = false;
+        };
+    }, [loadFriends]);
     if (!remote) return null;
     const shown = games.filter((g) => isRemoteGame(g.id));
+    const reached = (id: GameId) => Math.min(Math.max(unlockedFor(id), 1), MAX_LEVEL);
 
-    const pick = async (id: GameId) => {
-        setPicked(id);
+    if (!picked) {
+        return (
+            <div className="space-y-4">
+                <ModeChoice mode={mode} onChange={setMode} />
+                <p className="text-base font-semibold text-ink-soft">Izaberi igru. Drug igra istu igru na svom uređaju.</p>
+                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    {shown.map((game) => (
+                        <li key={game.id}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setPicked(game.id);
+                                    setLevel(reached(game.id));
+                                    setError(null);
+                                }}
+                                className="flex w-full flex-col overflow-hidden rounded-tile border-2 border-b-[5px] border-line bg-surface text-left transition-[transform,border-width] hover:border-brand-300 active:translate-y-[3px] active:border-b-2"
+                            >
+                                <span className="relative block aspect-[16/10] w-full bg-brand-50">
+                                    <Image src={game.image} alt="" fill sizes="200px" className="object-cover" />
+                                </span>
+                                <span className="block p-2 font-display text-sm font-extrabold leading-tight text-ink sm:text-base">{game.title}</span>
+                            </button>
+                        </li>
+                    ))}
+                </ul>
+                <Button size="lg" variant="secondary" onClick={onBack}>
+                    Nazad
+                </Button>
+            </div>
+        );
+    }
+
+    const game = getGame(picked);
+    const max = reached(picked);
+    const send = async (friend?: string) => {
+        setSending(friend ?? "code");
         setError(null);
-        const level = Math.min(Math.max(unlockedFor(id), 1), MAX_LEVEL);
-        const problem = await remote.create(id, level, mode);
-        setPicked(null);
+        const problem = await remote.create(picked, level, mode, friend);
+        setSending(null);
         if (problem) setError(problem);
         else onDone();
     };
+    const noFriends = friends !== null && friends.length === 0;
 
     return (
         <div className="space-y-4">
-            <ModeChoice mode={mode} onChange={setMode} />
-            <p className="text-base font-semibold text-ink-soft">Izaberi igru. Drug igra istu igru na svom uređaju.</p>
-            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {shown.map((game) => (
-                    <li key={game.id}>
+            <GameBadge game={game} level={level} mode={mode} className="w-full" />
+            {max > 1 && <LevelStepper level={level} max={max} onChange={setLevel} />}
+            <p className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">Koga zoveš?</p>
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Drugovi">
+                {(friends ?? []).map((friend) => (
+                    <li key={friend.key}>
                         <button
                             type="button"
-                            disabled={remote.busy}
-                            onClick={() => void pick(game.id)}
-                            className="flex w-full flex-col overflow-hidden rounded-tile border-2 border-b-[5px] border-line bg-surface text-left transition-[transform,border-width] hover:border-brand-300 active:translate-y-[3px] active:border-b-2 disabled:opacity-60"
+                            disabled={sending !== null}
+                            onClick={() => void send(friend.key)}
+                            className="relative flex w-full flex-col items-center gap-1.5 rounded-tile border-2 border-b-[5px] border-orange-200 bg-orange-50 p-3 text-center transition-[transform,border-width] hover:border-orange-300 active:translate-y-[3px] active:border-b-2 disabled:opacity-60"
                         >
-                            <span className="relative block aspect-[16/10] w-full bg-brand-50">
-                                <Image src={game.image} alt="" fill sizes="200px" className="object-cover" />
-                                {picked === game.id && (
-                                    <span className="absolute inset-0 grid place-items-center bg-white/60">
+                            <span className="relative">
+                                <PlayerPicture player={friend.player} look={LOOKS[1]} className="h-20 w-20" />
+                                <span className="absolute -bottom-1 -right-1 grid h-8 w-8 place-items-center rounded-full bg-brand-600 text-white ring-2 ring-white" aria-hidden="true">
+                                    <Smartphone className="h-4 w-4" />
+                                </span>
+                                {sending === friend.key && (
+                                    <span className="absolute inset-0 grid place-items-center rounded-2xl bg-white/60">
                                         <Spinner className="h-6 w-6" />
                                     </span>
                                 )}
                             </span>
-                            <span className="block p-2 font-display text-sm font-extrabold leading-tight text-ink sm:text-base">{game.title}</span>
+                            <span className="w-full truncate font-display text-lg font-extrabold text-ink">{friend.player.name}</span>
                         </button>
                     </li>
                 ))}
+                <li className={cn(noFriends && "col-span-2 sm:col-span-3")}>
+                    <button
+                        type="button"
+                        disabled={sending !== null}
+                        onClick={() => void send()}
+                        className={cn(
+                            "flex h-full w-full items-center gap-3 rounded-tile border-2 border-b-[5px] border-emerald-200 bg-emerald-50 p-3 transition-[transform,border-width] hover:border-emerald-300 active:translate-y-[3px] active:border-b-2 disabled:opacity-60",
+                            noFriends ? "min-h-20 text-left" : "min-h-36 flex-col justify-center text-center"
+                        )}
+                    >
+                        <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white" aria-hidden="true">
+                            {sending === "code" ? <Spinner className="h-7 w-7" /> : <KeyRound className="h-8 w-8" />}
+                        </span>
+                        <span className="min-w-0">
+                            <span className="block font-display text-lg font-extrabold leading-tight text-ink">Pokaži kod</span>
+                            <span className="block text-sm font-bold leading-tight text-ink-soft">Drug unese iste sličice</span>
+                        </span>
+                    </button>
+                </li>
             </ul>
+            {friends === null && (
+                <p className="text-sm font-bold text-ink-faint" role="status">
+                    Tražim drugove…
+                </p>
+            )}
             {error && (
                 <p className="rounded-xl bg-sun-50 px-4 py-3 text-base font-extrabold text-sun-700" role="alert">
                     {error}
                 </p>
             )}
-            <Button size="lg" variant="secondary" onClick={onBack}>
-                Nazad
+            <Button size="lg" variant="secondary" onClick={() => setPicked(null)}>
+                <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+                Druga igra
             </Button>
         </div>
     );
 }
 
-/** Gost unosi kod sa ekrana druga: četiri sličice, kao tajni kod za prijavu. */
-export function RemoteGuestEntry({ onDone, onBack }: { onDone: () => void; onBack: () => void }) {
+/** Gost unosi kod sa ekrana druga (četiri sličice, kao tajni kod za prijavu), pa vidi karticu poziva. */
+export function RemoteGuestEntry({ onDone, onBack, onCard }: { onDone: () => void; onBack: () => void; onCard?: () => void }) {
     const remote = useRemote();
     const [value, setValue] = useState<string[]>([]);
     const [status, setStatus] = useState<"idle" | "checking" | "error">("idle");
     const [message, setMessage] = useState<string | null>(null);
+    const [card, setCard] = useState<RequestCardData | null>(null);
     const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     useEffect(() => () => {
         if (resetTimer.current) clearTimeout(resetTimer.current);
     }, []);
+    // Prozor zatvoren bez odgovora: isto kao „Ne sada” (domaćin ne čeka uzalud)
+    const answered = useRef(false);
+    const answer = remote?.answer;
+    useEffect(() => {
+        if (!card || !answer) return;
+        return () => {
+            if (!answered.current) void answer(card, false);
+        };
+    }, [card, answer]);
     if (!remote) return null;
+    if (card) {
+        return (
+            <RequestCard
+                card={card}
+                onReplying={(pending) => {
+                    answered.current = pending;
+                }}
+                onAnswered={onDone}
+            />
+        );
+    }
 
     const change = async (next: string[]) => {
         if (status === "checking") return;
@@ -625,9 +945,10 @@ export function RemoteGuestEntry({ onDone, onBack }: { onDone: () => void; onBac
         setValue(next);
         if (next.length < PIN_LENGTH) return;
         setStatus("checking");
-        const result = await remote.join(next);
-        if (!result.error) {
-            onDone();
+        const result = await remote.lookup(next);
+        if (result.card) {
+            setCard(result.card);
+            onCard?.();
             return;
         }
         setStatus("error");
@@ -653,7 +974,86 @@ export function RemoteGuestEntry({ onDone, onBack }: { onDone: () => void; onBac
     );
 }
 
-// ── Predvorje: kod, čekanje, „Krenimo!” ───────────────────────────────────────────
+/**
+ * Kartica poziva: drugar i ime druga koji zove, igra (slika, naziv, nivo) i način igre, pa dva
+ * velika dugmeta „Prihvati” i „Ne sada”. Glas kaže samo o čemu je poziv (bez imena drugog
+ * deteta i bez „dodirni”). Posle „Prihvati” igra kreće sama; „Ne sada” je jednako miran izbor.
+ */
+export function RequestCard({ card, onAnswered, onReplying }: { card: RequestCardData; onAnswered: (accepted: boolean) => void; onReplying?: (pending: boolean) => void }) {
+    const remote = useRemote();
+    const [sent, setSent] = useState<"accept" | "decline" | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const game = getGame(card.game);
+    const title = game.title;
+    useEffect(() => {
+        void speak(requestSpeech(title, card.mode), { emotion: "hello" });
+    }, [card.key, title, card.mode]);
+    if (!remote) return null;
+
+    const reply = async (accept: boolean) => {
+        setSent(accept ? "accept" : "decline");
+        setError(null);
+        onReplying?.(true);
+        const problem = await remote.answer(card, accept);
+        if (!problem) {
+            onAnswered(accept);
+            return;
+        }
+        // Poziv koji više ne važi nema na šta da se odgovori; inače se može probati ponovo
+        onReplying?.(problem === "Ovaj poziv više ne važi.");
+        setSent(null);
+        setError(problem);
+    };
+    const gone = error === "Ovaj poziv više ne važi.";
+
+    return (
+        <section aria-label="Poziv za igru" className="space-y-4 text-center">
+            <div className="relative mx-auto w-fit">
+                <PlayerPicture player={card.friend} look={LOOKS[1]} className="h-24 w-24 sm:h-28 sm:w-28" />
+                {card.mode === "versus" && <VsMark className="absolute -bottom-2 -right-3 h-10 w-10 text-sm" />}
+            </div>
+            <p className="font-display text-xl font-extrabold leading-snug text-ink sm:text-2xl">{requestLine(card.friend.name, title, card.level, card.mode)}</p>
+            <div className="flex justify-center">
+                <GameBadge game={game} level={card.level} mode={card.mode} />
+            </div>
+            {error && (
+                <p className="rounded-xl bg-sun-50 px-4 py-3 text-base font-extrabold text-sun-700" role="alert">
+                    {error}
+                </p>
+            )}
+            {gone ? (
+                <Button chunky size="xl" variant="secondary" block onClick={() => onAnswered(false)}>
+                    <Check className="h-6 w-6" aria-hidden="true" />U redu
+                </Button>
+            ) : (
+                <div className="grid grid-cols-2 gap-3">
+                    <Button chunky size="xl" variant="success" className="max-sm:px-3" disabled={sent !== null} aria-busy={sent === "accept" || undefined} onClick={() => void reply(true)}>
+                        {sent === "accept" ? <Spinner className="h-6 w-6" /> : <Check className="h-6 w-6" aria-hidden="true" />}
+                        Prihvati
+                    </Button>
+                    <Button chunky size="xl" variant="secondary" className="max-sm:px-3" disabled={sent !== null} aria-busy={sent === "decline" || undefined} onClick={() => void reply(false)}>
+                        {sent === "decline" ? <Spinner className="h-6 w-6" /> : <Hand className="h-6 w-6" aria-hidden="true" />}
+                        Ne sada
+                    </Button>
+                </div>
+            )}
+        </section>
+    );
+}
+
+/** Poziv druga sa spiska „Drugovi” iskoči na stranici deteta (bilo gde na njoj, i preko igre). */
+function RemoteInbox() {
+    const remote = useRemote();
+    const card = remote && !remote.preview && !remote.session?.friend ? (remote.requests[0] ?? null) : null;
+    if (!card) return null;
+    return (
+        <Modal open onClose={() => undefined} dismissable={false} title="Poziv za igru" size="sm">
+            <RequestCard key={card.key} card={card} onAnswered={() => undefined} />
+        </Modal>
+    );
+}
+
+// ── Predvorje: kod, čekanje, odgovor, „Krenimo!” ───────────────────────────────────
 
 function CodePictures({ code }: { code: string[] }) {
     return (
@@ -676,15 +1076,26 @@ function CodePictures({ code }: { code: string[] }) {
     );
 }
 
-function GameBadge({ game, level }: { game: GameDefinition; level: number }) {
+/** Igra sa drugom: slika, naziv, nivo i (u dvoboju) oznaka „VS Dvoboj” */
+function GameBadge({ game, level, mode = "together", className }: { game: GameDefinition; level: number; mode?: PlayMode; className?: string }) {
     return (
-        <div className="flex items-center gap-3 rounded-2xl border-2 border-line bg-surface p-2 pr-4">
+        <div className={cn("flex items-center gap-3 rounded-2xl border-2 border-line bg-surface p-2 pr-4 text-left", className)}>
             <span className="relative block h-14 w-20 shrink-0 overflow-hidden rounded-xl bg-brand-50">
                 <Image src={game.image} alt="" fill sizes="80px" className="object-cover" />
             </span>
-            <span className="min-w-0">
+            <span className="min-w-0 flex-1">
                 <span className="block truncate font-display text-lg font-extrabold leading-tight text-ink">{game.title}</span>
-                <span className="block text-sm font-bold text-ink-soft">Nivo {level}</span>
+                <span className="flex flex-wrap items-center gap-x-2 text-sm font-bold text-ink-soft">
+                    Nivo {level}
+                    {mode === "versus" ? (
+                        <span className="inline-flex items-center gap-1 font-extrabold text-sun-700">
+                            <VsMark className="h-5 w-5 text-[0.55rem]" />
+                            Dvoboj
+                        </span>
+                    ) : (
+                        <span className="font-extrabold text-emerald-700">Zajedno</span>
+                    )}
+                </span>
             </span>
         </div>
     );
@@ -748,18 +1159,105 @@ export function RemoteStartButton({ start, onStart, onRetry }: StartButtonProps)
     );
 }
 
+/** Domaćin vidi „Amar kaže: može!” toliko pre nego što se igra sama otvori; gost kraće „Krenimo!” */
+const ACCEPTED_SHOWN_MS = 1800;
+const GUEST_GO_MS = 1000;
+
+/**
+ * Posle „Prihvati” igra se otvara sama, kod oba deteta (u dvoboju prvo kratak ekran „VS”) — bez
+ * još jednog koraka u predvorju. Ako igra sada ne može da se otvori (napredak se učitava ili je
+ * dnevno vreme isteklo), predvorje pokazuje zašto, kao i inače.
+ */
+export function useRemoteAutoStart(start: RemoteStart, open: (id: GameId, level: number) => void) {
+    const remote = useRemote();
+    const session = remote?.session;
+    const at = session?.friend ? session.autoStart : 0;
+    const game = session?.game;
+    const level = session?.level;
+    const role = session?.role;
+    const clear = remote?.clearAutoStart;
+    const openRef = useRef(open);
+    useEffect(() => {
+        openRef.current = open;
+    });
+    useEffect(() => {
+        if (!at || start !== "ready" || !game || !level || !clear) return;
+        const wait = Math.max(0, at + (role === "host" ? ACCEPTED_SHOWN_MS : GUEST_GO_MS) - Date.now());
+        const timer = setTimeout(() => {
+            clear();
+            openRef.current(game, level);
+        }, wait);
+        return () => clearTimeout(timer);
+    }, [at, start, game, level, role, clear]);
+}
+
 interface LobbyProps {
     start: RemoteStart;
     onOpenLevel: (id: GameId, level: number) => void;
     onRetry: () => void;
+    /** Za „Izaberi igru” posle odgovora druga */
+    games?: GameDefinition[];
+    unlockedFor?: (id: GameId) => number;
 }
 
-export function RemoteLobby({ start, onOpenLevel, onRetry }: LobbyProps) {
+export function RemoteLobby({ start, onOpenLevel, onRetry, games = [], unlockedFor = () => 1 }: LobbyProps) {
     const remote = useRemote();
     const [error, setError] = useState<string | null>(null);
+    const [picking, setPicking] = useState(false);
     if (!remote?.session) return null;
     const { session, me } = remote;
     const game = getGame(session.game);
+    const picker = (
+        <Modal open={picking} onClose={() => setPicking(false)} title="Pozovi druga" size="md">
+            <RemoteHostPicker games={games} unlockedFor={unlockedFor} onDone={() => setPicking(false)} onBack={() => setPicking(false)} />
+        </Modal>
+    );
+
+    // Domaćin: drug je rekao „Ne sada” ili nije tu — mirno, bez tužnog lica, sa sledećim korakom
+    if (session.role === "host" && session.answer) {
+        const { kind, friend, via } = session.answer;
+        const offerCode = kind === "missed" && via === "direct";
+        // Krupno šta se desilo, sitnije sledeći korak („Amar sada ne može.” / „Probaj kasnije…”)
+        const [headline, ...rest] = (kind === "declined" ? declinedLine(friend.name) : missedLine(friend.name)).split(/(?<=\.) /);
+        const nextStep = rest.join(" ") || (offerCode ? "Probaj kasnije ili pokaži drugu kod." : "Probaj kasnije ili izaberi drugu igru.");
+        return (
+            <section aria-label="Igra sa drugom" className="space-y-4 rounded-card border-2 border-sky-200 bg-sky-50 p-5 text-center sm:p-8">
+                <PlayerPicture player={friend} look={LOOKS[1]} className="mx-auto h-24 w-24" />
+                <div className="space-y-1" role="status">
+                    <p className="font-display text-2xl font-extrabold text-ink">{headline}</p>
+                    <p className="text-base font-bold text-ink-soft">{nextStep}</p>
+                </div>
+                <div className="flex justify-center">
+                    <GameBadge game={game} level={session.level} mode={session.mode} />
+                </div>
+                <div className="flex flex-col justify-center gap-3 sm:flex-row">
+                    {offerCode && (
+                        <Button
+                            chunky
+                            size="xl"
+                            variant="success"
+                            disabled={remote.busy}
+                            onClick={async () => {
+                                setError(await remote.create(session.game, session.level, session.mode));
+                            }}
+                        >
+                            <KeyRound className="h-6 w-6" aria-hidden="true" />
+                            Pokaži kod
+                        </Button>
+                    )}
+                    <Button chunky size="xl" variant={offerCode ? "secondary" : "success"} onClick={() => setPicking(true)}>
+                        <RotateCcw className="h-6 w-6" aria-hidden="true" />
+                        Izaberi igru
+                    </Button>
+                    <Button size="xl" variant="secondary" onClick={remote.end}>
+                        <Check className="h-6 w-6" aria-hidden="true" />U redu
+                    </Button>
+                </div>
+                {error && <p className="text-base font-extrabold text-sun-700">{error}</p>}
+                {picker}
+            </section>
+        );
+    }
 
     // Domaćin: kod je istekao — mirno, bez vremena: „Kod više ne važi, napravi novi”
     if (session.role === "host" && session.expired) {
@@ -791,6 +1289,29 @@ export function RemoteLobby({ start, onOpenLevel, onRetry }: LobbyProps) {
         );
     }
 
+    // Domaćin: drug gleda karticu poziva — „Čekamo da Amar prihvati…”
+    if (session.role === "host" && session.asking) {
+        const friend = session.asking;
+        return (
+            <section aria-label="Igra sa drugom" className="space-y-5 rounded-card border-2 border-brand-200 bg-brand-50/60 p-5 text-center sm:p-8">
+                <div className="flex justify-center -space-x-3">
+                    <PlayerPicture player={me} look={LOOKS[0]} className="h-24 w-24 sm:h-28 sm:w-28" />
+                    <PlayerPicture player={friend} look={LOOKS[1]} className="h-24 w-24 sm:h-28 sm:w-28" />
+                </div>
+                <p className="flex flex-wrap items-center justify-center gap-x-3 font-display text-2xl font-extrabold text-brand-700 sm:text-3xl" role="status">
+                    {askingLine(friend.name)} <WaitingDots />
+                </p>
+                <div className="flex justify-center">
+                    <GameBadge game={game} level={session.level} mode={session.mode} />
+                </div>
+                <Button variant="secondary" size="lg" onClick={remote.end}>
+                    <X className="h-5 w-5" aria-hidden="true" />
+                    Odustani
+                </Button>
+            </section>
+        );
+    }
+
     // Domaćin čeka: veliki kod i „Čekamo druga…” uz drugara
     if (session.role === "host" && !session.friend) {
         return (
@@ -802,10 +1323,10 @@ export function RemoteLobby({ start, onOpenLevel, onRetry }: LobbyProps) {
                     <p className="flex items-center gap-3 font-display text-xl font-extrabold text-brand-700" role="status">
                         Čekamo druga… <WaitingDots />
                     </p>
-                    <p className="text-base font-semibold text-ink-soft">Drug na svom uređaju dodirne „Uđi kod druga”.</p>
+                    <p className="text-base font-semibold text-ink-soft">Drug unosi iste sličice na svom uređaju i vidi koju igru igrate.</p>
                 </div>
                 <div className="flex justify-center">
-                    <GameBadge game={game} level={session.level} />
+                    <GameBadge game={game} level={session.level} mode={session.mode} />
                 </div>
                 <Button variant="secondary" size="lg" onClick={remote.end}>
                     <X className="h-5 w-5" aria-hidden="true" />
@@ -818,6 +1339,29 @@ export function RemoteLobby({ start, onOpenLevel, onRetry }: LobbyProps) {
     const friend = session.friend!;
     const state = remote.friendState;
     const versus = session.mode === "versus";
+
+    // Upravo prihvaćeno: kratko „Amar kaže: može!” (gost „Krenimo!”), pa se igra otvara sama
+    if (session.autoStart && start !== "rest" && start !== "unavailable") {
+        const names = session.role === "host" ? `${me.name} ${versus ? "VS" : "i"} ${friend.name}` : `${friend.name} ${versus ? "VS" : "i"} ${me.name}`;
+        return (
+            <section aria-label="Igra sa drugom" className="space-y-4 rounded-card border-2 border-emerald-200 bg-emerald-50 p-5 text-center sm:p-8">
+                <div className="flex justify-center -space-x-3">
+                    <PlayerPicture player={me} look={LOOKS[0]} className="h-24 w-24 sm:h-28 sm:w-28" />
+                    <PlayerPicture player={friend} look={LOOKS[1]} className="h-24 w-24 sm:h-28 sm:w-28" />
+                </div>
+                <div className="space-y-1" role="status">
+                    <p className="font-display text-2xl font-extrabold text-emerald-800 sm:text-3xl">{session.role === "host" ? acceptedLine(friend.name) : "Krenimo!"}</p>
+                    <p className="flex items-center justify-center gap-3 text-lg font-extrabold text-ink-soft">
+                        {names} <WaitingDots />
+                    </p>
+                </div>
+                <div className="flex justify-center">
+                    <GameBadge game={game} level={session.level} mode={session.mode} />
+                </div>
+            </section>
+        );
+    }
+
     const friendLine = remote.friendGone
         ? "Drug je otišao. Možeš da igraš dalje."
         : !remote.friendHere
@@ -1298,3 +1842,95 @@ function RemoteVersusEnd({ playKey, stars, score, level, limitReached, saved, on
         />
     );
 }
+
+// ── Probni prikaz ekrana poziva (samo /dev/invite, u razvoju) ───────────────────
+
+export type RemoteScene = "pick" | "who" | "code" | "card" | "card-together" | "asking" | "accepted" | "declined" | "missed";
+
+/**
+ * Ekrani poziva sa izmišljenom decom (Lejla zove Amara), bez mreže: za pregled izgleda na svim
+ * veličinama ekrana. Ništa se ne šalje; dugmad samo ne rade ništa.
+ */
+export function RemoteScenePreview({ scene, games }: { scene: RemoteScene; games: GameDefinition[] }) {
+    const me: TogetherPlayer = { name: "Lejla", kind: "girl" };
+    const amar: TogetherPlayer = { name: "Amar", kind: "dog" };
+    const base: RemoteSession = { role: "host", channel: "bm-inv-proba", game: "clock", level: 2, mode: "versus", friend: null, code: null, expired: false, asking: null, answer: null, autoStart: 0 };
+    const session: RemoteSession | null =
+        scene === "code"
+            ? { ...base, mode: "together", code: VISUAL_PIN_CATEGORIES.map((c) => c.items[1].id) }
+            : scene === "asking"
+              ? { ...base, asking: amar }
+              : scene === "accepted"
+                ? { ...base, friend: amar, autoStart: 1 }
+                : scene === "declined"
+                  ? { ...base, answer: { kind: "declined", friend: amar, via: "code" } }
+                  : scene === "missed"
+                    ? { ...base, answer: { kind: "missed", friend: amar, via: "direct" } }
+                    : null;
+    const idle = async () => null;
+    const value: RemoteValue = {
+        preview: true,
+        session,
+        endedBy: null,
+        me,
+        gender: "female",
+        friendState: null,
+        friendHere: false,
+        friendGone: false,
+        cheerAt: 0,
+        now: 0,
+        myState: EMPTY_STATE,
+        togetherStars: 0,
+        busy: false,
+        create: idle,
+        lookup: async () => ({ error: null, status: 200, card: null }),
+        answer: idle,
+        requests: [],
+        loadFriends: async () => [
+            { key: "a", player: amar },
+            { key: "b", player: { name: "Emina", kind: "cat" } },
+        ],
+        clearAutoStart: () => undefined,
+        end: () => undefined,
+        dismissEnded: () => undefined,
+        report: () => undefined,
+        left: () => undefined,
+        finish: () => undefined,
+        finishedKey: () => false,
+        setLevel: () => undefined,
+        refresh: () => undefined,
+    };
+    const card: RequestCardData = { key: "proba", friend: me, game: "clock", level: 2, mode: scene === "card-together" ? "together" : "versus" };
+    return (
+        <RemoteContext value={value}>
+            {scene === "pick" || scene === "who" ? (
+                <Modal open onClose={() => undefined} title="Pozovi druga" size="md">
+                    <ScenePicker games={games} who={scene === "who"} />
+                </Modal>
+            ) : scene === "card" || scene === "card-together" ? (
+                <Modal open onClose={() => undefined} dismissable={false} title="Poziv za igru" size="sm">
+                    <RequestCard card={card} onAnswered={() => undefined} />
+                </Modal>
+            ) : (
+                <RemoteLobby start="ready" onOpenLevel={() => undefined} onRetry={() => undefined} games={games} unlockedFor={() => 4} />
+            )}
+        </RemoteContext>
+    );
+}
+
+function ScenePicker({ games, who }: { games: GameDefinition[]; who: boolean }) {
+    const ref = useRef<HTMLDivElement>(null);
+    // Drugi korak: kao da je dete izabralo „Sat”
+    useEffect(() => {
+        if (!who) return;
+        const button = [...(ref.current?.querySelectorAll("button") ?? [])].find((b) => b.textContent?.includes("Sat"));
+        button?.click();
+    }, [who]);
+    return (
+        <div ref={ref}>
+            <RemoteHostPicker games={games} unlockedFor={() => 4} onDone={() => undefined} onBack={() => undefined} />
+        </div>
+    );
+}
+
+const EMPTY_STATE: RemoteState = { phase: "lobby", done: 0, round: 0, total: 0, stars: 0, sessionStars: 0, correct: 0, advance: false };

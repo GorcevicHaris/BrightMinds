@@ -66,12 +66,15 @@ describe("način igre", () => {
         assert.match(create, /\|\| !mode\) \{\s*throw new HttpError\(400/);
         assert.match(create, /level,\s*mode,\s*createdAt/);
         assert.match(read("app/api/_lib/invites.ts"), /invite\.mode === "versus" \? \{ mode: invite\.mode \}/);
-        assert.match(read("app/api/children/[id]/invite/join/route.ts"), /joined\.mode === "versus" \? \{ mode: joined\.mode \}/);
+        // Ulazak kodom (stari put) i „Prihvati” daju isti odgovor (joinedAnswer)
+        assert.match(read("app/api/_lib/invites.ts"), /joined\.mode === "versus" \? \{ mode: joined\.mode \}/);
+        assert.match(read("app/api/children/[id]/invite/join/route.ts"), /joinedAnswer\(host\.row\.id, result\.row, joined\)/);
+        assert.match(read("app/api/children/[id]/invite/answer/route.ts"), /joinedAnswer\(hostId, result\.row, joined\)/);
     });
 
     it("the host sends the chosen mode and both sides read it leniently", () => {
         const remote = read("app/dashboard/child/[id]/playRemote.tsx");
-        assert.match(remote, /body: JSON\.stringify\(\{ game, level, mode \}\)/);
+        assert.match(remote, /body: JSON\.stringify\(friend \? \{ game, level, mode, friend \} : \{ game, level, mode \}\)/);
         assert.match(remote, /mode: playModeOr\(data\.mode\)/);
         assert.match(remote, /mode: playModeOr\(raw\.mode\)/, "gost posle osvežavanja zadržava način igre");
     });

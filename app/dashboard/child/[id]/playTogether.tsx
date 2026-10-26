@@ -253,13 +253,14 @@ function writeSaved(childId: number, list: TogetherPlayer[]) {
     }
 }
 
-type PickerMode = "list" | "adding" | "remote-host" | "remote-guest";
+type PickerMode = "list" | "adding" | "remote-host" | "remote-guest" | "remote-card";
 
 const PICKER_TITLES: Record<PickerMode, string> = {
     list: "Ko igra sa tobom?",
     adding: "Ko igra sa tobom?",
-    "remote-host": "Pozovi druga sa drugog uređaja",
+    "remote-host": "Pozovi druga",
     "remote-guest": "Uđi kod druga",
+    "remote-card": "Poziv za igru",
 };
 
 function FriendPicker({ open, onClose, games, unlockedFor }: { open: boolean; onClose: () => void; games: GameDefinition[]; unlockedFor: (id: GameId) => number }) {
@@ -318,12 +319,18 @@ function FriendPicker({ open, onClose, games, unlockedFor }: { open: boolean; on
         <Modal open={open} onClose={onClose} title={PICKER_TITLES[mode]} size="md">
             {mode === "remote-host" ? (
                 <RemoteHostPicker games={games} unlockedFor={unlockedFor} onDone={onClose} onBack={() => setMode("list")} />
-            ) : mode === "remote-guest" ? (
-                <RemoteGuestEntry onDone={onClose} onBack={() => setMode("list")} />
+            ) : mode === "remote-guest" || mode === "remote-card" ? (
+                <RemoteGuestEntry onDone={onClose} onBack={() => setMode("list")} onCard={() => setMode("remote-card")} />
             ) : !adding ? (
                 <div className="space-y-5">
                     <RemoteChoices onHost={() => setMode("remote-host")} onGuest={() => setMode("remote-guest")} />
-                    {!preview && <p className="text-sm font-extrabold uppercase tracking-wide text-ink-soft">Na ovom uređaju, na smenu</p>}
+                    {!preview && (
+                        // Jasno odvojeno od poziva na drugi uređaj: drug sa ovog spiska igra OVDE, na smenu
+                        <p className="flex items-center gap-1.5 border-t border-line pt-4 text-sm font-extrabold uppercase tracking-wide text-ink-soft">
+                            <Users className="h-4 w-4" aria-hidden="true" />
+                            Na ovom uređaju, na smenu
+                        </p>
+                    )}
                     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                         {people.map((friend) => (
                             <li key={`${friend.childId ?? "d"}-${friend.name}`}>

@@ -72,6 +72,8 @@ describe("put od GameContainer-a do predvorja", () => {
 
     it("hands the same state to the lobby button", () => {
         assert.match(container, /onOpenLevel=\{openAtLevel\}\s+remoteStart=\{startState\}\s+onRetry=\{retryLevels\}/);
-        assert.match(map, /<RemoteLobby start=\{remoteStart\} onOpenLevel=\{onOpenLevel\} onRetry=\{onRetry\} \/>/);
+        assert.match(map, /<RemoteLobby start=\{remoteStart\} onOpenLevel=\{onOpenLevel\} onRetry=\{onRetry\} games=\{playable\} unlockedFor=\{unlockedFor\} \/>/);
+        // Posle „Prihvati” igra se otvara sama, istim putem i istim pravilom (openAtLevel → startState)
+        assert.match(container, /useRemoteAutoStart\(startState, openAtLevel\);/);
     });
 });

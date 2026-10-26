@@ -27,3 +27,21 @@ export function inviteChannelFor(hostChildId: number, channelKey: string): strin
     const tag = createHmac("sha256", secret()).update(`invite:${hostChildId}:${channelKey}`).digest("hex").slice(0, 40);
     return `bm-inv-${tag}`;
 }
+
+/**
+ * „Sanduče” deteta: kanal na koji server javlja da je stigao poziv druga (ili odgovor na poziv
+ * deteta). Preko njega ide samo znak „pogledaj” — sam poziv stranica uzima sa servera, gde se
+ * pristup proverava. Naziv ne sadrži ID deteta i ne može se izvesti bez serverske tajne.
+ */
+export function inboxTopicFor(childId: number): string {
+    const tag = createHmac("sha256", secret()).update(`invite-inbox:${childId}`).digest("hex").slice(0, 40);
+    return `bm-box-${tag}`;
+}
+
+/**
+ * Ključ druga sa spiska „Drugovi” (lib/playFriends.ts) kakav vidi pregledač deteta `childId`:
+ * umesto ID-ja drugog deteta, isti za istu decu, a ne može se pogoditi ni preneti na drugo dete.
+ */
+export function friendKeyFor(childId: number, friendId: number): string {
+    return createHmac("sha256", secret()).update(`play-friend:${childId}:${friendId}`).digest("base64url").slice(0, 24);
+}
