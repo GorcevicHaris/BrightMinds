@@ -68,6 +68,12 @@ export const VERSUS_FORMATS: Readonly<Record<GameId, VersusFormat>> = {
     numbers: "turns", // Brojevi — isto (pisanje cifara, poređenje)
     social: "turns", // Šta reći? — razmišljanje o drugima, bez žurbe
     "social-story": "turns", // Socijalne priče — duga priča se sluša u komadu
+    breathing: "turns", // Balon disanja — mirno disanje nema „brže”; svako dete jedan udah, drugo gleda i diše
+    simon: "turns", // Zapamti niz — pamćenje niza; trka bi nagradila brzo dodirivanje umesto pamćenja
+    rhythm: "turns", // Ponovi ritam — ritam se sluša do kraja; dok jedno ponavlja, drugo sluša
+    mixcolors: "turns", // Mešaj boje — biranje dve boje je mali plan i ogled, ne brzina
+    plant: "turns", // Posadi cvet — korak po korak iste biljke (seme, voda, sunce), na smenu
+    hygiene: "turns", // Operi ruke i zube — svakodnevni redosled korak po korak; brzina kvari naviku
 };
 
 export function versusFormat(id: GameId): VersusFormat {

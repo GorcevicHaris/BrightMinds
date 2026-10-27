@@ -120,6 +120,66 @@
   --color-pine-600: #256b50;
   --color-pine-700: #1f5641;
 
+  /* Morska pena (igra „Balon disanja”: mirna plavozelena) */
+  --color-seafoam-50: #effaf9;
+  --color-seafoam-100: #d7f2f0;
+  --color-seafoam-200: #b2e5e1;
+  --color-seafoam-300: #82d0ca;
+  --color-seafoam-400: #55b7b1;
+  --color-seafoam-500: #3a9a96;
+  --color-seafoam-600: #2e7d7b;
+  --color-seafoam-700: #276564;
+
+  /* Perunika (igra „Zapamti niz”) */
+  --color-iris-50: #f4f2fd;
+  --color-iris-100: #e8e3fb;
+  --color-iris-200: #d3c9f6;
+  --color-iris-300: #b5a4ee;
+  --color-iris-400: #977de3;
+  --color-iris-500: #7c5cd4;
+  --color-iris-600: #6847b8;
+  --color-iris-700: #553a95;
+
+  /* Neven (igra „Ponovi ritam”: bubanj) */
+  --color-marigold-50: #fff7eb;
+  --color-marigold-100: #ffecce;
+  --color-marigold-200: #ffd89c;
+  --color-marigold-300: #ffbd5e;
+  --color-marigold-400: #fba330;
+  --color-marigold-500: #ee8a12;
+  --color-marigold-600: #cc6f0b;
+  --color-marigold-700: #a3560d;
+
+  /* Rumenilo (igra „Mešaj boje”) */
+  --color-blush-50: #fdf2f4;
+  --color-blush-100: #fbe3e8;
+  --color-blush-200: #f7c8d2;
+  --color-blush-300: #f0a1b3;
+  --color-blush-400: #e57891;
+  --color-blush-500: #d45777;
+  --color-blush-600: #b94263;
+  --color-blush-700: #993552;
+
+  /* Glina, boja saksije (igra „Posadi cvet”) */
+  --color-clay-50: #fbf3ee;
+  --color-clay-100: #f6e3d7;
+  --color-clay-200: #edc6b0;
+  --color-clay-300: #e0a283;
+  --color-clay-400: #cf7f5b;
+  --color-clay-500: #b86541;
+  --color-clay-600: #9c5134;
+  --color-clay-700: #7e422c;
+
+  /* Nana, sveža kao pasta za zube (igra „Operi ruke i zube”) */
+  --color-mint-50: #eefbf6;
+  --color-mint-100: #d5f5e8;
+  --color-mint-200: #aeead2;
+  --color-mint-300: #7fd8b6;
+  --color-mint-400: #52c39b;
+  --color-mint-500: #2fa680;
+  --color-mint-600: #238a6a;
+  --color-mint-700: #1d6f56;
+
   --radius-card: 1.5rem;
   --radius-tile: 1.25rem;
 

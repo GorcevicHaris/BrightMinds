@@ -100,6 +100,12 @@ const GAME_LOADERS = {
     backpack: () => import("@/app/components/games/BackpackGame"),
     missing: () => import("@/app/components/games/MissingGame"),
     words: () => import("@/app/components/games/WordsGame"),
+    breathing: () => import("@/app/components/games/BreathingGame"),
+    simon: () => import("@/app/components/games/SimonGame"),
+    rhythm: () => import("@/app/components/games/RhythmGame"),
+    mixcolors: () => import("@/app/components/games/MixColorsGame"),
+    plant: () => import("@/app/components/games/PlantGame"),
+    hygiene: () => import("@/app/components/games/HygieneGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -130,6 +136,12 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     backpack: dynamic(GAME_LOADERS["backpack"], { ssr: false, loading: GameLoading }),
     missing: dynamic(GAME_LOADERS["missing"], { ssr: false, loading: GameLoading }),
     words: dynamic(GAME_LOADERS["words"], { ssr: false, loading: GameLoading }),
+    breathing: dynamic(GAME_LOADERS["breathing"], { ssr: false, loading: GameLoading }),
+    simon: dynamic(GAME_LOADERS["simon"], { ssr: false, loading: GameLoading }),
+    rhythm: dynamic(GAME_LOADERS["rhythm"], { ssr: false, loading: GameLoading }),
+    mixcolors: dynamic(GAME_LOADERS["mixcolors"], { ssr: false, loading: GameLoading }),
+    plant: dynamic(GAME_LOADERS["plant"], { ssr: false, loading: GameLoading }),
+    hygiene: dynamic(GAME_LOADERS["hygiene"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {

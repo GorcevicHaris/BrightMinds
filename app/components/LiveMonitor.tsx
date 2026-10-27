@@ -68,6 +68,12 @@ export const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
     backpack: dynamic(() => import("@/app/components/games/BackpackGame"), { ssr: false, loading: MirrorLoading }),
     missing: dynamic(() => import("@/app/components/games/MissingGame"), { ssr: false, loading: MirrorLoading }),
     words: dynamic(() => import("@/app/components/games/WordsGame"), { ssr: false, loading: MirrorLoading }),
+    breathing: dynamic(() => import("@/app/components/games/BreathingGame"), { ssr: false, loading: MirrorLoading }),
+    simon: dynamic(() => import("@/app/components/games/SimonGame"), { ssr: false, loading: MirrorLoading }),
+    rhythm: dynamic(() => import("@/app/components/games/RhythmGame"), { ssr: false, loading: MirrorLoading }),
+    mixcolors: dynamic(() => import("@/app/components/games/MixColorsGame"), { ssr: false, loading: MirrorLoading }),
+    plant: dynamic(() => import("@/app/components/games/PlantGame"), { ssr: false, loading: MirrorLoading }),
+    hygiene: dynamic(() => import("@/app/components/games/HygieneGame"), { ssr: false, loading: MirrorLoading }),
 };
 
 const noop = () => {};
