@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { CARRIER_IDS } from "@/app/components/games/data/patternLevels";
 import { itemShare, layoutItems, layoutTransfer, rowHeightUnits, splitRow, type BoardBox } from "@/app/components/games/pattern/sizing";
-import { layoutCells } from "@/app/components/games/seriation/sizing";
+import { lanePieceWidth, layoutCells, layoutLanes, packLanes } from "@/app/components/games/seriation/sizing";
 
 const PHONE: BoardBox = { w: 310, h: 423, short: false };
 const PHONE_390: BoardBox = { w: 340, h: 527, short: false };
@@ -137,5 +137,25 @@ describe("Poređaj po veličini — raspored", () => {
                 }
             }
         }
+    });
+
+    it("trake (zmije, olovke): bar 48 px visoke na svim ekranima (ranije 36 px na 360 × 740)", () => {
+        const boxes = [{ w: 310, h: 395, short: false }, { w: 340, h: 499, short: false }, { w: 380, h: 587, short: false }, LOW, { w: 678, h: 548, short: false }, { w: 854, h: 349, short: false }, LAPTOP, { w: 1110, h: 381, short: false }];
+        for (const box of boxes) {
+            for (const start of [2, 3, 4]) {
+                const values = [start + 2, start, start + 3, start + 1];
+                const fit = layoutLanes(box, values.map((v) => v / (start + 3)));
+                assert.ok(fit.lane >= 48, `${box.w}×${box.h} od ${start}: ${fit.lane}`);
+                assert.deepEqual(fit.trayRows.flat().sort(), [0, 1, 2, 3]);
+            }
+        }
+    });
+
+    it("korpa sa trakama čuva izmešan redosled i ne prelazi širinu", () => {
+        assert.deepEqual(packLanes([200, 120, 150, 100], 300), [[0], [1, 2], [3]]);
+        assert.equal(packLanes([400], 300), null);
+        // Predmet u korpi je dug koliko i crtež, a bar kvadrat (da se lako dohvati)
+        assert.ok(lanePieceWidth(1, 50, 5) > lanePieceWidth(0.5, 50, 5));
+        assert.ok(lanePieceWidth(0.01, 50, 5) >= 50);
     });
 });

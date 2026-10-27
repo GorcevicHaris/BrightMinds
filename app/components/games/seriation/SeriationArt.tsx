@@ -515,11 +515,12 @@ function Pencil({ length, c, cheer }: { length: number; c: Tone; cheer: boolean 
 }
 
 /**
- * Zmija ili olovka na traci: dužina je srazmerna vrednosti (najduža u zadatku zauzima
- * LANE_RATIO visina trake). Crta se uz levu ivicu — svi počinju od iste linije, kao kad se meri.
+ * Zmija ili olovka na traci: dužina je srazmerna vrednosti (najduža u zadatku zauzima `ratio`
+ * visina trake, obično LANE_RATIO; na uskom telefonu malo manje, da trake budu dovoljno visoke).
+ * Crta se uz levu ivicu — svi počinju od iste linije, kao kad se meri.
  */
-export function LengthArt({ theme, value, max, tone: toneIndex, cheer = false, index = 0, silhouette = false, className }: Omit<PieceArtProps, "id">) {
-    const length = Math.max(40, (LANE_RATIO * LANE_H * value) / Math.max(max, 1));
+export function LengthArt({ theme, value, max, tone: toneIndex, cheer = false, index = 0, silhouette = false, ratio = LANE_RATIO, className }: Omit<PieceArtProps, "id"> & { ratio?: number }) {
+    const length = Math.max(LANE_H, (ratio * LANE_H * value) / Math.max(max, 1));
     const c = toneOf(theme, toneIndex);
     const style = { ["--sr-d" as string]: `${index * 0.14}s`, ...(silhouette ? { filter: "brightness(0)", opacity: 0.13 } : {}) } as CSSProperties;
     return (
@@ -530,8 +531,8 @@ export function LengthArt({ theme, value, max, tone: toneIndex, cheer = false, i
 }
 
 /** Deo trake koji zauzima predmet (0–1) */
-export function lengthShare(value: number, max: number): number {
-    return Math.max(40, (LANE_RATIO * LANE_H * value) / Math.max(max, 1)) / (LANE_RATIO * LANE_H);
+export function lengthShare(value: number, max: number, ratio = LANE_RATIO): number {
+    return Math.max(LANE_H, (ratio * LANE_H * value) / Math.max(max, 1)) / (ratio * LANE_H);
 }
 
 // ── Smer: klin koji raste (ili se smanjuje) ispod reda ────────────────────────
