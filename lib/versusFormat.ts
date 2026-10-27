@@ -49,6 +49,9 @@ export const VERSUS_FORMATS: Readonly<Record<GameId, VersusFormat>> = {
     where: "race", // Gde je? — jedan predmet na slici (iznad, ispod, u…)
     families: "race", // Mama i beba — spoji mamu i bebu: jedan izbor po tabli
     words: "race", // Prve reči — slika za izgovorenu reč
+    opposites: "race", // Suprotnosti — jedna slika suprotnosti od nekoliko; zadatak se izgovara
+    body: "race", // Moje telo — jedan deo tela na crtežu ili jedno čulo
+    jobs: "race", // Ko šta radi? — jedan alat, mesto ili pomoćnik od nekoliko slika
 
     // ── Jedan po jedan: pamćenje, logika, slaganje, fini pokret, duže čitanje ──
     memory: "turns", // Spoji parove — klasična smena: dve kartice jedno dete, pa drugo
@@ -68,6 +71,10 @@ export const VERSUS_FORMATS: Readonly<Record<GameId, VersusFormat>> = {
     numbers: "turns", // Brojevi — isto (pisanje cifara, poređenje)
     social: "turns", // Šta reći? — razmišljanje o drugima, bez žurbe
     "social-story": "turns", // Socijalne priče — duga priča se sluša u komadu
+    syllables: "turns", // Koliko slogova? — tapšanje slogova traži ritam i pažnju; brzina kvari brojanje
+    habitats: "turns", // Ko gde živi? — životinja po životinja u ista staništa (razvrstavanje)
+    seasons: "turns", // Godišnja doba — redosled kroz godinu i dan, razvrstavanje: planiranje, ne brzina
+    traffic: "turns", // Saobraćaj — igra uči čekanje zelenog svetla; trka bi nagradila žurbu
 };
 
 export function versusFormat(id: GameId): VersusFormat {

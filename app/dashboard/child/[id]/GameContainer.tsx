@@ -100,6 +100,13 @@ const GAME_LOADERS = {
     backpack: () => import("@/app/components/games/BackpackGame"),
     missing: () => import("@/app/components/games/MissingGame"),
     words: () => import("@/app/components/games/WordsGame"),
+    opposites: () => import("@/app/components/games/OppositesGame"),
+    syllables: () => import("@/app/components/games/SyllablesGame"),
+    jobs: () => import("@/app/components/games/JobsGame"),
+    habitats: () => import("@/app/components/games/HabitatsGame"),
+    seasons: () => import("@/app/components/games/SeasonsGame"),
+    body: () => import("@/app/components/games/BodyGame"),
+    traffic: () => import("@/app/components/games/TrafficGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -130,6 +137,13 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     backpack: dynamic(GAME_LOADERS["backpack"], { ssr: false, loading: GameLoading }),
     missing: dynamic(GAME_LOADERS["missing"], { ssr: false, loading: GameLoading }),
     words: dynamic(GAME_LOADERS["words"], { ssr: false, loading: GameLoading }),
+    opposites: dynamic(GAME_LOADERS["opposites"], { ssr: false, loading: GameLoading }),
+    syllables: dynamic(GAME_LOADERS["syllables"], { ssr: false, loading: GameLoading }),
+    jobs: dynamic(GAME_LOADERS["jobs"], { ssr: false, loading: GameLoading }),
+    habitats: dynamic(GAME_LOADERS["habitats"], { ssr: false, loading: GameLoading }),
+    seasons: dynamic(GAME_LOADERS["seasons"], { ssr: false, loading: GameLoading }),
+    body: dynamic(GAME_LOADERS["body"], { ssr: false, loading: GameLoading }),
+    traffic: dynamic(GAME_LOADERS["traffic"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {

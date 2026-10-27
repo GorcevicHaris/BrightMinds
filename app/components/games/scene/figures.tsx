@@ -713,6 +713,13 @@ function ChildFigure({ look, small, pose, face, back, wear, held, gaze }: BodyPr
             )}
             {swim && look.female && <path d="M-10 -38 Q0 -40 10 -38 L12 -14 Q0 -11 -12 -14 Z" fill="#e86aa0" />}
             {has("jacket") && <path d="M0 -41 V-15" stroke={shade(top, 0.6)} strokeWidth={1.4} />}
+            {/* Svetao prsluk (igra „Saobraćaj”): žuto-zelen, sa srebrnom trakom koja svetli noću */}
+            {has("vest") && (
+                <g>
+                    <path d="M-11 -40 L-3 -40 L-2 -16 L-12.5 -16 Z M11 -40 L3 -40 L2 -16 L12.5 -16 Z" fill="#c8f23a" stroke="#8fb81a" strokeWidth={1} />
+                    <path d="M-12.2 -24 H-2.2 M2.2 -24 H12.2" stroke="#eef2f8" strokeWidth={2.6} />
+                </g>
+            )}
             {has("scarf") && <path d="M-9 -41 Q0 -36 9 -41 L9 -37 Q0 -32 -9 -37Z M4 -37 L7 -26 L2 -26Z" fill="#3fbf8a" />}
             {has("backpack") && !back && (
                 <g stroke="#c98a12" strokeWidth={2.2} strokeLinecap="round">
@@ -726,10 +733,20 @@ function ChildFigure({ look, small, pose, face, back, wear, held, gaze }: BodyPr
             )}
             <rect x={-3} y={-44} width={6} height={5} fill={look.skin} />
             {!armsOverHead && arms}
+            {/* Pojas u autu: preko ramena i preko krila */}
+            {has("belt") && <path d="M-9 -41 L11 -18 M-12 -15 H12" fill="none" stroke="#c8352b" strokeWidth={3.4} strokeLinecap="round" />}
             <g transform="translate(0 -60)">
                 <Head look={look} face={face} back={back} glasses={has("glasses")} gaze={gaze} />
                 {has("partyHat") && <path d="M-8 -15 L0 -36 L8 -15 Z" fill="#f4b73f" stroke="#d97f06" strokeWidth={1.2} />}
                 {has("beanie") && <path d="M-18.5 -9 C-19 -29 19 -29 18.5 -9 Q0 -12 -18.5 -9Z M-3.5 -25 a4 4 0 1 1 7 0" fill="#e0574f" />}
+                {/* Kaciga za bicikl (igra „Saobraćaj”): tvrda ljuska sa prorezima i kaišić ispod brade */}
+                {has("helmet") && (
+                    <g>
+                        <path d="M-12 1 L-10 16 M12 1 L10 16" stroke="#3b4a6b" strokeWidth={1.4} />
+                        <path d="M-20 -4 C-21 -31 21 -31 20 -4 Q0 -9 -20 -4Z" fill="#3a9ad8" stroke="#2a6fa8" strokeWidth={1.4} />
+                        <path d="M-9 -23 L-6 -14 M0 -25 L0 -15 M9 -23 L6 -14" stroke="#1f5a8a" strokeWidth={2} strokeLinecap="round" />
+                    </g>
+                )}
                 {/* Slušalice koje stišavaju zvuk: luk preko glave i dve velike školjke na ušima */}
                 {has("headphones") && (
                     <g>
