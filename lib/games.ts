@@ -36,7 +36,13 @@ export type GameId =
     | "habitats"
     | "seasons"
     | "body"
-    | "traffic";
+    | "traffic"
+    | "breathing"
+    | "simon"
+    | "rhythm"
+    | "mixcolors"
+    | "plant"
+    | "hygiene";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -73,7 +79,13 @@ export type GameType =
     | "habitats"
     | "seasons"
     | "body"
-    | "traffic";
+    | "traffic"
+    | "breathing"
+    | "simon"
+    | "rhythm"
+    | "mixcolors"
+    | "plant"
+    | "hygiene";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -960,6 +972,157 @@ export const GAMES: GameDefinition[] = [
         // Bezbednost u saobraćaju: semafor, čekanje, prelaz, kaciga i pojas, pa znakovi
         ages: { min: 4, max: 10 },
         order: 34,
+    },
+    {
+        id: "breathing",
+        gameType: "breathing",
+        activityId: 43,
+        title: "Balon disanja",
+        description: "Udahni i izdahni sa balonom",
+        skill: "Smirivanje i disanje",
+        icon: "🎈",
+        image: "/images/balondisanja.svg",
+        accent: {
+            solid: "bg-seafoam-500",
+            edge: "border-seafoam-700",
+            soft: "bg-seafoam-50",
+            text: "text-seafoam-700",
+            border: "border-seafoam-200",
+            ring: "ring-seafoam-200",
+            gradient: "from-seafoam-300 to-seafoam-600",
+        },
+        offscreenTip:
+            "Dišite zajedno pre spavanja ili kad je dete uznemireno: „Pomiriši cvet” (udah na nos), „ugasi svećicu” (polako izduvaj). Brojite na prste do tri. Stavite plišanu igračku na stomak deteta da se diže i spušta. Vežbajte dok je dete mirno, pa će disanje lakše pomoći kad je teško.",
+        // Ocenjuje se kao i ostale igre, ali greške nema: svaki dovršen udah je tačan (uvek tri zvezdice)
+        graded: true,
+        // 35. po redu: mirno disanje (samoregulacija) — za svaki uzrast, bez grešaka i bez žurbe
+        ages: { min: 3, max: 10 },
+        order: 35,
+    },
+    {
+        id: "simon",
+        gameType: "simon",
+        activityId: 44,
+        title: "Zapamti niz",
+        description: "Ponovi niz svetala i zvukova",
+        skill: "Radna memorija i pažnja",
+        icon: "🟣",
+        image: "/images/zapamtiniz.svg",
+        accent: {
+            solid: "bg-iris-500",
+            edge: "border-iris-700",
+            soft: "bg-iris-50",
+            text: "text-iris-700",
+            border: "border-iris-200",
+            ring: "ring-iris-200",
+            gradient: "from-iris-300 to-iris-600",
+        },
+        offscreenTip:
+            "Igrajte se pokretima: vi tapnete koleno, pa glavu — dete ponovi. Svaki put dodajte jedan pokret. Može i sa igračkama: poređajte tri, pokažite ih redom, pa neka dete pokaže istim redom. Starijem detetu recite tri reči, pa neka ih ponovi unazad.",
+        graded: true,
+        // 36. po redu: radna memorija — ponovi niz koji raste (kao igra Simon), na kraju i unazad
+        ages: { min: 4, max: 10 },
+        order: 36,
+    },
+    {
+        id: "rhythm",
+        gameType: "rhythm",
+        activityId: 45,
+        title: "Ponovi ritam",
+        description: "Slušaj bubanj i ponovi ritam",
+        skill: "Slušna pažnja i ritam",
+        icon: "🥁",
+        image: "/images/ponoviritam.svg",
+        accent: {
+            solid: "bg-marigold-500",
+            edge: "border-marigold-700",
+            soft: "bg-marigold-50",
+            text: "text-marigold-700",
+            border: "border-marigold-200",
+            ring: "ring-marigold-200",
+            gradient: "from-marigold-300 to-marigold-600",
+        },
+        offscreenTip:
+            "Tapšite zajedno: vi tapnete dva puta, dete ponovi. Pa „tap-tap-pauza-tap”. Bubnjajte po šerpi drvenom kašikom, tapšite slogove imena (A-MAR, LEJ-LA) i marširajte uz pesmicu. Neka i dete vama zada ritam.",
+        graded: true,
+        // 37. po redu: slušna pažnja i ritam — broj udaraca, pa veliki i mali bubanj, pa duži ritmovi
+        ages: { min: 3, max: 9 },
+        order: 37,
+    },
+    {
+        id: "mixcolors",
+        gameType: "mixcolors",
+        activityId: 46,
+        title: "Mešaj boje",
+        description: "Pomešaj dve boje i dobij novu",
+        skill: "Boje, uzrok i posledica",
+        icon: "🎨",
+        image: "/images/mesajboje.svg",
+        accent: {
+            solid: "bg-blush-500",
+            edge: "border-blush-700",
+            soft: "bg-blush-50",
+            text: "text-blush-700",
+            border: "border-blush-200",
+            ring: "ring-blush-200",
+            gradient: "from-blush-300 to-blush-600",
+        },
+        offscreenTip:
+            "Mešajte vodene boje ili tempere na tanjiru: žuta i plava — šta dobijamo? Pustite dete da samo pogađa pa proveri. Napunite dve providne čaše obojenom vodom i prelijte u treću. U šetnji tražite zelene, narandžaste i ljubičaste stvari.",
+        graded: true,
+        // 38. po redu: mešanje boja — osnovne u složene, pa svetle i tamne nijanse
+        ages: { min: 4, max: 9 },
+        order: 38,
+    },
+    {
+        id: "plant",
+        gameType: "plant",
+        activityId: 47,
+        title: "Posadi cvet",
+        description: "Posadi seme i neguj biljku",
+        skill: "Priroda i redosled",
+        icon: "🌱",
+        image: "/images/posadicvet.svg",
+        accent: {
+            solid: "bg-clay-500",
+            edge: "border-clay-700",
+            soft: "bg-clay-50",
+            text: "text-clay-700",
+            border: "border-clay-200",
+            ring: "ring-clay-200",
+            gradient: "from-clay-300 to-clay-600",
+        },
+        offscreenTip:
+            "Posadite pasulj u čašu sa vatom ili seme cveta u saksiju. Neka dete svakog dana pogleda da li treba vode i da li biljka ima sunca. Merite koliko je porasla i crtajte je. Pitajte: „Šta je biljci potrebno da raste?”",
+        graded: true,
+        // 39. po redu: šta je biljci potrebno — seme, voda, sunce, pa redosled nege i različite biljke
+        ages: { min: 3, max: 7 },
+        order: 39,
+    },
+    {
+        id: "hygiene",
+        gameType: "hygiene",
+        activityId: 48,
+        title: "Operi ruke i zube",
+        description: "Korak po korak do čistih ruku i zuba",
+        skill: "Svakodnevne navike",
+        icon: "🧼",
+        image: "/images/operiruke.svg",
+        accent: {
+            solid: "bg-mint-500",
+            edge: "border-mint-700",
+            soft: "bg-mint-50",
+            text: "text-mint-700",
+            border: "border-mint-200",
+            ring: "ring-mint-200",
+            gradient: "from-mint-300 to-mint-600",
+        },
+        offscreenTip:
+            "Zalepite pored lavaboa slike koraka (voda, sapun, trljaj, ispiraj, obriši) i pokazujte ih dok dete pere ruke. Pevajte kratku pesmicu dok trljate 20 sekundi. Perite zube zajedno: vi pokažete, dete ponovi. Pohvalite svaki korak, ne samo kraj.",
+        graded: true,
+        // 40. po redu: svakodnevne navike — pranje ruku i zuba korak po korak, pa kada peremo ruke
+        ages: { min: 3, max: 8 },
+        order: 40,
     },
 ];
 

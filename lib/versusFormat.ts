@@ -75,6 +75,12 @@ export const VERSUS_FORMATS: Readonly<Record<GameId, VersusFormat>> = {
     habitats: "turns", // Ko gde živi? — životinja po životinja u ista staništa (razvrstavanje)
     seasons: "turns", // Godišnja doba — redosled kroz godinu i dan, razvrstavanje: planiranje, ne brzina
     traffic: "turns", // Saobraćaj — igra uči čekanje zelenog svetla; trka bi nagradila žurbu
+    breathing: "turns", // Balon disanja — mirno disanje nema „brže”; svako dete jedan udah, drugo gleda i diše
+    simon: "turns", // Zapamti niz — pamćenje niza; trka bi nagradila brzo dodirivanje umesto pamćenja
+    rhythm: "turns", // Ponovi ritam — ritam se sluša do kraja; dok jedno ponavlja, drugo sluša
+    mixcolors: "turns", // Mešaj boje — biranje dve boje je mali plan i ogled, ne brzina
+    plant: "turns", // Posadi cvet — korak po korak iste biljke (seme, voda, sunce), na smenu
+    hygiene: "turns", // Operi ruke i zube — svakodnevni redosled korak po korak; brzina kvari naviku
 };
 
 export function versusFormat(id: GameId): VersusFormat {

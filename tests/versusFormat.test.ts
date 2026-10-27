@@ -17,7 +17,7 @@ const WHERE_TO_TAP = /dodirni|pritisni|klikni|prevuci/i;
 
 describe("način dvoboja po igri", () => {
     it("every game has exactly one format, and nothing else is listed", () => {
-        assert.equal(GAMES.length, 34);
+        assert.equal(GAMES.length, 40);
         assert.deepEqual(Object.keys(VERSUS_FORMATS).sort(), GAMES.map((g) => g.id).sort());
         for (const game of GAMES) assert.ok(versusFormat(game.id) === "race" || versusFormat(game.id) === "turns", game.id);
     });

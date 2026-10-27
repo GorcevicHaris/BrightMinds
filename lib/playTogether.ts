@@ -53,6 +53,12 @@ export const TOGETHER_GAMES: readonly GameId[] = [
     "seasons",
     "body",
     "traffic",
+    "breathing",
+    "simon",
+    "rhythm",
+    "mixcolors",
+    "plant",
+    "hygiene",
 ];
 
 export function isTogetherGame(id: GameId | null | undefined): boolean {

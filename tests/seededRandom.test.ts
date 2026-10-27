@@ -12,6 +12,12 @@ import { buildOppositesLevel } from "@/app/components/games/data/oppositesLevels
 import { buildSeasonsLevel } from "@/app/components/games/data/seasonsLevels";
 import { buildSyllablesLevel } from "@/app/components/games/data/syllablesLevels";
 import { buildTrafficLevel } from "@/app/components/games/data/trafficLevels";
+import { buildBreathingLevel } from "@/app/components/games/data/breathingLevels";
+import { buildHygieneLevel } from "@/app/components/games/data/hygieneLevels";
+import { buildMixLevel } from "@/app/components/games/data/mixColorsLevels";
+import { buildPlantLevel } from "@/app/components/games/data/plantLevels";
+import { buildRhythmLevel } from "@/app/components/games/data/rhythmLevels";
+import { buildSimonLevel } from "@/app/components/games/data/simonLevels";
 import { buildClockLevel } from "@/app/components/games/data/clockLevels";
 import { buildColoringPlan } from "@/app/components/games/data/coloringLevels";
 import { buildCountingLevel } from "@/app/components/games/data/countingItems";
@@ -82,6 +88,12 @@ const BUILDERS: Record<string, (level: number, random: () => number) => unknown>
     seasons: (level, random) => buildSeasonsLevel(level, { ...opts, random }),
     body: (level, random) => buildBodyLevel(level, { ...opts, random }),
     traffic: (level, random) => buildTrafficLevel(level, { ...opts, random }),
+    breathing: (level, random) => buildBreathingLevel(level, { maxRounds: 8, random }),
+    simon: (level, random) => buildSimonLevel(level, { maxRounds: 8, random }),
+    rhythm: (level, random) => buildRhythmLevel(level, { maxRounds: 8, random }),
+    mixcolors: (level, random) => buildMixLevel(level, { ...opts, random }),
+    plant: (level, random) => buildPlantLevel(level, { ...opts, random }),
+    hygiene: (level, random) => buildHygieneLevel(level, { ...opts, random }),
 };
 
 describe("seme zadataka", () => {
@@ -134,6 +146,7 @@ describe("isto seme — isti nivo, u svakoj igri", () => {
             "Backpack", "Clock", "Coloring", "Counting", "Differences", "Emotions", "Family", "Food", "Gaze", "Inset", "Letters", "Market", "Maze", "Memory",
             "Missing", "Numbers", "Puzzle", "Sequence", "ShapeMatching", "SocialCommunication", "SocialStory", "Sorting", "SoundToImage", "Uses", "Weather", "Where", "Words",
             "Opposites", "Syllables", "Jobs", "Habitats", "Seasons", "Body", "Traffic",
+            "Breathing", "Simon", "Rhythm", "MixColors", "Plant", "Hygiene",
         ];
         for (const game of games) {
             const source = read(`app/components/games/${game}Game.tsx`) + (game === "Memory" ? read("app/components/games/MemoryScene.tsx") : "");

@@ -140,6 +140,12 @@ const GAME_SERIES: Record<GameId, Series> = {
     seasons: { swatch: "bg-rust-600", color: "var(--color-rust-600)" },
     body: { swatch: "bg-peach-600", color: "var(--color-peach-600)" },
     traffic: { swatch: "bg-denim-600", color: "var(--color-denim-600)" },
+    breathing: { swatch: "bg-seafoam-600", color: "var(--color-seafoam-600)" },
+    simon: { swatch: "bg-iris-600", color: "var(--color-iris-600)" },
+    rhythm: { swatch: "bg-marigold-600", color: "var(--color-marigold-600)" },
+    mixcolors: { swatch: "bg-blush-600", color: "var(--color-blush-600)" },
+    plant: { swatch: "bg-clay-600", color: "var(--color-clay-600)" },
+    hygiene: { swatch: "bg-mint-600", color: "var(--color-mint-600)" },
 };
 
 /** Samostalno → uz pomoć → ostalo: jedna nijansa od tamne ka svetloj, ostatak je neutralno siv. */
