@@ -77,6 +77,22 @@ describe("mapLayout", () => {
         }
     });
 
+    // Sedam mapa: na mapi je 2–7 igara (33 … 47 igara → 4–7 po mapi), na poslednjoj je cilj sa blagom
+    for (const count of [2, 3, 4, 5, 6, 7]) {
+        it(`leaves room for the gate and for the final goal with the chest with ${count} games on a world`, () => {
+            for (const width of [328, 358, 398, 736, 960, 1216]) {
+                const layout = mapLayout(count, width);
+                const last = layout.nodes[count - 1];
+                assert.equal(layout.nodes.length, count);
+                // Kapija (oko 148 × 146) i cilj (oko 180 × 200, sa kovčegom ispod) staju u mapu
+                assert.ok(layout.end.x - 90 >= 0 && layout.end.x + 90 <= layout.width, `goal inside at w=${width}`);
+                assert.ok(layout.end.y + 90 + 36 <= layout.height, `chip under the chest fits at w=${width}`);
+                assert.ok(layout.end.y - 138 >= 0, `goal top inside at w=${width}`);
+                assert.ok(layout.end.y - 120 > last.y - layout.nodeSize / 2 || layout.end.x !== last.x, `w=${width}`);
+            }
+        });
+    }
+
     it("works with very few stops", () => {
         assert.equal(mapLayout(0, 375).nodes.length, 0);
         assert.equal(mapLayout(1, 1024).nodes.length, 1);

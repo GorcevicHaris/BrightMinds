@@ -156,7 +156,7 @@ export const POSE_IDS = [
 export type PoseId = (typeof POSE_IDS)[number];
 
 /** Odeća i dodaci preko osnovnog izgleda */
-export const WEAR_IDS = ["glasses", "partyHat", "beanie", "backpack", "jacket", "swim", "scarf", "medal", "plaster", "shaved", "headphones"] as const;
+export const WEAR_IDS = ["glasses", "partyHat", "beanie", "backpack", "jacket", "swim", "scarf", "medal", "plaster", "shaved", "headphones", "helmet", "vest", "belt"] as const;
 export type WearId = (typeof WEAR_IDS)[number];
 
 export const PROP_IDS = [

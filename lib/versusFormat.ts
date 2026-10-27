@@ -49,6 +49,9 @@ export const VERSUS_FORMATS: Readonly<Record<GameId, VersusFormat>> = {
     where: "race", // Gde je? — jedan predmet na slici (iznad, ispod, u…)
     families: "race", // Mama i beba — spoji mamu i bebu: jedan izbor po tabli
     words: "race", // Prve reči — slika za izgovorenu reč
+    opposites: "race", // Suprotnosti — jedna slika suprotnosti od nekoliko; zadatak se izgovara
+    body: "race", // Moje telo — jedan deo tela na crtežu ili jedno čulo
+    jobs: "race", // Ko šta radi? — jedan alat, mesto ili pomoćnik od nekoliko slika
     pattern: "race", // Šta dolazi sledeće? — jedan izbor koji nastavlja niz
     arithmetic: "race", // Računanje — jedan broj kao odgovor; zadatak se izgovara
     oddone: "race", // Šta ne pripada? — jedna slika od nekoliko
@@ -75,6 +78,16 @@ export const VERSUS_FORMATS: Readonly<Record<GameId, VersusFormat>> = {
     numbers: "turns", // Brojevi — isto (pisanje cifara, poređenje)
     social: "turns", // Šta reći? — razmišljanje o drugima, bez žurbe
     "social-story": "turns", // Socijalne priče — duga priča se sluša u komadu
+    syllables: "turns", // Koliko slogova? — tapšanje slogova traži ritam i pažnju; brzina kvari brojanje
+    habitats: "turns", // Ko gde živi? — životinja po životinja u ista staništa (razvrstavanje)
+    seasons: "turns", // Godišnja doba — redosled kroz godinu i dan, razvrstavanje: planiranje, ne brzina
+    traffic: "turns", // Saobraćaj — igra uči čekanje zelenog svetla; trka bi nagradila žurbu
+    breathing: "turns", // Balon disanja — mirno disanje nema „brže”; svako dete jedan udah, drugo gleda i diše
+    simon: "turns", // Zapamti niz — pamćenje niza; trka bi nagradila brzo dodirivanje umesto pamćenja
+    rhythm: "turns", // Ponovi ritam — ritam se sluša do kraja; dok jedno ponavlja, drugo sluša
+    mixcolors: "turns", // Mešaj boje — biranje dve boje je mali plan i ogled, ne brzina
+    plant: "turns", // Posadi cvet — korak po korak iste biljke (seme, voda, sunce), na smenu
+    hygiene: "turns", // Operi ruke i zube — svakodnevni redosled korak po korak; brzina kvari naviku
 };
 
 export function versusFormat(id: GameId): VersusFormat {

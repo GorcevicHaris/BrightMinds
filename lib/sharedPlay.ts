@@ -124,6 +124,14 @@ const PIECE_COUNTERS: Readonly<Partial<Record<GameId, (view: Record<string, unkn
     families: (v) => lengthOf(v.placed),
     backpack: (v) => lengthOf(v.packed),
     food: (v) => lengthOf(v.fed),
+    // Igre o svetu oko nas (world/): slika u korpi ili na mestu u redosledu je jedan potez
+    opposites: (v) => lengthOf(v.placed),
+    syllables: (v) => lengthOf(v.placed),
+    jobs: (v) => lengthOf(v.placed),
+    habitats: (v) => lengthOf(v.placed),
+    seasons: (v) => lengthOf(v.placed),
+    body: (v) => lengthOf(v.placed),
+    traffic: (v) => lengthOf(v.placed),
     seriation: (v) => lengthOf(v.placed),
     tangram: (v) => lengthOf(v.placed),
 };

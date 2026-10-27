@@ -1,8 +1,9 @@
 // app/dashboard/child/[id]/GameMap.tsx
 "use client";
 
-// „Mape” igara: igre su raspoređene u do četiri nacrtane mape po težini (lib/gameWorlds.ts) —
-// Zelena livada, Peščana pustinja, Vatreni vulkan i Ledeni vrhovi. Iznad mape su jezičci mapa
+// „Mape” igara: igre su raspoređene u do sedam nacrtanih mapa po težini (lib/gameWorlds.ts) —
+// Zelena livada, Čarobna šuma, Peščana pustinja, Podvodni svet, Vatreni vulkan, Ledeni vrhovi i
+// Svemir. Iznad mape su jezičci mapa
 // (sa zvezdicama), a na mapi vijugav put sa stanicama: svaka stanica je jedna igra, redom kojim
 // se preporučuje; drugar stoji na stanici na kojoj je dete sada. Na kraju puta je kapija: kad
 // su zvezdice skupljene, ključ otvara kapiju i sledeću mapu. Crteži su u mapWorlds.tsx.
@@ -319,9 +320,27 @@ function WorldMaps({ childId, gender, access, progress, openAll, planIds, pendin
 }
 
 // ── Jezičci mapa ───────────────────────────────────────────────────────────────
+//
+// Sedam jezičaka na telefonu (360 px) ne staje u jedan red, a dva reda bi razbila redosled puta
+// (livada → … → svemir) i gurnula mapu niže. Zato je na telefonu jedna traka koja se pomera
+// prstom (sa „zakačinjanjem” za jezičak): redosled ostaje jedan red sleva nadesno, kao vizuelni
+// raspored, a delimično vidljiv sledeći jezičak pokazuje da ih ima još. Izabrana mapa se sama
+// dovede na sredinu trake. Od 640 px naviše svih sedam staje u jedan red bez pomeranja.
 
 function WorldTabs({ worlds, selected, openAll, onSelect }: { worlds: WorldState<GameDefinition>[]; selected: WorldId; openAll: boolean; onSelect: (id: WorldId) => void }) {
     const refs = useRef<(HTMLButtonElement | null)[]>([]);
+    const stripRef = useRef<HTMLDivElement>(null);
+    const calm = useCalmMotion();
+
+    // Izabrani jezičak na sredinu trake (samo kad se traka pomera, tj. na telefonu)
+    useEffect(() => {
+        const strip = stripRef.current;
+        const tab = refs.current[worlds.findIndex((w) => w.id === selected)];
+        if (!strip || !tab || strip.scrollWidth <= strip.clientWidth + 1) return;
+        const left = tab.offsetLeft - (strip.clientWidth - tab.offsetWidth) / 2;
+        strip.scrollTo({ left: Math.max(0, left), behavior: calm ? "auto" : "smooth" });
+    }, [selected, worlds, calm]);
+
     const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
         const last = worlds.length - 1;
         const to =
@@ -337,7 +356,13 @@ function WorldTabs({ worlds, selected, openAll, onSelect }: { worlds: WorldState
     };
 
     return (
-        <div role="tablist" aria-label="Mape" className="grid gap-1.5 sm:gap-3" style={{ gridTemplateColumns: `repeat(${worlds.length}, minmax(0, 1fr))` }}>
+        <div
+            ref={stripRef}
+            role="tablist"
+            aria-label="Mape"
+            className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-1.5 overflow-x-auto overscroll-x-contain px-4 py-1.5 [scrollbar-width:none] sm:mx-0 sm:grid sm:snap-none sm:gap-2 sm:overflow-visible sm:p-0 lg:gap-3 [&::-webkit-scrollbar]:hidden"
+            style={{ gridTemplateColumns: `repeat(${worlds.length}, minmax(0, 1fr))` }}
+        >
             {worlds.map((world, index) => {
                 const theme = worldTheme(world.id);
                 const words = WORLD_WORDS[world.id];
@@ -359,20 +384,22 @@ function WorldTabs({ worlds, selected, openAll, onSelect }: { worlds: WorldState
                         tabIndex={active ? 0 : -1}
                         onClick={() => onSelect(world.id)}
                         onKeyDown={(e) => onKeyDown(e, index)}
+                        title={words.name}
                         className={cn(
-                            "relative flex min-h-[5.5rem] min-w-0 flex-col items-center justify-center gap-1 rounded-2xl border-2 px-1 py-2 text-center transition-[transform,background-color,border-color] sm:min-h-18 sm:flex-row sm:justify-start sm:gap-3 sm:px-3 sm:text-left",
+                            "relative flex min-h-[5.5rem] w-[4.6rem] shrink-0 snap-start flex-col items-center justify-start gap-1 rounded-2xl border-2 px-1 py-2 text-center transition-[transform,background-color,border-color] sm:w-auto sm:min-w-0 sm:shrink",
                             active ? "shadow-lift" : "border-transparent bg-surface/80 shadow-soft hover:-translate-y-0.5"
                         )}
                         style={active ? { borderColor: theme.colors.frame, backgroundColor: theme.colors.ground } : undefined}
                     >
                         <span className="relative shrink-0">
                             {/* Zaključana mapa: značka je bleđa i sa katancem (crta je mapWorlds.tsx) */}
-                            <WorldBadge world={world.id} locked={!world.open} className="h-11 w-11 sm:h-12 sm:w-12" />
+                            <WorldBadge world={world.id} locked={!world.open} className="h-11 w-11 lg:h-12 lg:w-12" />
                         </span>
-                        <span className="flex min-w-0 flex-col items-center sm:items-start">
-                            <span className="max-w-full truncate font-display text-[0.8rem] font-extrabold leading-tight sm:text-base" style={{ color: active ? theme.colors.text : undefined }}>
-                                <span className="lg:hidden">{words.short}</span>
-                                <span className="hidden lg:inline">{words.name}</span>
+                        <span className="flex min-w-0 max-w-full flex-col items-center">
+                            <span className="max-w-full truncate font-display text-[0.7rem] font-extrabold leading-tight sm:text-[0.8rem] lg:text-sm xl:whitespace-normal" style={{ color: active ? theme.colors.text : undefined }}>
+                                {/* Kratko ime dok je tesno; ceo naziv tek na širokom ekranu (može u dva reda) */}
+                                <span className="xl:hidden">{words.short}</span>
+                                <span className="hidden xl:inline">{words.name}</span>
                             </span>
                             <span className="mt-0.5 inline-flex items-center gap-0.5 whitespace-nowrap text-[0.72rem] font-extrabold text-ink-soft sm:text-sm" aria-hidden="true">
                                 <Star className="h-3.5 w-3.5 fill-sun-400 text-sun-500 sm:h-4 sm:w-4" />

@@ -1,12 +1,18 @@
-// Pregled četiri sveta „Mape” (samo u razvoju): /dev/worlds
-// Parametri: ?view=maps|gates &world=meadow|desert|volcano|ice &width=360|768|1200 &state=locked|key|open &count=5 &calm=1
+// Pregled sedam svetova „Mape” (samo u razvoju): /dev/worlds
+// Parametri: ?view=maps|gates &world=meadow|forest|desert|ocean|volcano|ice|space &width=360|768|1200
+//            &state=locked|key|open &count=5 &calm=1 &final=all
 // Mape: svaki svet na tri širine (360 zaključano, 768 ključ spreman, 1200 otvoreno), sa putem,
-// mostom i krugovima umesto stanica. Kapije: sva tri stanja izbliza, dvorac poslednjeg sveta i značke.
+// mostom i krugovima umesto stanica. Kapije: sva tri stanja izbliza, raketa sa blagom na kraju
+// svemira i značke. `final=all`: cilj sa blagom za svaki svet (kad je mapa malo, poslednja
+// mapa nije svemir, pa se crta dvorac u boji tog sveta).
 import { notFound } from "next/navigation";
 import { curvesPath, mapLayout } from "@/app/dashboard/child/[id]/gameMapLayout";
 import { WORLDS, WorldBadge, WorldBridge, WorldGate, WorldScenery, WorldStart, worldRoad, type GateState, type WorldId } from "@/app/dashboard/child/[id]/mapWorlds";
 
-type Params = Partial<Record<"view" | "world" | "width" | "state" | "count" | "calm", string>>;
+type Params = Partial<Record<"view" | "world" | "width" | "state" | "count" | "calm" | "final", string>>;
+
+/** Poslednji svet: tu je cilj sa blagom umesto kapije */
+const LAST = WORLDS[WORLDS.length - 1].id;
 
 const WIDTHS = [360, 768, 1200];
 const STATES: GateState[] = ["locked", "key", "open"];
@@ -25,7 +31,7 @@ export default async function DevWorldsPage({ searchParams }: { searchParams: Pr
         <main className="min-h-dvh bg-canvas px-4 py-5 sm:px-6">
             <h1 className="font-display text-2xl font-extrabold text-ink">Svetovi mape</h1>
             {p.view === "gates" ? (
-                <GateSheet calm={calm} worlds={worlds.map((w) => w.id)} />
+                <GateSheet calm={calm} worlds={worlds.map((w) => w.id)} allFinal={p.final === "all"} />
             ) : (
                 worlds.map((w) => (
                     <section key={w.id} className="mt-6" data-world={w.id}>
@@ -61,7 +67,7 @@ function MapPreview({ world, width, count, state, calm }: { world: WorldId; widt
                 <path d={d} fill="none" stroke={road.dash} strokeWidth="3.5" strokeLinecap="round" strokeDasharray="2 16" opacity="0.9" />
                 {layout.river && <WorldBridge world={world} x={layout.river.cross.x} y={layout.river.cross.y} angle={layout.river.angle} />}
                 <WorldStart world={world} x={layout.start.x} y={layout.start.y} />
-                <WorldGate world={world} x={layout.end.x} y={layout.end.y} state={state} final={world === "ice"} calm={calm} />
+                <WorldGate world={world} x={layout.end.x} y={layout.end.y} state={state} final={world === LAST} calm={calm} />
                 {/* Stanice: beli krugovi sa brojem (kao na pravoj mapi) */}
                 {layout.nodes.map((n, i) => (
                     <g key={i}>
@@ -82,7 +88,7 @@ function MapPreview({ world, width, count, state, calm }: { world: WorldId; widt
     );
 }
 
-function GateSheet({ calm, worlds }: { calm: boolean; worlds: WorldId[] }) {
+function GateSheet({ calm, worlds, allFinal }: { calm: boolean; worlds: WorldId[]; allFinal: boolean }) {
     return (
         <div className="mt-4 space-y-6">
             <div className="flex flex-wrap gap-3" data-badges>
@@ -107,13 +113,13 @@ function GateSheet({ calm, worlds }: { calm: boolean; worlds: WorldId[] }) {
                             {STATES.map((state) => (
                                 <figure key={state} className="overflow-hidden rounded-2xl border border-line" style={{ background: w.colors.ground }}>
                                     <svg viewBox="-95 -125 190 215" className="block h-auto w-full">
-                                        <WorldGate world={id} x={0} y={0} state={state} final={id === "ice"} calm={calm} />
+                                        <WorldGate world={id} x={0} y={0} state={state} final={id === LAST || allFinal} calm={calm} />
                                     </svg>
                                     <figcaption className="px-2 pb-1 text-center text-[0.7rem] font-bold text-ink-soft">{STATE_LABEL[state]}</figcaption>
                                 </figure>
                             ))}
                         </div>
-                        {id === "ice" && (
+                        {id === LAST && (
                             <div className="mt-2 grid grid-cols-3 gap-2 sm:max-w-3xl">
                                 {STATES.map((state) => (
                                     <figure key={state} className="overflow-hidden rounded-2xl border border-line" style={{ background: w.colors.ground }}>
