@@ -42,7 +42,14 @@ export type GameId =
     | "rhythm"
     | "mixcolors"
     | "plant"
-    | "hygiene";
+    | "hygiene"
+    | "pattern"
+    | "seriation"
+    | "scale"
+    | "arithmetic"
+    | "oddone"
+    | "coding"
+    | "tangram";
 
 /** Naziv kanala/događaja koji igra šalje monitoru (istorijski se razlikuje od GameId). */
 export type GameType =
@@ -85,7 +92,14 @@ export type GameType =
     | "rhythm"
     | "mixcolors"
     | "plant"
-    | "hygiene";
+    | "hygiene"
+    | "pattern"
+    | "seriation"
+    | "scale"
+    | "arithmetic"
+    | "oddone"
+    | "coding"
+    | "tangram";
 
 export interface GameAccent {
     /** Puna boja (dugmad, bedževi) */
@@ -1123,6 +1137,181 @@ export const GAMES: GameDefinition[] = [
         // 40. po redu: svakodnevne navike — pranje ruku i zuba korak po korak, pa kada peremo ruke
         ages: { min: 3, max: 8 },
         order: 40,
+    },
+    {
+        id: "pattern",
+        gameType: "pattern",
+        activityId: 29,
+        title: "Šta dolazi sledeće?",
+        description: "Nastavi niz boja, oblika i brojeva",
+        skill: "Obrasci i logika",
+        icon: "🔁",
+        image: "/images/stadolazi.svg",
+        accent: {
+            solid: "bg-lilac-500",
+            edge: "border-lilac-700",
+            soft: "bg-lilac-50",
+            text: "text-lilac-700",
+            border: "border-lilac-200",
+            ring: "ring-lilac-200",
+            gradient: "from-lilac-300 to-lilac-600",
+        },
+        offscreenTip:
+            "Pravite nizove od onoga što je pri ruci: kašika, viljuška, kašika, viljuška… ili crvena, plava, crvena kocka. Zastanite i pitajte: „Šta dolazi sledeće?” Neka i dete napravi niz za vas, pa vi pogađajte. Na šetnji tražite nizove na ogradi, pločicama i prugama na odeći.",
+        graded: true,
+        // 41. po redu: obrasci (AB, AAB, ABC, rastući nizovi) — temelj matematike, od boja ka brojevima
+        ages: { min: 3, max: 8 },
+        order: 41,
+    },
+    {
+        id: "seriation",
+        gameType: "seriation",
+        activityId: 30,
+        title: "Poređaj po veličini",
+        description: "Od najmanjeg do najvećeg",
+        skill: "Redosled i poređenje",
+        icon: "📏",
+        image: "/images/poredajpovelicini.svg",
+        accent: {
+            solid: "bg-sprout-500",
+            edge: "border-sprout-700",
+            soft: "bg-sprout-50",
+            text: "text-sprout-700",
+            border: "border-sprout-200",
+            ring: "ring-sprout-200",
+            gradient: "from-sprout-300 to-sprout-600",
+        },
+        offscreenTip:
+            "Poređajte zajedno šolje, kašike ili cipele članova porodice od najmanje do najveće. Slažite kule od kocaka različite visine i pitajte: „Koja je najviša? Koja je najniža?” Starije dete neka poređa olovke po dužini ili tegle po tome koliko je u njima.",
+        graded: true,
+        // 42. po redu: poređenje i redosled po veličini, visini, dužini i količini (seriacija)
+        ages: { min: 3, max: 7 },
+        order: 42,
+    },
+    {
+        id: "scale",
+        gameType: "scale",
+        activityId: 31,
+        title: "Vaga",
+        description: "Šta je teže? Napravi ravnotežu",
+        skill: "Poređenje i ravnoteža",
+        icon: "⚖️",
+        image: "/images/vaga.svg",
+        accent: {
+            solid: "bg-cocoa-500",
+            edge: "border-cocoa-700",
+            soft: "bg-cocoa-50",
+            text: "text-cocoa-700",
+            border: "border-cocoa-200",
+            ring: "ring-cocoa-200",
+            gradient: "from-cocoa-300 to-cocoa-600",
+        },
+        offscreenTip:
+            "Napravite vagu od vešalice i dve kese: stavite jabuku u jednu, a orahe u drugu i gledajte na koju stranu pretegne. Pitajte: „Šta je teže? Koliko oraha treba da bude ravno?” U prodavnici neka dete u rukama proceni šta je teže, pa proverite na vagi.",
+        graded: true,
+        // 43. po redu: teže i lakše, pa ravnoteža i jednakost (=) sa tegovima — rana algebra
+        ages: { min: 4, max: 9 },
+        order: 43,
+    },
+    {
+        id: "arithmetic",
+        gameType: "arithmetic",
+        activityId: 32,
+        title: "Računanje",
+        description: "Saberi i oduzmi do 20",
+        skill: "Sabiranje i oduzimanje",
+        icon: "➕",
+        image: "/images/racunanje.svg",
+        accent: {
+            solid: "bg-ember-500",
+            edge: "border-ember-700",
+            soft: "bg-ember-50",
+            text: "text-ember-700",
+            border: "border-ember-200",
+            ring: "ring-ember-200",
+            gradient: "from-ember-300 to-ember-600",
+        },
+        offscreenTip:
+            "Računajte uz stvari: na tanjiru su tri jagode, dodajte još dve — koliko ih je sada? Pojedite jednu — koliko je ostalo? Kutija od jaja je odlična „desetica”. Starijem detetu zadajte kratke priče („Amar ima 8 klikera i dobije još 5…”) i neka pokaže prstima ili nacrta.",
+        graded: true,
+        // 44. po redu: sabiranje i oduzimanje sa predmetima, desetice, pa brojevne rečenice do 20
+        ages: { min: 5, max: 10 },
+        order: 44,
+    },
+    {
+        id: "oddone",
+        gameType: "oddone",
+        activityId: 33,
+        title: "Šta ne pripada?",
+        description: "Pronađi uljeza i reci zašto",
+        skill: "Kategorije i pravila",
+        icon: "🔍",
+        image: "/images/stanepripada.svg",
+        accent: {
+            solid: "bg-mulberry-500",
+            edge: "border-mulberry-700",
+            soft: "bg-mulberry-50",
+            text: "text-mulberry-700",
+            border: "border-mulberry-200",
+            ring: "ring-mulberry-200",
+            gradient: "from-mulberry-300 to-mulberry-600",
+        },
+        offscreenTip:
+            "Na sto stavite tri stvari koje idu zajedno (tri voćke) i jednu koja ne ide (kašiku), pa pitajte: „Šta ne pripada i zašto?” Pustite dete da objasni svojim rečima — i drugačiji odgovor je dobar ako ima razlog. Zatim neka dete vama napravi zagonetku.",
+        graded: true,
+        // 45. po redu: kategorije i pravila — boja, oblik, vrsta, pa skriveno pravilo (fleksibilno mišljenje)
+        ages: { min: 4, max: 9 },
+        order: 45,
+    },
+    {
+        id: "coding",
+        gameType: "coding",
+        activityId: 34,
+        title: "Vodi robota",
+        description: "Strelicama vodi Robotića do cilja",
+        skill: "Planiranje i programiranje",
+        icon: "🤖",
+        image: "/images/vodirobota.svg",
+        accent: {
+            solid: "bg-azure-500",
+            edge: "border-azure-700",
+            soft: "bg-azure-50",
+            text: "text-azure-700",
+            border: "border-azure-200",
+            ring: "ring-azure-200",
+            gradient: "from-azure-300 to-azure-600",
+        },
+        offscreenTip:
+            "Igrajte se „robota” u sobi: dete daje komande („napred, napred, levo”), a vi ih izvodite tačno kako je rečeno, i kad je pogrešno. Zatim zamenite uloge. Na papiru sa kvadratićima nacrtajte put do „blaga” i strelicama zapišite kako se stiže.",
+        graded: true,
+        // 46. po redu: planiranje niza koraka strelicama, pa ispravljanje greške i ponavljanje (petlja)
+        ages: { min: 5, max: 10 },
+        order: 46,
+    },
+    {
+        id: "tangram",
+        gameType: "tangram",
+        activityId: 35,
+        title: "Tangram",
+        description: "Složi oblik od delova",
+        skill: "Prostorno mišljenje",
+        icon: "🔷",
+        image: "/images/tangram.svg",
+        accent: {
+            solid: "bg-lagoon-500",
+            edge: "border-lagoon-700",
+            soft: "bg-lagoon-50",
+            text: "text-lagoon-700",
+            border: "border-lagoon-200",
+            ring: "ring-lagoon-200",
+            gradient: "from-lagoon-300 to-lagoon-600",
+        },
+        offscreenTip:
+            "Izrežite od kartona kvadrat i dva trougla i slažite zajedno kućicu, raketu ili ribu. Pitajte: „Kako da okrenemo ovaj trougao da stane?” Starije dete neka složi oblik po slici bez linija, pa izmisli svoj oblik i da mu ime.",
+        graded: true,
+        // 47. po redu: slaganje oblika u siluetu — od dva dela do sedam delova tangrama, uz okretanje
+        ages: { min: 4, max: 10 },
+        order: 47,
     },
 ];
 

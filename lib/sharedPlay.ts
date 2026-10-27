@@ -132,6 +132,8 @@ const PIECE_COUNTERS: Readonly<Partial<Record<GameId, (view: Record<string, unkn
     seasons: (v) => lengthOf(v.placed),
     body: (v) => lengthOf(v.placed),
     traffic: (v) => lengthOf(v.placed),
+    seriation: (v) => lengthOf(v.placed),
+    tangram: (v) => lengthOf(v.placed),
 };
 
 export function hasSharedBoard(id: GameId | null | undefined): boolean {

@@ -114,6 +114,13 @@ const GAME_LOADERS = {
     mixcolors: () => import("@/app/components/games/MixColorsGame"),
     plant: () => import("@/app/components/games/PlantGame"),
     hygiene: () => import("@/app/components/games/HygieneGame"),
+    pattern: () => import("@/app/components/games/PatternGame"),
+    seriation: () => import("@/app/components/games/SeriationGame"),
+    scale: () => import("@/app/components/games/ScaleGame"),
+    arithmetic: () => import("@/app/components/games/ArithmeticGame"),
+    oddone: () => import("@/app/components/games/OddOneGame"),
+    coding: () => import("@/app/components/games/CodingGame"),
+    tangram: () => import("@/app/components/games/TangramGame"),
 } satisfies Record<GameId, () => Promise<{ default: ComponentType<GameProps> }>>;
 
 const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
@@ -157,6 +164,13 @@ const GAME_COMPONENTS: Record<GameId, ComponentType<GameProps>> = {
     mixcolors: dynamic(GAME_LOADERS["mixcolors"], { ssr: false, loading: GameLoading }),
     plant: dynamic(GAME_LOADERS["plant"], { ssr: false, loading: GameLoading }),
     hygiene: dynamic(GAME_LOADERS["hygiene"], { ssr: false, loading: GameLoading }),
+    pattern: dynamic(GAME_LOADERS["pattern"], { ssr: false, loading: GameLoading }),
+    seriation: dynamic(GAME_LOADERS["seriation"], { ssr: false, loading: GameLoading }),
+    scale: dynamic(GAME_LOADERS["scale"], { ssr: false, loading: GameLoading }),
+    arithmetic: dynamic(GAME_LOADERS["arithmetic"], { ssr: false, loading: GameLoading }),
+    oddone: dynamic(GAME_LOADERS["oddone"], { ssr: false, loading: GameLoading }),
+    coding: dynamic(GAME_LOADERS["coding"], { ssr: false, loading: GameLoading }),
+    tangram: dynamic(GAME_LOADERS["tangram"], { ssr: false, loading: GameLoading }),
 };
 
 function preloadGame(id: GameId) {

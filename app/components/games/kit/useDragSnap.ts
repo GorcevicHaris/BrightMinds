@@ -22,6 +22,8 @@ const SNAP_REACH = 0.7;
  * jedan prst od sredine. Bira se najbliže mesto, pa veći domet ne „krade” komad susednoj rupi.
  */
 const MIN_REACH_PX = 40;
+/** Klik koji pregledač pošalje odmah posle puštenog komada (ne bira komad ponovo) */
+const SKIP_CLICK_MS = 400;
 
 interface Options {
     enabled: boolean;
@@ -91,7 +93,12 @@ export function useDragSnap({ enabled, calm, onDrop, onTap, onGrab }: Options): 
     const ghost = useRef<HTMLElement | null>(null);
     const drag = useRef<DragState | null>(null);
     const point = useRef({ x: 0, y: 0 });
-    const skipClick = useRef(false);
+    /**
+     * Do kada se klik posle puštenog komada zanemaruje. Vreme, a ne zastavica: kad komad legne na
+     * mesto i nestane iz korpe, pregledač mu klik ni ne pošalje, pa bi zastavica ostala uključena i
+     * „progutala” sledeći dodir deteta.
+     */
+    const skipClickUntil = useRef(0);
     const returnTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [active, setActive] = useState<string | null>(null);
     const [dragging, setDragging] = useState(false);
@@ -220,7 +227,7 @@ export function useDragSnap({ enabled, calm, onDrop, onTap, onGrab }: Options): 
                     return;
                 }
                 // Pušten komad: klik koji sledi ne bira ga ponovo
-                skipClick.current = true;
+                skipClickUntil.current = Date.now() + SKIP_CLICK_MS;
                 const slot = nearestSlot(root.current, point.current.x, point.current.y);
                 const accepted = handlers.current.onDrop(current.piece, slot);
                 if (accepted) clear();
@@ -232,8 +239,8 @@ export function useDragSnap({ enabled, calm, onDrop, onTap, onGrab }: Options): 
                 else drag.current = null;
             },
             onClick: () => {
-                if (skipClick.current) {
-                    skipClick.current = false;
+                if (Date.now() < skipClickUntil.current) {
+                    skipClickUntil.current = 0;
                     return;
                 }
                 if (enabled) handlers.current.onTap(piece);

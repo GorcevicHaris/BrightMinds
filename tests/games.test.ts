@@ -103,8 +103,8 @@ describe("isGradedActivity", () => {
 describe("game registry", () => {
     const unique = (values: readonly unknown[]) => new Set(values).size === values.length;
 
-    it("has forty games with unique ids, activity ids and game types", () => {
-        assert.equal(GAMES.length, 40);
+    it("has forty-seven games with unique ids, activity ids and game types", () => {
+        assert.equal(GAMES.length, 47);
         assert.ok(unique(GAMES.map((game) => game.id)));
         assert.ok(unique(GAMES.map((game) => game.activityId)));
         assert.ok(unique(GAMES.map((game) => game.gameType)));
@@ -113,9 +113,9 @@ describe("game registry", () => {
     it("keeps the activity ids that are already stored in the database", () => {
         assert.deepEqual(
             Object.fromEntries(GAMES.map((game) => [game.id, game.activityId])),
-            { shapes: 1, memory: 3, coloring: 4, "sound-to-image": 5, social: 6, "social-story": 7, emotions: 8, sorting: 9, sequence: 10, where: 11, uses: 12, counting: 13, gaze: 14, letters: 15, numbers: 16, food: 17, puzzle: 22, clock: 18, inset: 19, maze: 23, differences: 24, weather: 27, market: 28, families: 20, backpack: 21, missing: 25, words: 26, opposites: 36, syllables: 37, jobs: 38, habitats: 39, seasons: 40, body: 41, traffic: 42, breathing: 43, simon: 44, rhythm: 45, mixcolors: 46, plant: 47, hygiene: 48 }
+            { shapes: 1, memory: 3, coloring: 4, "sound-to-image": 5, social: 6, "social-story": 7, emotions: 8, sorting: 9, sequence: 10, where: 11, uses: 12, counting: 13, gaze: 14, letters: 15, numbers: 16, food: 17, puzzle: 22, clock: 18, inset: 19, maze: 23, differences: 24, weather: 27, market: 28, families: 20, backpack: 21, missing: 25, words: 26, opposites: 36, syllables: 37, jobs: 38, habitats: 39, seasons: 40, body: 41, traffic: 42, breathing: 43, simon: 44, rhythm: 45, mixcolors: 46, plant: 47, hygiene: 48, pattern: 29, seriation: 30, scale: 31, arithmetic: 32, oddone: 33, coding: 34, tangram: 35 }
         );
-        assert.deepEqual(ACTIVITY_IDS, [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 22, 18, 19, 23, 24, 27, 28, 20, 21, 25, 26, 41, 36, 39, 38, 37, 40, 42, 43, 44, 45, 46, 47, 48]);
+        assert.deepEqual(ACTIVITY_IDS, [1, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 22, 18, 19, 23, 24, 27, 28, 20, 21, 25, 26, 41, 36, 39, 38, 37, 40, 42, 43, 44, 45, 46, 47, 48, 29, 30, 31, 32, 33, 34, 35]);
     });
 
     it("gives every game a title, a skill, an image and an off-screen tip for the adult", () => {
