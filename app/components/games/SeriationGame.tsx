@@ -62,8 +62,8 @@ import {
     type Stage,
     type ThemeId,
 } from "@/app/components/games/data/seriationLevels";
-import { DirectionWedge, LANE_RATIO, LengthArt, PieceArt, SeriationStyles } from "@/app/components/games/seriation/SeriationArt";
-import { layoutCells, type BoardBox, type CellLayout } from "@/app/components/games/seriation/sizing";
+import { DirectionWedge, LengthArt, PieceArt, SeriationStyles } from "@/app/components/games/seriation/SeriationArt";
+import { lanePieceWidth, laneSlotUnits, layoutCells, layoutLanes, type BoardBox, type CellLayout, type LaneLayout } from "@/app/components/games/seriation/sizing";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
@@ -371,10 +371,13 @@ function Board({ view, drag, ghost, calm, wiggle, demo, disabled, onSlot, onPiec
         setRoot((previous) => (previous === el ? previous : el));
     };
 
+    // Trake (dužina) iz izmerenog polja: visina trake i odnos dužine najdužeg predmeta
+    const laneFit = lanes && box ? layoutLanes(box, view.pieces.map((piece) => piece.value / max)) : null;
+
     const activePiece = active ? view.pieces.find((piece) => piece.id === active) : undefined;
     const art = (piece: SeriationPiece, extra: { cheer?: boolean; index?: number; silhouette?: boolean; className?: string } = {}) =>
         lanes ? (
-            <LengthArt theme={theme.id} value={piece.value} max={max} tone={view.tone} {...extra} />
+            <LengthArt theme={theme.id} value={piece.value} max={max} tone={view.tone} ratio={laneFit?.ratio} {...extra} />
         ) : (
             <PieceArt theme={theme.id} id={piece.id} value={piece.value} max={max} tone={view.tone} {...extra} />
         );
@@ -382,11 +385,11 @@ function Board({ view, drag, ghost, calm, wiggle, demo, disabled, onSlot, onPiec
     return (
         <div ref={setRootRef} className={cn("relative flex min-h-0 w-full flex-1 self-stretch", disabled && "pointer-events-none")} style={{ containerType: "size" }}>
             <SeriationStyles />
-            {lanes ? (
-                <LaneBoard view={view} drag={drag} calm={calm} wiggle={wiggle} hinted={hinted} disabled={disabled} art={art} onSlot={onSlot} onPiece={onPiece} />
-            ) : box ? (
+            {!box ? null : laneFit ? (
+                <LaneBoard view={view} fit={laneFit} drag={drag} calm={calm} wiggle={wiggle} hinted={hinted} disabled={disabled} art={art} onSlot={onSlot} onPiece={onPiece} />
+            ) : (
                 <CellBoard view={view} box={box} drag={drag} calm={calm} wiggle={wiggle} hinted={hinted} disabled={disabled} art={art} onSlot={onSlot} onPiece={onPiece} />
-            ) : null}
+            )}
 
             {demoPiece && <DragDemo root={root} from={`[data-piece="${demoPiece}"]`} to={`[data-slot="${slotId(view.placed.length)}"]`} calm={calm} />}
 
@@ -454,10 +457,15 @@ function StageDecor({ stage }: { stage: Stage }) {
     return null;
 }
 
-/** Kratak natpis o smeru (na niskom ekranu pitanje se samo čuje) */
-function Caption({ view }: { view: SeriationView }) {
+/** Kratak natpis o smeru (na niskom ekranu pitanje se samo čuje); `inline`: iznad korpe, ne u uglu reda */
+function Caption({ view, inline = false }: { view: SeriationView; inline?: boolean }) {
     return (
-        <p className="pointer-events-none absolute left-2 top-1.5 z-10 hidden rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-extrabold text-ink shadow-soft ring-1 ring-line [@media(max-height:37.5rem)]:block">
+        <p
+            className={cn(
+                "pointer-events-none z-10 hidden rounded-full bg-surface/90 px-2.5 py-0.5 text-xs font-extrabold text-ink shadow-soft ring-1 ring-line [@media(max-height:37.5rem)]:block",
+                inline ? "mb-1.5 self-start" : "absolute left-2 top-1.5"
+            )}
+        >
             {seriationCaption(view)}
         </p>
     );
@@ -668,17 +676,12 @@ function CellTray({ view, drag, calm, wiggle, hinted, disabled, art, onPiece }: 
 
 // ── Trake (dužina: zmije i olovke) ────────────────────────────────────────────
 
-function laneVars(count: number): CSSProperties {
-    // Uspravno: red gore, korpa dole (2 × count traka); položeno: red levo, korpa desno
-    const tall = `min(calc((100cqh - ${(2 * count) * 0.375 + 3.5}rem) / ${2 * count}), calc((100cqw - 3rem) / ${LANE_RATIO * 0.86 + 0.6}), 4.5rem)`;
-    const wide = `min(calc((100cqh - ${count * 0.375 + 2.5}rem) / ${count}), calc((50cqw - 3rem) / ${LANE_RATIO * 0.86 + 0.6}), 4.5rem)`;
-    return { ["--lane-p" as string]: tall, ["--lane-l" as string]: wide } as CSSProperties;
-}
-
-const LANE_SIZE = "[--lane:var(--lane-p)] landscape:[--lane:var(--lane-l)]";
-
-function LaneBoard({ view, drag, calm, wiggle, hinted, disabled, art, onSlot, onPiece }: PartProps) {
+function LaneBoard({ view, fit, drag, calm, wiggle, hinted, disabled, art, onSlot, onPiece }: PartProps & { fit: LaneLayout }) {
     const theme = getTheme(view.theme)!;
+    // Traka iz izmerenog polja (seriation/sizing.ts): u korpi predmet zauzima samo svoju dužinu,
+    // pa korpa staje u manje redova i trake ostaju dovoljno visoke za prst i na uskom telefonu
+    const max = Math.max(...view.pieces.map((piece) => piece.value), 1);
+    const slotUnits = laneSlotUnits(fit.ratio);
     const bg = STAGE_BG[theme.stage];
     const order = rowOrder(view);
     const solved = view.feedback === "correct";
@@ -686,10 +689,10 @@ function LaneBoard({ view, drag, calm, wiggle, hinted, disabled, art, onSlot, on
     const { active, pieceProps } = drag;
 
     return (
-        <div className={cn("flex h-full w-full flex-col items-stretch gap-2 landscape:flex-row", LANE_SIZE)} style={laneVars(view.pieces.length)}>
+        <div className={cn("flex h-full w-full items-stretch gap-1.5", fit.side ? "flex-row" : "flex-col")} style={{ ["--lane" as string]: `${fit.lane.toFixed(2)}px` } as CSSProperties}>
             <div className={cn("relative flex min-h-0 flex-1 items-center justify-center overflow-hidden rounded-2xl ring-1 ring-black/5", bg.back)}>
-                <Caption view={view} />
-                <div className="flex items-stretch gap-2 py-2 pl-1 pr-2">
+                {!fit.side && <Caption view={view} />}
+                <div className="flex items-stretch gap-2 py-1 pl-1 pr-2">
                     <DirectionWedge dir={view.dir} vertical className="w-3 shrink-0" />
                     {/* Sve trake počinju od iste linije (kao kad se meri) */}
                     <div role="group" aria-label="Red" className="flex flex-col border-l-4 border-sprout-500/70 pl-1" style={{ gap: "0.375rem" }}>
@@ -715,7 +718,7 @@ function LaneBoard({ view, drag, calm, wiggle, hinted, disabled, art, onSlot, on
                                         glow && "border-solid bg-sprout-50 ring-4 ring-sprout-300",
                                         open && hinted.slot === slot && !calm && "animate-soft-pulse"
                                     )}
-                                    style={{ height: "var(--lane)", width: `calc(var(--lane) * ${LANE_RATIO * 0.86 + 0.45})` }}
+                                    style={{ height: "var(--lane)", width: `calc(var(--lane) * ${slotUnits.toFixed(3)})` }}
                                 >
                                     {filled ? (
                                         <span className={cn("pointer-events-none flex h-full items-center", view.last === id && !calm && "sr-pop")}>{art(piece, { cheer, index: i, className: "h-[86%] w-auto" })}</span>
@@ -728,33 +731,42 @@ function LaneBoard({ view, drag, calm, wiggle, hinted, disabled, art, onSlot, on
                     </div>
                 </div>
             </div>
-            <div role="group" aria-label="Korpa" className="flex shrink-0 flex-col items-center justify-center self-center rounded-2xl border-2 border-dashed border-line bg-surface/70 p-1.5" style={{ gap: "0.375rem" }}>
-                {view.pieces.map((piece) => {
-                    const size = { height: "var(--lane)", width: `calc(var(--lane) * ${LANE_RATIO * 0.86 + 0.45})` };
-                    if (view.placed.includes(piece.id)) return <span key={piece.id} aria-hidden="true" className="rounded-xl border-2 border-dashed border-line/60" style={size} />;
-                    const glow = hinted.piece === piece.id;
-                    return (
-                        <button
-                            key={piece.id}
-                            type="button"
-                            data-piece={piece.id}
-                            disabled={disabled}
-                            aria-label={`${pieceLabel(theme.id, piece, view.pieces)}${pieceState(view, piece.id)}`}
-                            {...pieceProps(piece.id)}
-                        onClick={() => onPiece(piece.id)}
-                            className={cn(
-                                "relative flex touch-none select-none items-center justify-start rounded-xl border-2 bg-surface px-1 transition-[transform,border-color,opacity,background-color] duration-150 disabled:cursor-default",
-                                glow ? "border-sprout-400 bg-sprout-50" : "border-transparent hover:border-sprout-300",
-                                glow && !calm && "animate-soft-pulse",
-                                active === piece.id && "opacity-30",
-                                wiggle === piece.id && "animate-wiggle"
-                            )}
-                            style={size}
-                        >
-                            {art(piece, { className: "pointer-events-none h-[86%] w-auto" })}
-                        </button>
-                    );
-                })}
+            {/* Korpa desno: natpis o smeru (nizak ekran) stoji iznad nje, da trake ostanu visoke */}
+            <div className="flex shrink-0 flex-col items-center justify-center self-center">
+                {fit.side && <Caption view={view} inline />}
+                <div role="group" aria-label="Korpa" className="flex shrink-0 flex-col items-center justify-center self-center rounded-2xl border-2 border-dashed border-line bg-surface/70 p-1" style={{ gap: "0.375rem" }}>
+                    {fit.trayRows.map((row, r) => (
+                        <div key={r} className="flex items-center justify-center" style={{ gap: "0.375rem" }}>
+                            {row.map((index) => {
+                                const piece = view.pieces[index];
+                                const size = { height: "var(--lane)", width: lanePieceWidth(piece.value / max, fit.lane, fit.ratio) };
+                                if (view.placed.includes(piece.id)) return <span key={piece.id} aria-hidden="true" className="shrink-0 rounded-xl border-2 border-dashed border-line/60" style={size} />;
+                                const glow = hinted.piece === piece.id;
+                                return (
+                                    <button
+                                        key={piece.id}
+                                        type="button"
+                                        data-piece={piece.id}
+                                        disabled={disabled}
+                                        aria-label={`${pieceLabel(theme.id, piece, view.pieces)}${pieceState(view, piece.id)}`}
+                                        {...pieceProps(piece.id)}
+                                        onClick={() => onPiece(piece.id)}
+                                        className={cn(
+                                            "relative flex shrink-0 touch-none select-none items-center justify-start rounded-xl border-2 bg-surface px-1 transition-[transform,border-color,opacity,background-color] duration-150 disabled:cursor-default",
+                                            glow ? "border-sprout-400 bg-sprout-50" : "border-transparent hover:border-sprout-300",
+                                            glow && !calm && "animate-soft-pulse",
+                                            active === piece.id && "opacity-30",
+                                            wiggle === piece.id && "animate-wiggle"
+                                        )}
+                                        style={size}
+                                    >
+                                        {art(piece, { className: "pointer-events-none h-[86%] w-auto" })}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

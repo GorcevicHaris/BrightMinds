@@ -113,3 +113,106 @@ export function layoutCells(box: BoardBox, { count, insert, given, aspect, same,
     }
     return (best as { layout: CellLayout } | null)!.layout;
 }
+
+// ── Trake (dužina: zmije i olovke) ────────────────────────────────────────────
+
+export interface LaneLayout {
+    /** Visina trake (px) */
+    lane: number;
+    /** Najduži predmet je dug `ratio` visina trake */
+    ratio: number;
+    /** Korpa desno od reda (umesto ispod); tada je natpis o smeru iznad korpe */
+    side: boolean;
+    /** Predmeti u korpi po redovima (indeksi u redosledu korpe) */
+    trayRows: number[][];
+}
+
+/** Najveća traka (4.5rem), najmanja dobra za prst, razmak između traka (0.375rem) */
+const MAX_LANE = 72;
+const GOOD_LANE = 48;
+const LANE_GAP = 6;
+/** Red sa trakama: levo klin smera i linija (40 px), gore i dole py-1 */
+const LANE_ROW_X = 40;
+const LANE_ROW_Y = 8;
+/** Predmet u korpi: px-1 i ivice; korpa sa trakama: ivica i p-1; razmak reda i korpe (gap-1.5) */
+const LANE_PIECE_PAD = 12;
+const LANE_TRAY_PAD = 12;
+const LANE_PART_GAP = 6;
+/** Crtež je 86 % visine trake; mesto u redu je za pola visine duže od najdužeg crteža */
+const ART_SHARE = 0.86;
+const SLOT_EXTRA = 0.45;
+/** Odnosi dužine i debljine najdužeg predmeta: obično 5, a ako traka ne bi bila dovoljno visoka, kraće */
+const RATIOS = [5, 4.5, 4];
+
+/**
+ * Predmeti u korpi po redovima: svaki ide u prvi red u koji staje, redom kako su izmešani
+ * (ne po dužini — korpa ne sme da otkrije redosled).
+ */
+export function packLanes(widths: number[], room: number): number[][] | null {
+    const rows: { items: number[]; used: number }[] = [];
+    for (const [i, width] of widths.entries()) {
+        if (width > room) return null;
+        const row = rows.find((r) => r.used + LANE_GAP + width <= room);
+        if (row) {
+            row.items.push(i);
+            row.used += LANE_GAP + width;
+        } else rows.push({ items: [i], used: width });
+    }
+    return rows.map((row) => row.items);
+}
+
+/** Deo trake koji zauzima predmet (kao `lengthShare` u crtežu: bar jedna visina trake) */
+const shareOf = (fraction: number, ratio: number) => Math.max(fraction, 1 / ratio);
+
+/** Širina predmeta u korpi: koliko je dug crtež (bar kvadrat, da se lako dohvati) */
+export function lanePieceWidth(fraction: number, lane: number, ratio: number): number {
+    return Math.max(shareOf(fraction, ratio) * ratio * ART_SHARE * lane + LANE_PIECE_PAD, lane);
+}
+
+/** Širina mesta u redu, u visinama trake */
+export const laneSlotUnits = (ratio: number) => ratio * ART_SHARE + SLOT_EXTRA;
+
+/**
+ * Red od `count` traka (svaka puna dužina, da se vidi koliko je koji predmet dug) i korpa u kojoj
+ * predmeti zauzimaju samo svoju dužinu, u jednom ili više redova — ispod reda ili desno od njega.
+ * `fractions`: vrednost / najveća vrednost, redom kao u korpi.
+ */
+export function layoutLanes(box: BoardBox, fractions: number[]): LaneLayout {
+    const count = fractions.length;
+    const caption = box.short ? CAPTION : 0;
+    let best: LaneLayout | null = null;
+
+    for (const ratio of RATIOS) {
+        const rowW = (lane: number) => laneSlotUnits(ratio) * lane + LANE_ROW_X;
+        const rowH = (lane: number) => count * lane + (count - 1) * LANE_GAP + LANE_ROW_Y;
+        const trayH = (lane: number, rows: number) => rows * lane + (rows - 1) * LANE_GAP + LANE_TRAY_PAD;
+        let found: LaneLayout | null = null;
+        for (const side of [false, true]) {
+            const pack = (lane: number) => {
+                const room = (side ? box.w - rowW(lane) - LANE_PART_GAP : box.w) - LANE_TRAY_PAD;
+                return packLanes(fractions.map((fraction) => lanePieceWidth(fraction, lane, ratio)), room);
+            };
+            const fits = (lane: number) => {
+                const rows = pack(lane);
+                if (!rows || rowW(lane) > box.w) return false;
+                // Natpis (nizak ekran) stoji iznad korpe kad je ona desno, inače u uglu reda
+                return side
+                    ? Math.max(rowH(lane), trayH(lane, rows.length) + caption) <= box.h
+                    : rowH(lane) + caption + LANE_PART_GAP + trayH(lane, rows.length) <= box.h;
+            };
+            // Pakovanje nije sasvim monotono (red više ili manje), pa se traži od najveće trake naniže
+            let lane = 0;
+            for (let size = MAX_LANE; size >= 16; size -= 0.5) {
+                if (fits(size)) {
+                    lane = size;
+                    break;
+                }
+            }
+            if (!found || lane > found.lane + 0.01) found = { lane, ratio, side, trayRows: pack(lane) ?? [fractions.map((_, i) => i)] };
+        }
+        // Prednost ima uobičajen (duži) odnos, čim je traka dovoljno visoka
+        if (!best || (best.lane < GOOD_LANE && found!.lane > best.lane + 0.01)) best = found;
+        if (best!.lane >= GOOD_LANE) break;
+    }
+    return best!;
+}
