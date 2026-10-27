@@ -7,7 +7,7 @@
 // umetanja red je već poređan, a jedan predmet traži svoj razmak (dodir predmeta, pa razmaka).
 // Nema žurbe ni tajmera. Nivoi: data/seriationLevels.ts, crteži: seriation/.
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useCalmMotion } from "@/app/components/avatar/motion";
 import { useChildSettings } from "@/app/components/ChildSettingsProvider";
@@ -63,6 +63,7 @@ import {
     type ThemeId,
 } from "@/app/components/games/data/seriationLevels";
 import { DirectionWedge, LANE_RATIO, LengthArt, PieceArt, SeriationStyles } from "@/app/components/games/seriation/SeriationArt";
+import { layoutCells, type BoardBox, type CellLayout } from "@/app/components/games/seriation/sizing";
 import { cn } from "@/lib/cn";
 import { getGame } from "@/lib/games";
 import { useSpeech } from "@/lib/speech";
@@ -79,6 +80,26 @@ const FEEDBACK_CLASS =
  * susednih predmeta (oni se tada ne mogu dodirnuti), pa je meta široka bar jedno mesto.
  */
 const GAP_SHARE = 0.4;
+const SHORT_QUERY = "(max-height: 37.5rem)";
+
+/** Izmerena veličina polja za igru (mesta i korpa se računaju iz nje, vidi seriation/sizing.ts) */
+function useBoardBox(el: HTMLDivElement | null): BoardBox | null {
+    const [box, setBox] = useState<BoardBox | null>(null);
+    useLayoutEffect(() => {
+        if (!el) return;
+        const measure = () => {
+            const w = el.clientWidth;
+            const h = el.clientHeight;
+            const short = typeof window.matchMedia === "function" && window.matchMedia(SHORT_QUERY).matches;
+            setBox((old) => (old && Math.abs(old.w - w) < 1 && Math.abs(old.h - h) < 1 && old.short === short ? old : { w, h, short }));
+        };
+        measure();
+        const observer = new ResizeObserver(measure);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, [el]);
+    return box;
+}
 
 export default function SeriationGame({ childId, level, gender, onComplete, isMonitor = false, monitorState }: GameProps<SeriationView>) {
     const settings = useChildSettings();
@@ -337,6 +358,7 @@ function hintTarget(view: SeriationView): { piece: string | null; slot: string |
 function Board({ view, drag, ghost, calm, wiggle, demo, disabled, onSlot, onPiece }: BoardProps) {
     const { rootRef, ghostRef, active, wobble } = drag;
     const [root, setRoot] = useState<HTMLDivElement | null>(null);
+    const box = useBoardBox(root);
     const theme = getTheme(view.theme);
     if (!theme) return null;
     const lanes = theme.measure === "length";
@@ -362,9 +384,9 @@ function Board({ view, drag, ghost, calm, wiggle, demo, disabled, onSlot, onPiec
             <SeriationStyles />
             {lanes ? (
                 <LaneBoard view={view} drag={drag} calm={calm} wiggle={wiggle} hinted={hinted} disabled={disabled} art={art} onSlot={onSlot} onPiece={onPiece} />
-            ) : (
-                <CellBoard view={view} drag={drag} calm={calm} wiggle={wiggle} hinted={hinted} disabled={disabled} art={art} onSlot={onSlot} onPiece={onPiece} />
-            )}
+            ) : box ? (
+                <CellBoard view={view} box={box} drag={drag} calm={calm} wiggle={wiggle} hinted={hinted} disabled={disabled} art={art} onSlot={onSlot} onPiece={onPiece} />
+            ) : null}
 
             {demoPiece && <DragDemo root={root} from={`[data-piece="${demoPiece}"]`} to={`[data-slot="${slotId(view.placed.length)}"]`} calm={calm} />}
 
@@ -444,39 +466,35 @@ function Caption({ view }: { view: SeriationView }) {
 // ── Mesta u redu (veličina, visina, količina, brojevi) ────────────────────────
 
 /**
- * Veličina mesta. Mesta u redu i predmeti u korpi su iste veličine (veličina je ono što se
- * poredi). Samo kad se ne poredi veličina (količina, životinje, brojevi), korpa na uspravnom
- * ekranu ide u dva reda sa krupnijim karticama — da se tačkice i brojevi lako vide.
+ * Veličina mesta i korpe iz izmerenog polja (seriation/sizing.ts). Mesta u redu i predmeti u
+ * korpi su iste veličine kad se poredi veličina ili visina; inače (količina, životinje, brojevi)
+ * korpa sme da ima krupnije kartice — da se tačkice i brojevi lako vide.
  */
-function cellVars(view: SeriationView, aspect: number, measure: string): CSSProperties {
-    const count = view.pieces.length;
-    const gap = count >= 6 ? 0.25 : count >= 5 ? 0.375 : 0.5;
-    // Širina reda: obična mesta, ili kod umetanja predmeti i razmaci između njih
-    const units = view.insert ? view.given.length + GAP_SHARE * (view.given.length + 1) : count;
-    const gaps = view.insert ? view.given.length * 2 : count - 1;
-    const width = `calc((100cqw - ${(gaps * gap + 1).toFixed(3)}rem) / ${units.toFixed(3)})`;
-    const height = `calc((100cqh - 5.5rem) / ${(2 * aspect).toFixed(3)})`;
-    const big = !view.insert && count >= 5 && measure !== "size" && measure !== "height";
-    const cols = big ? Math.ceil(count / 2) : view.insert ? 1 : count;
-    const tall = big
-        ? `min(calc((100cqw - ${((cols - 1) * gap + 1).toFixed(3)}rem) / ${cols}), calc((100cqh - var(--cell-h) - 6.25rem) / ${(2 * aspect).toFixed(3)}), 7rem)`
-        : "var(--cell)";
+function cellLayout(view: SeriationView, box: BoardBox, aspect: number, measure: string): CellLayout {
+    return layoutCells(box, {
+        count: view.pieces.length,
+        insert: view.insert,
+        given: view.given.length,
+        aspect,
+        same: measure === "size" || measure === "height",
+        gapShare: GAP_SHARE,
+    });
+}
+
+function cellVars(fit: CellLayout, aspect: number): CSSProperties {
     return {
-        ["--cell" as string]: `min(${width}, ${height}, 11rem)`,
+        ["--cell" as string]: `${fit.cell.toFixed(2)}px`,
         ["--cell-h" as string]: `calc(var(--cell) * ${aspect})`,
-        ["--gap" as string]: `${gap}rem`,
-        ["--tcell-p" as string]: tall,
-        ["--tcols-p" as string]: cols,
-        ["--tcols-l" as string]: view.insert ? 1 : count,
+        ["--gap" as string]: `${fit.gap}px`,
+        ["--tcell" as string]: `${fit.tray.toFixed(2)}px`,
+        ["--tcols" as string]: fit.trayCols,
         ["--aspect" as string]: aspect,
     } as CSSProperties;
 }
 
-/** Korpa: uspravno možda u dva reda (vidi `cellVars`), položeno uvek u jednom */
-const TRAY_SIZE = "[--tcell:var(--cell)] [--tcols:var(--tcols-l)] portrait:[--tcell:var(--tcell-p)] portrait:[--tcols:var(--tcols-p)]";
-
-function CellBoard({ view, drag, calm, wiggle, hinted, disabled, art, onSlot, onPiece }: PartProps) {
+function CellBoard({ view, box, drag, calm, wiggle, hinted, disabled, art, onSlot, onPiece }: PartProps & { box: BoardBox }) {
     const theme = getTheme(view.theme)!;
+    const fit = cellLayout(view, box, theme.aspect, theme.measure);
     const bg = STAGE_BG[theme.stage];
     const order = rowOrder(view);
     const solved = view.feedback === "correct";
@@ -533,17 +551,33 @@ function CellBoard({ view, drag, calm, wiggle, hinted, disabled, art, onSlot, on
         });
     }
 
+    // Police: red na jednoj, ili (uzak ekran, dug red) na dve — prva pa druga, sleva nadesno
+    const shelves = fit.shelves.map((size, k) => {
+        const from = fit.shelves.slice(0, k).reduce((sum, n) => sum + n, 0);
+        return { items: fit.shelves.length > 1 ? row.slice(from, from + size) : row, span: [from / order.length, (from + size) / order.length] as [number, number] };
+    });
+    const light = theme.stage === "sky" || theme.stage === "grass";
+
     return (
-        <div className={cn("flex h-full w-full flex-col items-center justify-center gap-2", TRAY_SIZE)} style={cellVars(view, theme.aspect, theme.measure)}>
-            <div className={cn("relative flex min-h-0 w-full flex-1 flex-col justify-end overflow-hidden rounded-2xl ring-1 ring-black/5", bg.back)} style={{ maxHeight: "calc(var(--cell-h) * 2.1 + 4rem)" }}>
+        <div className={cn("flex h-full w-full items-center justify-center gap-2", fit.side ? "flex-row" : "flex-col")} style={cellVars(fit, theme.aspect)}>
+            <div
+                className={cn("relative flex min-h-0 min-w-0 flex-1 flex-col justify-end overflow-hidden rounded-2xl ring-1 ring-black/5", fit.side ? "h-full" : "w-full", bg.back)}
+                style={{ maxHeight: `calc(var(--cell-h) * ${fit.shelves.length + 1.1} + ${fit.shelves.length * 2.5 + 1.5}rem)` }}
+            >
                 <StageDecor stage={theme.stage} />
                 <Caption view={view} />
-                <div role="group" aria-label="Red" className="relative z-[1] flex items-end justify-center px-1.5 pt-2" style={{ gap: "var(--gap)" }}>
-                    {row}
-                </div>
-                <div className={cn("relative shrink-0", bg.floor)} />
-                <div className={cn("flex w-full shrink-0 justify-center px-3 py-1", bg.ground)}>
-                    <DirectionWedge dir={view.dir} light={theme.stage === "sky" || theme.stage === "grass"} className="h-3 w-[min(70%,22rem)]" />
+                <div role="group" aria-label="Red" className="relative z-[1] flex flex-col">
+                    {shelves.map((shelf, k) => (
+                        <div key={k} className="flex flex-col">
+                            <div className="flex items-end justify-center px-1.5 pt-2" style={{ gap: "var(--gap)" }}>
+                                {shelf.items}
+                            </div>
+                            <div className={cn("relative shrink-0", bg.floor)} />
+                            <div className={cn("flex w-full shrink-0 justify-center px-3 py-1", bg.ground)}>
+                                <DirectionWedge dir={view.dir} light={light} span={fit.shelves.length > 1 ? shelf.span : undefined} className="h-3 w-[min(70%,22rem)]" />
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
             <CellTray view={view} drag={drag} calm={calm} wiggle={wiggle} hinted={hinted} disabled={disabled} art={art} onSlot={onSlot} onPiece={onPiece} />

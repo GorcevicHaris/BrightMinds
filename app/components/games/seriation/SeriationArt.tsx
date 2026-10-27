@@ -536,7 +536,11 @@ export function lengthShare(value: number, max: number): number {
 
 // ── Smer: klin koji raste (ili se smanjuje) ispod reda ────────────────────────
 
-export function DirectionWedge({ dir, vertical = false, light = false, className }: { dir: Direction; vertical?: boolean; light?: boolean; className?: string }) {
+/**
+ * `span`: deo klina [od, do] (0…1) kad je red na dve police — klin se na drugoj nastavlja tamo
+ * gde je stao na prvoj.
+ */
+export function DirectionWedge({ dir, vertical = false, light = false, span, className }: { dir: Direction; vertical?: boolean; light?: boolean; span?: [number, number]; className?: string }) {
     // Na travi je zelen klin slabo vidljiv, pa je beo
     const fill = light ? "#ffffff" : "var(--color-sprout-300)";
     const head = light ? "#ffffff" : "var(--color-sprout-500)";
@@ -551,9 +555,12 @@ export function DirectionWedge({ dir, vertical = false, light = false, className
             </svg>
         );
     }
+    // Pola debljine klina na delu t (0 = početak reda, 1 = kraj)
+    const half = (t: number) => (up ? 1 + 6 * t : 7 - 6 * t);
+    const [from, to] = span ?? [0, 1];
     return (
         <svg viewBox="0 0 200 16" preserveAspectRatio="none" className={className} aria-hidden="true" focusable="false">
-            <path d={up ? "M2 7 L2 9 L186 15 L186 1Z" : "M2 1 L2 15 L186 9 L186 7Z"} fill={fill} opacity={light ? 0.85 : 0.75} />
+            <path d={`M2 ${8 - half(from)} L2 ${8 + half(from)} L186 ${8 + half(to)} L186 ${8 - half(to)}Z`} fill={fill} opacity={light ? 0.85 : 0.75} />
             <path d="M188 1 L198 8 L188 15Z" fill={head} />
         </svg>
     );
