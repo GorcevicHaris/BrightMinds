@@ -46,6 +46,13 @@ export const TOGETHER_GAMES: readonly GameId[] = [
     "backpack",
     "missing",
     "words",
+    "pattern",
+    "seriation",
+    "scale",
+    "arithmetic",
+    "oddone",
+    "coding",
+    "tangram",
 ];
 
 export function isTogetherGame(id: GameId | null | undefined): boolean {

@@ -124,6 +124,8 @@ const PIECE_COUNTERS: Readonly<Partial<Record<GameId, (view: Record<string, unkn
     families: (v) => lengthOf(v.placed),
     backpack: (v) => lengthOf(v.packed),
     food: (v) => lengthOf(v.fed),
+    seriation: (v) => lengthOf(v.placed),
+    tangram: (v) => lengthOf(v.placed),
 };
 
 export function hasSharedBoard(id: GameId | null | undefined): boolean {

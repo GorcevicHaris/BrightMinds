@@ -49,6 +49,9 @@ export const VERSUS_FORMATS: Readonly<Record<GameId, VersusFormat>> = {
     where: "race", // Gde je? — jedan predmet na slici (iznad, ispod, u…)
     families: "race", // Mama i beba — spoji mamu i bebu: jedan izbor po tabli
     words: "race", // Prve reči — slika za izgovorenu reč
+    pattern: "race", // Šta dolazi sledeće? — jedan izbor koji nastavlja niz
+    arithmetic: "race", // Računanje — jedan broj kao odgovor; zadatak se izgovara
+    oddone: "race", // Šta ne pripada? — jedna slika od nekoliko
 
     // ── Jedan po jedan: pamćenje, logika, slaganje, fini pokret, duže čitanje ──
     memory: "turns", // Spoji parove — klasična smena: dve kartice jedno dete, pa drugo
@@ -63,6 +66,10 @@ export const VERSUS_FORMATS: Readonly<Record<GameId, VersusFormat>> = {
     market: "turns", // Prodavnica — računanje novca traži vreme za razmišljanje
     backpack: "turns", // Spakuj ranac — više predmeta u isti ranac, plan
     weather: "turns", // Obuci se — više komada odeće na istog lika, plan
+    seriation: "turns", // Poređaj po veličini — komad po komad u isti red
+    scale: "turns", // Vaga — tegovi na istu vagu; ravnoteža traži razmišljanje, ne brzinu
+    coding: "turns", // Vodi robota — planiranje niza koraka; svako svoj put redom
+    tangram: "turns", // Tangram — deo po deo istog oblika (prostorno mišljenje, fini pokret)
     coloring: "turns", // Bojanka — stvaranje nema „brže”; polje po polje iste slike
     letters: "turns", // Slova — pisanje prstom: brzina kvari oblik slova
     numbers: "turns", // Brojevi — isto (pisanje cifara, poređenje)

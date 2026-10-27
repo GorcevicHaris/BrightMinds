@@ -120,6 +120,76 @@
   --color-pine-600: #256b50;
   --color-pine-700: #1f5641;
 
+  /* Jorgovan (igra „Šta dolazi sledeće?”) */
+  --color-lilac-50: #f6f2fd;
+  --color-lilac-100: #ece3fb;
+  --color-lilac-200: #dccbf6;
+  --color-lilac-300: #c3a6ee;
+  --color-lilac-400: #a782e2;
+  --color-lilac-500: #8c62d2;
+  --color-lilac-600: #754bb8;
+  --color-lilac-700: #5f3b96;
+
+  /* Izdanak (igra „Poređaj po veličini”) */
+  --color-sprout-50: #f1f9ec;
+  --color-sprout-100: #def1d2;
+  --color-sprout-200: #c0e3a8;
+  --color-sprout-300: #98cf74;
+  --color-sprout-400: #74b84a;
+  --color-sprout-500: #589c31;
+  --color-sprout-600: #467f26;
+  --color-sprout-700: #386320;
+
+  /* Kakao, boja drvene vage (igra „Vaga”) */
+  --color-cocoa-50: #f8f3ef;
+  --color-cocoa-100: #efe3d9;
+  --color-cocoa-200: #dfc6b2;
+  --color-cocoa-300: #c9a284;
+  --color-cocoa-400: #b07f5c;
+  --color-cocoa-500: #94643f;
+  --color-cocoa-600: #7a5033;
+  --color-cocoa-700: #61402b;
+
+  /* Žar (igra „Računanje”) */
+  --color-ember-50: #fff4ec;
+  --color-ember-100: #ffe4d0;
+  --color-ember-200: #fec8a2;
+  --color-ember-300: #fba46b;
+  --color-ember-400: #f5813d;
+  --color-ember-500: #e8641c;
+  --color-ember-600: #c94f12;
+  --color-ember-700: #a03f12;
+
+  /* Dud (igra „Šta ne pripada?”) */
+  --color-mulberry-50: #f9f0f8;
+  --color-mulberry-100: #f2dcef;
+  --color-mulberry-200: #e5bae0;
+  --color-mulberry-300: #d18fca;
+  --color-mulberry-400: #b866ae;
+  --color-mulberry-500: #93408f;
+  --color-mulberry-600: #7b3478;
+  --color-mulberry-700: #642b62;
+
+  /* Azur, boja Robotića (igra „Vodi robota”) */
+  --color-azure-50: #eef6ff;
+  --color-azure-100: #d9ebff;
+  --color-azure-200: #b6d7fd;
+  --color-azure-300: #85bbfa;
+  --color-azure-400: #5299f3;
+  --color-azure-500: #2f7de6;
+  --color-azure-600: #2465c4;
+  --color-azure-700: #1f529e;
+
+  /* Laguna (igra „Tangram”) */
+  --color-lagoon-50: #ecf8f7;
+  --color-lagoon-100: #d1efec;
+  --color-lagoon-200: #a6ddd8;
+  --color-lagoon-300: #71c5bd;
+  --color-lagoon-400: #42a99f;
+  --color-lagoon-500: #258d84;
+  --color-lagoon-600: #1d726b;
+  --color-lagoon-700: #1a5c57;
+
   --radius-card: 1.5rem;
   --radius-tile: 1.25rem;
 

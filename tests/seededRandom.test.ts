@@ -28,6 +28,13 @@ import { buildUsesLevel } from "@/app/components/games/data/usesItems";
 import { buildWeatherLevel } from "@/app/components/games/data/weatherLevels";
 import { buildWhereLevel } from "@/app/components/games/data/whereScenes";
 import { buildWordsLevel } from "@/app/components/games/data/wordsItems";
+import { buildArithmeticLevel } from "@/app/components/games/data/arithmeticLevels";
+import { buildCodingLevel } from "@/app/components/games/data/codingLevels";
+import { buildOddoneLevel } from "@/app/components/games/data/oddoneLevels";
+import { buildPatternLevel } from "@/app/components/games/data/patternLevels";
+import { buildScaleLevel } from "@/app/components/games/data/scaleLevels";
+import { buildSeriationLevel } from "@/app/components/games/data/seriationLevels";
+import { buildTangramLevel } from "@/app/components/games/data/tangramLevels";
 import { shuffle } from "@/app/components/games/kit/utils";
 import { MAX_LEVEL } from "@/lib/games";
 import { cleanSeed, duelSeed, seededRandom } from "@/lib/seededRandom";
@@ -68,6 +75,13 @@ const BUILDERS: Record<string, (level: number, random: () => number) => unknown>
     weather: (level, random) => buildWeatherLevel(level, { ...opts, random }),
     where: (level, random) => buildWhereLevel(level, { ...opts, random }),
     words: (level, random) => buildWordsLevel(level, { ...opts, random }),
+    arithmetic: (level, random) => buildArithmeticLevel(level, { ...opts, random }),
+    coding: (level, random) => buildCodingLevel(level, { ...opts, random }),
+    oddone: (level, random) => buildOddoneLevel(level, { ...opts, random }),
+    pattern: (level, random) => buildPatternLevel(level, { ...opts, random }),
+    scale: (level, random) => buildScaleLevel(level, { ...opts, random }),
+    seriation: (level, random) => buildSeriationLevel(level, { ...opts, random }),
+    tangram: (level, random) => buildTangramLevel(level, { ...opts, random }),
 };
 
 describe("seme zadataka", () => {
@@ -119,6 +133,7 @@ describe("isto seme — isti nivo, u svakoj igri", () => {
         const games = [
             "Backpack", "Clock", "Coloring", "Counting", "Differences", "Emotions", "Family", "Food", "Gaze", "Inset", "Letters", "Market", "Maze", "Memory",
             "Missing", "Numbers", "Puzzle", "Sequence", "ShapeMatching", "SocialCommunication", "SocialStory", "Sorting", "SoundToImage", "Uses", "Weather", "Where", "Words",
+            "Pattern", "Seriation", "Scale", "Arithmetic", "OddOne", "Coding", "Tangram",
         ];
         for (const game of games) {
             const source = read(`app/components/games/${game}Game.tsx`) + (game === "Memory" ? read("app/components/games/MemoryScene.tsx") : "");
