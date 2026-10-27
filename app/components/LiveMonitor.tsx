@@ -68,6 +68,13 @@ export const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
     backpack: dynamic(() => import("@/app/components/games/BackpackGame"), { ssr: false, loading: MirrorLoading }),
     missing: dynamic(() => import("@/app/components/games/MissingGame"), { ssr: false, loading: MirrorLoading }),
     words: dynamic(() => import("@/app/components/games/WordsGame"), { ssr: false, loading: MirrorLoading }),
+    opposites: dynamic(() => import("@/app/components/games/OppositesGame"), { ssr: false, loading: MirrorLoading }),
+    syllables: dynamic(() => import("@/app/components/games/SyllablesGame"), { ssr: false, loading: MirrorLoading }),
+    jobs: dynamic(() => import("@/app/components/games/JobsGame"), { ssr: false, loading: MirrorLoading }),
+    habitats: dynamic(() => import("@/app/components/games/HabitatsGame"), { ssr: false, loading: MirrorLoading }),
+    seasons: dynamic(() => import("@/app/components/games/SeasonsGame"), { ssr: false, loading: MirrorLoading }),
+    body: dynamic(() => import("@/app/components/games/BodyGame"), { ssr: false, loading: MirrorLoading }),
+    traffic: dynamic(() => import("@/app/components/games/TrafficGame"), { ssr: false, loading: MirrorLoading }),
 };
 
 const noop = () => {};

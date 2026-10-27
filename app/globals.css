@@ -120,6 +120,72 @@
   --color-pine-600: #256b50;
   --color-pine-700: #1f5641;
 
+  /* Igre o svetu oko nas: „Suprotnosti” (orhideja), „Koliko slogova?” (šafran), „Ko šta radi?”
+     (kobalt), „Ko gde živi?” (paprat), „Godišnja doba” (rđa), „Moje telo” (breskva),
+     „Saobraćaj” (teksas plava) */
+  --color-orchid-50: #fbf2fb;
+  --color-orchid-100: #f5e1f5;
+  --color-orchid-200: #e9c3ea;
+  --color-orchid-300: #d79bd9;
+  --color-orchid-400: #c073c4;
+  --color-orchid-500: #a655ab;
+  --color-orchid-600: #8d4391;
+  --color-orchid-700: #743676;
+
+  --color-saffron-50: #fff8e5;
+  --color-saffron-100: #ffefc2;
+  --color-saffron-200: #fedd85;
+  --color-saffron-300: #f9c74a;
+  --color-saffron-400: #f0b023;
+  --color-saffron-500: #dc960e;
+  --color-saffron-600: #b97a0a;
+  --color-saffron-700: #8f5e0d;
+
+  --color-cobalt-50: #eef3fd;
+  --color-cobalt-100: #dbe5fb;
+  --color-cobalt-200: #b9cdf6;
+  --color-cobalt-300: #8eaeee;
+  --color-cobalt-400: #648ce2;
+  --color-cobalt-500: #456fd0;
+  --color-cobalt-600: #3658b0;
+  --color-cobalt-700: #2d4890;
+
+  --color-fern-50: #f1f8ec;
+  --color-fern-100: #def0d3;
+  --color-fern-200: #bfe0aa;
+  --color-fern-300: #98cb7a;
+  --color-fern-400: #74b452;
+  --color-fern-500: #589a38;
+  --color-fern-600: #457c2c;
+  --color-fern-700: #386326;
+
+  --color-rust-50: #fdf3ee;
+  --color-rust-100: #fae2d4;
+  --color-rust-200: #f4c3a6;
+  --color-rust-300: #ea9c72;
+  --color-rust-400: #dd7846;
+  --color-rust-500: #c75d2c;
+  --color-rust-600: #a84a22;
+  --color-rust-700: #873c1f;
+
+  --color-peach-50: #fff4f1;
+  --color-peach-100: #ffe5de;
+  --color-peach-200: #ffc9bb;
+  --color-peach-300: #fba78f;
+  --color-peach-400: #f28a6e;
+  --color-peach-500: #e06e52;
+  --color-peach-600: #c2573e;
+  --color-peach-700: #9c4532;
+
+  --color-denim-50: #eff3f8;
+  --color-denim-100: #dce5f0;
+  --color-denim-200: #bccde2;
+  --color-denim-300: #93abcc;
+  --color-denim-400: #6c88b1;
+  --color-denim-500: #4f6c97;
+  --color-denim-600: #40587c;
+  --color-denim-700: #354864;
+
   --radius-card: 1.5rem;
   --radius-tile: 1.25rem;
 
