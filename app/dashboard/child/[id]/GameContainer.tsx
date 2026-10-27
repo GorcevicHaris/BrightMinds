@@ -37,6 +37,7 @@ import { COINS_PER_STAR } from "@/lib/companion";
 import { chosenSkin, useCompanion } from "./companionState";
 import { coinWord, GoalChip } from "./companionUi";
 import { MoodFace, type MoodFaceKind } from "@/app/components/games/MoodFace";
+import { BreathBalloon } from "@/app/components/games/breathing/BreathArt";
 import { cn } from "@/lib/cn";
 import {
     ADVANCE_RATIO,
@@ -1085,7 +1086,7 @@ function HoldButton({ label, onConfirm, holdMs = 2000 }: { label: string; onConf
 }
 
 // ── Pauza ─────────────────────────────────────────────────────────────────────
-// „Treba mi pauza”: miran ekran preko igre. Krug polako raste i smanjuje se (udah 4 s, izdah 4 s),
+// „Treba mi pauza”: miran ekran preko igre. Balon iz igre „Balon disanja” polako raste i smanjuje se (udah 4 s, izdah 4 s),
 // učitelj tiho kaže šta da radi, a igra čeka tačno tamo gde je dete stalo. Nema zvukova ni žurbe.
 
 interface BreakScreenProps {
@@ -1098,6 +1099,7 @@ interface BreakScreenProps {
 
 function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
     const [inhale, setInhale] = useState(true);
+    const calm = useCalmMotion();
     // Drugi dodir dvostrukog dodira ne sme odmah da zatvori pauzu
     const guard = useInputGuard(800);
     const panelRef = useRef<HTMLDivElement>(null);
@@ -1144,10 +1146,10 @@ function BreakScreen({ teacher, female, say, onDone }: BreakScreenProps) {
                     Nastavi igru
                 </Button>
             </div>
-            <div className="relative order-2 grid h-56 w-56 shrink-0 place-items-center sm:h-72 sm:w-72 flat:h-52 flat:w-52" aria-hidden="true">
-                <span className="absolute inset-0 animate-breathe rounded-full bg-sky-200/70" />
-                <span className="absolute inset-[18%] animate-breathe rounded-full bg-sky-300/60 [animation-delay:150ms]" />
-                <span className="relative font-display text-2xl font-extrabold text-sky-900 sm:text-3xl">{inhale ? "Udahni…" : "Izdahni…"}</span>
+            {/* Isti balon kao u igri „Balon disanja”: dete na pauzi prepozna disanje koje je vežbalo */}
+            <div className="relative order-2 flex shrink-0 flex-col items-center gap-1" aria-hidden="true">
+                <BreathBalloon level={inhale ? 1 : 0} ms={4000} color="#7cc7e8" calm={calm} className="h-56 w-auto sm:h-72 flat:h-44" />
+                <span className="font-display text-2xl font-extrabold text-sky-900 sm:text-3xl">{inhale ? "Udahni…" : "Izdahni…"}</span>
             </div>
         </div>
     );

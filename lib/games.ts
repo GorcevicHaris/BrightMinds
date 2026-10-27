@@ -929,7 +929,7 @@ export const GAMES: GameDefinition[] = [
             gradient: "from-mint-300 to-mint-600",
         },
         offscreenTip:
-            "Zalepite pored lavaboa slike koraka (voda, sapun, trljaj, ispiraj, obriši) i pokazujte ih dok dete pere ruke. Pevajte kratku pesmicu dok trljate 20 sekundi. Peru li zube zajedno: vi pokažete, dete ponovi. Pohvalite svaki korak, ne samo kraj.",
+            "Zalepite pored lavaboa slike koraka (voda, sapun, trljaj, ispiraj, obriši) i pokazujte ih dok dete pere ruke. Pevajte kratku pesmicu dok trljate 20 sekundi. Perite zube zajedno: vi pokažete, dete ponovi. Pohvalite svaki korak, ne samo kraj.",
         graded: true,
         // 33. po redu: svakodnevne navike — pranje ruku i zuba korak po korak, pa kada peremo ruke
         ages: { min: 3, max: 8 },
