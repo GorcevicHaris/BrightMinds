@@ -1,12 +1,13 @@
-// app/dashboard/child/[id]/mapWorlds.tsx — crteži četiri sveta „Mape” (livada, pustinja, vulkan, led).
+// app/dashboard/child/[id]/mapWorlds.tsx — crteži sedam svetova „Mape” (livada, šuma, pustinja, more, vulkan, led, svemir).
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { mapLayout } from "@/app/dashboard/child/[id]/gameMapLayout";
+import { WORLD_IDS } from "@/lib/gameWorlds";
 import { WORLDS, WorldBadge, WorldBridge, WorldGate, WorldScenery, WorldStart, worldRoad, worldTheme, type WorldId } from "@/app/dashboard/child/[id]/mapWorlds";
 
-const IDS: WorldId[] = ["meadow", "desert", "volcano", "ice"];
+const IDS: WorldId[] = ["meadow", "forest", "desert", "ocean", "volcano", "ice", "space"];
 const STATES = ["locked", "key", "open"] as const;
 const EMOJI = /\p{Extended_Pictographic}/u;
 const HEX = /^#[0-9A-F]{6}$/;
@@ -15,18 +16,20 @@ const HEX = /^#[0-9A-F]{6}$/;
 const PADLOCK = "#F7BE3B";
 
 describe("map worlds", () => {
-    it("has the four worlds in order, with Serbian (ekavian) names and places", () => {
+    it("has the seven worlds in order, with Serbian (ekavian) names and places", () => {
         assert.deepEqual(
             WORLDS.map((w) => w.id),
             IDS
         );
+        // Isti redosled kao raspored igara (lib/gameWorlds.ts)
+        assert.deepEqual(IDS, [...WORLD_IDS]);
         assert.deepEqual(
             WORLDS.map((w) => w.name),
-            ["Zelena livada", "Peščana pustinja", "Vatreni vulkan", "Ledeni vrhovi"]
+            ["Zelena livada", "Čarobna šuma", "Peščana pustinja", "Podvodni svet", "Vatreni vulkan", "Ledeni vrhovi", "Svemir"]
         );
         assert.deepEqual(
             WORLDS.map((w) => w.where),
-            ["na livadi", "u pustinji", "na vulkanu", "na ledenim vrhovima"]
+            ["na livadi", "u šumi", "u pustinji", "pod morem", "na vulkanu", "na ledenim vrhovima", "u svemiru"]
         );
         for (const id of IDS) assert.equal(worldTheme(id).id, id);
     });
@@ -73,6 +76,20 @@ describe("map worlds", () => {
         const layout = mapLayout(5, 390);
         const html = IDS.map((id) => renderToStaticMarkup(createElement("svg", null, createElement(WorldScenery, { world: id, layout, calm: true }))));
         assert.equal(new Set(html).size, IDS.length);
+    });
+
+    it("ends in space with a rocket and a treasure chest instead of a castle", () => {
+        const gate = (world: WorldId, state: (typeof STATES)[number]) =>
+            renderToStaticMarkup(createElement("svg", null, createElement(WorldGate, { world, x: 0, y: 0, state, final: true, calm: true })));
+        // Raketa: ružičasti vrh i prozor; dvorac ima zidine sa kulama (zastavica na stubu)
+        for (const state of STATES) {
+            const space = gate("space", state);
+            assert.match(space, /#F47C9C/, `rocket ${state}`);
+            assert.notEqual(space, gate("ice", state));
+        }
+        // Otvoreno: prozor rakete svetli toplo žuto
+        assert.match(gate("space", "open"), /#FFF1A8/);
+        assert.doesNotMatch(gate("space", "locked"), /fill="#FFF1A8"/);
     });
 
     it("shows the padlock until the gate (or the treasure chest) opens", () => {

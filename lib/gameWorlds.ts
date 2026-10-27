@@ -1,13 +1,16 @@
 // lib/gameWorlds.ts
-// „Mape” (svetovi) na dečjem ekranu: igre su raspoređene u do četiri mape po težini — Zelena
-// livada, Peščana pustinja, Vatreni vulkan i Ledeni vrhovi. Na kraju svake mape je kapija sa
-// ključem: kad dete skupi dovoljno zvezdica na toj mapi, kapija se otvara i otključava se
-// sledeća mapa. Čist modul (bez Reacta), da se pravila lako testiraju.
+// „Mape” (svetovi) na dečjem ekranu: igre su raspoređene u do sedam mapa po težini — Zelena
+// livada, Čarobna šuma, Peščana pustinja, Podvodni svet, Vatreni vulkan, Ledeni vrhovi i
+// Svemir. Na kraju svake mape je kapija sa ključem: kad dete skupi dovoljno zvezdica na toj
+// mapi, kapija se otvara i otključava se sledeća mapa; na kraju svemira je raketa sa kovčegom
+// blaga. Čist modul (bez Reacta), da se pravila lako testiraju.
 //
 // Zašto ovako (istraživanje i odluke):
 //  • Predvidljiva struktura: uvek isti redosled mapa i isti put kroz svaku — kao vizuelni
 //    raspored u TEACCH pristupu (dete vidi šta je sada, šta je posle i gde je kraj).
-//  • Vidljiv napredak: „⭐ 5 / 7” na kartici mape i kod kapije; dete vidi koliko je ostalo.
+//  • Vidljiv napredak: „⭐ 3 / 5” na kartici mape i kod kapije; dete vidi koliko je ostalo.
+//  • Kratke mape: najviše oko sedam igara po mapi, da cilj bude blizu — sa 47 igara bi
+//    četiri mape od po dvanaest igara bile preduge za pažnju deteta od 3 do 10 godina.
 //  • Jasan i dostižan cilj: za kapiju treba prosečno jedna pređena težina po igri (videti
 //    `starsToOpen`). Nema vremenskog pritiska, a nijedna igra nije obavezna.
 //  • Bez gubitka napretka: zvezdice se nikad ne oduzimaju, a mapa u kojoj je dete već nešto
@@ -28,7 +31,9 @@
 import { LEVELS_PER_TIER, MAX_LEVEL, type GameId } from "./games";
 import type { GameProgress } from "./gameAccess";
 
-export const WORLD_IDS = ["meadow", "desert", "volcano", "ice"] as const;
+// Redosled je težina (livada najlakša, svemir poslednji). Stari ID-jevi su ostali isti, pa
+// zapamćena mapa i otvorene kapije (localStorage) i dalje važe.
+export const WORLD_IDS = ["meadow", "forest", "desert", "ocean", "volcano", "ice", "space"] as const;
 export type WorldId = (typeof WORLD_IDS)[number];
 
 /** Najviše mapa (toliko ih je nacrtano) */
@@ -50,9 +55,12 @@ export interface WorldWords {
 
 export const WORLD_WORDS: Record<WorldId, WorldWords> = {
     meadow: { name: "Zelena livada", short: "Livada", nameAcc: "Zelenu livadu", acc: "livadu", where: "na livadi" },
+    forest: { name: "Čarobna šuma", short: "Šuma", nameAcc: "Čarobnu šumu", acc: "šumu", where: "u šumi" },
     desert: { name: "Peščana pustinja", short: "Pustinja", nameAcc: "Peščanu pustinju", acc: "pustinju", where: "u pustinji" },
+    ocean: { name: "Podvodni svet", short: "More", nameAcc: "Podvodni svet", acc: "podvodni svet", where: "pod morem" },
     volcano: { name: "Vatreni vulkan", short: "Vulkan", nameAcc: "Vatreni vulkan", acc: "vulkan", where: "na vulkanu" },
     ice: { name: "Ledeni vrhovi", short: "Led", nameAcc: "Ledene vrhove", acc: "ledene vrhove", where: "na ledenim vrhovima" },
+    space: { name: "Svemir", short: "Svemir", nameAcc: "Svemir", acc: "svemir", where: "u svemiru" },
 };
 
 export function isWorldId(value: unknown): value is WorldId {
@@ -70,16 +78,31 @@ export function byDifficulty<T extends { ages: { min: number; max: number }; ord
     return [...games].sort((a, b) => a.ages.min - b.ages.min || a.ages.max - b.ages.max || a.order - b.order);
 }
 
+/** Najmanje igara na mapi (osim kad je ukupno samo jedna igra) */
+const MIN_PER_WORLD = 2;
+
 /**
- * Deli igre (poređane po težini, `byDifficulty`) na mape, redom.
- * Mape su podjednake: veličina je `ceil(n / 4)`, pa 27 igara daje 7 / 7 / 7 / 6. Sa malo igara
- * mapa je manje (bar jedna igra po mapi, nikad prazna mapa), npr. 5 igara → 2 / 2 / 1.
+ * Deli igre (poređane po težini, `byDifficulty`) na mape, redom, bez obzira koliko ih ima.
+ * Najviše igara na mapi je `ceil(n / 7)`, a mape su podjednake: razlikuju se najviše za jednu
+ * igru i veće su prve. 47 igara → 7·7·7·7·7·6·6, 40 → 6·6·6·6·6·5·5, 33 → 5·5·5·5·5·4·4.
+ * Tako za svaki broj od 14 igara naviše postoji svih sedam mapa (cilj je uvek u svemiru), a
+ * nijedna mapa nema samo jednu igru. Sa malo igara (roditelj je isključio mnoge) mapa je
+ * manje, bar dve igre po mapi: 5 igara → 3 / 2, 3 igre → jedna mapa.
  */
 export function splitIntoWorlds<T>(games: readonly T[], maxWorlds: number = MAX_WORLDS): T[][] {
-    if (games.length === 0) return [];
-    const size = Math.ceil(games.length / Math.max(1, Math.min(maxWorlds, MAX_WORLDS)));
+    const n = games.length;
+    if (n === 0) return [];
+    const limit = Math.max(1, Math.min(maxWorlds, MAX_WORLDS));
+    const count = Math.min(limit, Math.max(1, Math.floor(n / MIN_PER_WORLD)));
+    const base = Math.floor(n / count);
+    const extra = n % count;
     const worlds: T[][] = [];
-    for (let i = 0; i < games.length; i += size) worlds.push(games.slice(i, i + size));
+    let at = 0;
+    for (let i = 0; i < count; i += 1) {
+        const size = base + (i < extra ? 1 : 0);
+        worlds.push(games.slice(at, at + size));
+        at += size;
+    }
     return worlds;
 }
 
