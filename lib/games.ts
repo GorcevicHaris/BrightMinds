@@ -30,6 +30,13 @@ export type GameId =
     | "backpack"
     | "missing"
     | "words"
+    | "opposites"
+    | "syllables"
+    | "jobs"
+    | "habitats"
+    | "seasons"
+    | "body"
+    | "traffic"
     | "breathing"
     | "simon"
     | "rhythm"
@@ -66,6 +73,13 @@ export type GameType =
     | "backpack"
     | "missing"
     | "words"
+    | "opposites"
+    | "syllables"
+    | "jobs"
+    | "habitats"
+    | "seasons"
+    | "body"
+    | "traffic"
     | "breathing"
     | "simon"
     | "rhythm"
@@ -785,6 +799,181 @@ export const GAMES: GameDefinition[] = [
         order: 27,
     },
     {
+        id: "body",
+        gameType: "body",
+        activityId: 41,
+        title: "Moje telo",
+        description: "Delovi tela i čula",
+        skill: "Telo i čula",
+        icon: "🖐️",
+        image: "/images/mojetelo.svg",
+        accent: {
+            solid: "bg-peach-500",
+            edge: "border-peach-700",
+            soft: "bg-peach-50",
+            text: "text-peach-700",
+            border: "border-peach-200",
+            ring: "ring-peach-200",
+            gradient: "from-peach-300 to-peach-600",
+        },
+        offscreenTip:
+            "Igrajte „Glava, ramena, kolena, prsti” uz pesmu i pokrete. Na kupanju pitajte: „Gde je lakat? Čime mirišemo?” Zatvorite oči i pogađajte šta čujete, mirišete i dodirujete — tako se uče čula. Starije dete neka prebroji: „Koliko prstiju imaš na jednoj ruci?”",
+        graded: true,
+        // Delovi lica, pa tela, pa čula — prvi pojmovi o sebi
+        ages: { min: 3, max: 7 },
+        order: 28,
+    },
+    {
+        id: "opposites",
+        gameType: "opposites",
+        activityId: 36,
+        title: "Suprotnosti",
+        description: "Veliko i malo, dan i noć",
+        skill: "Pojmovi i govor",
+        icon: "↔️",
+        image: "/images/suprotnosti.svg",
+        accent: {
+            solid: "bg-orchid-500",
+            edge: "border-orchid-700",
+            soft: "bg-orchid-50",
+            text: "text-orchid-700",
+            border: "border-orchid-200",
+            ring: "ring-orchid-200",
+            gradient: "from-orchid-300 to-orchid-600",
+        },
+        offscreenTip:
+            "U kući tražite parove: velika i mala kašika, puna i prazna čaša, otvorena i zatvorena vrata. Recite prvi deo: „Ova čaša je puna, a ova je…?” i sačekajte da dete dopuni. Starije dete neka samo smisli suprotnost: „Šta je suprotno od toplo?”",
+        graded: true,
+        // Parovi pojmova: od iste stvari na dve slike do suprotnosti samo rečima
+        ages: { min: 3, max: 7 },
+        order: 29,
+    },
+    {
+        id: "habitats",
+        gameType: "habitats",
+        activityId: 39,
+        title: "Ko gde živi?",
+        description: "Životinje i njihov dom",
+        skill: "Priroda i razvrstavanje",
+        icon: "🏞️",
+        image: "/images/kogdezivi.svg",
+        accent: {
+            solid: "bg-fern-500",
+            edge: "border-fern-700",
+            soft: "bg-fern-50",
+            text: "text-fern-700",
+            border: "border-fern-200",
+            ring: "ring-fern-200",
+            gradient: "from-fern-300 to-fern-600",
+        },
+        offscreenTip:
+            "Uz slikovnicu ili u zoološkom vrtu pitajte: „Gde živi ova životinja?” Napravite od kutija farmu, šumu i more i razvrstajte igračke-životinje. Starije dete neka kaže i zašto: „Pingvin živi na ledu, a riba u vodi.”",
+        graded: true,
+        // Životinje i staništa: od dva različita mesta do zagonetki o tome ko gde živi
+        ages: { min: 3, max: 8 },
+        order: 30,
+    },
+    {
+        id: "jobs",
+        gameType: "jobs",
+        activityId: 38,
+        title: "Ko šta radi?",
+        description: "Zanimanja, alati i mesta rada",
+        skill: "Zanimanja i svet oko nas",
+        icon: "🧑‍🚒",
+        image: "/images/kostaradi.svg",
+        accent: {
+            solid: "bg-cobalt-500",
+            edge: "border-cobalt-700",
+            soft: "bg-cobalt-50",
+            text: "text-cobalt-700",
+            border: "border-cobalt-200",
+            ring: "ring-cobalt-200",
+            gradient: "from-cobalt-300 to-cobalt-600",
+        },
+        offscreenTip:
+            "U šetnji i u prodavnici pokažite ko radi i čime: „Ovo je pekar. On peče hleb.” Igrajte se uloga uz igračke — doktorka sa slušalicama, kuvar sa loncem. Pitajte: „Koga zovemo kad gori?” i naučite zajedno brojeve 192 (policija), 193 (vatrogasci) i 194 (hitna pomoć).",
+        graded: true,
+        // Zanimanja: alat, mesto rada, ko pomaže u kojoj nevolji, pa zagonetke
+        ages: { min: 3, max: 8 },
+        order: 31,
+    },
+    {
+        id: "syllables",
+        gameType: "syllables",
+        activityId: 37,
+        title: "Koliko slogova?",
+        description: "Tapši slogove i prebroj ih",
+        skill: "Slogovi i rano čitanje",
+        icon: "🥁",
+        image: "/images/kolikoslogova.svg",
+        accent: {
+            solid: "bg-saffron-500",
+            edge: "border-saffron-700",
+            soft: "bg-saffron-50",
+            text: "text-saffron-700",
+            border: "border-saffron-200",
+            ring: "ring-saffron-200",
+            gradient: "from-saffron-300 to-saffron-600",
+        },
+        offscreenTip:
+            "Tapšite imena ukućana po slogovima: A-MAR, LEJ-LA, MA-MA. Za svaki slog jedan pljesak ili jedan skok. U šetnji tapšite ono što vidite: MA-ČKA, KU-ĆA, JA-BU-KA, pa pitajte: „Koja reč je duža?” Starije dete neka smisli reč sa tri sloga.",
+        graded: true,
+        // Slogovi uz tapšanje: od tapšanja uz glas do brojanja, razvrstavanja i prvog sloga
+        ages: { min: 4, max: 8 },
+        order: 32,
+    },
+    {
+        id: "seasons",
+        gameType: "seasons",
+        activityId: 40,
+        title: "Godišnja doba",
+        description: "Proleće, leto, jesen, zima",
+        skill: "Vreme i godišnji ciklus",
+        icon: "🍂",
+        image: "/images/godisnjadoba.svg",
+        accent: {
+            solid: "bg-rust-500",
+            edge: "border-rust-700",
+            soft: "bg-rust-50",
+            text: "text-rust-700",
+            border: "border-rust-200",
+            ring: "ring-rust-200",
+            gradient: "from-rust-300 to-rust-600",
+        },
+        offscreenTip:
+            "Svakog meseca pogledajte zajedno kroz prozor i na kalendar: „Sad je jesen. Lišće pada.” Spremite kutiju sa stvarima za svako godišnje doba (kapa, kupaći, kišobran). Starije dete neka nabroji mesece redom i kaže u kom godišnjem dobu mu je rođendan.",
+        graded: true,
+        // Godišnja doba, delovi dana i meseci: od leta i zime do redosleda kroz celu godinu
+        ages: { min: 4, max: 9 },
+        order: 33,
+    },
+    {
+        id: "traffic",
+        gameType: "traffic",
+        activityId: 42,
+        title: "Saobraćaj",
+        description: "Semafor, prelaz, kaciga i pojas",
+        skill: "Bezbednost u saobraćaju",
+        icon: "🚦",
+        image: "/images/saobracaj.svg",
+        accent: {
+            solid: "bg-denim-500",
+            edge: "border-denim-700",
+            soft: "bg-denim-50",
+            text: "text-denim-700",
+            border: "border-denim-200",
+            ring: "ring-denim-200",
+            gradient: "from-denim-300 to-denim-600",
+        },
+        offscreenTip:
+            "Svaki put kad prelazite ulicu, stanite na ivici i recite naglas: „Crveno — stojimo. Zeleno — idemo. Gledamo levo, desno, pa opet levo.” Pre vožnje neka dete samo veže pojas i stavi kacigu kad vozi bicikl. Usput pokazujte znakove: pešački prelaz, škola, STOP.",
+        graded: true,
+        // Bezbednost u saobraćaju: semafor, čekanje, prelaz, kaciga i pojas, pa znakovi
+        ages: { min: 4, max: 10 },
+        order: 34,
+    },
+    {
         id: "breathing",
         gameType: "breathing",
         activityId: 43,
@@ -806,9 +995,9 @@ export const GAMES: GameDefinition[] = [
             "Dišite zajedno pre spavanja ili kad je dete uznemireno: „Pomiriši cvet” (udah na nos), „ugasi svećicu” (polako izduvaj). Brojite na prste do tri. Stavite plišanu igračku na stomak deteta da se diže i spušta. Vežbajte dok je dete mirno, pa će disanje lakše pomoći kad je teško.",
         // Ocenjuje se kao i ostale igre, ali greške nema: svaki dovršen udah je tačan (uvek tri zvezdice)
         graded: true,
-        // 28. po redu: mirno disanje (samoregulacija) — za svaki uzrast, bez grešaka i bez žurbe
+        // 35. po redu: mirno disanje (samoregulacija) — za svaki uzrast, bez grešaka i bez žurbe
         ages: { min: 3, max: 10 },
-        order: 28,
+        order: 35,
     },
     {
         id: "simon",
@@ -831,9 +1020,9 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Igrajte se pokretima: vi tapnete koleno, pa glavu — dete ponovi. Svaki put dodajte jedan pokret. Može i sa igračkama: poređajte tri, pokažite ih redom, pa neka dete pokaže istim redom. Starijem detetu recite tri reči, pa neka ih ponovi unazad.",
         graded: true,
-        // 29. po redu: radna memorija — ponovi niz koji raste (kao igra Simon), na kraju i unazad
+        // 36. po redu: radna memorija — ponovi niz koji raste (kao igra Simon), na kraju i unazad
         ages: { min: 4, max: 10 },
-        order: 29,
+        order: 36,
     },
     {
         id: "rhythm",
@@ -856,9 +1045,9 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Tapšite zajedno: vi tapnete dva puta, dete ponovi. Pa „tap-tap-pauza-tap”. Bubnjajte po šerpi drvenom kašikom, tapšite slogove imena (A-MAR, LEJ-LA) i marširajte uz pesmicu. Neka i dete vama zada ritam.",
         graded: true,
-        // 30. po redu: slušna pažnja i ritam — broj udaraca, pa veliki i mali bubanj, pa duži ritmovi
+        // 37. po redu: slušna pažnja i ritam — broj udaraca, pa veliki i mali bubanj, pa duži ritmovi
         ages: { min: 3, max: 9 },
-        order: 30,
+        order: 37,
     },
     {
         id: "mixcolors",
@@ -881,9 +1070,9 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Mešajte vodene boje ili tempere na tanjiru: žuta i plava — šta dobijamo? Pustite dete da samo pogađa pa proveri. Napunite dve providne čaše obojenom vodom i prelijte u treću. U šetnji tražite zelene, narandžaste i ljubičaste stvari.",
         graded: true,
-        // 31. po redu: mešanje boja — osnovne u složene, pa svetle i tamne nijanse
+        // 38. po redu: mešanje boja — osnovne u složene, pa svetle i tamne nijanse
         ages: { min: 4, max: 9 },
-        order: 31,
+        order: 38,
     },
     {
         id: "plant",
@@ -906,9 +1095,9 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Posadite pasulj u čašu sa vatom ili seme cveta u saksiju. Neka dete svakog dana pogleda da li treba vode i da li biljka ima sunca. Merite koliko je porasla i crtajte je. Pitajte: „Šta je biljci potrebno da raste?”",
         graded: true,
-        // 32. po redu: šta je biljci potrebno — seme, voda, sunce, pa redosled nege i različite biljke
+        // 39. po redu: šta je biljci potrebno — seme, voda, sunce, pa redosled nege i različite biljke
         ages: { min: 3, max: 7 },
-        order: 32,
+        order: 39,
     },
     {
         id: "hygiene",
@@ -931,9 +1120,9 @@ export const GAMES: GameDefinition[] = [
         offscreenTip:
             "Zalepite pored lavaboa slike koraka (voda, sapun, trljaj, ispiraj, obriši) i pokazujte ih dok dete pere ruke. Pevajte kratku pesmicu dok trljate 20 sekundi. Perite zube zajedno: vi pokažete, dete ponovi. Pohvalite svaki korak, ne samo kraj.",
         graded: true,
-        // 33. po redu: svakodnevne navike — pranje ruku i zuba korak po korak, pa kada peremo ruke
+        // 40. po redu: svakodnevne navike — pranje ruku i zuba korak po korak, pa kada peremo ruke
         ages: { min: 3, max: 8 },
-        order: 33,
+        order: 40,
     },
 ];
 
